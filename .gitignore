@@ -1,6 +1,109 @@
-composer.phar
-/vendor/
+# ============================================
+#  GLOBAL
+# ============================================
 
-# Commit your application's lock file https://getcomposer.org/doc/01-basic-usage.md#commit-your-composer-lock-file-to-version-control
-# You may choose to ignore a library lock file http://getcomposer.org/doc/02-libraries.md#lock-file
-# composer.lock
+# OS
+.DS_Store
+Thumbs.db
+
+# Env Files
+.env
+.env.*
+!.env.example
+
+# Logs & debug
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+
+# ============================================
+#  DOCKER
+# ============================================
+
+# Docker files generated at runtime
+docker/*.pid
+docker/*.sock
+docker/data/
+docker/mysql/
+docker/postgres/
+docker/redis/
+docker/mailhog/
+docker/nginx/logs/
+
+# Compose override files
+docker-compose.override.yml
+
+
+# ============================================
+#  LARAVEL BACKEND (api/)
+# ============================================
+
+# Laravel directories
+api/vendor/
+api/node_modules/
+api/storage/*.key
+api/storage/logs/
+api/storage/framework/cache/data/
+api/storage/framework/sessions/
+api/storage/framework/views/
+api/bootstrap/cache/*.php
+
+# Laravel compiled files
+api/public/storage
+api/public/hot
+
+# Laravel cache
+api/.phpunit.result.cache
+api/.phpunit.cache/
+
+# SQLite database (dev)
+api/database/*.sqlite
+
+
+# ============================================
+#  VUE FRONTEND (web/)
+# ============================================
+
+web/node_modules/
+web/dist/
+web/.vite/
+web/.vitepress/
+web/.nuxt/
+web/.output/
+web/.cache/
+web/.eslintcache
+
+# Local dev server files
+web/pnpm-debug.log
+web/yarn.lock
+web/package-lock.json
+
+
+# ============================================
+#  BUILD OUTPUTS
+# ============================================
+
+/dist
+/build
+/public/assets
+/public/build
+
+
+# ============================================
+#  MISC
+# ============================================
+
+# Optional local tools
+*.local
+*.swp
+tmp/
+temp/
+cache/

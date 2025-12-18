@@ -1,0 +1,63 @@
+version: "3.9"
+
+services:
+  # ----------------------------
+  # Backend Laravel (PHP-FPM)
+  # ----------------------------
+  laravel:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: laravel
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - ./api:/var/www
+      - ./docker/php.ini:/usr/local/etc/php/conf.d/custom.ini
+    environment:
+      - APP_ENV=${APP_ENV:-local}
+      - APP_DEBUG=${APP_DEBUG:-true}
+      - DB_CONNECTION=pgsql
+      - DB_HOST=${DB_HOST:-host.docker.internal}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_DATABASE=${DB_DATABASE:-postgres}
+      - DB_USERNAME=${DB_USERNAME:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD}
+    networks:
+      - app-network
+
+  # ----------------------------
+  # Nginx (Reverse Proxy)
+  # ----------------------------
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    volumes:
+      - ./api/public:/var/www/public:ro
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - laravel
+    networks:
+      - app-network
+
+  # ----------------------------
+  # MailHog (Dev emails)
+  # ----------------------------
+  mailhog:
+    image: mailhog/mailhog
+    container_name: mailhog
+    ports:
+      - "1025:1025"  # SMTP
+      - "8025:8025"  # Web UI
+    networks:
+      - app-network
+
+# ----------------------------
+# Networks
+# ----------------------------
+networks:
+  app-network:
+    driver: bridge
