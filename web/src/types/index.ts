@@ -1,0 +1,118 @@
+/**
+ * Types centralisés pour l'application
+ * Prêt pour l'intégration avec l'API Laravel
+ */
+
+// ============================================================================
+// Navigation
+// ============================================================================
+
+export interface NavLink {
+    name: string
+    path: string
+}
+
+// ============================================================================
+// Gallery
+// ============================================================================
+
+export type MediaType = 'image' | 'video'
+
+export interface GalleryItem {
+    id?: number
+    url: string
+    alt: string
+    type: MediaType
+    category?: string
+    aspectRatio?: string
+}
+
+export interface LightboxImage {
+    url: string
+    alt: string
+    type: MediaType
+}
+
+// ============================================================================
+// Prestations / Services
+// ============================================================================
+
+export type ServiceIconType = 'portrait' | 'moto' | 'animal' | 'sport' | 'entreprise' | 'video' | 'camera'
+
+export interface Prestation {
+    id?: number
+    icon: ServiceIconType
+    title: string
+    description: string
+    price?: string
+    priceUnit?: string
+    features: string[]
+    background?: string
+    backgroundOpacity?: number
+    disclaimer?: string
+}
+
+export interface PrestationMini {
+    icon: ServiceIconType
+    title: string
+    description: string
+    features: string[]
+}
+
+// ============================================================================
+// Bons Cadeaux (Gift Cards)
+// ============================================================================
+
+export interface GiftCard {
+    id?: number
+    title: string
+    subtitle: string
+    price: string
+    features: string[]
+    isPopular?: boolean
+    variant?: 'light' | 'dark'
+}
+
+// ============================================================================
+// Contact / Social
+// ============================================================================
+
+export interface SocialLink {
+    name: string
+    url: string
+    icon: 'instagram' | 'tiktok' | 'linkedin'
+    ariaLabel: string
+}
+
+export interface ContactInfo {
+    email: string
+    instagram: string
+    phone?: string
+    address?: string
+}
+
+// ============================================================================
+// Category Descriptions
+// ============================================================================
+
+export type CategoryDescriptions = Record<string, string>
+
+// ============================================================================
+// API Response Types (pour Laravel)
+// ============================================================================
+
+export interface ApiResponse<T> {
+    data: T
+    message?: string
+    success: boolean
+}
+
+export interface PaginatedResponse<T> {
+    data: T[]
+    meta: {
+        current_page: number
+        last_page: number
+        per_page: number
+        total: number
+    }
+}
