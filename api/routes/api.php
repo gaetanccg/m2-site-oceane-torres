@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\GalleryController;
+use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\PhotoController;
 use App\Http\Controllers\Api\PrestationController;
 use App\Http\Controllers\Api\ReservationController;
@@ -13,6 +14,17 @@ use App\Http\Controllers\Api\Admin\UserController;
 use App\Http\Controllers\Api\Admin\FactureController;
 use App\Http\Controllers\Api\Admin\NotificationController;
 use Illuminate\Support\Facades\Route;
+
+/*
+|--------------------------------------------------------------------------
+| Health Check Routes
+|--------------------------------------------------------------------------
+*/
+
+Route::get('/', [HealthController::class, 'index']);
+Route::get('/health', [HealthController::class, 'index']);
+Route::get('/health/database', [HealthController::class, 'database']);
+Route::get('/health/tables', [HealthController::class, 'tables']);
 
 /*
 |--------------------------------------------------------------------------

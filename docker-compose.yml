@@ -1,6 +1,28 @@
-version: "3.9"
-
 services:
+  # ----------------------------
+  # Frontend Vue.js (Vite Dev Server)
+  # ----------------------------
+  frontend:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      target: development
+    container_name: frontend
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ./web:/app
+      - /app/node_modules  # Préserver node_modules du container
+    ports:
+      - "5173:5173"
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=http://localhost:8000/api
+    depends_on:
+      - nginx
+    networks:
+      - app-network
+
   # ----------------------------
   # Backend Laravel (PHP-FPM)
   # ----------------------------
@@ -27,7 +49,7 @@ services:
       - app-network
 
   # ----------------------------
-  # Nginx (Reverse Proxy)
+  # Nginx (Reverse Proxy API)
   # ----------------------------
   nginx:
     image: nginx:alpine
@@ -44,14 +66,18 @@ services:
       - app-network
 
   # ----------------------------
-  # MailHog (Dev emails)
+  # Mailpit (Dev emails - ARM64 compatible)
   # ----------------------------
-  mailhog:
-    image: mailhog/mailhog
-    container_name: mailhog
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: mailpit
+    restart: unless-stopped
     ports:
       - "1025:1025"  # SMTP
       - "8025:8025"  # Web UI
+    environment:
+      - MP_SMTP_AUTH_ACCEPT_ANY=true
+      - MP_SMTP_AUTH_ALLOW_INSECURE=true
     networks:
       - app-network
 
