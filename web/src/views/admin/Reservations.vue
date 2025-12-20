@@ -57,7 +57,7 @@
 
         <template #cell-client.name="{ row }">
           <div>
-            <p class="font-medium text-gray-900">{{ row.client.name }}</p>
+            <p class="font-medium text-gray-900">{{ row.client.first_name }} {{ row.client.last_name }}</p>
             <p class="text-sm text-gray-500">{{ row.client.email }}</p>
           </div>
         </template>
@@ -119,13 +119,13 @@
     </div>
 
     <!-- Reservation Detail Modal -->
-    <Modal v-model="showDetailModal" :title="selectedReservation?.client?.name || 'Détails'" size="lg">
+    <Modal v-model="showDetailModal" :title="selectedReservation?.client ? `${selectedReservation.client.first_name} ${selectedReservation.client.last_name}` : 'Détails'" size="lg">
       <div v-if="selectedReservation" class="space-y-6">
         <!-- Client Info -->
         <div>
           <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Client</h3>
           <div class="bg-gray-50 rounded-lg p-4 space-y-2">
-            <p><span class="font-medium">Nom:</span> {{ selectedReservation.client.name }}</p>
+            <p><span class="font-medium">Nom:</span> {{ selectedReservation.client.first_name }} {{ selectedReservation.client.last_name }}</p>
             <p><span class="font-medium">Email:</span> {{ selectedReservation.client.email }}</p>
             <p v-if="selectedReservation.client.phone">
               <span class="font-medium">Téléphone:</span> {{ selectedReservation.client.phone }}

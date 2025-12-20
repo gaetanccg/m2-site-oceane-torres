@@ -23,7 +23,7 @@ class PaymentController extends Controller
     public function show(Payment $payment): JsonResponse
     {
         return response()->json([
-            'payment' => $payment->load(['user', 'reservation', 'facture']),
+            'payment' => $payment->load(['user', 'reservation']),
         ]);
     }
 

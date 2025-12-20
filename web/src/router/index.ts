@@ -24,7 +24,6 @@ const AdminReservations = () => import('@/views/admin/Reservations.vue')
 const AdminClients = () => import('@/views/admin/Clients.vue')
 const AdminPrestations = () => import('@/views/admin/Prestations.vue')
 const AdminGalleries = () => import('@/views/admin/Galleries.vue')
-const AdminFactures = () => import('@/views/admin/Factures.vue')
 const AdminGiftCards = () => import('@/views/admin/GiftCards.vue')
 
 const routes: RouteRecordRaw[] = [
@@ -112,12 +111,6 @@ const routes: RouteRecordRaw[] = [
         name: 'admin-galleries',
         component: AdminGalleries,
         meta: {title: 'Galeries', layout: 'admin', requiresAuth: true}
-    },
-    {
-        path: '/admin/factures',
-        name: 'admin-factures',
-        component: AdminFactures,
-        meta: {title: 'Factures', layout: 'admin', requiresAuth: true}
     },
     {
         path: '/admin/gift-cards',

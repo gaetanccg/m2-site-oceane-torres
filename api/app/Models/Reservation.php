@@ -48,11 +48,6 @@ class Reservation extends Model
         return $this->hasMany(Payment::class);
     }
 
-    public function factures(): HasMany
-    {
-        return $this->hasMany(Facture::class);
-    }
-
     public function scopePending($query)
     {
         return $query->where('status', 'pending');

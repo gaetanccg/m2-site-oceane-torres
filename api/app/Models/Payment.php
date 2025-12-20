@@ -42,11 +42,6 @@ class Payment extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function facture(): HasOne
-    {
-        return $this->hasOne(Facture::class);
-    }
-
     public function giftCard(): HasOne
     {
         return $this->hasOne(GiftCard::class);
