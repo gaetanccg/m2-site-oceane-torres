@@ -11,7 +11,6 @@ use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\Admin\DashboardController;
 use App\Http\Controllers\Api\Admin\UserController;
-use App\Http\Controllers\Api\Admin\FactureController;
 use App\Http\Controllers\Api\Admin\NotificationController;
 use Illuminate\Support\Facades\Route;
 
@@ -124,16 +123,6 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::post('/galleries/{gallery}/photos', [PhotoController::class, 'store']);
     Route::delete('/photos/{photo}', [PhotoController::class, 'destroy']);
     Route::put('/galleries/{gallery}/regenerate-token', [GalleryController::class, 'regenerateToken']);
-
-    // Factures management
-    Route::apiResource('factures', FactureController::class);
-    Route::get('/factures/{facture}/pdf', [FactureController::class, 'downloadPdf']);
-    Route::post('/factures/{facture}/send', [FactureController::class, 'send']);
-
-    // Payments
-    Route::get('/payments', [PaymentController::class, 'index']);
-    Route::get('/payments/{payment}', [PaymentController::class, 'show']);
-    Route::post('/payments/{payment}/refund', [PaymentController::class, 'refund']);
 
     // Gift cards
     Route::get('/gift-cards', [GiftCardController::class, 'index']);

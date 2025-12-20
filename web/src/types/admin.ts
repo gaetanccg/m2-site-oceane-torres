@@ -9,11 +9,17 @@
 export interface User {
     id: string
     email: string
-    name: string
+    first_name: string
+    last_name: string
     phone?: string
     role: 'admin' | 'client'
     created_at: string
     updated_at: string
+}
+
+// Helper pour obtenir le nom complet
+export function getUserFullName(user: User): string {
+    return `${user.first_name} ${user.last_name}`
 }
 
 export interface AuthResponse {
@@ -90,7 +96,8 @@ export interface CalendarEvent {
 
 export interface Client {
     id: string
-    name: string
+    first_name: string
+    last_name: string
     email: string
     phone?: string
     reservations_count?: number
@@ -98,6 +105,11 @@ export interface Client {
     total_spent?: number
     created_at: string
     updated_at: string
+}
+
+// Helper pour obtenir le nom complet du client
+export function getClientFullName(client: Client): string {
+    return `${client.first_name} ${client.last_name}`
 }
 
 // ============================================================================
@@ -169,56 +181,6 @@ export interface GalleryFormData {
     client_id: string
     expires_at: string
     is_active: boolean
-}
-
-// ============================================================================
-// Factures
-// ============================================================================
-
-export type FactureStatus = 'draft' | 'sent' | 'paid' | 'cancelled'
-
-export interface Facture {
-    id: string
-    number: string
-    client: Client
-    reservation?: Reservation
-    amount: number
-    tax_amount: number
-    total_amount: number
-    status: FactureStatus
-    due_date: string
-    paid_at?: string
-    pdf_path?: string
-    created_at: string
-    updated_at: string
-}
-
-export interface FactureFormData {
-    client_id: string
-    reservation_id: string
-    amount: number
-    tax_rate: number
-    due_date: string
-}
-
-// ============================================================================
-// Payments
-// ============================================================================
-
-export type PaymentStatus = 'pending' | 'completed' | 'failed' | 'refunded'
-export type PaymentMethod = 'stripe' | 'paypal' | 'cash' | 'transfer'
-
-export interface Payment {
-    id: string
-    client: Client
-    reservation_id?: string
-    facture_id?: string
-    amount: number
-    method: PaymentMethod
-    status: PaymentStatus
-    transaction_id?: string
-    metadata?: Record<string, unknown>
-    created_at: string
 }
 
 // ============================================================================

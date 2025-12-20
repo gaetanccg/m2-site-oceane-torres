@@ -17,10 +17,10 @@
         <template #cell-name="{ row }">
           <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-full bg-gold/10 flex items-center justify-center">
-              <span class="text-gold font-semibold">{{ getInitials(row.name) }}</span>
+              <span class="text-gold font-semibold">{{ getInitials(row.first_name, row.last_name) }}</span>
             </div>
             <div>
-              <p class="font-medium text-gray-900">{{ row.name }}</p>
+              <p class="font-medium text-gray-900">{{ row.first_name }} {{ row.last_name }}</p>
               <p class="text-sm text-gray-500">{{ row.email }}</p>
             </div>
           </div>
@@ -80,7 +80,7 @@
     </div>
 
     <!-- Client Detail Modal -->
-    <Modal v-model="showDetailModal" :title="selectedClient?.name || 'Détails'" size="lg">
+    <Modal v-model="showDetailModal" :title="selectedClient ? `${selectedClient.first_name} ${selectedClient.last_name}` : 'Détails'" size="lg">
       <div v-if="selectedClient" class="space-y-6">
         <!-- Contact Info -->
         <div>
@@ -139,11 +139,18 @@
     <!-- Edit Client Modal -->
     <Modal v-model="showEditModal" title="Modifier le client" size="md">
       <form @submit.prevent="saveClient" class="space-y-4">
-        <FormField
-          v-model="editForm.name"
-          label="Nom"
-          required
-        />
+        <div class="grid grid-cols-2 gap-4">
+          <FormField
+            v-model="editForm.first_name"
+            label="Prénom"
+            required
+          />
+          <FormField
+            v-model="editForm.last_name"
+            label="Nom"
+            required
+          />
+        </div>
         <FormField
           v-model="editForm.email"
           type="email"
@@ -165,7 +172,7 @@
     <!-- Delete Confirmation Modal -->
     <Modal v-model="showDeleteModal" title="Confirmer la suppression" size="sm">
       <p class="text-gray-600">
-        Êtes-vous sûr de vouloir supprimer le client <strong>{{ clientToDelete?.name }}</strong> ?
+        Êtes-vous sûr de vouloir supprimer le client <strong>{{ clientToDelete?.first_name }} {{ clientToDelete?.last_name }}</strong> ?
         Cette action est irréversible.
       </p>
 
@@ -206,7 +213,8 @@ const isDeleting = ref(false)
 
 const editForm = reactive({
   id: '',
-  name: '',
+  first_name: '',
+  last_name: '',
   email: '',
   phone: '',
 })
@@ -219,13 +227,8 @@ const columns: TableColumn<Client>[] = [
   { key: 'created_at', label: 'Inscrit le', sortable: true },
 ]
 
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map(n => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2)
+function getInitials(firstName: string, lastName: string): string {
+  return `${firstName[0] || ''}${lastName[0] || ''}`.toUpperCase()
 }
 
 function formatDate(dateStr: string): string {
@@ -267,7 +270,8 @@ function openClientDetail(client: Client) {
 
 function openEditModal(client: Client) {
   editForm.id = client.id
-  editForm.name = client.name
+  editForm.first_name = client.first_name
+  editForm.last_name = client.last_name
   editForm.email = client.email
   editForm.phone = client.phone || ''
   showEditModal.value = true
@@ -282,7 +286,8 @@ async function saveClient() {
   isSaving.value = true
   try {
     await adminApi.updateClient(editForm.id, {
-      name: editForm.name,
+      first_name: editForm.first_name,
+      last_name: editForm.last_name,
       email: editForm.email,
       phone: editForm.phone || undefined,
     })

@@ -20,24 +20,47 @@ import type {
     AdminGallery,
     AdminPhoto,
     GalleryFormData,
-    Facture,
-    FactureFormData,
-    Payment,
     AdminGiftCard,
     Notification,
 } from '@/types/admin'
 
 class AdminApiService {
     private baseUrl: string
+    private apiOrigin: string
     private timeout: number
 
     constructor() {
         this.baseUrl = API_CONFIG.baseUrl
+        // Extraire l'origine (http://localhost:8000) depuis l'URL de base
+        const url = new URL(this.baseUrl)
+        this.apiOrigin = url.origin
         this.timeout = API_CONFIG.timeout
     }
 
     private getToken(): string | null {
         return localStorage.getItem('auth_token')
+    }
+
+    /**
+     * Récupère le cookie CSRF depuis Laravel Sanctum
+     * Nécessaire avant toute requête authentifiée en mode SPA
+     */
+    async getCsrfCookie(): Promise<void> {
+        await fetch(`${this.apiOrigin}/sanctum/csrf-cookie`, {
+            method: 'GET',
+            credentials: 'include',
+        })
+    }
+
+    /**
+     * Récupère la valeur du token XSRF depuis les cookies
+     */
+    private getXsrfToken(): string | null {
+        const match = document.cookie.match(/XSRF-TOKEN=([^;]+)/)
+        if (match) {
+            return decodeURIComponent(match[1])
+        }
+        return null
     }
 
     private async request<T>(
@@ -48,6 +71,8 @@ class AdminApiService {
         const timeoutId = setTimeout(() => controller.abort(), this.timeout)
 
         const token = this.getToken()
+        const xsrfToken = this.getXsrfToken()
+
         const headers: Record<string, string> = {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
@@ -57,10 +82,16 @@ class AdminApiService {
             headers['Authorization'] = `Bearer ${token}`
         }
 
+        // Ajouter le token XSRF pour la protection CSRF
+        if (xsrfToken) {
+            headers['X-XSRF-TOKEN'] = xsrfToken
+        }
+
         try {
             const response = await fetch(`${this.baseUrl}${endpoint}`, {
                 ...options,
                 signal: controller.signal,
+                credentials: 'include', // Important pour envoyer les cookies
                 headers: {
                     ...headers,
                     ...options.headers,
@@ -95,6 +126,9 @@ class AdminApiService {
     // ========================================================================
 
     async login(email: string, password: string): Promise<AdminApiResponse<AuthResponse>> {
+        // Récupérer le cookie CSRF avant le login
+        await this.getCsrfCookie()
+
         return this.request<AdminApiResponse<AuthResponse>>('/auth/login', {
             method: 'POST',
             body: JSON.stringify({ email, password }),
@@ -282,16 +316,21 @@ class AdminApiService {
         files.forEach((file) => formData.append('photos[]', file))
 
         const token = this.getToken()
+        const xsrfToken = this.getXsrfToken()
         const headers: Record<string, string> = {
             'Accept': 'application/json',
         }
         if (token) {
             headers['Authorization'] = `Bearer ${token}`
         }
+        if (xsrfToken) {
+            headers['X-XSRF-TOKEN'] = xsrfToken
+        }
 
         const response = await fetch(`${this.baseUrl}/admin/galleries/${galleryId}/photos`, {
             method: 'POST',
             headers,
+            credentials: 'include',
             body: formData,
         })
 
@@ -305,67 +344,6 @@ class AdminApiService {
     async deletePhoto(id: string): Promise<AdminApiResponse<null>> {
         return this.request<AdminApiResponse<null>>(`/admin/photos/${id}`, {
             method: 'DELETE',
-        })
-    }
-
-    // ========================================================================
-    // Factures
-    // ========================================================================
-
-    async getFactures(
-        page = 1,
-        perPage = 20
-    ): Promise<AdminPaginatedResponse<Facture>> {
-        return this.request<AdminPaginatedResponse<Facture>>(
-            `/admin/factures?page=${page}&per_page=${perPage}`
-        )
-    }
-
-    async getFacture(id: string): Promise<AdminApiResponse<Facture>> {
-        return this.request<AdminApiResponse<Facture>>(`/admin/factures/${id}`)
-    }
-
-    async createFacture(data: FactureFormData): Promise<AdminApiResponse<Facture>> {
-        return this.request<AdminApiResponse<Facture>>('/admin/factures', {
-            method: 'POST',
-            body: JSON.stringify(data),
-        })
-    }
-
-    async downloadFacturePdf(id: string): Promise<Blob> {
-        const token = this.getToken()
-        const response = await fetch(`${this.baseUrl}/admin/factures/${id}/pdf`, {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-            },
-        })
-
-        if (!response.ok) {
-            throw new Error('Erreur lors du téléchargement')
-        }
-
-        return response.blob()
-    }
-
-    async sendFactureEmail(id: string): Promise<AdminApiResponse<null>> {
-        return this.request<AdminApiResponse<null>>(`/admin/factures/${id}/send`, {
-            method: 'POST',
-        })
-    }
-
-    // ========================================================================
-    // Payments
-    // ========================================================================
-
-    async getPayments(page = 1, perPage = 20): Promise<AdminPaginatedResponse<Payment>> {
-        return this.request<AdminPaginatedResponse<Payment>>(
-            `/admin/payments?page=${page}&per_page=${perPage}`
-        )
-    }
-
-    async refundPayment(id: string): Promise<AdminApiResponse<Payment>> {
-        return this.request<AdminApiResponse<Payment>>(`/admin/payments/${id}/refund`, {
-            method: 'POST',
         })
     }
 
