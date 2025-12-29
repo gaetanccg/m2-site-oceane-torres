@@ -22,6 +22,7 @@ class Photo extends Model
         'description',
         'sort_order',
         'likes_count',
+        'is_downloadable',
         'metadata',
     ];
 
@@ -29,6 +30,7 @@ class Photo extends Model
     {
         return [
             'is_video' => 'boolean',
+            'is_downloadable' => 'boolean',
             'metadata' => 'array',
         ];
     }
@@ -61,5 +63,28 @@ class Photo extends Model
     public function scopeOrdered($query)
     {
         return $query->orderBy('sort_order')->orderBy('created_at');
+    }
+
+    public function scopeDownloadable($query)
+    {
+        return $query->where('is_downloadable', true);
+    }
+
+    public function scopeLiked($query)
+    {
+        return $query->where('likes_count', '>', 0);
+    }
+
+    public function incrementLikes(): void
+    {
+        $this->increment('likes_count');
+    }
+
+    public function toggleDownloadable(): bool
+    {
+        $this->is_downloadable = !$this->is_downloadable;
+        $this->save();
+
+        return $this->is_downloadable;
     }
 }

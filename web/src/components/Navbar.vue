@@ -33,15 +33,12 @@
                         {{ link.name }}
                     </router-link>
 
-                    <a
-                        :href="EXTERNAL_LINKS.privateGallery"
-                        target="_blank"
-                        rel="noopener noreferrer"
+                    <router-link
+                        to="/gallery"
                         class="ml-4 inline-flex items-center gap-2 px-4 py-2 bg-gold text-white rounded-md text-lg font-medium hover:opacity-90 transition-colors"
-                        aria-label="Ouvrir ma Gallerie privée (nouvel onglet)"
                     >
-                        Gallerie Privée
-                    </a>
+                        Galerie Privee
+                    </router-link>
                 </div>
             </div>
         </div>
@@ -62,16 +59,13 @@
                         {{ link.name }}
                     </router-link>
 
-                    <a
-                        :href="EXTERNAL_LINKS.privateGallery"
-                        target="_blank"
-                        rel="noopener noreferrer"
+                    <router-link
+                        to="/gallery"
                         @click="mobileMenuOpen = false"
                         class="block w-full text-center mt-2 px-4 py-3 bg-gold text-white rounded-md text-lg font-medium hover:opacity-90 transition-colors"
-                        aria-label="Ouvrir ma librairie privée (nouvel onglet)"
                     >
-                        Gallerie Privée
-                    </a>
+                        Galerie Privee
+                    </router-link>
                 </div>
             </div>
         </Transition>
@@ -80,7 +74,7 @@
 
 <script setup lang="ts">
 import {ref, onMounted, onUnmounted} from 'vue'
-import {NAV_LINKS, EXTERNAL_LINKS} from '@/config/constants'
+import {NAV_LINKS} from '@/config/constants'
 import {IconMenu, IconClose} from './icons'
 
 const scrolled = ref(false)
