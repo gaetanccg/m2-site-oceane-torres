@@ -272,16 +272,14 @@ class AdminApiService {
 
     async getGalleries(
         page = 1,
-        perPage = 20,
-        type?: 'public' | 'private'
+        perPage = 20
     ): Promise<AdminPaginatedResponse<AdminGallery>> {
-        let query = `?page=${page}&per_page=${perPage}`
-        if (type) query += `&type=${type}`
-        return this.request<AdminPaginatedResponse<AdminGallery>>(`/galleries${query}`)
+        const query = `?page=${page}&per_page=${perPage}`
+        return this.request<AdminPaginatedResponse<AdminGallery>>(`/admin/galleries${query}`)
     }
 
     async getGallery(id: string): Promise<AdminApiResponse<AdminGallery>> {
-        return this.request<AdminApiResponse<AdminGallery>>(`/galleries/${id}`)
+        return this.request<AdminApiResponse<AdminGallery>>(`/admin/galleries/${id}`)
     }
 
     async createGallery(data: GalleryFormData): Promise<AdminApiResponse<AdminGallery>> {
@@ -307,6 +305,20 @@ class AdminApiService {
     async regenerateGalleryToken(id: string): Promise<AdminApiResponse<{ token: string }>> {
         return this.request<AdminApiResponse<{ token: string }>>(
             `/admin/galleries/${id}/regenerate-token`,
+            { method: 'PUT' }
+        )
+    }
+
+    async regenerateGalleryCode(id: string): Promise<AdminApiResponse<{ share_code: string }>> {
+        return this.request<AdminApiResponse<{ share_code: string }>>(
+            `/admin/galleries/${id}/regenerate-code`,
+            { method: 'POST' }
+        )
+    }
+
+    async togglePhotoDownloadable(id: string): Promise<AdminApiResponse<{ is_downloadable: boolean }>> {
+        return this.request<AdminApiResponse<{ is_downloadable: boolean }>>(
+            `/admin/photos/${id}/toggle-downloadable`,
             { method: 'PUT' }
         )
     }

@@ -17,6 +17,11 @@ const About = () => import('@/views/About.vue')
 const Contact = () => import('@/views/Contact.vue')
 const MentionsLegales = () => import('@/views/MentionsLegales.vue')
 
+// Gallery pages
+const GalleryAccess = () => import('@/views/GalleryAccess.vue')
+const ProtectedGallery = () => import('@/views/ProtectedGallery.vue')
+const DownloadGallery = () => import('@/views/DownloadGallery.vue')
+
 // Admin pages (lazy loading)
 const AdminLogin = () => import('@/views/admin/Login.vue')
 const AdminDashboard = () => import('@/views/admin/Dashboard.vue')
@@ -71,6 +76,28 @@ const routes: RouteRecordRaw[] = [
         name: 'mentions-legales',
         component: MentionsLegales,
         meta: {title: 'Mentions légales', layout: 'public'}
+    },
+
+    // ============================================================================
+    // Gallery routes (public access)
+    // ============================================================================
+    {
+        path: '/gallery',
+        name: 'gallery-access',
+        component: GalleryAccess,
+        meta: {title: 'Galerie Privée', layout: 'public'}
+    },
+    {
+        path: '/gallery/code/:code',
+        name: 'protected-gallery',
+        component: ProtectedGallery,
+        meta: {title: 'Galerie', layout: 'public'}
+    },
+    {
+        path: '/gallery/download/:token',
+        name: 'download-gallery',
+        component: DownloadGallery,
+        meta: {title: 'Téléchargement', layout: 'public'}
     },
 
     // ============================================================================

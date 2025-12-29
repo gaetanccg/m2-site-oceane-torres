@@ -45,10 +45,15 @@ Route::get('/prestations/{prestation}', [PrestationController::class, 'show']);
 Route::get('/galleries', [GalleryController::class, 'index']);
 Route::get('/galleries/{gallery}', [GalleryController::class, 'show']);
 Route::get('/galleries/token/{token}', [GalleryController::class, 'showByToken']);
+Route::get('/galleries/code/{code}', [GalleryController::class, 'showByShareCode']);
+Route::get('/galleries/download/{token}', [GalleryController::class, 'showDownloadableByToken']);
+Route::get('/galleries/{gallery}/download-zip', [GalleryController::class, 'downloadZip']);
+Route::get('/galleries/{gallery}/download-file', [GalleryController::class, 'downloadFile']);
 
 // Photos (public - watermarked)
 Route::get('/photos/{photo}', [PhotoController::class, 'show']);
 Route::post('/photos/{photo}/like', [PhotoController::class, 'like']);
+Route::get('/photos/{photo}/download', [PhotoController::class, 'download']);
 
 // Contact
 Route::post('/contact', [ContactController::class, 'send']);
@@ -119,10 +124,18 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::get('/reservations/calendar', [ReservationController::class, 'calendar']);
 
     // Galleries management
+    Route::get('/galleries', [GalleryController::class, 'adminIndex']);
+    Route::get('/galleries/{gallery}', [GalleryController::class, 'adminShow']);
     Route::apiResource('galleries', GalleryController::class)->except(['index', 'show']);
     Route::post('/galleries/{gallery}/photos', [PhotoController::class, 'store']);
     Route::delete('/photos/{photo}', [PhotoController::class, 'destroy']);
     Route::put('/galleries/{gallery}/regenerate-token', [GalleryController::class, 'regenerateToken']);
+    Route::post('/galleries/{gallery}/regenerate-code', [GalleryController::class, 'regenerateShareCode']);
+
+    // Photos management
+    Route::put('/photos/{photo}/toggle-downloadable', [PhotoController::class, 'toggleDownloadable']);
+    Route::put('/photos/bulk-downloadable', [PhotoController::class, 'bulkToggleDownloadable']);
+    Route::put('/photos/sort-order', [PhotoController::class, 'updateSortOrder']);
 
     // Gift cards
     Route::get('/gift-cards', [GiftCardController::class, 'index']);

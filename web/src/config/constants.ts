@@ -29,10 +29,6 @@ export const NAV_LINKS: NavLink[] = [
     {name: 'Contact', path: '/contact'},
 ]
 
-export const EXTERNAL_LINKS = {
-    privateGallery: 'https://oceane-torres-librairie.netlify.app/',
-} as const
-
 // ============================================================================
 // Contact
 // ============================================================================
