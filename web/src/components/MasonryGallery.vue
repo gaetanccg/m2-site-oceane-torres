@@ -45,7 +45,7 @@
                     @load="handleImageLoad(item.url)"
                 />
 
-                <!-- Video -->
+                <!-- Video locale -->
                 <div v-else-if="item.type === 'video'" class="relative w-full h-full bg-black">
                     <video
                         :src="item.url"
@@ -59,6 +59,26 @@
                         <svg class="w-16 h-16 text-white/80" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M8 5v14l11-7z" />
                         </svg>
+                    </div>
+                </div>
+
+                <!-- Video YouTube -->
+                <div v-else-if="item.type === 'youtube'" class="relative w-full bg-black">
+                    <img
+                        :src="item.url"
+                        :alt="item.alt"
+                        draggable="false"
+                        loading="lazy"
+                        class="w-full h-auto object-cover"
+                        @load="handleImageLoad(item.url)"
+                    />
+                    <div class="absolute inset-0 flex items-center justify-center pointer-events-none bg-black/20">
+                        <!-- YouTube Play Button -->
+                        <div class="w-16 h-12 bg-red-600 rounded-xl flex items-center justify-center shadow-lg">
+                            <svg class="w-8 h-8 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M8 5v14l11-7z" />
+                            </svg>
+                        </div>
                     </div>
                 </div>
 
@@ -90,6 +110,7 @@ import {
     reorderForColumns,
     getColumnCount,
     isVideoFilter,
+    isVideoItem,
     getShuffledAllItems
 } from '@/utils/gallery'
 import Lightbox from './Lightbox.vue'
@@ -133,11 +154,11 @@ const categoryDescription = computed(() => {
 
 const baseFilteredItems = computed(() => {
     if (!activeFilter.value) {
-        return sortByFilename(props.items.filter(item => item.type !== 'video'))
+        return sortByFilename(props.items.filter(item => !isVideoItem(item.type)))
     }
 
     if (isVideoFilter(activeFilter.value)) {
-        return sortByFilename(props.items.filter(item => item.type === 'video'))
+        return sortByFilename(props.items.filter(item => isVideoItem(item.type)))
     }
 
     if (activeFilter.value === 'Tous') {
@@ -145,7 +166,7 @@ const baseFilteredItems = computed(() => {
     }
 
     return sortByFilename(
-        props.items.filter(item => item.category === activeFilter.value && item.type !== 'video')
+        props.items.filter(item => item.category === activeFilter.value && !isVideoItem(item.type))
     )
 })
 
@@ -202,11 +223,11 @@ const precacheFilter = (filter: string) => {
     // Get items for this filter
     let items: GalleryItem[]
     if (isVideoFilter(filter)) {
-        items = props.items.filter(item => item.type === 'video')
+        items = props.items.filter(item => isVideoItem(item.type))
     } else if (filter === 'Tous') {
         items = getShuffledAllItems(props.items, props.filters, 4)
     } else {
-        items = props.items.filter(item => item.category === filter && item.type !== 'video')
+        items = props.items.filter(item => item.category === filter && !isVideoItem(item.type))
     }
 
     // Preload first 6 images of this filter

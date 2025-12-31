@@ -38,14 +38,14 @@
             <div class="max-w-6xl mx-auto relative">
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
                     <div>
-                        <img :src="personaImage" alt="Océane" class="w-full h-auto rounded-lg" loading="lazy" />
+                        <img :src="personaImage" alt="Océane Torres - Photographe professionnelle Saint-Étienne Loire" class="w-full h-auto rounded-lg" loading="lazy" />
                     </div>
                     <div class="text-justify">
                         <h2 class="text-4xl md:text-5xl font-light mb-6 text-balance title-with-bar">
                             À propos de moi
                         </h2>
                         <p class="text-gray-600 font-light leading-relaxed mb-6 text-lg">
-                            Je m'appelle Océane, j'ai 23 ans et je suis photographe et vidéaste.
+                            Je m'appelle Océane, j'ai 23 ans et je suis photographe et vidéaste professionnelle basée en Loire, près de Saint-Étienne. J'interviens dans toute la région Auvergne-Rhône-Alpes, notamment à Lyon et ses alentours.
                         </p>
                         <p class="text-gray-600 font-light leading-relaxed mb-8 text-lg">
                             J'ai envie de créer des images qui racontent, qui touchent, qui marquent. Je propose un accompagnement qui reflète ce que j'aime réellement capturer : la spontanéité, l'émotion, l'énergie, et tout ce qui raconte une histoire.
@@ -122,7 +122,7 @@ import PrestationCardMini from '@/components/PrestationCardMini.vue'
 import MasonryGallery from '@/components/MasonryGallery.vue'
 import CtaSection from '@/components/CtaSection.vue'
 
-const heroImage = '/optimized/hero.webp'
+const heroImage = '/images/hero.png'
 const personaImage = '/optimized/persona_rev_2.webp'
 
 const masonryItems: GalleryItem[] = [
