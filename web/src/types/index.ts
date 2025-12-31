@@ -16,7 +16,7 @@ export interface NavLink {
 // Gallery
 // ============================================================================
 
-export type MediaType = 'image' | 'video'
+export type MediaType = 'image' | 'video' | 'youtube'
 
 export interface GalleryItem {
     id?: number
@@ -25,12 +25,14 @@ export interface GalleryItem {
     type: MediaType
     category?: string
     aspectRatio?: string
+    youtubeId?: string
 }
 
 export interface LightboxImage {
     url: string
     alt: string
     type: MediaType
+    youtubeId?: string
 }
 
 // ============================================================================

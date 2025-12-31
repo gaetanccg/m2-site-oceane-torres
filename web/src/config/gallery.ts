@@ -11,6 +11,34 @@ interface CategoryConfig {
     images: string[]
 }
 
+/**
+ * Configuration des vidéos YouTube
+ * Pour ajouter une vidéo :
+ * 1. Récupère l'ID de la vidéo YouTube (la partie après v= dans l'URL)
+ *    Exemple: https://www.youtube.com/watch?v=dQw4w9WgXcQ -> ID = dQw4w9WgXcQ
+ * 2. Ajoute l'ID dans le tableau ci-dessous avec un titre descriptif
+ */
+interface YouTubeVideoConfig {
+    youtubeId: string
+    title: string
+}
+
+const youtubeVideos: YouTubeVideoConfig[] = [
+    // === AJOUTE TES 8 LIENS YOUTUBE ICI ===
+    // Remplace les IDs par les vrais IDs de tes vidéos
+    // L'ID est la partie après "v=" dans l'URL YouTube
+    // Exemple: https://www.youtube.com/watch?v=ABC123def -> youtubeId: 'ABC123def'
+
+    {youtubeId: 'VIDEO_ID_1', title: 'Vidéo 1'},
+    {youtubeId: 'VIDEO_ID_2', title: 'Vidéo 2'},
+    {youtubeId: 'VIDEO_ID_3', title: 'Vidéo 3'},
+    {youtubeId: 'VIDEO_ID_4', title: 'Vidéo 4'},
+    {youtubeId: 'VIDEO_ID_5', title: 'Vidéo 5'},
+    {youtubeId: 'VIDEO_ID_6', title: 'Vidéo 6'},
+    {youtubeId: 'VIDEO_ID_7', title: 'Vidéo 7'},
+    {youtubeId: 'VIDEO_ID_8', title: 'Vidéo 8'},
+]
+
 const categories: CategoryConfig[] = [
     {
         name: 'Portraits',
@@ -62,6 +90,7 @@ const categories: CategoryConfig[] = [
 export function getGalleryItems(): GalleryItem[] {
     const items: GalleryItem[] = []
 
+    // Ajouter les images des catégories
     for (const category of categories) {
         for (const image of category.images) {
             items.push({
@@ -73,9 +102,23 @@ export function getGalleryItems(): GalleryItem[] {
         }
     }
 
+    // Ajouter les vidéos YouTube
+    for (const video of youtubeVideos) {
+        // Ignorer les placeholders non configurés
+        if (!video.youtubeId.startsWith('VIDEO_ID_')) {
+            items.push({
+                url: `https://img.youtube.com/vi/${video.youtubeId}/maxresdefault.jpg`,
+                alt: video.title,
+                type: 'youtube',
+                category: 'Videos',
+                youtubeId: video.youtubeId
+            })
+        }
+    }
+
     return items
 }
 
 export function getCategories(): string[] {
-    return ['Portraits', 'Sport', 'Animalier', 'Automobile', 'Entreprise']
+    return ['Portraits', 'Sport', 'Animalier', 'Automobile', 'Entreprise', 'Videos']
 }

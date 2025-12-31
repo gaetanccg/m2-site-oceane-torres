@@ -74,6 +74,13 @@ export function isVideoFilter(filter: string): boolean {
 }
 
 /**
+ * Vérifie si un item est une vidéo (locale ou YouTube)
+ */
+export function isVideoItem(type: string): boolean {
+    return type === 'video' || type === 'youtube'
+}
+
+/**
  * Filtre et prépare les items pour l'affichage "Tous"
  * Prend 4 images aléatoires par catégorie et les mélange
  */
@@ -88,7 +95,7 @@ export function getShuffledAllItems(
         if (isVideoFilter(category)) continue
 
         const categoryItems = items.filter(
-            item => item.category === category && item.type !== 'video'
+            item => item.category === category && !isVideoItem(item.type)
         )
         result.push(...shuffle(categoryItems).slice(0, imagesPerCategory))
     }

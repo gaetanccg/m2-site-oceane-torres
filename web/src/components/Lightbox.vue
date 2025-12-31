@@ -26,13 +26,7 @@
             </button>
 
             <!-- Media container -->
-            <div
-                class="media-container"
-                @click.stop
-                @touchstart="handleTouchStart"
-                @touchmove="handleTouchMove"
-                @touchend="handleTouchEnd"
-            >
+            <div class="media-container" @click.stop>
                 <div class="media-wrapper">
                     <img
                         v-if="images[currentIndex]?.type === 'image'"
@@ -47,10 +41,19 @@
                         controls
                         class="media-content"
                     />
+                    <!-- YouTube iframe -->
+                    <iframe
+                        v-else-if="images[currentIndex]?.type === 'youtube'"
+                        :src="`https://www.youtube.com/embed/${images[currentIndex].youtubeId}?autoplay=1&rel=0`"
+                        class="youtube-iframe"
+                        frameborder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowfullscreen
+                    />
 
-                    <!-- Watermark overlay -->
-                    <div v-if="showWatermark" class="watermark-overlay" aria-hidden="true">
-                        <span v-for="n in 20" :key="n">@ oceane torres</span>
+                    <!-- Watermark overlay (uniquement pour les images) -->
+                    <div v-if="images[currentIndex]?.type === 'image'" class="watermark-overlay" aria-hidden="true">
+                        <span v-for="n in 20" :key="n">@Océane Torres Photographie</span>
                     </div>
                 </div>
             </div>
@@ -82,23 +85,12 @@ interface Props {
     images: LightboxImage[]
     isOpen: boolean
     initialIndex: number
-    showWatermark?: boolean
 }
 
-const props = withDefaults(defineProps<Props>(), {
-    showWatermark: true
-})
+const props = defineProps<Props>()
 const emit = defineEmits<{ close: [] }>()
 
 const currentIndex = ref(props.initialIndex)
-
-// Touch/Swipe handling
-const touchStartX = ref(0)
-const touchStartY = ref(0)
-const touchEndX = ref(0)
-const touchEndY = ref(0)
-const isSwiping = ref(false)
-const swipeThreshold = 50
 
 watch(() => props.initialIndex, (newVal) => {
     currentIndex.value = newVal
@@ -116,40 +108,6 @@ const next = () => {
     if (currentIndex.value < props.images.length - 1) {
         currentIndex.value++
     }
-}
-
-const handleTouchStart = (e: TouchEvent) => {
-    touchStartX.value = e.touches[0].clientX
-    touchStartY.value = e.touches[0].clientY
-    isSwiping.value = true
-}
-
-const handleTouchMove = (e: TouchEvent) => {
-    if (!isSwiping.value) return
-    touchEndX.value = e.touches[0].clientX
-    touchEndY.value = e.touches[0].clientY
-}
-
-const handleTouchEnd = () => {
-    if (!isSwiping.value) return
-
-    const deltaX = touchEndX.value - touchStartX.value
-    const deltaY = Math.abs(touchEndY.value - touchStartY.value)
-
-    // Only handle horizontal swipes (not vertical scrolling)
-    if (Math.abs(deltaX) > swipeThreshold && deltaY < 100) {
-        if (deltaX > 0) {
-            previous()
-        } else {
-            next()
-        }
-    }
-
-    isSwiping.value = false
-    touchStartX.value = 0
-    touchStartY.value = 0
-    touchEndX.value = 0
-    touchEndY.value = 0
 }
 
 const handleKeydown = (e: KeyboardEvent) => {
@@ -199,6 +157,13 @@ onUnmounted(() => {
     object-fit: contain;
 }
 
+.youtube-iframe{
+    width: 80vw;
+    height: 45vw;
+    max-width: 1280px;
+    max-height: 720px;
+}
+
 .watermark-overlay{
     position: absolute;
     inset: 0;
@@ -242,6 +207,11 @@ onUnmounted(() => {
 
     .media-content{
         max-width: calc(100vw - 20px);
+    }
+
+    .youtube-iframe{
+        width: calc(100vw - 20px);
+        height: calc((100vw - 20px) * 9 / 16);
     }
 
     .watermark-overlay{

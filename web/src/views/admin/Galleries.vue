@@ -35,27 +35,27 @@
 
                 <!-- Galleries Grid -->
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div
-                    v-for="gallery in filteredGalleries"
-                    :key="gallery.id"
-                    class="bg-white rounded-xl border border-gray-200 overflow-hidden group"
-                >
-                    <!-- Cover Image -->
-                    <div class="relative h-48 bg-gray-100">
-                        <img
-                            v-if="gallery.cover_image"
-                            :src="gallery.cover_image"
-                            :alt="gallery.title"
-                            class="w-full h-full object-cover"
-                        />
-                        <div v-else class="w-full h-full flex items-center justify-center">
-                            <svg class="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                        </div>
+                    <div
+                        v-for="gallery in filteredGalleries"
+                        :key="gallery.id"
+                        class="bg-white rounded-xl border border-gray-200 overflow-hidden group"
+                    >
+                        <!-- Cover Image -->
+                        <div class="relative h-48 bg-gray-100">
+                            <img
+                                v-if="gallery.cover_image"
+                                :src="gallery.cover_image"
+                                :alt="gallery.title"
+                                class="w-full h-full object-cover"
+                            />
+                            <div v-else class="w-full h-full flex items-center justify-center">
+                                <svg class="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                            </div>
 
-                        <!-- Status badges -->
-                        <div class="absolute top-2 left-2 flex flex-wrap gap-1">
+                            <!-- Status badges -->
+                            <div class="absolute top-2 left-2 flex flex-wrap gap-1">
                             <span
                                 :class="[
                                     'px-2 py-0.5 text-xs font-medium rounded-full',
@@ -64,165 +64,165 @@
                             >
                                 {{ gallery.is_active ? 'Active' : 'Inactive' }}
                             </span>
+                            </div>
+
+                            <!-- Views counter -->
+                            <div v-if="gallery.views_count > 0" class="absolute top-2 right-2 flex items-center gap-1 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                                {{ gallery.views_count }}
+                            </div>
+
+                            <!-- Overlay -->
+                            <div class="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                <div class="flex gap-2">
+                                    <button
+                                        @click="openGallery(gallery)"
+                                        class="p-2 bg-white rounded-lg text-gray-700 hover:bg-gray-100"
+                                        title="Gérer les photos"
+                                    >
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                    </button>
+                                    <button
+                                        @click="openEditModal(gallery)"
+                                        class="p-2 bg-white rounded-lg text-gray-700 hover:bg-gray-100"
+                                        title="Modifier"
+                                    >
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+
                         </div>
 
-                        <!-- Views counter -->
-                        <div v-if="gallery.views_count > 0" class="absolute top-2 right-2 flex items-center gap-1 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
-                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                            </svg>
-                            {{ gallery.views_count }}
-                        </div>
+                        <!-- Info -->
+                        <div class="p-4">
+                            <div class="flex items-start justify-between mb-2">
+                                <h3 class="font-semibold text-gray-900">{{ gallery.title }}</h3>
+                            </div>
 
-                        <!-- Overlay -->
-                        <div class="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
-                            <div class="flex gap-2">
+                            <p v-if="gallery.description" class="text-sm text-gray-500 mb-3 line-clamp-2">
+                                {{ gallery.description }}
+                            </p>
+
+                            <!-- Stats Grid -->
+                            <div class="grid grid-cols-3 gap-2 mb-3 text-center">
+                                <div class="bg-gray-50 rounded-lg p-2">
+                                    <div class="text-lg font-semibold text-gray-900">{{ gallery.photos_count }}</div>
+                                    <div class="text-xs text-gray-500">Photos</div>
+                                </div>
+                                <div class="bg-red-50 rounded-lg p-2">
+                                    <div class="text-lg font-semibold text-red-600">{{ gallery.liked_photos_count || 0 }}</div>
+                                    <div class="text-xs text-gray-500">Likees</div>
+                                </div>
+                                <div class="bg-green-50 rounded-lg p-2">
+                                    <div class="text-lg font-semibold text-green-600">{{ gallery.downloadable_count }}</div>
+                                    <div class="text-xs text-gray-500">DL</div>
+                                </div>
+                            </div>
+
+                            <!-- Last viewed info -->
+                            <div v-if="gallery.last_viewed_at" class="flex items-center gap-2 text-xs text-gray-500 mb-3">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Derniere visite: {{ formatRelativeDate(gallery.last_viewed_at) }}
+                            </div>
+
+                            <div v-if="gallery.client" class="flex items-center gap-1 text-sm text-gray-500 mb-3">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                </svg>
+                                {{ gallery.client.first_name }} {{ gallery.client.last_name }}
+                            </div>
+
+                            <!-- Gallery Links -->
+                            <div class="pt-3 border-t border-gray-100 space-y-3">
+                                <!-- Share Code -->
+                                <div v-if="gallery.share_code">
+                                    <label class="text-xs text-gray-500 block mb-1">Code de partage (galerie protegee)</label>
+                                    <div class="flex items-center gap-2">
+                                        <div class="flex-1 px-3 py-1.5 text-sm font-mono font-bold bg-gold/10 border border-gold/20 rounded-lg text-center tracking-widest">
+                                            {{ gallery.share_code }}
+                                        </div>
+                                        <button
+                                            @click="copyToClipboard(gallery.share_code)"
+                                            class="p-1.5 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100"
+                                            title="Copier le code"
+                                        >
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Download URL -->
+                                <div v-if="gallery.access_token">
+                                    <label class="text-xs text-gray-500 block mb-1">Lien de telechargement ({{ gallery.downloadable_count }} photos)</label>
+                                    <div class="flex items-center gap-2">
+                                        <input
+                                            type="text"
+                                            :value="getDownloadUrl(gallery.access_token)"
+                                            readonly
+                                            class="flex-1 px-3 py-1.5 text-xs bg-gray-50 border border-gray-200 rounded-lg truncate"
+                                        />
+                                        <button
+                                            @click="copyToClipboard(getDownloadUrl(gallery.access_token))"
+                                            class="p-1.5 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100"
+                                            title="Copier le lien"
+                                        >
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <p v-if="gallery.expires_at" class="text-xs text-gray-400">
+                                    Expire le {{ formatDate(gallery.expires_at) }}
+                                </p>
+                            </div>
+
+                            <!-- Actions -->
+                            <div class="mt-3 pt-3 border-t border-gray-100 flex gap-2">
                                 <button
                                     @click="openGallery(gallery)"
-                                    class="p-2 bg-white rounded-lg text-gray-700 hover:bg-gray-100"
-                                    title="Gérer les photos"
+                                    class="flex-1 px-3 py-2 text-sm font-medium text-gold bg-gold/10 rounded-lg hover:bg-gold/20 transition-colors"
                                 >
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                    </svg>
+                                    Gerer les photos
                                 </button>
                                 <button
-                                    @click="openEditModal(gallery)"
-                                    class="p-2 bg-white rounded-lg text-gray-700 hover:bg-gray-100"
-                                    title="Modifier"
+                                    @click="confirmDelete(gallery)"
+                                    class="p-2 text-red-500 hover:text-red-700 rounded-lg hover:bg-red-50"
+                                    title="Supprimer"
                                 >
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                     </svg>
                                 </button>
                             </div>
                         </div>
-
                     </div>
 
-                    <!-- Info -->
-                    <div class="p-4">
-                        <div class="flex items-start justify-between mb-2">
-                            <h3 class="font-semibold text-gray-900">{{ gallery.title }}</h3>
-                        </div>
-
-                        <p v-if="gallery.description" class="text-sm text-gray-500 mb-3 line-clamp-2">
-                            {{ gallery.description }}
-                        </p>
-
-                        <!-- Stats Grid -->
-                        <div class="grid grid-cols-3 gap-2 mb-3 text-center">
-                            <div class="bg-gray-50 rounded-lg p-2">
-                                <div class="text-lg font-semibold text-gray-900">{{ gallery.photos_count }}</div>
-                                <div class="text-xs text-gray-500">Photos</div>
-                            </div>
-                            <div class="bg-red-50 rounded-lg p-2">
-                                <div class="text-lg font-semibold text-red-600">{{ gallery.liked_photos_count || 0 }}</div>
-                                <div class="text-xs text-gray-500">Likees</div>
-                            </div>
-                            <div class="bg-green-50 rounded-lg p-2">
-                                <div class="text-lg font-semibold text-green-600">{{ gallery.downloadable_count }}</div>
-                                <div class="text-xs text-gray-500">DL</div>
-                            </div>
-                        </div>
-
-                        <!-- Last viewed info -->
-                        <div v-if="gallery.last_viewed_at" class="flex items-center gap-2 text-xs text-gray-500 mb-3">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            Derniere visite: {{ formatRelativeDate(gallery.last_viewed_at) }}
-                        </div>
-
-                        <div v-if="gallery.client" class="flex items-center gap-1 text-sm text-gray-500 mb-3">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                            </svg>
-                            {{ gallery.client.first_name }} {{ gallery.client.last_name }}
-                        </div>
-
-                        <!-- Gallery Links -->
-                        <div class="pt-3 border-t border-gray-100 space-y-3">
-                            <!-- Share Code -->
-                            <div v-if="gallery.share_code">
-                                <label class="text-xs text-gray-500 block mb-1">Code de partage (galerie protegee)</label>
-                                <div class="flex items-center gap-2">
-                                    <div class="flex-1 px-3 py-1.5 text-sm font-mono font-bold bg-gold/10 border border-gold/20 rounded-lg text-center tracking-widest">
-                                        {{ gallery.share_code }}
-                                    </div>
-                                    <button
-                                        @click="copyToClipboard(gallery.share_code)"
-                                        class="p-1.5 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100"
-                                        title="Copier le code"
-                                    >
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                        </svg>
-                                    </button>
-                                </div>
-                            </div>
-
-                            <!-- Download URL -->
-                            <div v-if="gallery.access_token">
-                                <label class="text-xs text-gray-500 block mb-1">Lien de telechargement ({{ gallery.downloadable_count }} photos)</label>
-                                <div class="flex items-center gap-2">
-                                    <input
-                                        type="text"
-                                        :value="getDownloadUrl(gallery.access_token)"
-                                        readonly
-                                        class="flex-1 px-3 py-1.5 text-xs bg-gray-50 border border-gray-200 rounded-lg truncate"
-                                    />
-                                    <button
-                                        @click="copyToClipboard(getDownloadUrl(gallery.access_token))"
-                                        class="p-1.5 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100"
-                                        title="Copier le lien"
-                                    >
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                        </svg>
-                                    </button>
-                                </div>
-                            </div>
-
-                            <p v-if="gallery.expires_at" class="text-xs text-gray-400">
-                                Expire le {{ formatDate(gallery.expires_at) }}
-                            </p>
-                        </div>
-
-                        <!-- Actions -->
-                        <div class="mt-3 pt-3 border-t border-gray-100 flex gap-2">
-                            <button
-                                @click="openGallery(gallery)"
-                                class="flex-1 px-3 py-2 text-sm font-medium text-gold bg-gold/10 rounded-lg hover:bg-gold/20 transition-colors"
-                            >
-                                Gerer les photos
-                            </button>
-                            <button
-                                @click="confirmDelete(gallery)"
-                                class="p-2 text-red-500 hover:text-red-700 rounded-lg hover:bg-red-50"
-                                title="Supprimer"
-                            >
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                            </button>
-                        </div>
+                    <!-- Empty State -->
+                    <div
+                        v-if="filteredGalleries.length === 0"
+                        class="col-span-full bg-white rounded-xl border border-gray-200 p-12 text-center"
+                    >
+                        <svg class="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <p class="text-gray-500 mb-4">Aucune galerie</p>
+                        <Button @click="openCreateModal">Créer une galerie</Button>
                     </div>
                 </div>
-
-                <!-- Empty State -->
-                <div
-                    v-if="filteredGalleries.length === 0"
-                    class="col-span-full bg-white rounded-xl border border-gray-200 p-12 text-center"
-                >
-                    <svg class="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    <p class="text-gray-500 mb-4">Aucune galerie</p>
-                    <Button @click="openCreateModal">Créer une galerie</Button>
-                </div>
-            </div>
             </template>
         </div>
 
@@ -850,28 +850,6 @@ async function deleteGallery() {
         alert('Erreur lors de la suppression de la galerie')
     } finally {
         isDeleting.value = false
-    }
-}
-
-async function regenerateToken(gallery: AdminGallery) {
-    try {
-        const response = await adminApi.regenerateGalleryToken(gallery.id)
-        if (response.success) {
-            gallery.access_token = response.data.token
-        }
-    } catch {
-        // Handle error
-    }
-}
-
-async function regenerateCode(gallery: AdminGallery) {
-    try {
-        const response = await adminApi.regenerateGalleryCode(gallery.id)
-        if (response.success) {
-            gallery.share_code = response.data.share_code
-        }
-    } catch {
-        // Handle error
     }
 }
 
