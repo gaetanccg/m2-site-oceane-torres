@@ -1,0 +1,63 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* Amsterdam Four - déclaration basée sur le fichier TTF existant dans src/assets/fonts/
+   Fichier présent: src/assets/fonts/Amsterdam.ttf
+*/
+@font-face{
+	font-family: 'Amsterdam Four';
+	src: local('Amsterdam Four'), local('Amsterdam'), url('./assets/fonts/Amsterdam.ttf') format('truetype');
+	font-weight: 400;
+	font-style: normal;
+	font-display: swap;
+}
+
+@font-face{
+	font-family: 'Glacial Indifference';
+	src: local('Glacial Indifference'), local('Glacial'), url('./assets/fonts/GlacialIndifference-Regular.otf') format('opentype');
+	font-weight: 400;
+	font-style: normal;
+	font-display: swap;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base{
+	body{
+		font-family: "Glacial Indifference", 'Inter', sans-serif;
+		text-align: justify;
+	}
+
+	h1, h2, h3, h4, h5, h6{
+		font-family: 'Arial', Arial, sans-serif;
+	}
+}
+
+.fade-enter-active,
+.fade-leave-active{
+	transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to{
+	opacity: 0;
+}
+
+.slide-fade-enter-active{
+	transition: all 0.3s ease-out;
+}
+
+.slide-fade-leave-active{
+	transition: all 0.3s cubic-bezier(1, 0.5, 0.8, 1);
+}
+
+.slide-fade-enter-from{
+	transform: translateY(20px);
+	opacity: 0;
+}
+
+.slide-fade-leave-to{
+	transform: translateY(-20px);
+	opacity: 0;
+}
