@@ -49,23 +49,15 @@
                             </WatermarkOverlay>
 
                             <!-- Like button -->
-                            <div class="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div
+                                class="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity"
+                                @click.stop
+                            >
                                 <LikeButton
                                     :photo-id="photo.id"
-                                    :initial-likes-count="photo.likes_count || 0"
+                                    :liked="photo.is_liked"
                                     @like="handleLike"
                                 />
-                            </div>
-
-                            <!-- Likes indicator (always visible if > 0) -->
-                            <div
-                                v-if="photo.likes_count > 0"
-                                class="absolute bottom-3 left-3 flex items-center gap-1 text-white text-sm bg-black/40 px-2 py-1 rounded-full"
-                            >
-                                <svg class="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-                                </svg>
-                                {{ photo.likes_count }}
                             </div>
                         </div>
                     </div>
@@ -106,7 +98,7 @@ interface Photo {
     id: string
     file_path: string
     title?: string
-    likes_count: number
+    is_liked: boolean
 }
 
 interface Gallery {
@@ -138,11 +130,12 @@ const openLightbox = (index: number) => {
     lightboxOpen.value = true
 }
 
-const handleLike = (photoId: string, newCount: number) => {
-    if (!gallery.value?.photos) return
-    const photo = gallery.value.photos.find(p => p.id === photoId)
-    if (photo) {
-        photo.likes_count = newCount
+const handleLike = (photoId: string, isLiked: boolean) => {
+    if (gallery.value?.photos) {
+        const photo = gallery.value.photos.find(p => p.id === photoId)
+        if (photo) {
+            photo.is_liked = isLiked
+        }
     }
 }
 

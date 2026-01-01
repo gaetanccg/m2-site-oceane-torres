@@ -450,7 +450,7 @@
                         class="relative group aspect-square rounded-lg overflow-hidden bg-gray-100 cursor-pointer"
                         :class="{
                             'ring-2 ring-green-500': photo.is_downloadable && !isSelected(photo.id),
-                            'ring-2 ring-red-400': !photo.is_downloadable && photo.likes_count > 0 && !isSelected(photo.id),
+                            'ring-2 ring-red-400': !photo.is_downloadable && photo.is_liked && !isSelected(photo.id),
                             'ring-4 ring-blue-500': isSelected(photo.id)
                         }"
                         @click="selectionMode ? togglePhotoSelection(photo.id) : openLightbox(index)"
@@ -516,11 +516,10 @@
 
                         <!-- Status indicators -->
                         <div class="absolute bottom-2 left-2 right-2 flex justify-between">
-                            <div v-if="photo.likes_count > 0" class="flex items-center gap-1 text-white text-xs bg-red-500/90 rounded px-2 py-1">
+                            <div v-if="photo.is_liked" class="flex items-center gap-1 text-white text-xs bg-red-500/90 rounded px-2 py-1">
                                 <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                     <path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" />
                                 </svg>
-                                {{ photo.likes_count }}
                             </div>
                             <div v-if="photo.is_downloadable" class="flex items-center gap-1 text-white text-xs bg-green-500/90 rounded px-2 py-1">
                                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -607,11 +606,10 @@
                 <!-- Info bar -->
                 <div class="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-4 px-4 py-2 bg-black/50 rounded-full text-white text-sm">
                     <span>{{ lightboxIndex + 1 }} / {{ filteredPhotos.length }}</span>
-                    <span v-if="currentLightboxPhoto?.likes_count" class="flex items-center gap-1 text-red-400">
+                    <span v-if="currentLightboxPhoto?.is_liked" class="flex items-center gap-1 text-red-400">
                         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" />
                         </svg>
-                        {{ currentLightboxPhoto.likes_count }}
                     </span>
                     <span v-if="currentLightboxPhoto?.is_downloadable" class="flex items-center gap-1 text-green-400">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -673,7 +671,7 @@ const clientOptions = computed(() =>
 )
 
 const likedPhotos = computed(() =>
-    galleryPhotos.value.filter(p => p.likes_count > 0)
+    galleryPhotos.value.filter(p => p.is_liked)
 )
 
 const downloadablePhotos = computed(() =>

@@ -1,4 +1,4 @@
-FROM php:8.4-fpm-alpine
+FROM php:8.4-cli-alpine
 
 # Install system dependencies
 RUN apk add --no-cache \
@@ -32,15 +32,19 @@ COPY . /var/www
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
 # Set permissions
-RUN chown -R www-data:www-data /var/www \
-    && chmod -R 755 /var/www/storage \
+RUN chmod -R 755 /var/www/storage \
     && chmod -R 755 /var/www/bootstrap/cache
 
 # Create storage symlink
 RUN php artisan storage:link || true
 
-# Expose port 9000
-EXPOSE 9000
+# Cache config for production
+RUN php artisan config:cache || true
+RUN php artisan route:cache || true
+RUN php artisan view:cache || true
 
-# Start PHP-FPM
-CMD ["php-fpm"]
+# Expose port (Render uses PORT env variable)
+EXPOSE 8000
+
+# Start with artisan serve - run migrations first
+CMD php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=${PORT:-8000}

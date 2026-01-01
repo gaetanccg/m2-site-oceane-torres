@@ -17,7 +17,7 @@
                         icon="portrait"
                         title="Portraits"
                         description="Chaque portrait est une rencontre, un moment suspendu où je cherche à capturer bien plus qu'un visage. Que ce soit lors d'un concert, d'un défilé, en couple, en famille, pour une grossesse ou un portrait professionnel, je m'attache à faire ressortir l'histoire et les émotions de chacun. Mon objectif est que tu te sentes à l'aise, toi-même, pour que chaque photo reflète le meilleur de qui tu es et devienne un souvenir sincère et vivant."
-                        price="70€"
+                        price="50€"
                         priceUnit="À partir de"
                         :features="['1h de shooting','5 photos retouchées','Conseils poses','Mise à disposition d\'une galerie privée']"
                         :background="portraitsBackground"
@@ -40,7 +40,7 @@
                         icon="animal"
                         title="Animaux"
                         description="Photographier les animaux, c’est saisir leur spontanéité, leur regard et leur énergie unique. Chats, chiens, chevaux ou espèces plus sauvages, chaque rencontre raconte une histoire différente, faite de complicité, de liberté ou de puissance. Mon objectif est de capturer ces instants naturels, pour que chaque image transmette toute l’authenticité et le caractère de l’animal."
-                        price="65€"
+                        price="50€"
                         priceUnit="À partir de"
                         :features="['Portraits animalier','5 photos retouchées' ,'Shooting en concours','Possible à domicile ou en extérieur','Mise à disposition d\'une galerie privée']"
                         :background="animalBackground"
@@ -123,29 +123,6 @@
                         Réserver via Instagram
                     </a>
                 </div>
-
-                <!-- Additional Options -->
-                <div class="bg-gray-50 p-12 mb-2">
-                    <h2 class="text-3xl font-light mb-8 text-center">Options supplémentaires</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
-                        <div class="text-center">
-                            <div class="text-2xl font-light text-gold mb-2">+5€</div>
-                            <p class="text-gray-600 font-light">Photo supplémentaire</p>
-                        </div>
-                        <div class="text-center">
-                            <div class="text-2xl font-light text-gold mb-2">+30€</div>
-                            <p class="text-gray-600 font-light">Album photo 20x20cm</p>
-                        </div>
-                        <div class="text-center">
-                            <div class="text-2xl font-light text-gold mb-2">+30€</div>
-                            <p class="text-gray-600 font-light">Tirage grand format</p>
-                        </div>
-                        <div class="text-center">
-                            <div class="text-2xl font-light text-gold mb-2">Variable</div>
-                            <p class="text-gray-600 font-light">Déplacement +20km</p>
-                        </div>
-                    </div>
-                </div>
             </div>
         </section>
 
@@ -158,18 +135,19 @@
 
                     <div>
                         <h3 class="text-xl font-normal text-black mb-2">Réservation</h3>
-                        <p>Les réservations se font via Instagram ou par mail avec un acompte de 30% pour confirmer votre date.</p>
-                        <p>En cas de réel imprévu, merci de me prévenir dans les plus brefs délais afin de déplacer le shooting.</p>
+                        <p>Les réservations se font par mail ou via Instagram, avec un acompte de 30% pour confirmer votre date.</p>
+                        <p>En cas de réel imprévu, il est possible d'annuler ou de déplacer le shooting en fonction des disponibilités.</p>
+                        <p>Merci de me prévenir dans un délais maximum de 48h avant la date initiale afin que nous puissions nous réorganiser.</p>
                     </div>
 
                     <div>
                         <h3 class="text-xl font-normal text-black mb-2">Livraison</h3>
-                        <p>Vos photos sont livrées en moyenne sous 2 à 3 semaines via une galerie privée.</p>
+                        <p>Vos photos sont livrées en moyenne sous 10 jours ouvrés via une galerie privée. Vous serez contactés par mail lorsque la galerie vous sera accessible.</p>
                     </div>
 
                     <div>
                         <h3 class="text-xl font-normal text-black mb-2">Zone d'intervention</h3>
-                        <p>Déplacement dans toute la région. Au-delà de 20km, frais additionnels.</p>
+                        <p>Déplacement dans toute la région Auvergne Rhône Alpes. Des frais additionels peuvent s'ajouter en fonction de la distance.</p>
                     </div>
 
                 </div>

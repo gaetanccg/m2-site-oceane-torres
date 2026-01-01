@@ -21,35 +21,33 @@
                 d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
             />
         </svg>
-        <span v-if="showCount && likesCount > 0" class="likes-count">{{ likesCount }}</span>
     </button>
 </template>
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { API_CONFIG } from '@/config/constants'
 
 interface Props {
     photoId: string
-    initialLikesCount?: number
-    showCount?: boolean
+    liked?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
-    initialLikesCount: 0,
-    showCount: true
+    liked: false
 })
 
 const emit = defineEmits<{
-    like: [photoId: string, newCount: number]
+    like: [photoId: string, isLiked: boolean]
 }>()
 
-const isLiked = ref(false)
+const isLiked = ref(props.liked)
 const isLoading = ref(false)
 const isAnimating = ref(false)
-const likesCount = ref(props.initialLikesCount)
 
-watch(() => props.initialLikesCount, (newVal) => {
-    likesCount.value = newVal
+// Watch for prop changes
+watch(() => props.liked, (newValue) => {
+    isLiked.value = newValue
 })
 
 const handleLike = async () => {
@@ -59,7 +57,7 @@ const handleLike = async () => {
     isAnimating.value = true
 
     try {
-        const response = await fetch(`/api/photos/${props.photoId}/like`, {
+        const response = await fetch(`${API_CONFIG.baseUrl}/photos/${props.photoId}/like`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -69,12 +67,11 @@ const handleLike = async () => {
 
         if (response.ok) {
             const data = await response.json()
-            likesCount.value = data.likes_count
-            isLiked.value = true
-            emit('like', props.photoId, data.likes_count)
+            isLiked.value = data.is_liked
+            emit('like', props.photoId, data.is_liked)
         }
     } catch (error) {
-        console.error('Error liking photo:', error)
+        console.error('Error toggling like:', error)
     } finally {
         isLoading.value = false
         setTimeout(() => {
@@ -88,8 +85,8 @@ const handleLike = async () => {
 .like-button {
     display: inline-flex;
     align-items: center;
-    gap: 0.375rem;
-    padding: 0.5rem;
+    justify-content: center;
+    padding: 0.625rem;
     background: rgba(0, 0, 0, 0.4);
     border: none;
     border-radius: 9999px;
@@ -100,7 +97,7 @@ const handleLike = async () => {
 
 .like-button:hover {
     background: rgba(0, 0, 0, 0.6);
-    transform: scale(1.05);
+    transform: scale(1.1);
 }
 
 .like-button:disabled {
@@ -110,6 +107,7 @@ const handleLike = async () => {
 
 .like-button.liked {
     color: #ef4444;
+    background: rgba(239, 68, 68, 0.2);
 }
 
 .like-button.animating .heart-icon {
@@ -117,15 +115,9 @@ const handleLike = async () => {
 }
 
 .heart-icon {
-    width: 1.25rem;
-    height: 1.25rem;
+    width: 1.5rem;
+    height: 1.5rem;
     transition: transform 0.2s ease;
-}
-
-.likes-count {
-    font-size: 0.75rem;
-    font-weight: 500;
-    padding-right: 0.25rem;
 }
 
 @keyframes heartbeat {
