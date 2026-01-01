@@ -131,7 +131,7 @@ class Gallery extends Model
 
     public function getTotalLikesAttribute(): int
     {
-        return $this->photos()->sum('likes_count');
+        return $this->photos()->where('is_liked', true)->count();
     }
 
     public function getDownloadablePhotosCountAttribute(): int
@@ -151,7 +151,7 @@ class Gallery extends Model
 
     public function getLikedPhotosCountAttribute(): int
     {
-        return $this->photos()->where('likes_count', '>', 0)->count();
+        return $this->photos()->where('is_liked', true)->count();
     }
 
     public function recordView(): void

@@ -1,63 +1,92 @@
 <template>
     <div class="pt-20">
-        <!-- Bons Plans Section -->
-        <section class="py-16 px-6 lg:px-12 bg-white relative overflow-hidden">
-            <div class="max-w-7xl mx-auto relative">
+        <!-- Bons Cadeaux Section -->
+        <section class="py-4 px-6 lg:px-12 bg-white relative overflow-hidden">
+            <div class="max-w-4xl mx-auto relative">
                 <PageHeader
                     title="Bons Cadeaux"
-                    subtitle="Pour offrir un shooting à des proches, optez pour une carte cadeau personnalisée !"
+                    subtitle="Offrez un moment unique à vos proches"
                 />
 
-                <!-- Gift Cards Grid -->
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-16">
-                    <GiftCard
-                        v-for="card in giftCards"
-                        :key="card.title"
-                        :title="card.title"
-                        :subtitle="card.subtitle"
-                        :price="card.price"
-                        :features="card.features"
-                        :is-popular="card.isPopular"
-                        :variant="card.variant"
-                    />
+                <!-- Single Gift Card Option -->
+                <div class="bg-black text-white p-10 lg:p-16 text-center border-2 border-gold mb-16">
+                    <div class="max-w-2xl mx-auto">
+                        <h3 class="text-3xl lg:text-4xl font-light mb-4">Carte Cadeau Personnalisée</h3>
+                        <p class="text-gray-400 text-lg mb-8">
+                            Choisissez le montant que vous souhaitez offrir
+                        </p>
+
+                        <div class="text-gold text-6xl lg:text-7xl font-light mb-8">
+                            À partir de 50€
+                        </div>
+
+                        <p class="text-gray-300 font-light mb-10 text-lg leading-relaxed">
+                            Offrez une carte cadeau du montant de votre choix, utilisable sur tous les types de shooting.
+                            La personne qui la reçoit pourra l'utiliser librement pour réserver la séance de son choix.
+                        </p>
+
+                        <!-- Features -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-left mb-12">
+                            <div v-for="feature in features" :key="feature" class="flex items-start gap-3">
+                                <svg class="w-5 h-5 text-gold mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                                <span class="text-gray-300 font-light">{{ feature }}</span>
+                            </div>
+                        </div>
+
+                        <!-- CTA Buttons -->
+                        <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+                            <a
+                                :href="`mailto:${CONTACT_INFO.email}?subject=Demande de carte cadeau`"
+                                class="w-full sm:w-auto inline-block px-10 py-4 bg-gold text-black hover:bg-gold/90 transition-all duration-300 text-sm uppercase tracking-widest font-medium"
+                            >
+                                Commander par email
+                            </a>
+                            <a
+                                :href="SOCIAL_LINKS[0].url"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="w-full sm:w-auto inline-block px-10 py-4 border-2 border-gold text-gold hover:bg-gold hover:text-black transition-all duration-300 text-sm uppercase tracking-widest font-light"
+                            >
+                                Commander sur Instagram
+                            </a>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- CTA Section -->
-                <div class="bg-black text-white p-12 text-center">
-                    <h2 class="text-3xl font-light mb-4">Prête à réserver votre séance ?</h2>
-                    <p class="text-gray-300 font-light mb-8 text-lg">
-                        Pour réserver, contactez-moi sur Instagram ou par mail
-                    </p>
-
-                    <div class="flex items-center justify-center gap-4">
-                        <a
-                            :href="SOCIAL_LINKS[0].url"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            class="inline-block px-10 py-4 border-2 border-gold text-gold hover:bg-gold hover:text-black transition-all duration-300 text-sm uppercase tracking-widest font-light"
-                        >
-                            Réserver via Instagram
-                        </a>
-
-                        <a
-                            :href="`mailto:${CONTACT_INFO.email}`"
-                            class="inline-block px-6 py-3 border-2 border-gold text-gold bg-white hover:bg-gold hover:text-black transition-all duration-300 text-sm uppercase tracking-widest font-light"
-                        >
-                            Envoyer un mail
-                        </a>
+                <!-- How it works -->
+                <div class="mb-16">
+                    <h2 class="text-2xl font-light mb-8 text-center">Comment ça marche ?</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <div class="text-center">
+                            <div class="w-12 h-12 bg-gold/10 text-gold rounded-full flex items-center justify-center mx-auto mb-4 text-xl font-light">1</div>
+                            <h3 class="font-medium mb-2">Contactez-moi</h3>
+                            <p class="text-gray-500 font-light text-sm">Indiquez-moi le montant souhaité, le nom de la personne à qui vous l'offrez ainsi que le message que vous voulez laisser</p>
+                        </div>
+                        <div class="text-center">
+                            <div class="w-12 h-12 bg-gold/10 text-gold rounded-full flex items-center justify-center mx-auto mb-4 text-xl font-light">2</div>
+                            <h3 class="font-medium mb-2">Recevez la carte</h3>
+                            <p class="text-gray-500 font-light text-sm">Je vous envoie une carte cadeau personnalisée par mail, prête à offrir</p>
+                        </div>
+                        <div class="text-center">
+                            <div class="w-12 h-12 bg-gold/10 text-gold rounded-full flex items-center justify-center mx-auto mb-4 text-xl font-light">3</div>
+                            <h3 class="font-medium mb-2">Réservation</h3>
+                            <p class="text-gray-500 font-light text-sm">La personne me contacte pour organiser son shooting quand elle le souhaite</p>
+                        </div>
                     </div>
                 </div>
             </div>
         </section>
 
         <!-- FAQ Section -->
-        <section class="py-16 px-6 lg:px-12 bg-white border-t">
+        <section class="py-6 px-6 lg:px-12 bg-gray-50">
             <div class="max-w-4xl mx-auto">
                 <h2 class="text-3xl font-light mb-8 text-center">Questions fréquentes</h2>
 
                 <div class="space-y-6">
-                    <div v-for="faq in faqs" :key="faq.question">
-                        <h3 class="text-xl font-normal mb-2">{{ faq.question }}</h3>
+                    <div v-for="faq in faqs" :key="faq.question" class="bg-white p-6 border border-gray-200">
+                        <h3 class="text-lg font-medium mb-2">{{ faq.question }}</h3>
                         <p
                             v-for="(paragraph, idx) in faq.answers"
                             :key="idx"
@@ -74,77 +103,42 @@
 
 <script setup lang="ts">
 import PageHeader from '@/components/PageHeader.vue'
-import GiftCard from '@/components/GiftCard.vue'
 import {SOCIAL_LINKS, CONTACT_INFO} from '@/config/constants'
 
-const giftCards = [
-    {
-        title: 'Essentiel',
-        subtitle: 'Portrait individuel',
-        price: '100€',
-        features: [
-            '1h de shooting',
-            '15 photos retouchées',
-            'Galerie de téléchargement en ligne',
-            'Lieu au choix',
-        ],
-        isPopular: false,
-        variant: 'light' as const,
-    },
-    {
-        title: 'Sur mesure',
-        subtitle: 'Discutons de ce que vous souhaitez offrir !',
-        price: 'Sur devis',
-        features: [
-            'Durée personnalisée',
-            'Nombre de photos retouchées personnalisé',
-            'Tirage photo possible',
-            'Galerie de téléchargement en ligne',
-            'Option vidéo & Option plan au drone',
-        ],
-        isPopular: true,
-        variant: 'dark' as const,
-    },
-    {
-        title: 'Premium',
-        subtitle: 'Couple / Famille / Animaux',
-        price: '150€',
-        features: [
-            '1h30 de shooting',
-            '20 photos retouchées',
-            'Galerie de téléchargement en ligne',
-            'Lieu au choix',
-            'Conseils personnalisés',
-        ],
-        isPopular: false,
-        variant: 'light' as const,
-    },
+const features = [
+    'Montant de votre choix (à partir de 50€)',
+    'Valable sur tous les types de shooting',
+    'Carte personnalisée avec le nom du destinataire',
+    'Laissez un message personnalisé pour offrir',
+    'Envoi par email sous 24h',
+    'Validité 1 an',
+    'Utilisable en une ou plusieurs fois',
 ]
 
 const faqs = [
     {
-        question: 'Comment se déroule la réservation ?',
+        question: 'Comment fonctionne la carte cadeau ?',
         answers: [
-            "Prenez contact avec moi pour définir le besoin de la carte cadeau que vous souhaitez faire. Une fois décidé, je vous envoie par mail une carte cadeau personnalisée correspondant à ce que vous souhaitez offrir !",
-            "Pour utiliser la carte cadeau, vous ou la personne à qui vous l'offrez avez juste à me contacter sur Instagram ou par Mail afin d'organiser le shooting.",
+            "Contactez moi par mail ou sur Instagram pour personnaliser votre carte avec : le nom de la personne à qui vous voulez offrir, le message que vous voulez lui laisser et le montant de la carte cadeau." +
+            " Je vous envoie ensuite la carte personnalisée par email, prête à être offerte.",
         ],
     },
     {
-        question: 'Quand reçois-je mes photos ?',
+        question: 'Quelle est la validité de la carte cadeau ?',
         answers: [
-            "En fonction du nombre de photos, je m'engage à livrer les photos dans un délai moyen de 1 à 2 semaines. Si vous avez une urgence ou un besoin particulier, n'hésitez pas à me le faire savoir lors de la réservation !",
+            "La carte cadeau est valable 1 an à partir de la date d'envoie. Elle peut être utilisée en une ou plusieurs fois.",
         ],
     },
     {
-        question: 'Puis-je acheter des photos supplémentaires ?',
+        question: 'Sur quels shootings peut-elle être utilisée ?',
         answers: [
-            "Oui, toutes les photos de votre séance sont disponibles à l'achat au tarif de 8€/photo retouchée supplémentaire.",
+            "La carte cadeau est utilisable sur tous les types de shooting : portrait, couple, famille, animaux, sport, automibile... Le destinataire choisira librement quand il me contactera !",
         ],
     },
     {
-        question: 'Que se passe-t-il en cas de mauvais temps ?',
+        question: 'Comment le destinataire réserve sa séance ?',
         answers: [
-            'Pour les séances extérieures, nous pouvons reprogrammer sans frais si la météo ne permet pas la séance.',
+            "Il lui suffit de me contacter par email ou sur Instagram avec son code carte cadeau pour organiser ensemble la séance de son choix.",
         ],
     },
 ]

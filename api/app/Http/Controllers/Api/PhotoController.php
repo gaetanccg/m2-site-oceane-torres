@@ -85,10 +85,11 @@ class PhotoController extends Controller
 
     public function like(Photo $photo): JsonResponse
     {
-        $photo->increment('likes_count');
+        $isLiked = $photo->toggleLike();
 
         return response()->json([
-            'likes_count' => $photo->fresh()->likes_count,
+            'success' => true,
+            'is_liked' => $isLiked,
         ]);
     }
 

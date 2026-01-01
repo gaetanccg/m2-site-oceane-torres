@@ -21,7 +21,7 @@ class Photo extends Model
         'title',
         'description',
         'sort_order',
-        'likes_count',
+        'is_liked',
         'is_downloadable',
         'metadata',
     ];
@@ -30,6 +30,7 @@ class Photo extends Model
     {
         return [
             'is_video' => 'boolean',
+            'is_liked' => 'boolean',
             'is_downloadable' => 'boolean',
             'metadata' => 'array',
         ];
@@ -72,12 +73,15 @@ class Photo extends Model
 
     public function scopeLiked($query)
     {
-        return $query->where('likes_count', '>', 0);
+        return $query->where('is_liked', true);
     }
 
-    public function incrementLikes(): void
+    public function toggleLike(): bool
     {
-        $this->increment('likes_count');
+        $this->is_liked = !$this->is_liked;
+        $this->save();
+
+        return $this->is_liked;
     }
 
     public function toggleDownloadable(): bool
