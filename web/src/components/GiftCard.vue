@@ -12,6 +12,7 @@
         <div class="text-center mb-8">
             <h3 class="text-2xl font-light mb-2">{{ title }}</h3>
             <p :class="subtitleClasses">{{ subtitle }}</p>
+            <p v-if="description" :class="descriptionClasses">{{ description }}</p>
             <div :class="priceClasses">
                 <span v-if="isCustomPrice" class="text-3xl">{{ price }}</span>
                 <template v-else>{{ price }}</template>
@@ -36,6 +37,7 @@ import FeatureList from './FeatureList.vue'
 interface Props {
     title: string
     subtitle: string
+    description?: string
     price: string
     features: string[]
     isPopular?: boolean
@@ -43,6 +45,7 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
+    description: '',
     isPopular: false,
     variant: 'light',
 })
@@ -57,11 +60,16 @@ const cardClasses = computed(() => [
 ])
 
 const subtitleClasses = computed(() => [
-    'text-sm mb-6',
+    'text-sm',
     props.variant === 'dark' ? 'text-gray-500' : 'text-gray-500',
 ])
 
+const descriptionClasses = computed(() => [
+    'text-xs mt-2 mb-6',
+    props.variant === 'dark' ? 'text-gray-400' : 'text-gray-400',
+])
+
 const priceClasses = computed(() => [
-    'text-5xl font-light text-gold mb-2',
+    'text-5xl font-light text-gold mb-2 mt-6',
 ])
 </script>

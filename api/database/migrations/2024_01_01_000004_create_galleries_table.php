@@ -15,9 +15,12 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->enum('type', ['public', 'private'])->default('private');
             $table->string('access_token')->unique()->nullable();
+            $table->string('share_code', 6)->unique()->nullable();
             $table->timestamp('expiration_at')->nullable();
             $table->string('cover_image')->nullable();
             $table->boolean('is_active')->default(true);
+            $table->unsignedInteger('views_count')->default(0);
+            $table->timestamp('last_viewed_at')->nullable();
             $table->timestamps();
         });
     }

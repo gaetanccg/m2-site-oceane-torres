@@ -29,14 +29,13 @@ const youtubeVideos: YouTubeVideoConfig[] = [
     // L'ID est la partie après "v=" dans l'URL YouTube
     // Exemple: https://www.youtube.com/watch?v=ABC123def -> youtubeId: 'ABC123def'
 
-    {youtubeId: 'VIDEO_ID_1', title: 'Vidéo 1'},
-    {youtubeId: 'VIDEO_ID_2', title: 'Vidéo 2'},
-    {youtubeId: 'VIDEO_ID_3', title: 'Vidéo 3'},
-    {youtubeId: 'VIDEO_ID_4', title: 'Vidéo 4'},
-    {youtubeId: 'VIDEO_ID_5', title: 'Vidéo 5'},
-    {youtubeId: 'VIDEO_ID_6', title: 'Vidéo 6'},
-    {youtubeId: 'VIDEO_ID_7', title: 'Vidéo 7'},
-    {youtubeId: 'VIDEO_ID_8', title: 'Vidéo 8'},
+    {youtubeId: 'pdEuOR5ckHQ', title: 'Vidéo hair transformation Vince Barb\'or'},
+    {youtubeId: 'GArIbW4F5UI', title: 'Récap d\'une journée de CSO à Cluny'},
+    {youtubeId: '0iPOlSZPzlI', title: 'Concert des Chœur du Sud de Rive de Gier avec Frank CASTELLANO et Ycare'},
+    {youtubeId: 'FNUomXKX1hE', title: 'Céleste Joly en CSO à Saint-Georges Équitation'},
+    {youtubeId: 'xSUVxBedOhc', title: 'Vidéo au drone d\'un motard'},
+    {youtubeId: 'Sea2FkTh9Vg', title: 'Vidéo immersive lors de la Semaine Vichyssoise'},
+    // {youtubeId: 'PfvJwdAEZH8', title: 'Vidéo drone randonnée au Gouffre d\'Enfer'},
 ]
 
 const categories: CategoryConfig[] = [

@@ -73,7 +73,7 @@ const handleSubmit = async () => {
         })
 
         if (response.ok) {
-            router.push(`/gallery/code/${code.value}`)
+            router.push(`/gallery/${code.value}`)
         } else {
             const data = await response.json()
             hasError.value = true

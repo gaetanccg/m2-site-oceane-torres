@@ -179,7 +179,7 @@ export interface AdminPhoto {
     size?: number
     width?: number
     height?: number
-    likes_count: number
+    is_liked: boolean
     is_downloadable: boolean
     created_at: string
 }

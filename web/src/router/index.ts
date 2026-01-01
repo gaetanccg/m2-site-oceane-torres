@@ -4,6 +4,7 @@
  */
 
 import {createRouter, createWebHistory, type RouteRecordRaw} from 'vue-router'
+import {useAuthStore} from '@/stores/auth'
 
 // Home est chargé immédiatement car c'est la page d'accueil
 import Home from '@/views/Home.vue'
@@ -15,6 +16,20 @@ const BonsCadeaux = () => import('@/views/BonsCadeaux.vue')
 const About = () => import('@/views/About.vue')
 const Contact = () => import('@/views/Contact.vue')
 const MentionsLegales = () => import('@/views/MentionsLegales.vue')
+
+// Gallery access pages
+const GalleryAccess = () => import('@/views/GalleryAccess.vue')
+const ProtectedGallery = () => import('@/views/ProtectedGallery.vue')
+const DownloadGallery = () => import('@/views/DownloadGallery.vue')
+
+// Admin pages
+const AdminLogin = () => import('@/views/admin/Login.vue')
+const AdminDashboard = () => import('@/views/admin/Dashboard.vue')
+const AdminGalleries = () => import('@/views/admin/Galleries.vue')
+const AdminClients = () => import('@/views/admin/Clients.vue')
+const AdminPrestations = () => import('@/views/admin/Prestations.vue')
+const AdminReservations = () => import('@/views/admin/Reservations.vue')
+const AdminGiftCards = () => import('@/views/admin/GiftCards.vue')
 
 const routes: RouteRecordRaw[] = [
     {
@@ -80,6 +95,68 @@ const routes: RouteRecordRaw[] = [
             description: 'Mentions légales du site Océane Torres Photographie.'
         }
     },
+    // Gallery access routes
+    {
+        path: '/gallery',
+        name: 'gallery-access',
+        component: GalleryAccess,
+        meta: {title: 'Accès Galerie'}
+    },
+    {
+        path: '/gallery/download/:token',
+        name: 'download-gallery',
+        component: DownloadGallery,
+        meta: {title: 'Téléchargement'}
+    },
+    {
+        path: '/gallery/:code',
+        name: 'protected-gallery',
+        component: ProtectedGallery,
+        meta: {title: 'Galerie'}
+    },
+    // Admin routes
+    {
+        path: '/admin/login',
+        name: 'admin-login',
+        component: AdminLogin,
+        meta: {title: 'Connexion Admin', layout: 'admin'}
+    },
+    {
+        path: '/admin',
+        name: 'admin-dashboard',
+        component: AdminDashboard,
+        meta: {title: 'Dashboard', layout: 'admin', requiresAuth: true}
+    },
+    {
+        path: '/admin/galleries',
+        name: 'admin-galleries',
+        component: AdminGalleries,
+        meta: {title: 'Galeries', layout: 'admin', requiresAuth: true}
+    },
+    {
+        path: '/admin/clients',
+        name: 'admin-clients',
+        component: AdminClients,
+        meta: {title: 'Clients', layout: 'admin', requiresAuth: true}
+    },
+    {
+        path: '/admin/prestations',
+        name: 'admin-prestations',
+        component: AdminPrestations,
+        meta: {title: 'Prestations', layout: 'admin', requiresAuth: true}
+    },
+    {
+        path: '/admin/reservations',
+        name: 'admin-reservations',
+        component: AdminReservations,
+        meta: {title: 'Réservations', layout: 'admin', requiresAuth: true}
+    },
+    {
+        path: '/admin/gift-cards',
+        name: 'admin-gift-cards',
+        component: AdminGiftCards,
+        meta: {title: 'Bons Cadeaux', layout: 'admin', requiresAuth: true}
+    },
     // Catch-all redirect to home
     {
         path: '/:pathMatch(.*)*',
@@ -96,6 +173,23 @@ const router = createRouter({
         }
         return {top: 0, behavior: 'smooth'}
     }
+})
+
+// Auth guard for protected routes
+router.beforeEach(async (to, _from, next) => {
+    const requiresAuth = to.meta.requiresAuth
+
+    if (requiresAuth) {
+        const authStore = useAuthStore()
+        const isAuthenticated = await authStore.checkAuth()
+
+        if (!isAuthenticated) {
+            next({name: 'admin-login', query: {redirect: to.fullPath}})
+            return
+        }
+    }
+
+    next()
 })
 
 // Update document title and meta description on navigation
