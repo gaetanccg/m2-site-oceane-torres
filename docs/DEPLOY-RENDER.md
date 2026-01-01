@@ -55,40 +55,42 @@ Le Dockerfile (`api/Dockerfile`) est deja configure pour Render :
 
 ### 1.3 Variables d'environnement API
 
-Dans Render → **Environment** → ajouter :
+Le fichier `api/.env.render` contient toutes les variables pretes a copier-coller.
+
+Dans Render → **Environment** → **Add from .env** → coller le contenu de `api/.env.render`
+
+Ou ajouter manuellement les variables essentielles :
 
 ```env
 # Application
 APP_NAME="Oceane Torres Photographie"
 APP_ENV=production
-APP_KEY=base64:GENERER_AVEC_php_artisan_key:generate
+APP_KEY=base64:votre_cle_generee
 APP_DEBUG=false
 APP_URL=https://api.oceanetorresphotographie.fr
 FRONTEND_URL=https://oceanetorresphotographie.fr
 
 # Database Supabase
 DB_CONNECTION=pgsql
-DB_HOST=db.ekhlybdoblhjigpnpbff.supabase.co
+DB_HOST=db.xxxx.supabase.co
 DB_PORT=5432
 DB_DATABASE=postgres
 DB_USERNAME=postgres
 DB_PASSWORD=votre_password_supabase
 
 # Supabase
-SUPABASE_URL=https://ekhlybdoblhjigpnpbff.supabase.co
+SUPABASE_URL=https://xxxx.supabase.co
 SUPABASE_KEY=votre_anon_key
 SUPABASE_SERVICE_KEY=votre_service_role_key
-SUPABASE_EDGE_FUNCTION_URL=https://ekhlybdoblhjigpnpbff.supabase.co/functions/v1
+SUPABASE_EDGE_FUNCTION_URL=https://xxxx.supabase.co/functions/v1/cleanup-gallery-files
 
-# Session & Cache (utiliser database car pas de Redis sur free tier)
-SESSION_DRIVER=database
-CACHE_STORE=database
+# Session & Cache (file car pas de table sessions)
+SESSION_DRIVER=file
+CACHE_STORE=file
 QUEUE_CONNECTION=sync
 
-# CORS
+# CORS & Sanctum
 CORS_ALLOWED_ORIGINS=https://oceanetorresphotographie.fr,https://www.oceanetorresphotographie.fr
-
-# Sanctum
 SANCTUM_STATEFUL_DOMAINS=oceanetorresphotographie.fr,www.oceanetorresphotographie.fr
 
 # Logs
@@ -96,7 +98,7 @@ LOG_CHANNEL=stderr
 LOG_LEVEL=error
 ```
 
-> **Note**: Pour generer `APP_KEY`, executer localement : `php artisan key:generate --show`
+> **Note**: `APP_KEY` est deja genere dans `api/.env.render`. Si besoin d'en regenerer un : `php artisan key:generate --show`
 
 ### 1.4 Configurer le domaine API
 
