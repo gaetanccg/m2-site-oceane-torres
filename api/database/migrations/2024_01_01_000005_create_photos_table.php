@@ -19,7 +19,8 @@ return new class extends Migration
             $table->string('title')->nullable();
             $table->text('description')->nullable();
             $table->integer('sort_order')->default(0);
-            $table->integer('likes_count')->default(0);
+            $table->boolean('is_liked')->default(false);
+            $table->boolean('is_downloadable')->default(false);
             $table->json('metadata')->nullable()->comment('EXIF data, dimensions, etc.');
             $table->timestamps();
         });
