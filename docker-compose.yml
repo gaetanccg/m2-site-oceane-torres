@@ -42,10 +42,10 @@ services:
       - APP_ENV=${APP_ENV:-local}
       - APP_DEBUG=${APP_DEBUG:-true}
       - DB_CONNECTION=pgsql
-      - DB_HOST=${DB_HOST:-host.docker.internal}
+      - DB_HOST=${DB_HOST_DOCKER:-aws-1-eu-west-1.pooler.supabase.com}
       - DB_PORT=${DB_PORT:-5432}
       - DB_DATABASE=${DB_DATABASE:-postgres}
-      - DB_USERNAME=${DB_USERNAME:-postgres}
+      - DB_USERNAME=${DB_USERNAME_DOCKER:-postgres.ekhlybdoblhjigpnpbff}
       - DB_PASSWORD=${DB_PASSWORD}
     networks:
       - app-network

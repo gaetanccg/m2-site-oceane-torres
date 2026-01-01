@@ -271,7 +271,7 @@ const featuredPrestations: FeaturedPrestation[] = [
     .hero-title-script{
         font-size: clamp(1.1rem, 5vw, 2.2rem);
         transform: translateY(-15%) rotate(-3deg);
-        margin-top: -2.5rem;
+        margin-top: -2rem;
         z-index: 2;
     }
 

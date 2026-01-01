@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('gift_cards', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->foreignUuid('payment_id')->nullable()->constrained()->onDelete('set null');
+            $table->uuid('payment_id')->nullable();
             $table->string('code')->unique();
             $table->decimal('amount', 10, 2);
             $table->decimal('remaining_amount', 10, 2);

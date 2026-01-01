@@ -344,9 +344,8 @@ class GalleryController extends Controller
             ->paginate(20);
 
         $galleries->getCollection()->transform(function ($gallery) {
-            $gallery->total_likes = $gallery->photos->sum('likes_count');
             $gallery->downloadable_count = $gallery->photos->where('is_downloadable', true)->count();
-            $gallery->liked_photos_count = $gallery->photos->where('likes_count', '>', 0)->count();
+            $gallery->liked_photos_count = $gallery->photos->where('is_liked', true)->count();
             return $gallery;
         });
 
@@ -359,9 +358,8 @@ class GalleryController extends Controller
             $query->ordered();
         }, 'user']);
 
-        $gallery->total_likes = $gallery->photos->sum('likes_count');
         $gallery->downloadable_count = $gallery->photos->where('is_downloadable', true)->count();
-        $gallery->liked_photos_count = $gallery->photos->where('likes_count', '>', 0)->count();
+        $gallery->liked_photos_count = $gallery->photos->where('is_liked', true)->count();
 
         return response()->json([
             'success' => true,
