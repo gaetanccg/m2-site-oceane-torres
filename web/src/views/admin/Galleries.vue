@@ -152,11 +152,19 @@
                                             {{ gallery.share_code }}
                                         </div>
                                         <button
-                                            @click="copyToClipboard(gallery.share_code)"
-                                            class="p-1.5 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100"
-                                            title="Copier le code"
+                                            @click="copyToClipboard(gallery.share_code, `code-${gallery.id}`)"
+                                            :class="[
+                                                'p-1.5 rounded-lg transition-all duration-300',
+                                                copiedId === `code-${gallery.id}`
+                                                    ? 'text-green-600 bg-green-100'
+                                                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                                            ]"
+                                            :title="copiedId === `code-${gallery.id}` ? 'Copié !' : 'Copier le code'"
                                         >
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <svg v-if="copiedId === `code-${gallery.id}`" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                            </svg>
+                                            <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                                             </svg>
                                         </button>
@@ -174,11 +182,19 @@
                                             class="flex-1 px-3 py-1.5 text-xs bg-gray-50 border border-gray-200 rounded-lg truncate"
                                         />
                                         <button
-                                            @click="copyToClipboard(getDownloadUrl(gallery.access_token))"
-                                            class="p-1.5 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100"
-                                            title="Copier le lien"
+                                            @click="copyToClipboard(getDownloadUrl(gallery.access_token), `link-${gallery.id}`)"
+                                            :class="[
+                                                'p-1.5 rounded-lg transition-all duration-300',
+                                                copiedId === `link-${gallery.id}`
+                                                    ? 'text-green-600 bg-green-100'
+                                                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                                            ]"
+                                            :title="copiedId === `link-${gallery.id}` ? 'Copié !' : 'Copier le lien'"
                                         >
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <svg v-if="copiedId === `link-${gallery.id}`" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                            </svg>
+                                            <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                                             </svg>
                                         </button>
@@ -655,6 +671,7 @@ const selectionMode = ref(false)
 const selectedPhotos = ref<string[]>([])
 const lightboxOpen = ref(false)
 const lightboxIndex = ref(0)
+const copiedId = ref<string | null>(null)
 
 const form = reactive<GalleryFormData>({
     title: '',
@@ -720,9 +737,13 @@ function getDownloadUrl(token: string): string {
     return `${window.location.origin}/gallery/download/${token}`
 }
 
-async function copyToClipboard(text: string) {
+async function copyToClipboard(text: string, id: string) {
     try {
         await navigator.clipboard.writeText(text)
+        copiedId.value = id
+        setTimeout(() => {
+            copiedId.value = null
+        }, 2000)
     } catch {
         // Fallback
     }
