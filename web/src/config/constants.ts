@@ -104,7 +104,7 @@ export const BUSINESS_INFO = {
         hours: '9h00 - 19h00',
     },
     travelZone: {
-        free: 20, // km
-        unit: 'km',
+        free: 20,
+        unit: 'min',
     },
 } as const

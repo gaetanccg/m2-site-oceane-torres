@@ -3,7 +3,7 @@
         <section class="py-16 px-6 lg:px-12">
             <div class="max-w-lg mx-auto">
                 <div class="text-center mb-12">
-                    <h1 class="text-4xl font-light mb-4">Galerie Privee</h1>
+                    <h1 class="text-4xl font-light mb-4">Galerie Privée</h1>
                     <p class="text-gray-600 font-light">
                         Entrez le code a 6 caracteres que vous avez recu pour acceder a votre galerie.
                     </p>
@@ -46,10 +46,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import {ref} from 'vue'
+import {useRouter} from 'vue-router'
 import ShareCodeInput from '@/components/ShareCodeInput.vue'
-import { API_CONFIG } from '@/config/constants'
+import {API_CONFIG} from '@/config/constants'
 
 const router = useRouter()
 
