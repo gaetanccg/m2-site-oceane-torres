@@ -4,7 +4,7 @@
             <h2 :class="titleClasses">{{ title }}</h2>
             <p v-if="subtitle" :class="subtitleClasses">{{ subtitle }}</p>
 
-            <div :class="['flex justify-center', multipleButtons ? 'flex-wrap gap-4' : 'mt-10']">
+            <div :class="['flex flex-col sm:flex-row items-center justify-center gap-4', multipleButtons ? '' : 'mt-10']">
                 <slot>
                     <a
                         :href="primaryLink"
@@ -32,7 +32,7 @@
 
 <script setup lang="ts">
 import {computed} from 'vue'
-import {SOCIAL_LINKS} from '@/config/constants'
+import {SOCIAL_LINKS, CONTACT_INFO} from '@/config/constants'
 
 interface Props {
     title: string
@@ -47,11 +47,13 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-    primaryText: 'Me contacter sur Instagram',
-    primaryLink: SOCIAL_LINKS[0].url,
+    primaryText: 'Me contacter par Mail',
+    primaryLink: `mailto:${CONTACT_INFO.email}`,
+    secondaryText: 'Me contacter sur Instagram',
+    secondaryLink: SOCIAL_LINKS[0].url,
     variant: 'dark',
-    isExternal: true,
-    isSecondaryExternal: false,
+    isExternal: false,
+    isSecondaryExternal: true,
 })
 
 const multipleButtons = computed(() => !!props.secondaryText && !!props.secondaryLink)
@@ -71,16 +73,12 @@ const subtitleClasses = computed(() => [
 ])
 
 const primaryButtonClasses = computed(() => [
-    'inline-block px-10 py-4 text-sm uppercase tracking-widest font-light transition-all duration-300',
-    props.variant === 'dark'
-        ? 'border-2 border-gold text-gold hover:bg-gold hover:text-black'
-        : 'bg-black text-white hover:bg-gold',
+    'w-full sm:w-auto inline-block px-10 py-4 text-sm uppercase tracking-widest font-medium transition-all duration-300',
+    'bg-gold text-black hover:bg-gold/90',
 ])
 
 const secondaryButtonClasses = computed(() => [
-    'inline-block px-6 py-3 border-2 text-sm uppercase tracking-widest font-light transition-all duration-300',
-    props.variant === 'dark'
-        ? 'border-gold text-gold bg-white hover:bg-gold hover:text-black'
-        : 'border-black text-black hover:bg-black hover:text-white',
+    'w-full sm:w-auto inline-block px-10 py-4 border-2 text-sm uppercase tracking-widest font-light transition-all duration-300',
+    'border-gold text-gold hover:bg-gold hover:text-black',
 ])
 </script>

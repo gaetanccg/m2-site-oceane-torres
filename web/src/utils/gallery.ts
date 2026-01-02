@@ -42,14 +42,25 @@ export function shuffle<T>(arr: T[]): T[] {
 export function reorderForColumns<T>(items: T[], cols: number): T[] {
     if (cols <= 1 || items.length <= cols) return items
 
-    const rows = Math.ceil(items.length / cols)
-    const result: T[] = new Array(items.length)
+    const totalItems = items.length
+    const baseRows = Math.floor(totalItems / cols)
+    const extraItems = totalItems % cols // Colonnes avec une ligne de plus
 
-    for (let i = 0; i < items.length; i++) {
+    const result: T[] = new Array(totalItems)
+
+    for (let i = 0; i < totalItems; i++) {
         const row = Math.floor(i / cols)
         const col = i % cols
-        const newIndex = col * rows + row
-        if (newIndex < items.length) {
+
+        // Calculer l'index de début de cette colonne
+        // Les premières 'extraItems' colonnes ont (baseRows + 1) lignes
+        let colStart = 0
+        for (let c = 0; c < col; c++) {
+            colStart += c < extraItems ? baseRows + 1 : baseRows
+        }
+
+        const newIndex = colStart + row
+        if (newIndex < totalItems) {
             result[newIndex] = items[i]
         }
     }

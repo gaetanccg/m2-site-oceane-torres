@@ -23,8 +23,8 @@
             <p class="text-gray-600 font-light">{{ categoryDescription }}</p>
         </div>
 
-        <!-- Gallery grid -->
-        <div class="gallery-grid" ref="galleryRef">
+        <!-- Gallery grid - utilise une grille pour les vidéos, columns pour les images -->
+        <div :class="isVideoFilter(activeFilter) ? 'video-grid' : 'gallery-grid'" ref="galleryRef">
             <div
                 v-for="(item, index) in filteredItems"
                 :key="item.url + index"
@@ -62,15 +62,16 @@
                     </div>
                 </div>
 
-                <!-- Video YouTube -->
-                <div v-else-if="item.type === 'youtube'" class="relative w-full bg-black">
+                <!-- Video YouTube - ratio 16:9 fixe pour uniformité -->
+                <div v-else-if="item.type === 'youtube'" class="relative w-full bg-black aspect-video">
                     <img
                         :src="item.url"
                         :alt="item.alt"
                         draggable="false"
                         loading="lazy"
-                        class="w-full h-auto object-cover"
+                        class="absolute inset-0 w-full h-full object-cover"
                         @load="handleImageLoad(item.url)"
+                        @error="(e) => handleYoutubeError(e, item)"
                     />
                     <div class="absolute inset-0 flex items-center justify-center pointer-events-none bg-black/20">
                         <!-- YouTube Play Button -->
@@ -157,8 +158,9 @@ const baseFilteredItems = computed(() => {
         return sortByFilename(props.items.filter(item => !isVideoItem(item.type)))
     }
 
+    // Vidéos : garder l'ordre original du tableau (pas de tri, pas de réorganisation)
     if (isVideoFilter(activeFilter.value)) {
-        return sortByFilename(props.items.filter(item => isVideoItem(item.type)))
+        return props.items.filter(item => isVideoItem(item.type))
     }
 
     if (activeFilter.value === 'Tous') {
@@ -171,6 +173,10 @@ const baseFilteredItems = computed(() => {
 })
 
 const filteredItems = computed(() => {
+    // Ne pas réordonner les vidéos - garder l'ordre original
+    if (isVideoFilter(activeFilter.value)) {
+        return baseFilteredItems.value
+    }
     return reorderForColumns(baseFilteredItems.value, columnCount.value)
 })
 
@@ -259,6 +265,19 @@ const handleImageLoad = (url: string) => {
 
 const isLoaded = (url: string) => loadedImages.value.has(url)
 
+// Fallback pour les thumbnails YouTube qui ne chargent pas en maxresdefault
+const handleYoutubeError = (e: Event, item: GalleryItem) => {
+    const img = e.target as HTMLImageElement
+    const currentSrc = img.src
+
+    // Essayer différentes qualités de thumbnail YouTube
+    if (currentSrc.includes('maxresdefault')) {
+        img.src = `https://img.youtube.com/vi/${item.youtubeId}/hqdefault.jpg`
+    } else if (currentSrc.includes('hqdefault')) {
+        img.src = `https://img.youtube.com/vi/${item.youtubeId}/mqdefault.jpg`
+    }
+}
+
 const updateColumnCount = () => {
     columnCount.value = getColumnCount(window.innerWidth)
 }
@@ -301,12 +320,23 @@ watch(activeFilter, async () => {
     column-gap: 4px;
 }
 
+/* Grille CSS pour les vidéos - affichage uniforme */
+.video-grid{
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+}
+
 .gallery-item{
     position: relative;
     overflow: hidden;
     cursor: pointer;
     break-inside: avoid;
     margin-bottom: 4px;
+}
+
+.video-grid .gallery-item{
+    margin-bottom: 0;
 }
 
 .gallery-image{
@@ -353,12 +383,20 @@ watch(activeFilter, async () => {
     .gallery-grid{
         columns: 2;
     }
+    .video-grid{
+        grid-template-columns: repeat(2, 1fr);
+    }
 }
 
 @media (max-width: 640px){
     .gallery-grid{
         columns: 1;
         column-gap: 0;
+    }
+
+    .video-grid{
+        grid-template-columns: 1fr;
+        gap: 8px;
     }
 
     .gallery-item{
