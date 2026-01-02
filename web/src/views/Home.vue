@@ -45,7 +45,7 @@
                             À propos de moi
                         </h2>
                         <p class="text-gray-600 font-light leading-relaxed mb-6 text-lg">
-                            Je m'appelle Océane, j'ai 23 ans et je suis photographe et vidéaste professionnelle basée en Loire, près de Saint-Étienne. J'interviens dans toute la région Auvergne-Rhône-Alpes, notamment à Lyon et ses alentours.
+                            Je m'appelle Océane, j'ai 23 ans et je suis photographe et vidéaste professionnelle basée en Auvergne-Rhône-Alpes. J'interviens dans toute la région, notamment dans le Rhône et la Loire.
                         </p>
                         <p class="text-gray-600 font-light leading-relaxed mb-8 text-lg">
                             J'ai envie de créer des images qui racontent, qui touchent, qui marquent. Je propose un accompagnement qui reflète ce que j'aime réellement capturer : la spontanéité, l'émotion, l'énergie, et tout ce qui raconte une histoire.
