@@ -54,7 +54,7 @@
                             <div>
                                 <h4 class="font-normal text-black mb-2">Zone d'intervention</h4>
                                 <p>
-                                    Je me déplace dans toute la région. Des frais de déplacement peuvent s'appliquer au-delà de {{ BUSINESS_INFO.travelZone.free }}{{ BUSINESS_INFO.travelZone.unit }}.
+                                    Je me déplace dans toute la région Auverge Rhône Alpes. Des frais de déplacement peuvent s'appliquer au-delà de {{ BUSINESS_INFO.travelZone.free }}{{ BUSINESS_INFO.travelZone.unit }} de trajet.
                                 </p>
                             </div>
 
