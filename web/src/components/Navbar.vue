@@ -37,7 +37,7 @@
                         to="/gallery"
                         class="ml-4 inline-flex items-center gap-2 px-4 py-2 bg-gold text-white rounded-md text-lg font-medium hover:opacity-90 transition-colors"
                     >
-                        Galerie Privee
+                        Galerie Privée
                     </router-link>
                 </div>
             </div>
@@ -64,7 +64,7 @@
                         @click="mobileMenuOpen = false"
                         class="block w-full text-center mt-2 px-4 py-3 bg-gold text-white rounded-md text-lg font-medium hover:opacity-90 transition-colors"
                     >
-                        Galerie Privee
+                        Galerie Privée
                     </router-link>
                 </div>
             </div>

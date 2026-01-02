@@ -24,7 +24,7 @@ interface YouTubeVideoConfig {
 }
 
 const youtubeVideos: YouTubeVideoConfig[] = [
-    // === AJOUTE TES 8 LIENS YOUTUBE ICI ===
+    // === AJOUTE TES LIENS YOUTUBE ICI ===
     // Remplace les IDs par les vrais IDs de tes vidéos
     // L'ID est la partie après "v=" dans l'URL YouTube
     // Exemple: https://www.youtube.com/watch?v=ABC123def -> youtubeId: 'ABC123def'
@@ -35,7 +35,7 @@ const youtubeVideos: YouTubeVideoConfig[] = [
     {youtubeId: 'FNUomXKX1hE', title: 'Céleste Joly en CSO à Saint-Georges Équitation'},
     {youtubeId: 'xSUVxBedOhc', title: 'Vidéo au drone d\'un motard'},
     {youtubeId: 'Sea2FkTh9Vg', title: 'Vidéo immersive lors de la Semaine Vichyssoise'},
-    // {youtubeId: 'PfvJwdAEZH8', title: 'Vidéo drone randonnée au Gouffre d\'Enfer'},
+    {youtubeId: 'PfvJwdAEZH8', title: 'Vidéo drone randonnée au Gouffre d\'Enfer'},
 ]
 
 const categories: CategoryConfig[] = [

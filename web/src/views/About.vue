@@ -22,14 +22,14 @@
 
                         <div class="space-y-6 text-gray-600 font-light leading-relaxed text-lg">
                             <p>
-                                Photographe passionnée depuis plus de 4 ans, je suis maintenant professionnelle depuis 1 an. J'ai eu la chance de travailler avec plusieurs professionnels, comme une chorale (Les Choeurs Du Sud), l'équipe féminine de l'ASSE, j'ai fais quelques colaborations avec des cavaliers internationaux à EquitaLyon. J'ai aussi travaillé avec des artistes locaux comme des chanteurs et un restaurateurs.
+                                Photographe passionnée depuis plus de 4 ans, je suis maintenant professionnelle depuis 1 an. J'ai eu la chance de travailler avec plusieurs professionnels, comme une chorale (Les Choeurs Du Sud), l'équipe féminine de l'ASSE, j'ai fais quelques colaborations avec des cavaliers internationaux à EquitaLyon. J'ai aussi travaillé avec des artistes locaux comme des chanteurs et un restaurateur.
                             </p>
                             <p>
-                                Bien sur, autres que des professionnels et artistes, j'ai travaillé avec de nombreux particuliers pour des séances portraits, couple, famille, sport, moto, animaux de compagnie et événements divers.
+                                Bien sûr, en plus des professionnels et artistes, j'ai également travaillé avec de nombreux particuliers pour des séances portraits, couple, famille, sport, moto, animaux de compagnie et événements divers.
                             </p>
                             <p>
                                 Mon approche se veut naturelle et authentique. Je crois que les plus belles photos sont celles qui capturent l'essence même d'un moment, sans artifice. Je cherche à mettre en valeur la beauté naturelle de chaque personne et l'émotion sincère de chaque instant.
-                                La précision d'un mouvement, la maitrise d'une action, la beauté d'un regard, d'un geste, d'un moment...
+                                La précision d'un mouvement, la maîtrise d'une action, la beauté d'un regard, d'un geste, d'un moment...
                             </p>
                             <p>
                                 Que ce soit pour un portrait, une séance en couple, un sport ou tout autre événement important de votre vie, je m'engage à créer des images intemporelles que vous chérirez pour toujours.
@@ -74,7 +74,6 @@
         <CtaSection
             title="Envie de travailler ensemble ?"
             subtitle="Je serais ravie d'échanger avec vous sur votre projet"
-            primary-text="Contactez-moi sur Instagram"
         />
     </div>
 </template>
@@ -115,7 +114,7 @@ const philosophyItems = [
     {
         icon: 'heart',
         title: 'Authenticité',
-        description: "Je capture vos moments tels qu'ils sont, sans artifice. L'authenticité crée les plus belles émotions."
+        description: "Je capture vos moments tels qu'ils sont, sans artifice. L'authenticité crée les plus belles émotions et images."
     },
     {
         icon: 'eye',
@@ -125,7 +124,7 @@ const philosophyItems = [
     {
         icon: 'star',
         title: 'Excellence',
-        description: "Du shooting à la retouche finale, j'apporte un soin particulier à chaque étape pour un résultat à la hauteur de vos attentes."
+        description: "De la prise de contact à la livraison, j'apporte un soin particulier à chaque étape pour un résultat à la hauteur de vos attentes."
     }
 ]
 </script>
