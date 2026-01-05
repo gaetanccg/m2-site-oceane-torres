@@ -110,7 +110,7 @@
 
                 <!-- CTA Section -->
                 <div class="text-center mt-20 mb-10">
-                    <h2 class="text-3xl font-light mb-4">Prête à réserver ? Des questions ?</h2>
+                    <h2 class="text-3xl font-light mb-4">Prêt à réserver ? Des questions ?</h2>
                     <p class="text-gray-600 font-light mb-8 text-lg">
                         Contactez-moi sur Instagram pour réserver votre séance
                     </p>
