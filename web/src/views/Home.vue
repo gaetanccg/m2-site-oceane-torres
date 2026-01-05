@@ -20,12 +20,12 @@
                         Voir le portfolio
                     </router-link>
                     <a
-                        :href="SOCIAL_LINKS[0].url"
+                        :href="SOCIAL_LINKS[3].url"
                         target="_blank"
                         rel="noopener noreferrer"
                         class="px-10 py-4 border-2 border-white text-white hover:bg-white hover:text-black transition-all duration-300 text-sm uppercase tracking-widest font-light"
                     >
-                        Me contacter
+                        Me contacter par mail
                     </a>
                 </div>
             </div>
@@ -109,8 +109,8 @@
 
         <!-- CTA Section -->
         <CtaSection
-            title="Prête à capturer vos souvenirs ?"
-            subtitle="Contactez-moi sur Instagram pour discuter de votre projet"
+            title="Prêt à capturer vos souvenirs ?"
+            subtitle="Contactez-moi par mail ou sur Instagram pour discuter de votre projet"
         />
     </div>
 </template>
@@ -160,13 +160,13 @@ const featuredPrestations: FeaturedPrestation[] = [
     {
         icon: 'sport',
         title: 'Sport',
-        description: "Figer la puissance et l'intensité du mouvement : équitation, football, boxe, danse... chaque discipline mérite ses images.",
-        features: ['Couverture complète', 'Toutes les photos envoyées', 'Action & portrait', 'Options vidéo'],
+        description: "Figer la puissance et l'intensité du mouvement : équitation, football, boxe, danse... Chaque discipline mérite ses images.",
+        features: ['Couverture complète', 'Toutes les photos envoyées', 'Action & portrait', 'Option vidéo'],
     },
     {
         icon: 'video',
         title: 'Vidéo',
-        description: 'Donner vie à vos projets en images animées : contenus réseaux sociaux, montages dynamiques et créations sur mesure.',
+        description: 'Donnez vie à vos projets en images animées : contenu réseaux sociaux, montages dynamiques et création sur mesure.',
         features: ['Contenu réseaux sociaux', 'Montage vidéo', 'Création sur mesure'],
     },
 ]
