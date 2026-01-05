@@ -117,7 +117,6 @@
 
 <script setup lang="ts">
 import type {GalleryItem, ServiceIconType} from '@/types'
-import {SOCIAL_LINKS} from '@/config/constants'
 import PrestationCardMini from '@/components/PrestationCardMini.vue'
 import MasonryGallery from '@/components/MasonryGallery.vue'
 import CtaSection from '@/components/CtaSection.vue'
