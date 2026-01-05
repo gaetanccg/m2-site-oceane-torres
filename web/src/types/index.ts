@@ -82,7 +82,7 @@ export interface GiftCard {
 export interface SocialLink {
     name: string
     url: string
-    icon: 'instagram' | 'tiktok' | 'linkedin' | 'mail'
+    icon: 'instagram' | 'tiktok' | 'linkedin'
     ariaLabel: string
 }
 

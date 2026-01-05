@@ -17,7 +17,7 @@
                         </p>
 
                         <div class="text-gold text-6xl lg:text-7xl font-light mb-8">
-                            À partir de 50€
+                            À partir de 35€
                         </div>
 
                         <p class="text-gray-300 font-light mb-10 text-lg leading-relaxed">
@@ -41,7 +41,7 @@
                                 :href="`mailto:${CONTACT_INFO.email}?subject=Demande de carte cadeau`"
                                 class="w-full sm:w-auto inline-block px-10 py-4 bg-gold text-black hover:bg-gold/90 transition-all duration-300 text-sm uppercase tracking-widest font-medium"
                             >
-                                Commander par email
+                                Commander par mail
                             </a>
                             <a
                                 :href="SOCIAL_LINKS[0].url"
@@ -110,7 +110,7 @@ const features = [
     'Valable sur tous les types de shooting',
     'Carte personnalisée avec le nom du destinataire',
     'Laissez un message personnalisé pour offrir',
-    'Envoi par email sous 24h',
+    'Envoi par mail sous 24h',
     'Validité 1 an',
     'Utilisable en une ou plusieurs fois',
 ]
@@ -119,26 +119,26 @@ const faqs = [
     {
         question: 'Comment fonctionne la carte cadeau ?',
         answers: [
-            "Contactez moi par mail ou sur Instagram pour personnaliser votre carte avec : le nom de la personne à qui vous voulez offrir, le message que vous voulez lui laisser et le montant de la carte cadeau." +
-            " Je vous envoie ensuite la carte personnalisée par email, prête à être offerte.",
+            "Contactez-moi par mail ou sur Instagram pour personnaliser votre carte avec : le nom de la personne à qui vous voulez offrir, le message que vous voulez lui laisser et le montant de la carte cadeau." +
+            " Je vous envoie ensuite la carte personnalisée par mail, prête à être offerte.",
         ],
     },
     {
-        question: 'Quelle est la validité de la carte cadeau ?',
+        question: 'Quelle est la durée de validité de la carte cadeau ?',
         answers: [
-            "La carte cadeau est valable 1 an à partir de la date d'envoie. Elle peut être utilisée en une ou plusieurs fois.",
+            "La carte cadeau est valable 1 an à partir de la date d'envoi. Elle peut être utilisée en une ou plusieurs fois.",
         ],
     },
     {
         question: 'Sur quels shootings peut-elle être utilisée ?',
         answers: [
-            "La carte cadeau est utilisable sur tous les types de shooting : portrait, couple, famille, animaux, sport, automibile... Le destinataire choisira librement quand il me contactera !",
+            "La carte cadeau est utilisable sur tous les types de shooting : portrait, couple, famille, animaux, sport, automobile... Le destinataire choisira librement quand il me contactera !",
         ],
     },
     {
         question: 'Comment le destinataire réserve sa séance ?',
         answers: [
-            "Il lui suffit de me contacter par email ou sur Instagram avec son code carte cadeau pour organiser ensemble la séance de son choix.",
+            "Il lui suffit de me contacter par mail ou sur Instagram avec son code carte cadeau pour organiser ensemble la séance de son choix.",
         ],
     },
 ]

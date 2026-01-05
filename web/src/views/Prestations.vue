@@ -22,16 +22,16 @@
                         :features="['1h de shooting','5 photos retouchées','Conseils poses','Mise à disposition d\'une galerie privée']"
                         :background="portraitsBackground"
                         :backgroundOpacity="0.17"
-                        disclaimer="⚠ L'offre est évolutive en fonction de vos envies et besoins (nombre de photo, durée...) - contactez moi directement pour en discuter !"
+                        disclaimer="⚠ L'offre est évolutive en fonction de vos envies et besoins (nombre de photo, durée...) - Contactez-moi directement pour en discuter !"
                     />
 
                     <PrestationCard
                         icon="sport"
                         title="Sport"
-                        description="La photographie sportive, c’est l’art de figer l’instant où tout bascule : la puissance d’un coup, la vitesse d’une action, la grâce d’un mouvement. Que ce soit en équitation, sur un terrain de football, sur un ring de boxe, sur une scène de danse... chaque discipline raconte une histoire faite de force, de dépassement et d’émotions brutes. Mon objectif est de transformer ces moments en images intenses et mémorables, qui transmettent toute l’énergie et la beauté du sport."
+                        description="La photographie sportive, c’est l’art de figer l’instant où tout bascule : la puissance d’un coup, la vitesse d’une action, la grâce d’un mouvement. Que ce soit en équitation, sur un terrain de football, sur un ring de boxe, sur une scène de danse... Chaque discipline raconte une histoire faite de force, de dépassement et d’émotions brutes. Mon objectif est de transformer ces moments en images intenses et mémorables, qui transmettent toute l’énergie et la beauté du sport."
                         price="Forfait journalier sur devis"
                         priceUnit=""
-                        :features="['Couverture complète : préparation + séance / passage en compétition','Envoie de la totalité des photos prises','De la préparation jusuq\'à la fin du passage','Action & portrait','Options vidéo (à discuter)', 'Mise à disposition d\'une galerie privée']"
+                        :features="['Couverture complète : préparation + séance / passage en compétition','Envoi de la totalité des photos prises','De la préparation jusqu\'à la fin du passage','Action & portrait','Option vidéo (à discuter)', 'Mise à disposition d\'une galerie privée']"
                         :background="sportBackground"
                         :backgroundOpacity="0.2"
                     />
@@ -42,10 +42,10 @@
                         description="Photographier les animaux, c’est saisir leur spontanéité, leur regard et leur énergie unique. Chats, chiens, chevaux ou espèces plus sauvages, chaque rencontre raconte une histoire différente, faite de complicité, de liberté ou de puissance. Mon objectif est de capturer ces instants naturels, pour que chaque image transmette toute l’authenticité et le caractère de l’animal."
                         price="50€"
                         priceUnit="À partir de"
-                        :features="['Portraits animalier','5 photos retouchées' ,'Shooting en concours','Possible à domicile ou en extérieur','Mise à disposition d\'une galerie privée']"
+                        :features="['Portraits animalier','5 photos retouchées' ,'Possibilité de shooting en concours','Possible à domicile ou en extérieur','Mise à disposition d\'une galerie privée']"
                         :background="animalBackground"
                         :backgroundOpacity="0.2"
-                        disclaimer="⚠ L'offre est évolutive en fonction de vos envies et besoins (nombre de photo, durée...) - contactez moi directement pour en discuter !"
+                        disclaimer="⚠ L'offre est évolutive en fonction de vos envies et besoins (nombre de photo, durée...) - Contactez-moi directement pour en discuter !"
                     />
 
                     <PrestationCard
@@ -53,8 +53,8 @@
                         title="Automobile"
                         description="La brillance d’une carrosserie, la précision d’une ligne, l’allure unique d’une moto ou d’une voiture… L’automobile et la moto sont bien plus que de simples bolides : elles incarnent une passion et une identité. Mon objectif est de capturer cette puissance et ce caractère, que ce soit en mouvement ou en statique, pour créer des images qui mettent en valeur à la fois la performance et l’élégance de chaque véhicule."
                         price="sur devis"
-                        priceUnit="En fonction du nombre de photos, du lieu etc..."
-                        :features="['Photos détails et plans larges', 'Envoie de la totalité des photos prises', 'Options vidéo (à discuter)', 'Possibilité de plans au drone', 'Mise à disposition d\'une galerie privée']"
+                        priceUnit="En fonction du nombre de photo, du lieu etc..."
+                        :features="['Photos détails et plans larges', 'Envoi de la totalité des photos prises', 'Option vidéo (à discuter)', 'Possibilité de plans au drone', 'Mise à disposition d\'une galerie privée']"
                         :background="automobileBackground"
                         :backgroundOpacity="0.15"
                     />
@@ -65,7 +65,7 @@
                         description="Les photos d'entreprise, c'est une manière directe et authentique de montrer ce que votre marque ou votre établissement a réellement à offrir. Que vous soyez un restaurant, une boutique, une marque ou un service, je cherche à capturer votre univers, votre identité et l'atmosphère qui vous distingue. Mon objectif est simple : créer des visuels qui servent votre communication, qui renforcent votre image et qui transmettent clairement ce que vous faites. Des photos pensées pour vos sites, vos réseaux, vos campagnes ou vos supports print…"
                         price="sur devis"
                         priceUnit="En fonction du besoin "
-                        :features="['Encadrement d\'évènement d\'entreprise, photos produit, etc...','Livraison rapide','Mise à disposition d\'une galerie privée']"
+                        :features="['Encadrement d\'événement d\'entreprise, photos produit, etc...','Livraison rapide','Mise à disposition d\'une galerie privée']"
                         :background="entrepriseBackground"
                         :backgroundOpacity="0.15"
                     />
@@ -103,7 +103,7 @@
                         <div>
                             <p class="text-gold text-4xl mb-3">📸</p>
                             <h4 class="font-normal text-lg mb-2">Expérience personnalisée</h4>
-                            <p class="text-gray-600 font-light">Chaque séance est conçue pour refléter votre personnalité, nous discutons, nous nous comprennons, nous choissisons ensemble afin d'avoir le résultat que vous souhaitez.</p>
+                            <p class="text-gray-600 font-light">Chaque séance est conçue pour refléter votre personnalité, nous discutons, nous nous comprenons, nous choisisons ensemble afin d'avoir le résultat que vous souhaitez.</p>
                         </div>
                     </div>
                 </div>
@@ -112,16 +112,24 @@
                 <div class="text-center mt-20 mb-10">
                     <h2 class="text-3xl font-light mb-4">Prêt à réserver ? Des questions ?</h2>
                     <p class="text-gray-600 font-light mb-8 text-lg">
-                        Contactez-moi sur Instagram pour réserver votre séance
+                        Contactez-moi par mail ou sur Instagram pour réserver votre séance
                     </p>
-                    <a
-                        href="https://instagram.com/oceanetorresphotographie"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="inline-block px-12 py-4 bg-black text-white hover:bg-gold transition-all duration-300 text-sm uppercase tracking-widest font-light"
-                    >
-                        Réserver via Instagram
-                    </a>
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                        <a
+                            href="mailto:oceanetorresphotographie@gmail.com"
+                            class="inline-block px-12 py-4 bg-black text-white hover:bg-gold transition-all duration-300 text-sm uppercase tracking-widest font-light"
+                        >
+                            Me contacter par mail
+                        </a>
+                        <a
+                            href="https://instagram.com/oceanetorresphotographie"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="inline-block px-12 py-4 border border-black text-black hover:border-gold hover:text-gold transition-all duration-300 text-sm uppercase tracking-widest font-light"
+                        >
+                            Me contacter sur Instagram
+                        </a>
+                    </div>
                 </div>
             </div>
         </section>
@@ -137,7 +145,7 @@
                         <h3 class="text-xl font-normal text-black mb-2">Réservation</h3>
                         <p>Les réservations se font par mail ou via Instagram, avec un acompte de 30% pour confirmer votre date.</p>
                         <p>En cas de réel imprévu, il est possible d'annuler ou de déplacer le shooting en fonction des disponibilités.</p>
-                        <p>Merci de me prévenir dans un délais maximum de 48h avant la date initiale afin que nous puissions nous réorganiser.</p>
+                        <p>Merci de me prévenir dans un délai maximum de 48h avant la date initiale afin que nous puissions nous réorganiser.</p>
                     </div>
 
                     <div>
@@ -147,7 +155,7 @@
 
                     <div>
                         <h3 class="text-xl font-normal text-black mb-2">Zone d'intervention</h3>
-                        <p>Déplacement dans toute la région Auvergne Rhône Alpes. Des frais additionels peuvent s'ajouter en fonction de la distance.</p>
+                        <p>Déplacement dans toute la région Auvergne-Rhône-Alpes. Des frais additionnels peuvent s'ajouter en fonction de la distance.</p>
                     </div>
 
                 </div>

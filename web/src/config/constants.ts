@@ -56,13 +56,7 @@ export const SOCIAL_LINKS: SocialLink[] = [
         url: 'https://www.linkedin.com/in/océane-torres/',
         icon: 'linkedin',
         ariaLabel: 'Suivez-nous sur LinkedIn',
-    },
-    {
-        name: 'Mail',
-        url: 'mailto:oceanetorresphotographie@gmail.com',
-        icon: 'mail',
-        ariaLabel: 'Envoyez moi un email',
-    },
+    }
 ]
 
 // ============================================================================
@@ -81,7 +75,7 @@ export const PORTFOLIO_CATEGORIES = [
 export const CATEGORY_DESCRIPTIONS: CategoryDescriptions = {
     Tous: "Sélectionnez une catégorie pour voir l'entièreté des photos.",
     Portraits: "Chaque portrait est une rencontre, un moment suspendu où je cherche à capturer bien plus qu'un visage. Que ce soit lors d'un concert, d'un défilé, en couple, en famille, pour une grossesse ou un portrait professionnel, je m'attache à faire ressortir l'histoire et les émotions de chacun. Mon objectif est que tu te sentes à l'aise, toi-même, pour que chaque photo reflète le meilleur de qui tu es et devienne un souvenir sincère et vivant.",
-    Sport: "La photographie sportive, c'est l'art de figer l'instant où tout bascule : la puissance d'un coup, la vitesse d'une action, la grâce d'un mouvement. Que ce soit en équitation, sur un terrain de football, sur un ring de boxe, sur une scène de danse... chaque discipline raconte une histoire faite de force, de dépassement et d'émotions brutes. Mon objectif est de transformer ces moments en images intenses et mémorables, qui transmettent toute l'énergie et la beauté du sport.",
+    Sport: "La photographie sportive, c'est l'art de figer l'instant où tout bascule : la puissance d'un coup, la vitesse d'une action, la grâce d'un mouvement. Que ce soit en équitation, sur un terrain de football, sur un ring de boxe, sur une scène de danse... Chaque discipline raconte une histoire faite de force, de dépassement et d'émotions brutes. Mon objectif est de transformer ces moments en images intenses et mémorables, qui transmettent toute l'énergie et la beauté du sport.",
     Vidéos: "La vidéo permet de raconter des histoires autrement : elle capture le mouvement, l'ambiance et les émotions d'un instant avec une intensité unique. Que ce soit des paysages, le rythme effréné d'une journée de concours équestre ou le suivi d'un athlète tout au long d'une compétition, chaque séquence est pensée pour immerger le spectateur et faire ressentir l'énergie et la beauté du moment. Mon objectif est de transformer ces instants en images vivantes, où chaque détail raconte sa propre histoire.",
     Animalier: "Photographier les animaux, c'est saisir leur spontanéité, leur regard et leur énergie unique. Chats, chiens, chevaux ou espèces plus sauvages, chaque rencontre raconte une histoire différente, faite de complicité, de liberté ou de puissance. Mon objectif est de capturer ces instants naturels, pour que chaque image transmette toute l'authenticité et le caractère de l'animal.",
     Automobile: "La brillance d'une carrosserie, la précision d'une ligne, l'allure unique d'une moto ou d'une voiture… L'automobile et la moto sont bien plus que de simples bolides : elles incarnent une passion et une identité. Mon objectif est de capturer cette puissance et ce caractère, que ce soit en mouvement ou en statique, pour créer des images qui mettent en valeur à la fois la performance et l'élégance de chaque véhicule.",
