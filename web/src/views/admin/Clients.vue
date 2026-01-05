@@ -86,7 +86,7 @@
         <div>
           <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Informations de contact</h3>
           <div class="bg-gray-50 rounded-lg p-4 space-y-2">
-            <p><span class="font-medium">Email:</span> {{ selectedClient.email }}</p>
+            <p><span class="font-medium">Mail:</span> {{ selectedClient.email }}</p>
             <p><span class="font-medium">Téléphone:</span> {{ selectedClient.phone || 'Non renseigné' }}</p>
             <p><span class="font-medium">Client depuis:</span> {{ formatDate(selectedClient.created_at) }}</p>
           </div>
@@ -154,7 +154,7 @@
         <FormField
           v-model="editForm.email"
           type="email"
-          label="Email"
+          label="Mail"
           required
         />
         <FormField

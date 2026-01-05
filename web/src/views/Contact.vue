@@ -12,7 +12,7 @@
                         <h2 class="text-3xl font-light mb-8">Restons en contact</h2>
 
                         <div class="space-y-8">
-                            <ContactItem icon="email" title="Email">
+                            <ContactItem icon="email" title="Mail">
                                 <a :href="`mailto:${CONTACT_INFO.email}`" class="hover:text-gold transition-colors">
                                     {{ CONTACT_INFO.email }}
                                 </a>
@@ -54,7 +54,7 @@
                             <div>
                                 <h4 class="font-normal text-black mb-2">Zone d'intervention</h4>
                                 <p>
-                                    Je me déplace dans toute la région Auverge Rhône Alpes. Des frais de déplacement peuvent s'appliquer au-delà de {{ BUSINESS_INFO.travelZone.free }}{{ BUSINESS_INFO.travelZone.unit }} de trajet.
+                                    Je me déplace dans toute la région Auvergne-Rhône-Alpes. Des frais de déplacement peuvent s'appliquer au-delà de {{ BUSINESS_INFO.travelZone.free }}{{ BUSINESS_INFO.travelZone.unit }} de trajet.
                                 </p>
                             </div>
 
@@ -66,14 +66,20 @@
                             </div>
                         </div>
 
-                        <div class="mt-10">
+                        <div class="mt-10 flex flex-col gap-4">
                             <a
-                                :href="SOCIAL_LINKS[0].url"
-                                target="_blank"
-                                rel="noopener noreferrer"
+                                href="mailto:oceanetorresphotographie@gmail.com"
                                 class="block w-full px-8 py-4 bg-black text-white hover:bg-gold transition-all duration-300 text-sm uppercase tracking-widest font-light text-center"
                             >
-                                Me contacter via Instagram
+                                Me contacter par mail
+                            </a>
+                            <a
+                                href="https://instagram.com/oceanetorresphotographie"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="block w-full px-8 py-4 border border-black text-black hover:border-gold hover:text-gold transition-all duration-300 text-sm uppercase tracking-widest font-light text-center"
+                            >
+                                Me contacter sur Instagram
                             </a>
                         </div>
                     </div>

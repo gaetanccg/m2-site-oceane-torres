@@ -3,7 +3,7 @@
         <!-- Main Content Section -->
         <section class="py-16 px-6 lg:px-12 bg-white">
             <div class="max-w-6xl mx-auto relative z-10">
-                <PageHeader title="À propos de moi" subtitle="Découvrez moi et parlons de vos projets ensemble !" />
+                <PageHeader title="À propos de moi" subtitle="Découvrez-moi et parlons de vos projets ensemble !" />
 
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-16 items-start lg:items-center mb-24">
                     <div class="lg:col-span-5 lg:self-center">
@@ -22,7 +22,7 @@
 
                         <div class="space-y-6 text-gray-600 font-light leading-relaxed text-lg">
                             <p>
-                                Photographe passionnée depuis plus de 4 ans, je suis maintenant professionnelle depuis 1 an. J'ai eu la chance de travailler avec plusieurs professionnels, comme une chorale (Les Choeurs Du Sud), l'équipe féminine de l'ASSE, j'ai fais quelques colaborations avec des cavaliers internationaux à EquitaLyon. J'ai aussi travaillé avec des artistes locaux comme des chanteurs et un restaurateur.
+                                Photographe passionnée depuis plus de 4 ans, je suis maintenant professionnelle depuis 1 an. J'ai eu la chance de travailler avec plusieurs professionnels, comme une chorale (Les Choeurs Du Sud), l'équipe féminine de l'ASSE, j'ai fait quelques collaborations avec des cavaliers internationaux à EquitaLyon. J'ai aussi travaillé avec des artistes locaux comme des chanteurs et un restaurateur.
                             </p>
                             <p>
                                 Bien sûr, en plus des professionnels et artistes, j'ai également travaillé avec de nombreux particuliers pour des séances portraits, couple, famille, sport, moto, animaux de compagnie et événements divers.
@@ -32,18 +32,24 @@
                                 La précision d'un mouvement, la maîtrise d'une action, la beauté d'un regard, d'un geste, d'un moment...
                             </p>
                             <p>
-                                Que ce soit pour un portrait, une séance en couple, un sport ou tout autre événement important de votre vie, je m'engage à créer des images intemporelles que vous chérirez pour toujours.
+                                Que ce soit pour un portrait, une séance en couple, du sport ou tout autre événement important de votre vie, je m'engage à créer des images intemporelles que vous chérirez pour toujours.
                             </p>
                         </div>
 
-                        <div class="mt-10">
+                        <div class="mt-10 flex flex-col sm:flex-row gap-4">
                             <a
-                                :href="SOCIAL_LINKS[0].url"
-                                target="_blank"
-                                rel="noopener noreferrer"
+                                href="mailto:oceanetorresphotographie@gmail.com"
                                 class="inline-block px-8 py-3 bg-black text-white hover:bg-gold transition-all duration-300 text-sm uppercase tracking-widest font-light"
                             >
-                                Me contacter
+                                Me contacter par mail
+                            </a>
+                            <a
+                                href="https://instagram.com/oceanetorresphotographie"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="inline-block px-8 py-3 border border-black text-black hover:border-gold hover:text-gold transition-all duration-300 text-sm uppercase tracking-widest font-light"
+                            >
+                                Me contacter sur Instagram
                             </a>
                         </div>
                     </div>
@@ -80,7 +86,6 @@
 
 <script setup lang="ts">
 import {h, type FunctionalComponent} from 'vue'
-import {SOCIAL_LINKS} from '@/config/constants'
 import PageHeader from '@/components/PageHeader.vue'
 import CtaSection from '@/components/CtaSection.vue'
 

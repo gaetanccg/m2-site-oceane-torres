@@ -20,7 +20,7 @@
                         Voir le portfolio
                     </router-link>
                     <a
-                        :href="SOCIAL_LINKS[3].url"
+                        href="mailto:oceanetorresphotographie@gmail.com"
                         target="_blank"
                         rel="noopener noreferrer"
                         class="px-10 py-4 border-2 border-white text-white hover:bg-white hover:text-black transition-all duration-300 text-sm uppercase tracking-widest font-light"
