@@ -103,7 +103,7 @@
                         <div>
                             <p class="text-gold text-4xl mb-3">📸</p>
                             <h4 class="font-normal text-lg mb-2">Expérience personnalisée</h4>
-                            <p class="text-gray-600 font-light">Chaque séance est conçue pour refléter votre personnalité, nous discutons, nous nous comprenons, nous choisisons ensemble afin d'avoir le résultat que vous souhaitez.</p>
+                            <p class="text-gray-600 font-light">Chaque séance est conçue pour refléter votre personnalité, nous discutons, nous nous comprenons, nous choisissons ensemble afin d'avoir le résultat que vous souhaitez.</p>
                         </div>
                     </div>
                 </div>

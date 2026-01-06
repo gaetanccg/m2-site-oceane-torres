@@ -5,7 +5,7 @@
                 <div class="text-center mb-12">
                     <h1 class="text-4xl font-light mb-4">Galerie Privée</h1>
                     <p class="text-gray-600 font-light">
-                        Entrez le code a 6 caracteres que vous avez recu pour acceder a votre galerie.
+                        Entrez le code à 6 caractères que vous avez reçu pour accéder à votre galerie.
                     </p>
                 </div>
 
@@ -36,7 +36,7 @@
 
                     <div class="mt-8 pt-8 border-t border-gray-100 text-center">
                         <p class="text-sm text-gray-500 font-light">
-                            Vous n'avez pas de code ? Contactez votre photographe.
+                            Vous n'avez pas de code ? Contactez-moi.
                         </p>
                     </div>
                 </div>

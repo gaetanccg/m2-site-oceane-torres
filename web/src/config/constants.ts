@@ -36,6 +36,7 @@ export const NAV_LINKS: NavLink[] = [
 export const CONTACT_INFO: ContactInfo = {
     email: 'oceanetorresphotographie@gmail.com',
     instagram: 'oceanetorresphotographie',
+    phone: '06 11 01 44 77',
 }
 
 export const SOCIAL_LINKS: SocialLink[] = [

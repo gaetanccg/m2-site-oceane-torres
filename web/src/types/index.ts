@@ -89,7 +89,7 @@ export interface SocialLink {
 export interface ContactInfo {
     email: string
     instagram: string
-    phone?: string
+    phone: string
     address?: string
 }
 

@@ -106,7 +106,7 @@ import PageHeader from '@/components/PageHeader.vue'
 import {SOCIAL_LINKS, CONTACT_INFO} from '@/config/constants'
 
 const features = [
-    'Montant de votre choix (à partir de 50€)',
+    'Montant de votre choix (à partir de 35€)',
     'Valable sur tous les types de shooting',
     'Carte personnalisée avec le nom du destinataire',
     'Laissez un message personnalisé pour offrir',
