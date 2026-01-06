@@ -29,10 +29,16 @@
                                 </a>
                             </ContactItem>
 
+                            <ContactItem icon="phone" title="Téléphone">
+                                <a :href="`tel:${CONTACT_INFO.phone.replace(/\s/g, '')}`" class="hover:text-gold transition-colors">
+                                    {{ CONTACT_INFO.phone }}
+                                </a>
+                            </ContactItem>
+
                             <div>
                                 <h3 class="text-xl font-normal mb-3">Réponse rapide</h3>
                                 <p class="text-gray-600 font-light leading-relaxed">
-                                    Je réponds généralement sous 24h. Pour une réponse encore plus rapide, n'hésitez pas à me contacter directement via Instagram.
+                                    Je réponds généralement sous 24h. Vous pouvez me contacter directement par mail ou sur Instagram.
                                 </p>
                             </div>
                         </div>
@@ -44,7 +50,7 @@
 
                         <div class="space-y-6 text-gray-600 font-light">
                             <div>
-                                <h4 class="font-normal text-black mb-2">Horaires</h4>
+                                <h4 class="font-normal text-black mb-2">Horaires de contact</h4>
                                 <p>
                                     {{ BUSINESS_INFO.workingHours.days }}<br>
                                     {{ BUSINESS_INFO.workingHours.hours }}
@@ -111,7 +117,7 @@ import PageHeader from '@/components/PageHeader.vue'
 import {IconInstagram} from '@/components/icons'
 
 interface ContactItemProps {
-    icon: 'email' | 'instagram'
+    icon: 'email' | 'instagram' | 'phone'
     title: string
 }
 
@@ -120,7 +126,10 @@ const ContactItem: FunctionalComponent<ContactItemProps> = (props, {slots}) => {
         email: () => h('svg', {class: 'w-6 h-6 text-gold mr-3', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24'}, [
             h('path', {'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z'})
         ]),
-        instagram: () => h(IconInstagram, {class: 'w-6 h-6 text-gold mr-3'})
+        instagram: () => h(IconInstagram, {class: 'w-6 h-6 text-gold mr-3'}),
+        phone: () => h('svg', {class: 'w-6 h-6 text-gold mr-3', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24'}, [
+            h('path', {'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z'})
+        ])
     }
 
     return h('div', null, [

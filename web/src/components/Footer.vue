@@ -14,6 +14,9 @@
                             <p class="text-gray-400 font-light text-sm">
                                 {{ CONTACT_INFO.email }}
                             </p>
+                            <p class="text-gray-400 font-light text-sm">
+                                {{ CONTACT_INFO.phone }}
+                            </p>
                         </div>
                     </div>
                 </div>
