@@ -130,7 +130,7 @@ const faqs = [
         ],
     },
     {
-        question: 'Sur quels shootings peut-elle être utilisée ?',
+        question: 'Sur quels shooting peut-elle être utilisée ?',
         answers: [
             "La carte cadeau est utilisable sur tous les types de shooting : portrait, couple, famille, animaux, sport, automobile... Le destinataire choisira librement quand il me contactera !",
         ],
