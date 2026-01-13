@@ -51,7 +51,7 @@
                             J'ai envie de créer des images qui racontent, qui touchent, qui marquent. Je propose un accompagnement qui reflète ce que j'aime réellement capturer : la spontanéité, l'émotion, l'énergie, et tout ce qui raconte une histoire.
                         </p>
                         <p class="text-gray-600 font-light leading-relaxed mb-6 text-lg">
-                            Je réalise des photos animalières, des reportages sportifs, des portraits sous toutes leurs formes : lors de concerts, en séance individuelle, en couple, pendant une grossesse… mais aussi des contenus pour les entreprises (produits, restaurants, mise en d'un savoir faire…). J'accompagne également celles et ceux qui souhaitent des photos professionnelles pour leur CV ou leurs projets personnels, sans oublier les shooting automobiles et la création de vidéos.
+                            Je réalise des photos animalières, des reportages sportifs, des portraits sous toutes leurs formes : lors de concerts, en séance individuelle, en couple, pendant une grossesse… mais aussi des contenus pour les entreprises (produits, restaurants, mise en avant d'un savoir-faire…). J'accompagne également celles et ceux qui souhaitent des photos professionnelles pour leur CV ou leurs projets personnels, sans oublier les shooting automobiles et la création de vidéos.
                         </p>
                         <p class="text-gray-600 font-light leading-relaxed mb-8 text-lg">
                             Mon objectif est simple : créer des images qui vous ressemblent, qui valorisent vos projets et qui laissent une trace.
