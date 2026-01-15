@@ -20,12 +20,12 @@
                         Voir le portfolio
                     </router-link>
                     <a
-                        :href="SOCIAL_LINKS[0].url"
+                        href="mailto:oceanetorresphotographie@gmail.com"
                         target="_blank"
                         rel="noopener noreferrer"
                         class="px-10 py-4 border-2 border-white text-white hover:bg-white hover:text-black transition-all duration-300 text-sm uppercase tracking-widest font-light"
                     >
-                        Me contacter
+                        Me contacter par mail
                     </a>
                 </div>
             </div>
@@ -51,7 +51,7 @@
                             J'ai envie de créer des images qui racontent, qui touchent, qui marquent. Je propose un accompagnement qui reflète ce que j'aime réellement capturer : la spontanéité, l'émotion, l'énergie, et tout ce qui raconte une histoire.
                         </p>
                         <p class="text-gray-600 font-light leading-relaxed mb-6 text-lg">
-                            Je réalise des photos animalières, des reportages sportifs, des portraits sous toutes leurs formes : lors de concerts, en séance individuelle, en couple, pendant une grossesse… mais aussi des contenus pour les entreprises (produits, restaurants, mises en avant visuelles…). J'accompagne également celles et ceux qui souhaitent des photos professionnelles pour leur CV ou leurs projets personnels, sans oublier les shootings automobiles et la création de vidéos.
+                            Je réalise des photos animalières, des reportages sportifs, des portraits sous toutes leurs formes : lors de concerts, en séance individuelle, en couple, pendant une grossesse… mais aussi des contenus pour les entreprises (produits, restaurants, mise en avant d'un savoir-faire…). J'accompagne également celles et ceux qui souhaitent des photos professionnelles pour leur CV ou leurs projets personnels, sans oublier les shooting automobiles et la création de vidéos.
                         </p>
                         <p class="text-gray-600 font-light leading-relaxed mb-8 text-lg">
                             Mon objectif est simple : créer des images qui vous ressemblent, qui valorisent vos projets et qui laissent une trace.
@@ -109,15 +109,14 @@
 
         <!-- CTA Section -->
         <CtaSection
-            title="Prête à capturer vos souvenirs ?"
-            subtitle="Contactez-moi sur Instagram pour discuter de votre projet"
+            title="Prêt à capturer vos souvenirs ?"
+            subtitle="Contactez-moi par mail ou sur Instagram pour discuter de votre projet"
         />
     </div>
 </template>
 
 <script setup lang="ts">
 import type {GalleryItem, ServiceIconType} from '@/types'
-import {SOCIAL_LINKS} from '@/config/constants'
 import PrestationCardMini from '@/components/PrestationCardMini.vue'
 import MasonryGallery from '@/components/MasonryGallery.vue'
 import CtaSection from '@/components/CtaSection.vue'
@@ -160,13 +159,13 @@ const featuredPrestations: FeaturedPrestation[] = [
     {
         icon: 'sport',
         title: 'Sport',
-        description: "Figer la puissance et l'intensité du mouvement : équitation, football, boxe, danse... chaque discipline mérite ses images.",
-        features: ['Couverture complète', 'Toutes les photos envoyées', 'Action & portrait', 'Options vidéo'],
+        description: "Figer la puissance et l'intensité du mouvement : équitation, football, boxe, danse... Chaque discipline mérite ses images.",
+        features: ['Couverture complète', 'Toutes les photos envoyées', 'Action & portrait', 'Option vidéo'],
     },
     {
         icon: 'video',
         title: 'Vidéo',
-        description: 'Donner vie à vos projets en images animées : contenus réseaux sociaux, montages dynamiques et créations sur mesure.',
+        description: 'Donnez vie à vos projets en images animées : contenu réseaux sociaux, montages dynamiques et création sur mesure.',
         features: ['Contenu réseaux sociaux', 'Montage vidéo', 'Création sur mesure'],
     },
 ]

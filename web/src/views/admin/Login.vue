@@ -17,7 +17,7 @@
           v-model="email"
           type="email"
           id="email"
-          label="Email"
+          label="Mail"
           placeholder="admin@example.com"
           required
           :error="errors.email"
@@ -93,7 +93,7 @@ async function handleSubmit() {
 
   // Validate
   if (!email.value) {
-    errors.email = "L'email est requis"
+    errors.email = "Le mail est requis"
     return
   }
   if (!password.value) {

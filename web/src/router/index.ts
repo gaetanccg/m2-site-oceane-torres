@@ -31,7 +31,7 @@ const AdminPrestations = () => import('@/views/admin/Prestations.vue')
 const AdminReservations = () => import('@/views/admin/Reservations.vue')
 const AdminGiftCards = () => import('@/views/admin/GiftCards.vue')
 
-const routes: RouteRecordRaw[] = [
+export const routes: RouteRecordRaw[] = [
     {
         path: '/',
         name: 'home',
@@ -95,24 +95,24 @@ const routes: RouteRecordRaw[] = [
             description: 'Mentions légales du site Océane Torres Photographie.'
         }
     },
-    // Gallery access routes
+    // Gallery access routes (noindex pour éviter l'indexation de pages dynamiques)
     {
         path: '/gallery',
         name: 'gallery-access',
         component: GalleryAccess,
-        meta: {title: 'Accès Galerie'}
+        meta: {title: 'Accès Galerie', robots: 'noindex, nofollow'}
     },
     {
         path: '/gallery/download/:token',
         name: 'download-gallery',
         component: DownloadGallery,
-        meta: {title: 'Téléchargement'}
+        meta: {title: 'Téléchargement', robots: 'noindex, nofollow'}
     },
     {
         path: '/gallery/:code',
         name: 'protected-gallery',
         component: ProtectedGallery,
-        meta: {title: 'Galerie'}
+        meta: {title: 'Galerie', robots: 'noindex, nofollow'}
     },
     // Admin routes
     {
@@ -219,6 +219,13 @@ router.afterEach((to) => {
     const canonical = document.querySelector('link[rel="canonical"]')
     if (canonical) {
         canonical.setAttribute('href', `https://oceanetorresphotographie.fr${to.path}`)
+    }
+
+    // Update robots meta tag
+    const robotsContent = to.meta.robots as string | undefined
+    let robotsMeta = document.querySelector('meta[name="robots"]')
+    if (robotsMeta) {
+        robotsMeta.setAttribute('content', robotsContent || 'index, follow')
     }
 })
 

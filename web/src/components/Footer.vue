@@ -7,12 +7,15 @@
                     <div class="flex items-center space-x-4">
                         <img src="/logo-oceane-white.png" class="h-20 w-auto object-contain" alt="Logo Océane" />
                         <div>
-                            <h3 class="text-2xl font-light tracking-wider mb-1">OCÉANE</h3>
+                            <h3 class="text-2xl font-light tracking-wider mb-1">OCÉANE TORRES</h3>
                             <p class="text-gray-400 font-light text-sm">
                                 Photographe professionnelle
                             </p>
                             <p class="text-gray-400 font-light text-sm">
                                 {{ CONTACT_INFO.email }}
+                            </p>
+                            <p class="text-gray-400 font-light text-sm">
+                                {{ CONTACT_INFO.phone }}
                             </p>
                         </div>
                     </div>
@@ -41,7 +44,7 @@
             </div>
 
             <div class="border-t border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center text-sm text-gray-400 font-light">
-                <p>&copy; {{ currentYear }} Océane Photographie. Tous droits réservés.</p>
+                <p>&copy; {{ currentYear }} Océane Torres Photographie. Tous droits réservés.</p>
                 <router-link to="/mentions-legales" class="hover:text-gold transition-colors mt-4 md:mt-0">
                     Mentions légales
                 </router-link>

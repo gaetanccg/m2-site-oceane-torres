@@ -223,7 +223,7 @@ curl https://api.oceanetorresphotographie.fr/api/health
 ### Logs
 
 - Render Dashboard → Logs (temps reel)
-- Pour Laravel : `LOG_CHANNEL=stderr` envoie les logs dans Render
+- Pour Laravel : `LOG_CHANNEL=stderr` envoi les logs dans Render
 
 ### Migrations
 
