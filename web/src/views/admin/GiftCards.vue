@@ -208,7 +208,7 @@
         <FormField
           v-model="editForm.recipient_email"
           type="email"
-          label="Email du destinataire"
+          label="Mail du destinataire"
         />
 
         <FormField

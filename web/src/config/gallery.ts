@@ -119,5 +119,5 @@ export function getGalleryItems(): GalleryItem[] {
 }
 
 export function getCategories(): string[] {
-    return ['Portraits', 'Sport', 'Animalier', 'Automobile', 'Entreprise', 'Videos']
+    return ['Portraits', 'Sport', 'Animalier', 'Automobile', 'Entreprise', 'Vidéos']
 }
