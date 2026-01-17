@@ -58,6 +58,10 @@ Route::get('/photos/{photo}/download', [PhotoController::class, 'download']);
 // Contact
 Route::post('/contact', [ContactController::class, 'send']);
 
+// Event Galleries (public)
+Route::get('/events', [GalleryController::class, 'eventIndex']);
+Route::get('/events/{gallery}', [GalleryController::class, 'eventShow']);
+
 // Gift cards (public)
 Route::get('/gift-cards/validate/{code}', [GiftCardController::class, 'validate']);
 
@@ -136,6 +140,14 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::put('/photos/{photo}/toggle-downloadable', [PhotoController::class, 'toggleDownloadable']);
     Route::put('/photos/bulk-downloadable', [PhotoController::class, 'bulkToggleDownloadable']);
     Route::put('/photos/sort-order', [PhotoController::class, 'updateSortOrder']);
+
+    // Event Galleries management
+    Route::get('/events', [GalleryController::class, 'adminEventIndex']);
+    Route::get('/events/{gallery}', [GalleryController::class, 'adminEventShow']);
+    Route::post('/events', [GalleryController::class, 'storeEvent']);
+    Route::put('/events/{gallery}', [GalleryController::class, 'updateEvent']);
+    Route::delete('/events/{gallery}', [GalleryController::class, 'destroyEvent']);
+    Route::post('/events/{gallery}/photos', [PhotoController::class, 'store']);
 
     // Gift cards
     Route::get('/gift-cards', [GiftCardController::class, 'index']);

@@ -23,9 +23,10 @@ export const COLORS = {
 export const NAV_LINKS: NavLink[] = [
     {name: 'Accueil', path: '/'},
     {name: 'Portfolio', path: '/portfolio'},
+    {name: 'Evenements', path: '/evenements'},
     {name: 'Prestations', path: '/prestations'},
     {name: 'Bons Cadeaux', path: '/bons'},
-    {name: 'À propos', path: '/a-propos'},
+    {name: 'A propos', path: '/a-propos'},
     {name: 'Contact', path: '/contact'},
 ]
 

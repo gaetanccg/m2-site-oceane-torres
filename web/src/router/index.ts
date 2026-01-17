@@ -22,6 +22,10 @@ const GalleryAccess = () => import('@/views/GalleryAccess.vue')
 const ProtectedGallery = () => import('@/views/ProtectedGallery.vue')
 const DownloadGallery = () => import('@/views/DownloadGallery.vue')
 
+// Event galleries (public)
+const Events = () => import('@/views/Events.vue')
+const EventGallery = () => import('@/views/EventGallery.vue')
+
 // Admin pages
 const AdminLogin = () => import('@/views/admin/Login.vue')
 const AdminDashboard = () => import('@/views/admin/Dashboard.vue')
@@ -30,6 +34,7 @@ const AdminClients = () => import('@/views/admin/Clients.vue')
 const AdminPrestations = () => import('@/views/admin/Prestations.vue')
 const AdminReservations = () => import('@/views/admin/Reservations.vue')
 const AdminGiftCards = () => import('@/views/admin/GiftCards.vue')
+const AdminEventGalleries = () => import('@/views/admin/EventGalleries.vue')
 
 export const routes: RouteRecordRaw[] = [
     {
@@ -114,6 +119,25 @@ export const routes: RouteRecordRaw[] = [
         component: ProtectedGallery,
         meta: {title: 'Galerie', robots: 'noindex, nofollow'}
     },
+    // Event galleries (public)
+    {
+        path: '/evenements',
+        name: 'events',
+        component: Events,
+        meta: {
+            title: 'Galeries d\'evenements',
+            description: 'Decouvrez les galeries photos des evenements captures par Oceane Torres. Mariages, baptemes, anniversaires et celebrations en Loire et Lyon.'
+        }
+    },
+    {
+        path: '/evenements/:id',
+        name: 'event-gallery',
+        component: EventGallery,
+        meta: {
+            title: 'Galerie Evenement',
+            description: 'Galerie photos d\'evenement par Oceane Torres Photographie.'
+        }
+    },
     // Admin routes
     {
         path: '/admin/login',
@@ -156,6 +180,12 @@ export const routes: RouteRecordRaw[] = [
         name: 'admin-gift-cards',
         component: AdminGiftCards,
         meta: {title: 'Bons Cadeaux', layout: 'admin', requiresAuth: true}
+    },
+    {
+        path: '/admin/events',
+        name: 'admin-events',
+        component: AdminEventGalleries,
+        meta: {title: 'Galeries Evenements', layout: 'admin', requiresAuth: true}
     },
     // Catch-all redirect to home
     {
