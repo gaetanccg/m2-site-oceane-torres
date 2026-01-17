@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Gallery;
 use App\Models\Photo;
-use App\Services\SupabaseStorageService;
+use App\Services\MinioStorageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -26,26 +26,26 @@ class PhotoController extends Controller
             'photos.*' => ['required', 'file', 'mimes:jpeg,png,jpg,gif,webp', 'max:51200'], // 50MB max per file
         ]);
 
-        $storageService = new SupabaseStorageService();
+        $storageService = new MinioStorageService();
         $uploadedPhotos = [];
         $errors = [];
 
         foreach ($request->file('photos') as $file) {
             try {
-                // Upload to Supabase
+                // Upload to MinIO
                 $result = $storageService->uploadPhoto($file, $gallery->id);
 
                 if ($result) {
                     // Create photo entry in database
                     $photo = $gallery->photos()->create([
-                        'file_path' => $result['url'],
+                        'file_path' => $result['path'],
                         'title' => pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME),
                         'is_downloadable' => false,
                         'metadata' => [
                             'original_filename' => $file->getClientOriginalName(),
                             'size' => $file->getSize(),
                             'mime_type' => $file->getMimeType(),
-                            'supabase_path' => $result['path'],
+                            'storage_path' => $result['path'],
                         ],
                     ]);
 
@@ -68,11 +68,11 @@ class PhotoController extends Controller
 
     public function destroy(Photo $photo): JsonResponse
     {
-        // Delete from Supabase storage
-        $supabasePath = $photo->metadata['supabase_path'] ?? null;
-        if ($supabasePath) {
-            $storageService = new SupabaseStorageService();
-            $storageService->deletePhoto($supabasePath);
+        // Delete from MinIO storage
+        $storagePath = $photo->metadata['storage_path'] ?? $photo->metadata['supabase_path'] ?? $photo->file_path;
+        if ($storagePath) {
+            $storageService = new MinioStorageService();
+            $storageService->deletePhoto($storagePath);
         }
 
         $photo->delete();
@@ -110,8 +110,9 @@ class PhotoController extends Controller
             ], 403);
         }
 
-        $storageService = new SupabaseStorageService();
-        $signedUrl = $storageService->getSignedUrl($photo->file_path, 300);
+        $storageService = new MinioStorageService();
+        $storagePath = $photo->metadata['storage_path'] ?? $photo->metadata['supabase_path'] ?? $photo->file_path;
+        $signedUrl = $storageService->getSignedUrl($storagePath, 300);
 
         if (!$signedUrl) {
             return response()->json([

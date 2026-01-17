@@ -172,6 +172,7 @@ export interface AdminPhoto {
     gallery_id: string
     path: string
     file_path?: string
+    display_url?: string
     thumbnail_path?: string
     watermarked_path?: string
     original_filename?: string

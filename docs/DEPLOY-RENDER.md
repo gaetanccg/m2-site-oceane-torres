@@ -12,9 +12,10 @@ api.oceanetorresphotographie.fr (API)
     └── Web Service (Laravel/PHP)
 
 Supabase (externe)
-    ├── PostgreSQL Database
-    ├── Storage (photos)
-    └── Edge Functions
+    └── PostgreSQL Database
+
+MinIO (NAS via Cloudflare Tunnel)
+    └── Storage S3 (photos) - s3.oceanetorresphotographie.fr
 ```
 
 ---
@@ -78,11 +79,17 @@ DB_DATABASE=postgres
 DB_USERNAME=postgres
 DB_PASSWORD=votre_password_supabase
 
-# Supabase
+# MinIO Storage (S3 compatible)
+MINIO_ENDPOINT=https://s3.oceanetorresphotographie.fr
+MINIO_ACCESS_KEY=votre_access_key
+MINIO_SECRET_KEY=votre_secret_key
+MINIO_BUCKET=galleries
+MINIO_REGION=us-east-1
+
+# Supabase (database only)
 SUPABASE_URL=https://xxxx.supabase.co
 SUPABASE_KEY=votre_anon_key
 SUPABASE_SERVICE_KEY=votre_service_role_key
-SUPABASE_EDGE_FUNCTION_URL=https://xxxx.supabase.co/functions/v1/cleanup-gallery-files
 
 # Session & Cache (file car pas de table sessions)
 SESSION_DRIVER=file
@@ -170,28 +177,29 @@ Dans votre registrar DNS :
 
 ---
 
-## 4. Supabase - Configuration Production
+## 4. Services externes
 
-### 4.1 Database
+### 4.1 Supabase (Database)
 
 1. Supabase Dashboard → Settings → Database
 2. Copier le **Connection string** (mode: URI)
 3. Utiliser les credentials dans les variables d'environnement Render
 
-### 4.2 Storage CORS
+### 4.2 MinIO (Storage)
 
-Supabase → Storage → Policies, verifier que les buckets autorisent les origines :
+Le stockage des photos est gere par MinIO sur ton NAS, accessible via Cloudflare Tunnel.
 
-- `https://oceanetorresphotographie.fr`
-- `https://api.oceanetorresphotographie.fr`
+**Prerequis :**
+- Tunnel Cloudflare configure pour `s3.oceanetorresphotographie.fr`
+- Bucket `galleries` cree dans MinIO
+- Access Key / Secret Key configures
 
-### 4.3 Edge Function
-
-La fonction `cleanup-gallery-files` doit etre deployee :
-
+**Verifier la connectivite :**
 ```bash
-supabase functions deploy cleanup-gallery-files
+curl -I https://s3.oceanetorresphotographie.fr/minio/health/live
 ```
+
+> Note: Les Edge Functions Supabase ne sont plus utilisees. Le nettoyage des fichiers est gere directement par Laravel.
 
 ---
 
@@ -202,8 +210,9 @@ supabase functions deploy cleanup-gallery-files
 - [ ] `https://oceanetorresphotographie.fr` charge le frontend
 - [ ] `https://api.oceanetorresphotographie.fr` repond (test: `/api/galleries`)
 - [ ] Login admin fonctionne
-- [ ] Upload de photos fonctionne
-- [ ] Suppression de galerie nettoie le storage
+- [ ] Upload de photos fonctionne (vers MinIO)
+- [ ] Affichage des photos fonctionne (signed URLs MinIO)
+- [ ] Suppression de galerie nettoie le storage MinIO
 - [ ] HTTPS actif sur les deux domaines
 
 ### Test API
@@ -276,8 +285,10 @@ php artisan view:clear
 
 ### Photos ne s'affichent pas
 
-1. Verifier `VITE_SUPABASE_URL` et `VITE_SUPABASE_ANON_KEY`
-2. Verifier les policies Storage dans Supabase
+1. Verifier les variables MinIO (`MINIO_ENDPOINT`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`)
+2. Verifier que le bucket `galleries` existe dans MinIO
+3. Verifier que le tunnel Cloudflare est actif pour `s3.oceanetorresphotographie.fr`
+4. Tester la connectivite : `curl -I https://s3.oceanetorresphotographie.fr/minio/health/live`
 
 ### Cold start lent (plan Free)
 
