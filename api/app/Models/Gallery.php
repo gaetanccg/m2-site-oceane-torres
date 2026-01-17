@@ -17,12 +17,11 @@ class Gallery extends Model
         'user_id',
         'title',
         'description',
+        'event_date',
+        'event_link',
         'type',
         'access_token',
         'share_code',
-        'expiration_at',
-        'cover_image',
-        'is_active',
         'last_viewed_at',
         'views_count',
     ];
@@ -30,9 +29,8 @@ class Gallery extends Model
     protected function casts(): array
     {
         return [
-            'expiration_at' => 'datetime',
+            'event_date' => 'date',
             'last_viewed_at' => 'datetime',
-            'is_active' => 'boolean',
             'views_count' => 'integer',
         ];
     }
@@ -42,14 +40,12 @@ class Gallery extends Model
         parent::boot();
 
         static::creating(function ($gallery) {
-            // All galleries get both access_token and share_code
             if (empty($gallery->access_token)) {
                 $gallery->access_token = Str::random(64);
             }
             if (empty($gallery->share_code)) {
                 $gallery->share_code = self::generateUniqueShareCode();
             }
-            // Default type to private
             if (empty($gallery->type)) {
                 $gallery->type = 'private';
             }
@@ -83,22 +79,10 @@ class Gallery extends Model
         return $this->hasMany(Photo::class);
     }
 
-    public function isExpired(): bool
-    {
-        if ($this->expiration_at === null) {
-            return false;
-        }
-        return $this->expiration_at->isPast();
-    }
-
     public function isAccessible(?string $token = null): bool
     {
         if ($this->type === 'public') {
             return true;
-        }
-
-        if ($this->isExpired()) {
-            return false;
         }
 
         return $token === $this->access_token;
@@ -112,11 +96,6 @@ class Gallery extends Model
     public function scopePrivate($query)
     {
         return $query->where('type', 'private');
-    }
-
-    public function scopeActive($query)
-    {
-        return $query->where('is_active', true);
     }
 
     public function scopeByShareCode($query, string $code)
@@ -137,16 +116,6 @@ class Gallery extends Model
     public function getDownloadablePhotosCountAttribute(): int
     {
         return $this->photos()->where('is_downloadable', true)->count();
-    }
-
-    public function getCoverImageAttribute($value): ?string
-    {
-        if ($value) {
-            return $value;
-        }
-
-        $firstPhoto = $this->photos()->ordered()->first();
-        return $firstPhoto?->file_path;
     }
 
     public function getLikedPhotosCountAttribute(): int

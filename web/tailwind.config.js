@@ -11,7 +11,8 @@ export default {
                 black: '#0a0708',
                 gray: '#aaaaaa',
                 grey: '#aaaaaa',
-                gold: '#dcb253'
+                gold: '#dcb253',
+                cream: '#faf8f5'
             }
         }
     },

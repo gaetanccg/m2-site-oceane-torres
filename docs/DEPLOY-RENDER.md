@@ -126,23 +126,23 @@ LOG_LEVEL=error
 2. Connecter le repository GitHub
 3. Configuration :
 
-| Parametre         | Valeur                         |
-|-------------------|--------------------------------|
-| Name              | `oceane-torres-web`            |
-| Branch            | `main`                         |
-| Root Directory    | `web`                          |
-| Build Command     | `npm install && npm run build` |
-| Publish Directory | `dist`                         |
+| Parametre         | Valeur                                    |
+|-------------------|-------------------------------------------|
+| Name              | `oceane-torres-web`                       |
+| Branch            | `main`                                    |
+| Root Directory    | `web`                                     |
+| Build Command     | `npm install && npm run build:prerender`  |
+| Publish Directory | `dist`                                    |
+
+> **Prerendering SEO** : Le script `build:prerender` genere des pages HTML statiques pour les routes publiques (accueil, prestations, contact, etc.). Cela permet a Google d'indexer le contenu sans JavaScript.
 
 ### 2.2 Variables d'environnement Frontend
 
 ```env
 VITE_API_URL=https://api.oceanetorresphotographie.fr
-VITE_SUPABASE_URL=https://ekhlybdoblhjigpnpbff.supabase.co
-VITE_SUPABASE_ANON_KEY=votre_anon_key
 ```
 
-### 2.3 Configurer les Redirects (SPA)
+### 2.3 Configurer les Redirects (SPA + Prerendering)
 
 Creer le fichier `web/public/_redirects` :
 

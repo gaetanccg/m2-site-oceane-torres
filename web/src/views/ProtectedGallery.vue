@@ -1,5 +1,5 @@
 <template>
-    <div class="pt-20 min-h-screen bg-gray-50">
+    <div class="pt-20 min-h-screen bg-cream">
         <!-- Loading state -->
         <div v-if="isLoading" class="flex items-center justify-center py-32">
             <div class="animate-spin w-8 h-8 border-2 border-gold border-t-transparent rounded-full" />
@@ -18,57 +18,101 @@
 
         <!-- Gallery content -->
         <template v-else-if="gallery">
+            <!-- Gallery Header -->
+            <section class="py-12 px-6 lg:px-12 bg-white border-b border-gold">
+                <div class="max-w-4xl mx-auto text-center">
+                    <h1 class="text-4xl md:text-5xl font-light mb-4">{{ gallery.title }}</h1>
+                    <p v-if="gallery.description" class="text-gray-600 font-light text-lg max-w-2xl mx-auto mb-2">
+                        {{ gallery.description }}
+                    </p>
+                    <p class="text-sm text-gray-400">
+                        {{ gallery.photos?.length || 0 }} photo(s)
+                    </p>
+                </div>
+            </section>
+
+            <!-- How it works -->
+            <section class="py-10 px-6 lg:px-12 bg-gradient-to-b from-white to-cream">
+                <div class="max-w-5xl mx-auto">
+                    <h2 class="text-2xl md:text-3xl font-light text-center mb-10 text-gray-800">
+                        Comment fonctionne votre galerie ?
+                    </h2>
+
+                    <div class="grid md:grid-cols-3 gap-6 md:gap-8">
+                        <!-- Step 1 -->
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                            <div class="w-10 h-10 bg-gold/10 rounded-full flex items-center justify-center mb-4">
+                                <span class="text-gold font-semibold">1</span>
+                            </div>
+                            <h3 class="text-lg font-medium mb-3 text-gray-800">Parcourez et likez vos photos préférées</h3>
+                            <p class="text-gray-600 text-sm leading-relaxed">
+                                Cliquez sur le cœur <span class="text-red-500">♥</span> pour mettre un j'aime sur les photos que vous souhaitez. Vous pouvez en sélectionner autant que vous voulez !
+                            </p>
+                        </div>
+
+                        <!-- Step 2 -->
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                            <div class="w-10 h-10 bg-gold/10 rounded-full flex items-center justify-center mb-4">
+                                <span class="text-gold font-semibold">2</span>
+                            </div>
+                            <h3 class="text-lg font-medium mb-3 text-gray-800">Contactez-moi quand vous avez terminé</h3>
+                            <p class="text-gray-600 text-sm leading-relaxed">
+                                Une fois que vous avez fini de parcourir la galerie, faites-moi signe pour que je sache pour quelle offre vous souhaitez opter 😉
+                            </p>
+                        </div>
+
+                        <!-- Step 3 -->
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                            <div class="w-10 h-10 bg-gold/10 rounded-full flex items-center justify-center mb-4">
+                                <span class="text-gold font-semibold">3</span>
+                            </div>
+                            <h3 class="text-lg font-medium mb-3 text-gray-800">J'identifie les photos que vous aimez ✨</h3>
+                            <p class="text-gray-600 text-sm leading-relaxed">
+                                De mon côté, je verrai les photos que vous avez aimées. Je pourrai alors les retoucher, les imprimer, ou simplement les mettre à disposition en téléchargement.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Photos Gallery -->
             <section class="py-12 px-6 lg:px-12">
                 <div class="max-w-7xl mx-auto">
-                    <!-- Header -->
-                    <div class="text-center mb-12">
-                        <h1 class="text-4xl font-light mb-4">{{ gallery.title }}</h1>
-                        <p v-if="gallery.description" class="text-gray-600 font-light max-w-2xl mx-auto">
-                            {{ gallery.description }}
-                        </p>
-                        <p class="text-sm text-gray-400 mt-4">
-                            {{ gallery.photos?.length || 0 }} photo(s)
-                        </p>
-                    </div>
-
-                    <!-- Photos grid -->
-                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <!-- Masonry-style grid -->
+                    <div class="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-6 space-y-6">
                         <div
                             v-for="(photo, index) in gallery.photos"
                             :key="photo.id"
-                            class="relative group cursor-pointer overflow-hidden rounded-lg aspect-square"
-                            @click="openLightbox(index)"
+                            class="break-inside-avoid"
                         >
-                            <WatermarkOverlay>
-                                <img
-                                    :src="photo.display_url || photo.file_path"
-                                    :alt="photo.title || 'Photo'"
-                                    class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                                    loading="lazy"
-                                />
-                            </WatermarkOverlay>
+                            <div class="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow">
+                                <!-- Photo -->
+                                <div
+                                    class="cursor-pointer"
+                                    @click="openLightbox(index)"
+                                >
+                                    <WatermarkOverlay>
+                                        <img
+                                            :src="photo.display_url || photo.file_path"
+                                            :alt="photo.title || 'Photo'"
+                                            class="w-full h-auto"
+                                            loading="lazy"
+                                        />
+                                    </WatermarkOverlay>
+                                </div>
 
-                            <!-- Like button -->
-                            <div
-                                class="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity"
-                                @click.stop
-                            >
-                                <LikeButton
-                                    :photo-id="photo.id"
-                                    :liked="photo.is_liked"
-                                    @like="handleLike"
-                                />
+                                <!-- Like button below image -->
+                                <div class="p-3 flex justify-center border-t border-gold">
+                                    <LikeButton
+                                        :photo-id="photo.id"
+                                        :liked="photo.is_liked"
+                                        size="lg"
+                                        show-label
+                                        @like="handleLike"
+                                    />
+                                </div>
                             </div>
                         </div>
-                    </div>
-
-                    <!-- Info box -->
-                    <div class="mt-12 p-6 bg-white rounded-xl text-center">
-                        <p class="text-gray-600 font-light">
-                            Cliquez sur le coeur pour liker vos photos preferees.
-                            <br class="hidden md:block" />
-                            La photographe pourra voir vos coups de coeur !
-                        </p>
                     </div>
                 </div>
             </section>
@@ -86,13 +130,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import {ref, computed, onMounted} from 'vue'
+import {useRoute} from 'vue-router'
 import WatermarkOverlay from '@/components/WatermarkOverlay.vue'
 import LikeButton from '@/components/LikeButton.vue'
 import Lightbox from '@/components/Lightbox.vue'
-import { API_CONFIG } from '@/config/constants'
-import type { LightboxImage } from '@/types'
+import {API_CONFIG} from '@/config/constants'
+import type {LightboxImage} from '@/types'
 
 interface Photo {
     id: string

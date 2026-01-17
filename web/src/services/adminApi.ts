@@ -20,6 +20,7 @@ import type {
     AdminGallery,
     AdminPhoto,
     GalleryFormData,
+    EventGalleryFormData,
     AdminGiftCard,
     Notification,
 } from '@/types/admin'
@@ -357,6 +358,72 @@ class AdminApiService {
         return this.request<AdminApiResponse<null>>(`/admin/photos/${id}`, {
             method: 'DELETE',
         })
+    }
+
+    // ========================================================================
+    // Event Galleries
+    // ========================================================================
+
+    async getEventGalleries(
+        page = 1,
+        perPage = 20
+    ): Promise<AdminPaginatedResponse<AdminGallery>> {
+        const query = `?page=${page}&per_page=${perPage}`
+        return this.request<AdminPaginatedResponse<AdminGallery>>(`/admin/events${query}`)
+    }
+
+    async getEventGallery(id: string): Promise<AdminApiResponse<AdminGallery>> {
+        return this.request<AdminApiResponse<AdminGallery>>(`/admin/events/${id}`)
+    }
+
+    async createEventGallery(data: EventGalleryFormData): Promise<AdminApiResponse<AdminGallery>> {
+        return this.request<AdminApiResponse<AdminGallery>>('/admin/events', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        })
+    }
+
+    async updateEventGallery(id: string, data: EventGalleryFormData): Promise<AdminApiResponse<AdminGallery>> {
+        return this.request<AdminApiResponse<AdminGallery>>(`/admin/events/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+        })
+    }
+
+    async deleteEventGallery(id: string): Promise<AdminApiResponse<null>> {
+        return this.request<AdminApiResponse<null>>(`/admin/events/${id}`, {
+            method: 'DELETE',
+        })
+    }
+
+    async uploadEventPhotos(galleryId: string, files: File[]): Promise<AdminApiResponse<AdminPhoto[]>> {
+        const formData = new FormData()
+        files.forEach((file) => formData.append('photos[]', file))
+
+        const token = this.getToken()
+        const xsrfToken = this.getXsrfToken()
+        const headers: Record<string, string> = {
+            'Accept': 'application/json',
+        }
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`
+        }
+        if (xsrfToken) {
+            headers['X-XSRF-TOKEN'] = xsrfToken
+        }
+
+        const response = await fetch(`${this.baseUrl}/admin/events/${galleryId}/photos`, {
+            method: 'POST',
+            headers,
+            credentials: 'include',
+            body: formData,
+        })
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`)
+        }
+
+        return response.json()
     }
 
     // ========================================================================

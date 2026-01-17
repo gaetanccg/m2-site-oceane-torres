@@ -7,7 +7,6 @@ use App\Models\Gallery;
 use App\Services\MinioStorageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use ZipArchive;
 
@@ -16,7 +15,6 @@ class GalleryController extends Controller
     public function index(): JsonResponse
     {
         $galleries = Gallery::public()
-            ->active()
             ->with('photos')
             ->latest()
             ->paginate(12);
@@ -41,13 +39,11 @@ class GalleryController extends Controller
 
     public function showByToken(string $token): JsonResponse
     {
-        $gallery = Gallery::where('access_token', $token)
-            ->active()
-            ->first();
+        $gallery = Gallery::where('access_token', $token)->first();
 
         if (!$gallery || !$gallery->isAccessible($token)) {
             return response()->json([
-                'message' => 'Galerie non trouvée ou expirée.',
+                'message' => 'Galerie non trouvée.',
             ], 404);
         }
 
@@ -76,31 +72,16 @@ class GalleryController extends Controller
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'client_id' => ['nullable', 'string'],
-            'expires_at' => ['nullable', 'date', 'after:now'],
-            'is_active' => ['boolean'],
         ]);
 
-        // All galleries have both share_code and access_token
         $validated['type'] = 'private';
         $validated['access_token'] = Str::random(64);
         $validated['share_code'] = Gallery::generateUniqueShareCode();
 
-        // Map client_id to user_id (only if not empty)
         if (!empty($validated['client_id'])) {
             $validated['user_id'] = $validated['client_id'];
         }
         unset($validated['client_id']);
-
-        // Map expires_at to expiration_at (only if not empty)
-        if (!empty($validated['expires_at'])) {
-            $validated['expiration_at'] = $validated['expires_at'];
-        }
-        unset($validated['expires_at']);
-
-        // Default is_active to true
-        if (!isset($validated['is_active'])) {
-            $validated['is_active'] = true;
-        }
 
         $gallery = Gallery::create($validated);
 
@@ -117,20 +98,11 @@ class GalleryController extends Controller
             'title' => ['sometimes', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'client_id' => ['nullable', 'exists:users,id'],
-            'expires_at' => ['nullable', 'date'],
-            'is_active' => ['boolean'],
         ]);
 
-        // Map client_id to user_id
         if (array_key_exists('client_id', $validated)) {
             $validated['user_id'] = $validated['client_id'] ?: null;
             unset($validated['client_id']);
-        }
-
-        // Map expires_at to expiration_at
-        if (array_key_exists('expires_at', $validated)) {
-            $validated['expiration_at'] = $validated['expires_at'] ?: null;
-            unset($validated['expires_at']);
         }
 
         $gallery->update($validated);
@@ -146,7 +118,6 @@ class GalleryController extends Controller
     {
         $galleryId = $gallery->id;
 
-        // Delete files from MinIO storage
         try {
             $storageService = new MinioStorageService();
             $storageService->deleteGalleryFolder($galleryId);
@@ -157,7 +128,6 @@ class GalleryController extends Controller
             ]);
         }
 
-        // Delete gallery from database
         $gallery->delete();
 
         return response()->json([
@@ -177,40 +147,16 @@ class GalleryController extends Controller
         ]);
     }
 
-    public function downloadPhotos(Gallery $gallery, Request $request): JsonResponse
-    {
-        if (!$gallery->isAccessible()) {
-            return response()->json([
-                'message' => 'Accès non autorisé.',
-            ], 403);
-        }
-
-        // TODO: Implement zip download logic with Supabase storage
-        return response()->json([
-            'message' => 'Téléchargement en préparation...',
-            'download_url' => null,
-        ]);
-    }
-
     public function showByShareCode(string $code): JsonResponse
     {
-        $gallery = Gallery::byShareCode($code)
-            ->active()
-            ->first();
+        $gallery = Gallery::byShareCode($code)->first();
 
         if (!$gallery) {
             return response()->json([
-                'message' => 'Code invalide ou galerie expirée.',
+                'message' => 'Code invalide.',
             ], 404);
         }
 
-        if ($gallery->isExpired()) {
-            return response()->json([
-                'message' => 'Cette galerie a expiré.',
-            ], 403);
-        }
-
-        // Track view
         $gallery->recordView();
 
         $gallery->load(['photos' => function ($query) {
@@ -225,23 +171,14 @@ class GalleryController extends Controller
 
     public function showDownloadableByToken(string $token): JsonResponse
     {
-        $gallery = Gallery::byAccessToken($token)
-            ->active()
-            ->first();
+        $gallery = Gallery::byAccessToken($token)->first();
 
         if (!$gallery) {
             return response()->json([
-                'message' => 'Lien invalide ou galerie expirée.',
+                'message' => 'Lien invalide.',
             ], 404);
         }
 
-        if ($gallery->isExpired()) {
-            return response()->json([
-                'message' => 'Cette galerie a expiré.',
-            ], 403);
-        }
-
-        // Track view
         $gallery->recordView();
 
         $gallery->load(['photos' => function ($query) {
@@ -336,6 +273,7 @@ class GalleryController extends Controller
     public function adminIndex(): JsonResponse
     {
         $galleries = Gallery::with(['photos', 'user'])
+            ->where('type', '!=', 'event')
             ->withCount('photos')
             ->latest()
             ->paginate(20);
@@ -361,6 +299,151 @@ class GalleryController extends Controller
         return response()->json([
             'success' => true,
             'data' => $gallery,
+        ]);
+    }
+
+    // ==========================================
+    // Event Galleries (Public)
+    // ==========================================
+
+    public function eventIndex(): JsonResponse
+    {
+        $galleries = Gallery::where('type', 'event')
+            ->with(['photos' => function ($query) {
+                $query->ordered()->limit(6);
+            }])
+            ->withCount('photos')
+            ->latest()
+            ->paginate(12);
+
+        return response()->json($galleries);
+    }
+
+    public function eventShow(Gallery $gallery): JsonResponse
+    {
+        if ($gallery->type !== 'event') {
+            return response()->json([
+                'message' => 'Galerie non trouvée.',
+            ], 404);
+        }
+
+        $gallery->recordView();
+
+        $gallery->load(['photos' => function ($query) {
+            $query->ordered();
+        }]);
+
+        return response()->json([
+            'gallery' => $gallery,
+        ]);
+    }
+
+    // ==========================================
+    // Event Galleries (Admin)
+    // ==========================================
+
+    public function adminEventIndex(): JsonResponse
+    {
+        $galleries = Gallery::where('type', 'event')
+            ->with('photos')
+            ->withCount('photos')
+            ->latest()
+            ->paginate(20);
+
+        $galleries->getCollection()->transform(function ($gallery) {
+            $gallery->cover_photo = $gallery->photos->first();
+            return $gallery;
+        });
+
+        return response()->json($galleries);
+    }
+
+    public function adminEventShow(Gallery $gallery): JsonResponse
+    {
+        if ($gallery->type !== 'event') {
+            return response()->json([
+                'message' => 'Galerie non trouvée.',
+            ], 404);
+        }
+
+        $gallery->load(['photos' => function ($query) {
+            $query->ordered();
+        }]);
+
+        return response()->json([
+            'success' => true,
+            'data' => $gallery,
+        ]);
+    }
+
+    public function storeEvent(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+            'event_date' => ['nullable', 'date'],
+            'event_link' => ['nullable', 'url', 'max:500'],
+        ]);
+
+        $validated['type'] = 'event';
+
+        $gallery = Gallery::create($validated);
+
+        return response()->json([
+            'success' => true,
+            'data' => $gallery,
+            'message' => 'Galerie événement créée avec succès.',
+        ], 201);
+    }
+
+    public function updateEvent(Request $request, Gallery $gallery): JsonResponse
+    {
+        if ($gallery->type !== 'event') {
+            return response()->json([
+                'message' => 'Galerie non trouvée.',
+            ], 404);
+        }
+
+        $validated = $request->validate([
+            'title' => ['sometimes', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+            'event_date' => ['nullable', 'date'],
+            'event_link' => ['nullable', 'url', 'max:500'],
+        ]);
+
+        $gallery->update($validated);
+
+        return response()->json([
+            'success' => true,
+            'data' => $gallery->fresh(),
+            'message' => 'Galerie événement mise à jour avec succès.',
+        ]);
+    }
+
+    public function destroyEvent(Gallery $gallery): JsonResponse
+    {
+        if ($gallery->type !== 'event') {
+            return response()->json([
+                'message' => 'Galerie non trouvée.',
+            ], 404);
+        }
+
+        $galleryId = $gallery->id;
+
+        try {
+            $storageService = new MinioStorageService();
+            $storageService->deleteGalleryFolder($galleryId);
+        } catch (\Exception $e) {
+            \Log::warning('Failed to cleanup event gallery files from storage', [
+                'gallery_id' => $galleryId,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        $gallery->delete();
+
+        return response()->json([
+            'message' => 'Galerie événement supprimée avec succès.',
         ]);
     }
 }

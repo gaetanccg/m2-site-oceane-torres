@@ -142,26 +142,33 @@ export interface PrestationFormData {
 // Galleries
 // ============================================================================
 
-export type GalleryType = 'public' | 'private'
+export type GalleryType = 'public' | 'private' | 'event'
+
+export interface EventGalleryFormData {
+    title: string
+    description: string
+    event_date: string
+    event_link: string
+}
 
 export interface AdminGallery {
     id: string
     title: string
     description?: string
+    event_date?: string
+    event_link?: string
     type: GalleryType
     client_id?: string
     client?: Client
+    user?: Client
     access_token?: string
     share_code?: string
-    expires_at?: string
-    cover_image?: string
     photos_count: number
     total_likes: number
     downloadable_count: number
     liked_photos_count: number
     views_count: number
     last_viewed_at?: string
-    is_active: boolean
     photos?: AdminPhoto[]
     created_at: string
     updated_at: string
@@ -189,8 +196,6 @@ export interface GalleryFormData {
     title: string
     description: string
     client_id: string
-    expires_at: string
-    is_active: boolean
 }
 
 // ============================================================================
