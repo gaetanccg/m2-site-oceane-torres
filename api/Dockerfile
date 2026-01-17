@@ -1,4 +1,66 @@
-FROM php:8.4-cli-alpine
+# ===========================================
+# BASE STAGE - Common dependencies
+# ===========================================
+FROM php:8.4-fpm-alpine AS base
+
+# Install system dependencies
+RUN apk add --no-cache \
+    git \
+    curl \
+    libpng-dev \
+    libjpeg-turbo-dev \
+    freetype-dev \
+    libzip-dev \
+    zip \
+    unzip \
+    postgresql-dev \
+    oniguruma-dev \
+    icu-dev \
+    libwebp-dev
+
+# Install PHP extensions
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
+    && docker-php-ext-install pdo pdo_pgsql pgsql mbstring exif pcntl bcmath gd zip intl opcache
+
+# Install Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# Set working directory
+WORKDIR /var/www
+
+# ===========================================
+# DEVELOPMENT STAGE - PHP-FPM for Docker Compose
+# ===========================================
+FROM base AS development
+
+# Copy composer files first for caching
+COPY composer.json composer.lock ./
+
+# Install dependencies (with dev)
+RUN composer install --no-scripts --no-autoloader
+
+# Copy application files
+COPY . .
+
+# Complete composer install
+RUN composer dump-autoload --optimize
+
+# Set permissions
+RUN chmod -R 775 /var/www/storage \
+    && chmod -R 775 /var/www/bootstrap/cache \
+    && chown -R www-data:www-data /var/www/storage \
+    && chown -R www-data:www-data /var/www/bootstrap/cache
+
+# Expose PHP-FPM port
+EXPOSE 9000
+
+# Start PHP-FPM
+CMD ["php-fpm"]
+
+# ===========================================
+# PRODUCTION STAGE - For Render (artisan serve)
+# ===========================================
+FROM php:8.4-cli-alpine AS production
 
 # Install system dependencies
 RUN apk add --no-cache \
@@ -28,7 +90,7 @@ WORKDIR /var/www
 # Copy application files
 COPY . /var/www
 
-# Install dependencies
+# Install dependencies (production only)
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
 # Set permissions
