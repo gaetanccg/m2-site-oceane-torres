@@ -107,3 +107,4 @@ web/package-lock.json
 tmp/
 temp/
 cache/
+/docs/MIGRATION-MINIO.md

@@ -10,7 +10,7 @@
                 </div>
                 <h3 class="text-2xl font-light text-gray-800 mb-4">Galerie en construction</h3>
                 <p class="text-gray-600 font-light mb-6">
-                    La galerie interne est encore en cours de développement. En attendant, vous pouvez accéder à la galerie externe.
+                    La galerie du site est encore en cours de développement. En attendant, vous pouvez accéder à ma galerie externe au site.
                 </p>
                 <a
                     href="https://oceane-torres-librairie.onrender.com"

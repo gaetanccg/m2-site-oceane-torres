@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Gallery;
-use App\Services\SupabaseStorageService;
+use App\Services\MinioStorageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -146,23 +146,19 @@ class GalleryController extends Controller
     {
         $galleryId = $gallery->id;
 
-        // Delete gallery from database first
-        $gallery->delete();
-
-        // Call Supabase edge function to cleanup storage files
+        // Delete files from MinIO storage
         try {
-            Http::withHeaders([
-                'Authorization' => 'Bearer ' . config('services.supabase.service_key'),
-            ])->post(config('services.supabase.edge_function_url') . '/cleanup-gallery-files', [
-                'gallery_id' => $galleryId,
-            ]);
+            $storageService = new MinioStorageService();
+            $storageService->deleteGalleryFolder($galleryId);
         } catch (\Exception $e) {
-            // Log error but don't fail the request since DB deletion succeeded
             \Log::warning('Failed to cleanup gallery files from storage', [
                 'gallery_id' => $galleryId,
                 'error' => $e->getMessage(),
             ]);
         }
+
+        // Delete gallery from database
+        $gallery->delete();
 
         return response()->json([
             'message' => 'Galerie supprimée avec succès.',
@@ -287,7 +283,7 @@ class GalleryController extends Controller
             ], 404);
         }
 
-        $storageService = new SupabaseStorageService();
+        $storageService = new MinioStorageService();
         $zipFilename = 'gallery_' . $gallery->id . '_' . time() . '.zip';
         $zipPath = storage_path('app/temp/' . $zipFilename);
 
@@ -303,7 +299,8 @@ class GalleryController extends Controller
         }
 
         foreach ($photos as $index => $photo) {
-            $fileContent = $storageService->downloadPhoto($photo->file_path);
+            $storagePath = $photo->metadata['storage_path'] ?? $photo->metadata['supabase_path'] ?? $photo->file_path;
+            $fileContent = $storageService->downloadPhoto($storagePath);
             if ($fileContent) {
                 $extension = pathinfo($photo->file_path, PATHINFO_EXTENSION);
                 $filename = ($photo->title ?? 'photo_' . ($index + 1)) . '.' . $extension;

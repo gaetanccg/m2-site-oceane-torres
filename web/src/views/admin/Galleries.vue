@@ -472,7 +472,7 @@
                         @click="selectionMode ? togglePhotoSelection(photo.id) : openLightbox(index)"
                     >
                         <img
-                            :src="photo.thumbnail_path || photo.file_path || photo.path"
+                            :src="photo.display_url || photo.thumbnail_path || photo.file_path"
                             :alt="photo.original_filename || photo.title"
                             class="w-full h-full object-cover"
                         />
@@ -613,7 +613,7 @@
                 <!-- Image -->
                 <img
                     v-if="currentLightboxPhoto"
-                    :src="currentLightboxPhoto.file_path || currentLightboxPhoto.path"
+                    :src="currentLightboxPhoto.display_url || currentLightboxPhoto.file_path"
                     :alt="currentLightboxPhoto.title || 'Photo'"
                     class="max-h-[90vh] max-w-[90vw] object-contain"
                     @click.stop

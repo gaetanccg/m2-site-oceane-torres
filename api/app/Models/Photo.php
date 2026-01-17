@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\MinioStorageService;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -26,6 +27,8 @@ class Photo extends Model
         'metadata',
     ];
 
+    protected $appends = ['display_url'];
+
     protected function casts(): array
     {
         return [
@@ -34,6 +37,24 @@ class Photo extends Model
             'is_downloadable' => 'boolean',
             'metadata' => 'array',
         ];
+    }
+
+    public function getDisplayUrlAttribute(): ?string
+    {
+        $storagePath = $this->metadata['storage_path'] ?? $this->metadata['supabase_path'] ?? $this->file_path;
+
+        // If it's already a full URL (legacy Supabase), return as-is
+        if (str_starts_with($storagePath, 'http')) {
+            return $storagePath;
+        }
+
+        // Generate signed URL from MinIO
+        try {
+            $storageService = new MinioStorageService();
+            return $storageService->getSignedUrl($storagePath, 3600);
+        } catch (\Exception $e) {
+            return null;
+        }
     }
 
     public function gallery(): BelongsTo
