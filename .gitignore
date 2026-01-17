@@ -73,7 +73,6 @@ api/database/*.sqlite
 # ============================================
 
 web/node_modules/
-web/dist/
 web/.vite/
 web/.vitepress/
 web/.nuxt/
@@ -91,7 +90,6 @@ web/package-lock.json
 #  BUILD OUTPUTS
 # ============================================
 
-/dist
 /build
 /public/assets
 /public/build
