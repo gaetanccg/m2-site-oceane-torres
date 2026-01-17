@@ -41,7 +41,7 @@
                         >
                             <WatermarkOverlay>
                                 <img
-                                    :src="photo.file_path"
+                                    :src="photo.display_url || photo.file_path"
                                     :alt="photo.title || 'Photo'"
                                     class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                                     loading="lazy"
@@ -97,6 +97,7 @@ import type { LightboxImage } from '@/types'
 interface Photo {
     id: string
     file_path: string
+    display_url?: string
     title?: string
     is_liked: boolean
 }
@@ -119,7 +120,7 @@ const lightboxIndex = ref(0)
 const lightboxImages = computed<LightboxImage[]>(() => {
     if (!gallery.value?.photos) return []
     return gallery.value.photos.map(photo => ({
-        url: photo.file_path,
+        url: photo.display_url || photo.file_path,
         alt: photo.title || 'Photo',
         type: 'image' as const
     }))
