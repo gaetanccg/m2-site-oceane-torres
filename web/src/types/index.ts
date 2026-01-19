@@ -42,16 +42,20 @@ export interface LightboxImage {
 export type ServiceIconType = 'portrait' | 'moto' | 'animal' | 'sport' | 'entreprise' | 'video' | 'camera'
 
 export interface Prestation {
-    id?: number
-    icon: ServiceIconType
+    id: string
+    icon: ServiceIconType | null
     title: string
     description: string
-    price?: string
-    priceUnit?: string
-    features: string[]
-    background?: string
-    backgroundOpacity?: number
-    disclaimer?: string
+    price: number
+    price_text: string | null
+    price_unit: string | null
+    features: string[] | null
+    background_image: string | null
+    background_opacity: number
+    disclaimer: string | null
+    category: string
+    is_active: boolean
+    sort_order: number
 }
 
 export interface PrestationMini {

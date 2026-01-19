@@ -105,6 +105,24 @@ class ApiService {
             body: JSON.stringify(data),
         })
     }
+
+    // ============================================================================
+    // Booking Request (demande de reservation)
+    // ============================================================================
+
+    async sendBookingRequest(data: {
+        name: string
+        email: string
+        phone?: string
+        prestation_id: string
+        date_preferences: string
+        message?: string
+    }): Promise<ApiResponse<{ success: boolean; message: string }>> {
+        return this.request<ApiResponse<{ success: boolean; message: string }>>('/booking-request', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        })
+    }
 }
 
 // Export singleton instance

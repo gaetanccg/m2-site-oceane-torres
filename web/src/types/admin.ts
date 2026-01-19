@@ -69,13 +69,31 @@ export type ReservationStatus = 'pending' | 'confirmed' | 'cancelled' | 'complet
 
 export interface Reservation {
     id: string
-    client: Client
-    prestation: AdminPrestation
-    date: string
-    time: string
+    user_id?: string
+    user?: Client // Relation user (peut etre null pour les guests)
+    prestation?: AdminPrestation
+    date?: string
+    time?: string
     status: ReservationStatus
     notes?: string
     message?: string
+    // Champs guest (demandes sans compte)
+    guest_name?: string
+    guest_email?: string
+    guest_phone?: string
+    date_preferences?: string
+    // Champs clientForm (anciennes reservations)
+    client_form?: {
+        fullname?: string
+        phone?: string
+        requirements?: string
+        message?: string
+    }
+    // Attributs calcules par le backend (via $appends)
+    client_name?: string
+    client_email?: string
+    client_phone?: string
+    is_guest?: boolean
     created_at: string
     updated_at: string
 }
@@ -116,13 +134,22 @@ export function getClientFullName(client: Client): string {
 // Prestations
 // ============================================================================
 
+export type PrestationIcon = 'portrait' | 'sport' | 'animal' | 'moto' | 'entreprise' | 'video'
+
 export interface AdminPrestation {
     id: string
     title: string
+    icon: PrestationIcon | null
     description: string
+    features: string[] | null
     price: number
-    duration: number // en minutes
+    price_text: string | null
+    price_unit: string | null
+    duration: number | null
     category: string
+    background_image: string | null
+    background_opacity: number
+    disclaimer: string | null
     is_active: boolean
     sort_order: number
     created_at: string
@@ -131,11 +158,19 @@ export interface AdminPrestation {
 
 export interface PrestationFormData {
     title: string
+    icon: PrestationIcon | null
     description: string
+    features: string[]
     price: number
-    duration: number
+    price_text: string
+    price_unit: string
+    duration: number | null
     category: string
+    background_image: string
+    background_opacity: number
+    disclaimer: string
     is_active: boolean
+    sort_order: number
 }
 
 // ============================================================================
@@ -196,6 +231,19 @@ export interface GalleryFormData {
     title: string
     description: string
     client_id: string
+}
+
+// ============================================================================
+// Booking Request (Public)
+// ============================================================================
+
+export interface BookingRequestData {
+    name: string
+    email: string
+    phone?: string
+    prestation_id: string
+    date_preferences: string
+    message?: string
 }
 
 // ============================================================================

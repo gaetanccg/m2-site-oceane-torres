@@ -9,6 +9,8 @@ use App\Http\Controllers\Api\ReservationController;
 use App\Http\Controllers\Api\GiftCardController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\ContactController;
+use App\Http\Controllers\Api\AvailabilityController;
+use App\Http\Controllers\Api\BookingRequestController;
 use App\Http\Controllers\Api\Admin\DashboardController;
 use App\Http\Controllers\Api\Admin\UserController;
 use App\Http\Controllers\Api\Admin\NotificationController;
@@ -65,6 +67,9 @@ Route::get('/events/{gallery}', [GalleryController::class, 'eventShow']);
 // Gift cards (public)
 Route::get('/gift-cards/validate/{code}', [GiftCardController::class, 'validate']);
 
+// Booking request (public - sans authentification)
+Route::post('/booking-request', [BookingRequestController::class, 'store']);
+
 /*
 |--------------------------------------------------------------------------
 | Authenticated Routes
@@ -119,13 +124,35 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::apiResource('users', UserController::class);
 
     // Prestations management
+    Route::get('/prestations', [PrestationController::class, 'adminIndex']);
     Route::apiResource('prestations', PrestationController::class)->except(['index', 'show']);
     Route::put('/prestations/{prestation}/toggle', [PrestationController::class, 'toggle']);
 
     // Reservations management
     Route::get('/reservations', [ReservationController::class, 'adminIndex']);
-    Route::put('/reservations/{reservation}/status', [ReservationController::class, 'updateStatus']);
     Route::get('/reservations/calendar', [ReservationController::class, 'calendar']);
+    Route::get('/reservations/{reservation}', [ReservationController::class, 'adminShow']);
+    Route::put('/reservations/{reservation}', [ReservationController::class, 'adminUpdate']);
+    Route::put('/reservations/{reservation}/status', [ReservationController::class, 'updateStatus']);
+    Route::delete('/reservations/{reservation}', [ReservationController::class, 'adminDestroy']);
+
+    // Availability management
+    Route::prefix('availability')->group(function () {
+        // Slots
+        Route::get('/slots', [AvailabilityController::class, 'indexSlots']);
+        Route::get('/slots/available', [AvailabilityController::class, 'availableSlots']);
+        Route::post('/slots', [AvailabilityController::class, 'storeSlot']);
+        Route::put('/slots/{slot}', [AvailabilityController::class, 'updateSlot']);
+        Route::delete('/slots/{slot}', [AvailabilityController::class, 'destroySlot']);
+
+        // Patterns
+        Route::get('/patterns', [AvailabilityController::class, 'indexPatterns']);
+        Route::post('/patterns', [AvailabilityController::class, 'storePattern']);
+        Route::put('/patterns/{pattern}', [AvailabilityController::class, 'updatePattern']);
+        Route::delete('/patterns/{pattern}', [AvailabilityController::class, 'destroyPattern']);
+        Route::post('/patterns/{pattern}/generate', [AvailabilityController::class, 'generateSlots']);
+        Route::put('/patterns/{pattern}/toggle', [AvailabilityController::class, 'togglePattern']);
+    });
 
     // Galleries management
     Route::get('/galleries', [GalleryController::class, 'adminIndex']);
