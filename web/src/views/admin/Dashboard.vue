@@ -2,7 +2,18 @@
     <AdminLayout>
         <AdminHeader title="Tableau de bord" subtitle="Vue d'ensemble de votre activité" />
 
-        <div class="p-6 space-y-6">
+        <!-- Loading State -->
+        <div v-if="isLoading" class="p-6 flex items-center justify-center min-h-[400px]">
+            <div class="flex flex-col items-center gap-3">
+                <svg class="animate-spin h-8 w-8 text-gold" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span class="text-gray-500">Chargement...</span>
+            </div>
+        </div>
+
+        <div v-else class="p-6 space-y-6">
             <!-- Stats Cards -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard
@@ -76,12 +87,12 @@
                         >
                             <div class="flex items-center justify-between">
                                 <div>
-                                    <p class="font-medium text-gray-900">{{ reservation.client.first_name }} {{ reservation.client.last_name }}</p>
-                                    <p class="text-sm text-gray-500">{{ reservation.prestation.title }}</p>
+                                    <p class="font-medium text-gray-900">{{ reservation.client_name || 'N/A' }}</p>
+                                    <p class="text-sm text-gray-500">{{ reservation.prestation?.title || 'N/A' }}</p>
                                 </div>
                                 <div class="text-right">
                                     <StatusBadge :status="reservation.status" />
-                                    <p class="text-sm text-gray-500 mt-1">{{ formatDate(reservation.date) }}</p>
+                                    <p class="text-sm text-gray-500 mt-1">{{ reservation.date ? formatDate(reservation.date) : 'A definir' }}</p>
                                 </div>
                             </div>
                         </div>
@@ -197,6 +208,8 @@ import StatusBadge from '@/components/admin/ui/StatusBadge.vue'
 import {adminApi} from '@/services/adminApi'
 import type {DashboardStats, RecentActivity, Reservation} from '@/types/admin'
 
+const isLoading = ref(true)
+
 const stats = reactive<DashboardStats>({
     reservations: {total: 0, pending: 0, confirmed: 0, thisMonth: 0},
     clients: {total: 0, newThisMonth: 0},
@@ -252,6 +265,7 @@ function formatRelativeDate(dateStr: string): string {
 }
 
 async function fetchDashboardData() {
+    isLoading.value = true
     try {
         const [statsResponse, activityResponse] = await Promise.all([
             adminApi.getDashboardStats(),
@@ -273,6 +287,8 @@ async function fetchDashboardData() {
         }
     } catch {
         // Silently fail - show empty state
+    } finally {
+        isLoading.value = false
     }
 }
 

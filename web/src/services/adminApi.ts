@@ -186,6 +186,16 @@ class AdminApiService {
         })
     }
 
+    async updateReservation(
+        id: string,
+        data: { date?: string; time?: string; status?: ReservationStatus; notes?: string }
+    ): Promise<AdminApiResponse<Reservation>> {
+        return this.request<AdminApiResponse<Reservation>>(`/admin/reservations/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+        })
+    }
+
     async getCalendarEvents(
         start: string,
         end: string
@@ -193,6 +203,12 @@ class AdminApiService {
         return this.request<AdminApiResponse<CalendarEvent[]>>(
             `/admin/reservations/calendar?start=${start}&end=${end}`
         )
+    }
+
+    async deleteReservation(id: string): Promise<AdminApiResponse<null>> {
+        return this.request<AdminApiResponse<null>>(`/admin/reservations/${id}`, {
+            method: 'DELETE',
+        })
     }
 
     // ========================================================================
@@ -231,7 +247,7 @@ class AdminApiService {
     // ========================================================================
 
     async getPrestations(): Promise<AdminApiResponse<AdminPrestation[]>> {
-        return this.request<AdminApiResponse<AdminPrestation[]>>('/prestations')
+        return this.request<AdminApiResponse<AdminPrestation[]>>('/admin/prestations')
     }
 
     async getPrestation(id: string): Promise<AdminApiResponse<AdminPrestation>> {

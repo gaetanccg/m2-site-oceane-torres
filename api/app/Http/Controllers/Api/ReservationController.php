@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Reservation;
+use App\Models\AvailabilitySlot;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -21,7 +22,8 @@ class ReservationController extends Controller
 
     public function adminIndex(Request $request): JsonResponse
     {
-        $query = Reservation::with(['user', 'prestation', 'clientForm']);
+        // Charger les relations necessaires pour les accesseurs
+        $query = Reservation::with(['user', 'prestation', 'clientForm', 'availabilitySlot']);
 
         if ($request->has('status')) {
             $query->where('status', $request->status);
@@ -35,6 +37,8 @@ class ReservationController extends Controller
             $query->where('date', '<=', $request->date_to);
         }
 
+        // Les attributs client_name, client_email, client_phone, is_guest
+        // sont automatiquement inclus grace a $appends dans le modele
         $reservations = $query->latest()->paginate(20);
 
         return response()->json($reservations);
@@ -46,6 +50,22 @@ class ReservationController extends Controller
 
         return response()->json([
             'reservation' => $reservation,
+        ]);
+    }
+
+    /**
+     * Afficher une reservation pour l'admin avec tous les details
+     */
+    public function adminShow(Reservation $reservation): JsonResponse
+    {
+        // Charger les relations necessaires pour les accesseurs
+        $reservation->load(['user', 'prestation', 'clientForm']);
+
+        // Les attributs client_name, client_email, client_phone, is_guest
+        // sont automatiquement inclus grace a $appends dans le modele
+        return response()->json([
+            'success' => true,
+            'data' => $reservation,
         ]);
     }
 
@@ -93,6 +113,49 @@ class ReservationController extends Controller
         ]);
     }
 
+    /**
+     * Mise a jour admin d'une reservation (date, heure, statut, notes)
+     */
+    public function adminUpdate(Request $request, Reservation $reservation): JsonResponse
+    {
+        $validated = $request->validate([
+            'date' => ['nullable', 'date'],
+            'time' => ['nullable', 'string'],
+            'status' => ['sometimes', 'in:pending,confirmed,cancelled,completed'],
+            'notes' => ['nullable', 'string'],
+        ]);
+
+        $updateData = [];
+
+        // Combiner date et heure si fournies
+        if (isset($validated['date'])) {
+            $date = $validated['date'];
+            if (isset($validated['time']) && $validated['time']) {
+                $date = $date . ' ' . $validated['time'];
+            }
+            $updateData['date'] = $date;
+        }
+
+        if (isset($validated['status'])) {
+            $updateData['status'] = $validated['status'];
+        }
+
+        if (array_key_exists('notes', $validated)) {
+            $updateData['notes'] = $validated['notes'];
+        }
+
+        $reservation->update($updateData);
+
+        // Recharger avec les relations necessaires pour les accesseurs
+        $reservation = $reservation->fresh()->load(['user', 'prestation', 'clientForm']);
+
+        return response()->json([
+            'success' => true,
+            'data' => $reservation,
+            'message' => 'Reservation mise a jour avec succes.',
+        ]);
+    }
+
     public function destroy(Reservation $reservation): JsonResponse
     {
         if ($reservation->status === 'confirmed') {
@@ -105,6 +168,24 @@ class ReservationController extends Controller
 
         return response()->json([
             'message' => 'Réservation supprimée avec succès.',
+        ]);
+    }
+
+    /**
+     * Suppression admin d'une reservation (peut supprimer n'importe quel statut)
+     */
+    public function adminDestroy(Reservation $reservation): JsonResponse
+    {
+        // Supprimer le clientForm associe si existant
+        if ($reservation->clientForm) {
+            $reservation->clientForm->delete();
+        }
+
+        $reservation->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Reservation supprimee avec succes.',
         ]);
     }
 
@@ -124,17 +205,102 @@ class ReservationController extends Controller
 
     public function calendar(Request $request): JsonResponse
     {
-        $month = $request->get('month', now()->month);
-        $year = $request->get('year', now()->year);
+        $start = $request->get('start');
+        $end = $request->get('end');
 
-        $reservations = Reservation::with('prestation')
-            ->whereMonth('date', $month)
-            ->whereYear('date', $year)
-            ->get()
-            ->groupBy(fn ($r) => $r->date->format('Y-m-d'));
+        $query = Reservation::with(['prestation', 'user', 'clientForm'])
+            ->whereNotNull('date');
+
+        if ($start) {
+            $query->where('date', '>=', $start);
+        }
+        if ($end) {
+            $query->where('date', '<=', $end);
+        }
+
+        $reservations = $query->get();
+
+        // Transformer en format CalendarEvent
+        $events = $reservations->map(function ($reservation) {
+            // Determiner le nom du client
+            $clientName = $reservation->client_name ?? 'Client';
+
+            // Calculer la fin (date + duree prestation ou 1h par defaut)
+            $startDate = $reservation->date;
+            $duration = $reservation->prestation?->duration ?? 60;
+            $endDate = $startDate->copy()->addMinutes($duration);
+
+            return [
+                'id' => $reservation->id,
+                'title' => $reservation->prestation?->title ?? 'Reservation',
+                'start' => $startDate->toIso8601String(),
+                'end' => $endDate->toIso8601String(),
+                'status' => $reservation->status,
+                'client' => $clientName,
+                'prestation' => $reservation->prestation?->title ?? 'N/A',
+            ];
+        });
 
         return response()->json([
-            'reservations' => $reservations,
+            'success' => true,
+            'data' => $events,
+        ]);
+    }
+
+    /**
+     * Confirmer une reservation en lui assignant un creneau
+     */
+    public function confirmWithSlot(Request $request, Reservation $reservation): JsonResponse
+    {
+        $validated = $request->validate([
+            'slot_id' => ['required', 'exists:availability_slots,id'],
+        ]);
+
+        $slot = AvailabilitySlot::findOrFail($validated['slot_id']);
+
+        // Verifier que le creneau est disponible
+        if (!$slot->isAvailable()) {
+            return response()->json([
+                'message' => 'Ce creneau n\'est plus disponible.',
+            ], 422);
+        }
+
+        // Marquer le creneau comme reserve
+        $slot->markAsBooked($reservation);
+
+        // Mettre a jour la reservation
+        $reservation->update([
+            'status' => 'confirmed',
+            'availability_slot_id' => $slot->id,
+            'date' => $slot->date,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'reservation' => $reservation->fresh()->load(['prestation', 'availabilitySlot']),
+            'message' => 'Reservation confirmee avec succes.',
+        ]);
+    }
+
+    /**
+     * Annuler une reservation et liberer le creneau
+     */
+    public function cancelWithSlotRelease(Reservation $reservation): JsonResponse
+    {
+        // Liberer le creneau si existant
+        if ($reservation->availabilitySlot) {
+            $reservation->availabilitySlot->release();
+        }
+
+        $reservation->update([
+            'status' => 'cancelled',
+            'availability_slot_id' => null,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'reservation' => $reservation->fresh(),
+            'message' => 'Reservation annulee et creneau libere.',
         ]);
     }
 }
