@@ -95,6 +95,7 @@ class AvailabilitySlot extends Model
     {
         $start = \Carbon\Carbon::parse($this->start_time)->format('H:i');
         $end = \Carbon\Carbon::parse($this->end_time)->format('H:i');
+
         return "{$start} - {$end}";
     }
 }

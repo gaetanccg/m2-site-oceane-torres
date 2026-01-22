@@ -236,7 +236,7 @@ const fetchGallery = async () => {
             const data = await response.json()
             error.value = data.message || 'Galerie non trouvee'
         }
-    } catch (err) {
+    } catch (_err) {
         error.value = 'Erreur de connexion'
     } finally {
         isLoading.value = false

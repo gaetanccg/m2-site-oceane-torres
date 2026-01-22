@@ -44,7 +44,7 @@ class GalleryController extends Controller
     {
         $gallery = Gallery::where('access_token', $token)->first();
 
-        if (!$gallery || !$gallery->isAccessible($token)) {
+        if (! $gallery || ! $gallery->isAccessible($token)) {
             return response()->json([
                 'message' => 'Galerie non trouvée.',
             ], 404);
@@ -86,7 +86,7 @@ class GalleryController extends Controller
         $validated['share_code'] = Gallery::generateUniqueShareCode();
 
         // Gerer le choix : soit client_id, soit assigned_email
-        if (!empty($validated['client_id'])) {
+        if (! empty($validated['client_id'])) {
             // Recuperer le user_id du client
             $client = Client::find($validated['client_id']);
             $validated['user_id'] = $client?->user_id;
@@ -114,7 +114,7 @@ class GalleryController extends Controller
 
         // Gerer le choix : soit client_id, soit assigned_email
         if (array_key_exists('client_id', $validated)) {
-            if (!empty($validated['client_id'])) {
+            if (! empty($validated['client_id'])) {
                 // Recuperer le user_id du client
                 $client = Client::find($validated['client_id']);
                 $validated['user_id'] = $client?->user_id;
@@ -126,7 +126,7 @@ class GalleryController extends Controller
         }
 
         // Si on assigne par email, on retire l'user_id
-        if (!empty($validated['assigned_email'])) {
+        if (! empty($validated['assigned_email'])) {
             $validated['user_id'] = null;
         }
 
@@ -144,7 +144,7 @@ class GalleryController extends Controller
         $galleryId = $gallery->id;
 
         try {
-            $storageService = new MinioStorageService();
+            $storageService = new MinioStorageService;
             $storageService->deleteGalleryFolder($galleryId);
         } catch (\Exception $e) {
             \Log::warning('Failed to cleanup gallery files from storage', [
@@ -167,14 +167,14 @@ class GalleryController extends Controller
             'recipient_name' => ['required', 'string', 'max:255'],
         ]);
 
-        if (!$gallery->share_code) {
+        if (! $gallery->share_code) {
             return response()->json([
                 'success' => false,
                 'message' => 'Cette galerie n\'a pas de code de partage.',
             ], 400);
         }
 
-        $galleryUrl = config('app.frontend_url', 'https://oceanetorresphotographie.fr') . '/gallery';
+        $galleryUrl = config('app.frontend_url', 'https://oceanetorresphotographie.fr').'/gallery';
 
         try {
             Mail::to($validated['email'])->send(new GalleryAccessMail(
@@ -186,7 +186,7 @@ class GalleryController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Email envoyé avec succès à ' . $validated['email'],
+                'message' => 'Email envoyé avec succès à '.$validated['email'],
             ]);
         } catch (\Exception $e) {
             \Log::error('Failed to send gallery access email', [
@@ -197,7 +197,7 @@ class GalleryController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de l\'envoi de l\'email: ' . $e->getMessage(),
+                'message' => 'Erreur lors de l\'envoi de l\'email: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -218,7 +218,7 @@ class GalleryController extends Controller
     {
         $gallery = Gallery::byShareCode($code)->first();
 
-        if (!$gallery) {
+        if (! $gallery) {
             return response()->json([
                 'message' => 'Code invalide.',
             ], 404);
@@ -240,7 +240,7 @@ class GalleryController extends Controller
     {
         $gallery = Gallery::byAccessToken($token)->first();
 
-        if (!$gallery) {
+        if (! $gallery) {
             return response()->json([
                 'message' => 'Lien invalide.',
             ], 404);
@@ -273,7 +273,7 @@ class GalleryController extends Controller
     {
         $token = $request->query('token');
 
-        if (!$gallery->isAccessible($token)) {
+        if (! $gallery->isAccessible($token)) {
             return response()->json([
                 'message' => 'Accès non autorisé.',
             ], 403);
@@ -287,15 +287,15 @@ class GalleryController extends Controller
             ], 404);
         }
 
-        $storageService = new MinioStorageService();
-        $zipFilename = 'gallery_' . $gallery->id . '_' . time() . '.zip';
-        $zipPath = storage_path('app/temp/' . $zipFilename);
+        $storageService = new MinioStorageService;
+        $zipFilename = 'gallery_'.$gallery->id.'_'.time().'.zip';
+        $zipPath = storage_path('app/temp/'.$zipFilename);
 
-        if (!file_exists(storage_path('app/temp'))) {
+        if (! file_exists(storage_path('app/temp'))) {
             mkdir(storage_path('app/temp'), 0755, true);
         }
 
-        $zip = new ZipArchive();
+        $zip = new ZipArchive;
         if ($zip->open($zipPath, ZipArchive::CREATE) !== true) {
             return response()->json([
                 'message' => 'Erreur lors de la création du ZIP.',
@@ -307,14 +307,14 @@ class GalleryController extends Controller
             $fileContent = $storageService->downloadPhoto($storagePath);
             if ($fileContent) {
                 $extension = pathinfo($photo->file_path, PATHINFO_EXTENSION);
-                $filename = ($photo->title ?? 'photo_' . ($index + 1)) . '.' . $extension;
+                $filename = ($photo->title ?? 'photo_'.($index + 1)).'.'.$extension;
                 $zip->addFromString($filename, $fileContent);
             }
         }
 
         $zip->close();
 
-        $downloadUrl = url('/api/galleries/' . $gallery->id . '/download-file?file=' . $zipFilename);
+        $downloadUrl = url('/api/galleries/'.$gallery->id.'/download-file?file='.$zipFilename);
 
         return response()->json([
             'download_url' => $downloadUrl,
@@ -326,9 +326,9 @@ class GalleryController extends Controller
     public function downloadFile(Gallery $gallery, Request $request)
     {
         $filename = $request->query('file');
-        $filePath = storage_path('app/temp/' . $filename);
+        $filePath = storage_path('app/temp/'.$filename);
 
-        if (!file_exists($filePath)) {
+        if (! file_exists($filePath)) {
             return response()->json([
                 'message' => 'Fichier non trouvé.',
             ], 404);
@@ -348,6 +348,7 @@ class GalleryController extends Controller
         $galleries->getCollection()->transform(function ($gallery) {
             $gallery->downloadable_count = $gallery->photos->where('is_downloadable', true)->count();
             $gallery->liked_photos_count = $gallery->photos->where('is_liked', true)->count();
+
             return $gallery;
         });
 
@@ -419,6 +420,7 @@ class GalleryController extends Controller
 
         $galleries->getCollection()->transform(function ($gallery) {
             $gallery->cover_photo = $gallery->photos->first();
+
             return $gallery;
         });
 
@@ -498,7 +500,7 @@ class GalleryController extends Controller
         $galleryId = $gallery->id;
 
         try {
-            $storageService = new MinioStorageService();
+            $storageService = new MinioStorageService;
             $storageService->deleteGalleryFolder($galleryId);
         } catch (\Exception $e) {
             \Log::warning('Failed to cleanup event gallery files from storage', [

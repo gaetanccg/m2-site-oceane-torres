@@ -21,7 +21,7 @@ class ContactConfirmationMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: "Confirmation de votre message - Oceane Torres Photographie",
+            subject: 'Confirmation de votre message - Oceane Torres Photographie',
         );
     }
 

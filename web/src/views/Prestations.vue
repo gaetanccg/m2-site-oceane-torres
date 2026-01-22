@@ -102,8 +102,7 @@
                 <h2 class="text-3xl font-light mb-8 text-center">Informations pratiques</h2>
 
                 <div class="space-y-6 text-gray-600 font-light">
-
-                    <div>
+<div>
                         <h3 class="text-xl font-normal text-black mb-2">Reservation</h3>
                         <p>Les reservations se font par mail ou via Instagram, avec un acompte de 30% pour confirmer votre date.</p>
                         <p>En cas de reel imprevu, il est possible d'annuler ou de deplacer le shooting en fonction des disponibilites.</p>
@@ -119,8 +118,7 @@
                         <h3 class="text-xl font-normal text-black mb-2">Zone d'intervention</h3>
                         <p>Deplacement dans toute la region Auvergne-Rhone-Alpes. Des frais additionnels peuvent s'ajouter en fonction de la distance.</p>
                     </div>
-
-                </div>
+</div>
             </div>
         </section>
 

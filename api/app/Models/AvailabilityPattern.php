@@ -47,7 +47,7 @@ class AvailabilityPattern extends Model
     /**
      * Genere les creneaux pour ce pattern jusqu'a une date limite
      *
-     * @param Carbon $untilDate Date limite de generation
+     * @param  Carbon  $untilDate  Date limite de generation
      * @return array Les creneaux crees
      */
     public function generateSlots(Carbon $untilDate): array
@@ -70,7 +70,7 @@ class AvailabilityPattern extends Model
                     ->where('end_time', $this->end_time)
                     ->first();
 
-                if (!$existingSlot) {
+                if (! $existingSlot) {
                     $slot = AvailabilitySlot::create([
                         'date' => $currentDate->toDateString(),
                         'start_time' => $this->start_time,
@@ -109,6 +109,6 @@ class AvailabilityPattern extends Model
             7 => 'Dimanche',
         ];
 
-        return array_map(fn($day) => $labels[$day] ?? '', $this->days_of_week ?? []);
+        return array_map(fn ($day) => $labels[$day] ?? '', $this->days_of_week ?? []);
     }
 }

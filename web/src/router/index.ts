@@ -259,13 +259,13 @@ router.afterEach((to) => {
 
     // Update meta description
     if (pageDescription) {
-        let metaDescription = document.querySelector('meta[name="description"]')
+        const metaDescription = document.querySelector('meta[name="description"]')
         if (metaDescription) {
             metaDescription.setAttribute('content', pageDescription)
         }
 
         // Also update OG description
-        let ogDescription = document.querySelector('meta[property="og:description"]')
+        const ogDescription = document.querySelector('meta[property="og:description"]')
         if (ogDescription) {
             ogDescription.setAttribute('content', pageDescription)
         }
@@ -279,7 +279,7 @@ router.afterEach((to) => {
 
     // Update robots meta tag
     const robotsContent = to.meta.robots as string | undefined
-    let robotsMeta = document.querySelector('meta[name="robots"]')
+    const robotsMeta = document.querySelector('meta[name="robots"]')
     if (robotsMeta) {
         robotsMeta.setAttribute('content', robotsContent || 'index, follow')
     }

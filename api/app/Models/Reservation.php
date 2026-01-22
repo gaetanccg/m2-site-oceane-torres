@@ -82,18 +82,18 @@ class Reservation extends Model
             $firstName = $this->user->first_name ?? '';
             $lastName = $this->user->last_name ?? '';
             $fullName = trim("{$firstName} {$lastName}");
-            if (!empty($fullName)) {
+            if (! empty($fullName)) {
                 return $fullName;
             }
         }
 
         // 2. Si clientForm est charge et a un fullname, l'utiliser
-        if ($this->relationLoaded('clientForm') && $this->clientForm && !empty($this->clientForm->fullname)) {
+        if ($this->relationLoaded('clientForm') && $this->clientForm && ! empty($this->clientForm->fullname)) {
             return $this->clientForm->fullname;
         }
 
         // 3. Sinon, utiliser guest_name (pour les demandes sans compte)
-        if (!empty($this->guest_name)) {
+        if (! empty($this->guest_name)) {
             return $this->guest_name;
         }
 
@@ -103,12 +103,12 @@ class Reservation extends Model
     public function getClientEmailAttribute(): ?string
     {
         // 1. Si user_id existe et que user est charge, utiliser l'email user
-        if ($this->user_id && $this->relationLoaded('user') && $this->user && !empty($this->user->email)) {
+        if ($this->user_id && $this->relationLoaded('user') && $this->user && ! empty($this->user->email)) {
             return $this->user->email;
         }
 
         // 2. Sinon, utiliser guest_email
-        if (!empty($this->guest_email)) {
+        if (! empty($this->guest_email)) {
             return $this->guest_email;
         }
 
@@ -118,17 +118,17 @@ class Reservation extends Model
     public function getClientPhoneAttribute(): ?string
     {
         // 1. Si user_id existe et que user est charge, utiliser le phone user
-        if ($this->user_id && $this->relationLoaded('user') && $this->user && !empty($this->user->phone)) {
+        if ($this->user_id && $this->relationLoaded('user') && $this->user && ! empty($this->user->phone)) {
             return $this->user->phone;
         }
 
         // 2. Si clientForm est charge et a un phone, l'utiliser
-        if ($this->relationLoaded('clientForm') && $this->clientForm && !empty($this->clientForm->phone)) {
+        if ($this->relationLoaded('clientForm') && $this->clientForm && ! empty($this->clientForm->phone)) {
             return $this->clientForm->phone;
         }
 
         // 3. Sinon, utiliser guest_phone
-        if (!empty($this->guest_phone)) {
+        if (! empty($this->guest_phone)) {
             return $this->guest_phone;
         }
 

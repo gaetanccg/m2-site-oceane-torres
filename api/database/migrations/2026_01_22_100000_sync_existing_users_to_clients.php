@@ -23,7 +23,7 @@ return new class extends Migration
             ->get();
 
         foreach ($users as $user) {
-            $fullName = trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''));
+            $fullName = trim(($user->first_name ?? '').' '.($user->last_name ?? ''));
 
             // Vérifier si un client existe déjà avec cet email
             $existingClient = DB::table('clients')->where('email', $user->email)->first();

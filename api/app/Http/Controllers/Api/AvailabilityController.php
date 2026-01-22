@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\AvailabilitySlot;
 use App\Models\AvailabilityPattern;
+use App\Models\AvailabilitySlot;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -29,7 +29,7 @@ class AvailabilityController extends Controller
 
         if ($request->has('month') && $request->has('year')) {
             $query->whereMonth('date', $request->month)
-                  ->whereYear('date', $request->year);
+                ->whereYear('date', $request->year);
         }
 
         if ($request->has('from') && $request->has('to')) {
@@ -212,14 +212,14 @@ class AvailabilityController extends Controller
         return response()->json([
             'success' => true,
             'slots_created' => count($slots),
-            'message' => count($slots) . ' creneaux generes avec succes.',
+            'message' => count($slots).' creneaux generes avec succes.',
         ]);
     }
 
     public function togglePattern(AvailabilityPattern $pattern): JsonResponse
     {
         $pattern->update([
-            'is_active' => !$pattern->is_active,
+            'is_active' => ! $pattern->is_active,
         ]);
 
         return response()->json([

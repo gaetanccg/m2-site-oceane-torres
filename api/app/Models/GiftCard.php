@@ -79,7 +79,7 @@ class GiftCard extends Model
 
     public function use(float $amount): bool
     {
-        if (!$this->isValid()) {
+        if (! $this->isValid()) {
             return false;
         }
 

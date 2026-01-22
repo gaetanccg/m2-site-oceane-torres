@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Notification;
-use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -38,7 +37,7 @@ class NotificationController extends Controller
 
     public function markAsRead(Request $request, Notification $notification): JsonResponse
     {
-        if ($notification->user_id !== $request->user()->id && !$request->user()->isAdmin()) {
+        if ($notification->user_id !== $request->user()->id && ! $request->user()->isAdmin()) {
             return response()->json([
                 'message' => 'Non autorisé.',
             ], 403);

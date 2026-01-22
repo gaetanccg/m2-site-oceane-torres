@@ -123,7 +123,7 @@ class Gallery extends Model
      */
     public function getClientIdAttribute(): ?string
     {
-        if (!$this->user_id) {
+        if (! $this->user_id) {
             return null;
         }
 
