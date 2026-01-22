@@ -33,7 +33,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                             </svg>
                         </div>
-                        <h3 class="text-xl font-medium mb-2">Demande envoyee !</h3>
+                        <h3 class="text-xl font-medium mb-2">Demande envoyée !</h3>
                         <p class="text-gray-600 font-light mb-6">
                             Merci pour votre demande. Je vous recontacterai tres rapidement pour discuter de votre projet.
                         </p>
@@ -109,10 +109,10 @@
                             </select>
                         </div>
 
-                        <!-- Dates souhaitees -->
+                        <!-- Dates souhaitées -->
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">
-                                Dates souhaitees <span class="text-red-500">*</span>
+                                Dates souhaitées <span class="text-red-500">*</span>
                             </label>
                             <textarea
                                 v-model="form.date_preferences"
@@ -132,7 +132,7 @@
                                 v-model="form.message"
                                 rows="3"
                                 class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-gold/50 focus:border-gold transition-colors resize-none"
-                                placeholder="Parlez-moi de votre projet, vos idees..."
+                                placeholder="Parlez-moi de votre projet, vos idées..."
                             />
                         </div>
 
@@ -147,8 +147,8 @@
                                 />
                                 <div class="text-sm text-gray-600">
                                     <span class="text-red-500">*</span>
-                                    J'accepte que mes donnees personnelles soient traitees pour la gestion de ma demande de shooting.
-                                    Ces donnees ne seront jamais cedees a des tiers.
+                                    J'accepte que mes données personnelles soient traitées pour la gestion de ma demande de shooting.
+                                    Ces données ne seront jamais cedées a des tiers.
                                     <a href="/mentions-legales" target="_blank" class="text-gold hover:underline">
                                         En savoir plus
                                     </a>
@@ -249,7 +249,7 @@ async function submit() {
     error.value = ''
 
     if (!form.gdpr_consent) {
-        error.value = 'Vous devez accepter le traitement de vos donnees personnelles pour continuer.'
+        error.value = 'Vous devez accepter le traitement de vos données personnelles pour continuer.'
         return
     }
 
@@ -267,7 +267,7 @@ async function submit() {
         })
         isSuccess.value = true
     } catch (err) {
-        error.value = err instanceof Error ? err.message : 'Une erreur est survenue. Veuillez reessayer.'
+        error.value = err instanceof Error ? err.message : 'Une erreur est survenue. Veuillez réessayer.'
     } finally {
         isLoading.value = false
     }

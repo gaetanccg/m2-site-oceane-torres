@@ -85,7 +85,7 @@ class AvailabilityController extends Controller
         return response()->json([
             'success' => true,
             'data' => $slot,
-            'message' => 'Creneau cree avec succes.',
+            'message' => 'Creneau crée avec succes.',
         ], 201);
     }
 
@@ -163,7 +163,7 @@ class AvailabilityController extends Controller
         return response()->json([
             'success' => true,
             'data' => $pattern,
-            'message' => 'Modele de disponibilite cree avec succes.',
+            'message' => 'Modele de disponibilite crée avec succes.',
         ], 201);
     }
 

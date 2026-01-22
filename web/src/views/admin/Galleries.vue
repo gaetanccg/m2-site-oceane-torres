@@ -198,10 +198,28 @@
                 <FormField
                     v-model="form.client_id"
                     type="select"
-                    label="Client (optionnel)"
+                    label="Client existant (optionnel)"
                     :options="clientOptions"
                     placeholder="Selectionner un client"
+                    :disabled="!!form.assigned_email"
                 />
+
+                <div class="relative flex items-center">
+                    <div class="flex-grow border-t border-gray-200"></div>
+                    <span class="mx-4 text-xs text-gray-400 uppercase">ou</span>
+                    <div class="flex-grow border-t border-gray-200"></div>
+                </div>
+
+                <FormField
+                    v-model="form.assigned_email"
+                    type="email"
+                    label="Email du futur client"
+                    placeholder="email@exemple.com"
+                    :disabled="!!form.client_id"
+                />
+                <p class="text-xs text-gray-500 -mt-2">
+                    La galerie sera automatiquement liée au client lorsqu'il s'inscrira avec cet email.
+                </p>
             </form>
 
             <template #footer>
@@ -560,6 +578,7 @@ const form = reactive<GalleryFormData>({
     title: '',
     description: '',
     client_id: '',
+    assigned_email: '',
 })
 
 const clientOptions = computed(() =>
@@ -642,6 +661,7 @@ function resetForm() {
     form.title = ''
     form.description = ''
     form.client_id = ''
+    form.assigned_email = ''
 }
 
 function openCreateModal() {
@@ -655,6 +675,7 @@ function openEditModal(gallery: AdminGallery) {
     form.title = gallery.title
     form.description = gallery.description || ''
     form.client_id = gallery.client_id || ''
+    form.assigned_email = gallery.assigned_email || ''
     isEditing.value = true
     editingId.value = gallery.id
     showFormModal.value = true

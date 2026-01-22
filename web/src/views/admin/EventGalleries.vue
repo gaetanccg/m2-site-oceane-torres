@@ -85,7 +85,7 @@
                             </div>
 
                             <div class="flex items-center justify-between text-xs text-gray-400">
-                                <span>Cree le {{ formatDate(gallery.created_at) }}</span>
+                                <span>Crée le {{ formatDate(gallery.created_at) }}</span>
                                 <span v-if="gallery.views_count" class="flex items-center gap-1">
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -336,7 +336,7 @@
         <Modal v-model="showDeleteModal" title="Confirmer la suppression" size="sm">
             <p class="text-gray-600">
                 Etes-vous sur de vouloir supprimer la galerie <strong>{{ galleryToDelete?.title }}</strong> ?
-                Toutes les photos seront egalement supprimees.
+                Toutes les photos seront egalement supprimées.
             </p>
 
             <template #footer>
@@ -346,7 +346,7 @@
         </Modal>
 
         <!-- Bulk Delete Confirmation Modal -->
-        <Modal v-model="showBulkDeleteModal" title="Supprimer les photos selectionnees" size="sm">
+        <Modal v-model="showBulkDeleteModal" title="Supprimer les photos selectionnées" size="sm">
             <p class="text-gray-600">
                 Etes-vous sur de vouloir supprimer <strong>{{ selectedPhotos.length }} photo(s)</strong> ?
                 Cette action est irreversible.

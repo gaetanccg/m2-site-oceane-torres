@@ -26,7 +26,7 @@
                 <div v-else-if="error" class="text-center py-20">
                     <p class="text-gray-600 mb-4">{{ error }}</p>
                     <button @click="loadPrestations" class="px-6 py-3 bg-gold text-white hover:opacity-90 transition-all">
-                        Reessayer
+                        Réessayer
                     </button>
                 </div>
 
@@ -85,12 +85,12 @@
                         >
                             M'envoyer une demande de shooting
                         </button>
-                        <a
-                            href="mailto:oceanetorresphotographie@gmail.com"
+                        <router-link
+                            to="/contact"
                             class="inline-block px-12 py-4 border border-black text-black hover:border-gold hover:text-gold transition-all duration-300 text-sm uppercase tracking-widest font-light"
                         >
-                            Me contacter par mail
-                        </a>
+                            Me contacter
+                        </router-link>
                     </div>
                 </div>
             </div>
@@ -112,7 +112,7 @@
 
                     <div>
                         <h3 class="text-xl font-normal text-black mb-2">Livraison</h3>
-                        <p>Vos photos sont livrees en moyenne sous 10 jours ouvres via une galerie privee. Vous serez contactes par mail lorsque la galerie vous sera accessible.</p>
+                        <p>Vos photos sont livrées en moyenne sous 10 jours ouvres via une galerie privée. Vous serez contactes par mail lorsque la galerie vous sera accessible.</p>
                     </div>
 
                     <div>
@@ -162,7 +162,7 @@ async function loadPrestations() {
             prestations.value = response.data
         }
     } catch (err) {
-        error.value = 'Impossible de charger les prestations. Veuillez reessayer.'
+        error.value = 'Impossible de charger les prestations. Veuillez réessayer.'
         console.error('Failed to load prestations:', err)
     } finally {
         isLoading.value = false

@@ -85,7 +85,7 @@ class BookingRequestController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Votre demande a ete envoyee avec succes. Nous vous contacterons tres bientot !',
+            'message' => 'Votre demande a été envoyée avec succes. Nous vous contacterons tres bientot !',
         ], 201);
     }
 }

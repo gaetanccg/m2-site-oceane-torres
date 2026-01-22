@@ -26,6 +26,13 @@ const DownloadGallery = () => import('@/views/DownloadGallery.vue')
 const Events = () => import('@/views/Events.vue')
 const EventGallery = () => import('@/views/EventGallery.vue')
 
+// Auth pages (public)
+const Login = () => import('@/views/auth/Login.vue')
+const Register = () => import('@/views/auth/Register.vue')
+
+// Account pages (client)
+const AccountDashboard = () => import('@/views/account/Dashboard.vue')
+
 // Admin pages
 const AdminLogin = () => import('@/views/admin/Login.vue')
 const AdminDashboard = () => import('@/views/admin/Dashboard.vue')
@@ -138,6 +145,38 @@ export const routes: RouteRecordRaw[] = [
             description: 'Galerie photos d\'evenement par Oceane Torres Photographie.'
         }
     },
+    // Auth routes (public)
+    {
+        path: '/connexion',
+        name: 'login',
+        component: Login,
+        meta: {
+            title: 'Connexion',
+            guestOnly: true,
+            robots: 'noindex, nofollow'
+        }
+    },
+    {
+        path: '/inscription',
+        name: 'register',
+        component: Register,
+        meta: {
+            title: 'Inscription',
+            guestOnly: true,
+            robots: 'noindex, nofollow'
+        }
+    },
+    // Account routes (client)
+    {
+        path: '/mon-compte',
+        name: 'account',
+        component: AccountDashboard,
+        meta: {
+            title: 'Mon compte',
+            requiresClientAuth: true,
+            robots: 'noindex, nofollow'
+        }
+    },
     // Admin routes
     {
         path: '/admin/login',
@@ -207,14 +246,42 @@ const router = createRouter({
 
 // Auth guard for protected routes
 router.beforeEach(async (to, _from, next) => {
+    const authStore = useAuthStore()
     const requiresAuth = to.meta.requiresAuth
+    const requiresClientAuth = to.meta.requiresClientAuth
+    const guestOnly = to.meta.guestOnly
 
+    // Admin auth guard
     if (requiresAuth) {
-        const authStore = useAuthStore()
         const isAuthenticated = await authStore.checkAuth()
 
         if (!isAuthenticated) {
             next({name: 'admin-login', query: {redirect: to.fullPath}})
+            return
+        }
+    }
+
+    // Client auth guard
+    if (requiresClientAuth) {
+        const isAuthenticated = await authStore.checkAuth()
+
+        if (!isAuthenticated) {
+            next({name: 'login', query: {redirect: to.fullPath}})
+            return
+        }
+    }
+
+    // Guest only guard (redirect logged users away from login/register)
+    if (guestOnly) {
+        const isAuthenticated = await authStore.checkAuth()
+
+        if (isAuthenticated) {
+            // Redirect admin to admin dashboard, clients to account
+            if (authStore.isAdmin) {
+                next({name: 'admin-dashboard'})
+            } else {
+                next({name: 'account'})
+            }
             return
         }
     }

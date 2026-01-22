@@ -37,12 +37,12 @@
                         </div>
 
                         <div class="mt-10 flex flex-col sm:flex-row gap-4">
-                            <a
-                                href="mailto:oceanetorresphotographie@gmail.com"
+                            <router-link
+                                to="/contact"
                                 class="inline-block px-8 py-3 bg-black text-white hover:bg-gold transition-all duration-300 text-sm uppercase tracking-widest font-light"
                             >
-                                Me contacter par mail
-                            </a>
+                                Me contacter
+                            </router-link>
                             <a
                                 href="https://instagram.com/oceanetorresphotographie"
                                 target="_blank"

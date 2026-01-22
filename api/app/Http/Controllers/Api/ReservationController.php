@@ -185,7 +185,7 @@ class ReservationController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Reservation supprimee avec succes.',
+            'message' => 'Reservation supprimée avec succes.',
         ]);
     }
 
@@ -278,7 +278,7 @@ class ReservationController extends Controller
         return response()->json([
             'success' => true,
             'reservation' => $reservation->fresh()->load(['prestation', 'availabilitySlot']),
-            'message' => 'Reservation confirmee avec succes.',
+            'message' => 'Reservation confirmée avec succes.',
         ]);
     }
 
@@ -300,7 +300,7 @@ class ReservationController extends Controller
         return response()->json([
             'success' => true,
             'reservation' => $reservation->fresh(),
-            'message' => 'Reservation annulee et creneau libere.',
+            'message' => 'Reservation annulée et creneau libere.',
         ]);
     }
 }

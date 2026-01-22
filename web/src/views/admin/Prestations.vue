@@ -221,7 +221,7 @@
             <FormField
               v-model.number="form.duration"
               type="number"
-              label="Duree (minutes)"
+              label="Durée (minutes)"
               :min="0"
               :step="15"
               placeholder="Laisser vide si variable"

@@ -147,7 +147,7 @@
             <div class="text-sm">
               <p class="font-medium text-blue-900">Consentement RGPD</p>
               <p class="text-blue-700 mt-1">
-                Le client a donne son consentement pour le traitement de ses donnees personnelles
+                Le client a donne son consentement pour le traitement de ses données personnelles
                 conformement a notre politique de confidentialite.
               </p>
             </div>
@@ -323,7 +323,7 @@
             <div class="text-sm">
               <p class="font-medium text-blue-900">Consentement RGPD</p>
               <p class="text-blue-700 mt-1">
-                Le client a donne son consentement pour le traitement de ses donnees personnelles.
+                Le client a donne son consentement pour le traitement de ses données personnelles.
               </p>
             </div>
           </label>
@@ -347,14 +347,14 @@
             <div class="text-sm">
               <p class="font-medium text-red-900">Attention</p>
               <p class="text-red-700 mt-1">
-                Cette action supprimera definitivement toutes les donnees personnelles du client
+                Cette action supprimera definitivement toutes les données personnelles du client
                 <strong>{{ clientToDelete?.name }}</strong> conformement au RGPD (droit a l'oubli).
               </p>
             </div>
           </div>
         </div>
         <p class="text-gray-600 text-sm">
-          Les reservations seront conservees de maniere anonymisee pour la comptabilite.
+          Les reservations seront conservées de maniere anonymisée pour la comptabilite.
         </p>
       </div>
 
@@ -423,7 +423,7 @@ const columns: TableColumn<Client>[] = [
   { key: 'phone', label: 'Telephone' },
   { key: 'reservations_count', label: 'Reservations', align: 'center' },
   { key: 'total_paid', label: 'Total verse', align: 'right' },
-  { key: 'created_at', label: 'Cree le', sortable: true },
+  { key: 'created_at', label: 'Crée le', sortable: true },
 ]
 
 function getInitials(name: string): string {

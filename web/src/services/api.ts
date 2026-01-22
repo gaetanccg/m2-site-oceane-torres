@@ -97,10 +97,11 @@ class ApiService {
     async sendContactMessage(data: {
         name: string
         email: string
+        phone?: string
+        subject: string
         message: string
-        subject?: string
-    }): Promise<ApiResponse<{ success: boolean }>> {
-        return this.request<ApiResponse<{ success: boolean }>>('/contact', {
+    }): Promise<ApiResponse<{ message: string }>> {
+        return this.request<ApiResponse<{ message: string }>>('/contact', {
             method: 'POST',
             body: JSON.stringify(data),
         })
