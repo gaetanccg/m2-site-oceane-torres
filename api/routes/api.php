@@ -1,21 +1,21 @@
 <?php
 
+use App\Http\Controllers\Api\AccountController;
+use App\Http\Controllers\Api\Admin\ClientController;
+use App\Http\Controllers\Api\Admin\DashboardController;
+use App\Http\Controllers\Api\Admin\NotificationController;
+use App\Http\Controllers\Api\Admin\UserController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\AvailabilityController;
+use App\Http\Controllers\Api\BookingRequestController;
+use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\GalleryController;
+use App\Http\Controllers\Api\GiftCardController;
 use App\Http\Controllers\Api\HealthController;
+use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PhotoController;
 use App\Http\Controllers\Api\PrestationController;
 use App\Http\Controllers\Api\ReservationController;
-use App\Http\Controllers\Api\GiftCardController;
-use App\Http\Controllers\Api\PaymentController;
-use App\Http\Controllers\Api\ContactController;
-use App\Http\Controllers\Api\AvailabilityController;
-use App\Http\Controllers\Api\BookingRequestController;
-use App\Http\Controllers\Api\Admin\DashboardController;
-use App\Http\Controllers\Api\Admin\UserController;
-use App\Http\Controllers\Api\Admin\ClientController;
-use App\Http\Controllers\Api\Admin\NotificationController;
-use App\Http\Controllers\Api\AccountController;
 use Illuminate\Support\Facades\Route;
 
 /*

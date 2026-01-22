@@ -28,7 +28,7 @@ class UserObserver
             // Créer un nouveau client
             Client::create([
                 'user_id' => $user->id,
-                'name' => trim($user->first_name . ' ' . $user->last_name),
+                'name' => trim($user->first_name.' '.$user->last_name),
                 'email' => $user->email,
                 'phone' => $user->phone,
                 'source' => 'reservation',
@@ -48,7 +48,7 @@ class UserObserver
 
         if ($client) {
             $client->update([
-                'name' => trim($user->first_name . ' ' . $user->last_name),
+                'name' => trim($user->first_name.' '.$user->last_name),
                 'email' => $user->email,
                 'phone' => $user->phone,
             ]);

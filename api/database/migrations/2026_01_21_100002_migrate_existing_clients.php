@@ -12,12 +12,12 @@ return new class extends Migration
         $users = DB::table('users')->where('role', 'client')->get();
 
         foreach ($users as $user) {
-            $fullName = trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''));
+            $fullName = trim(($user->first_name ?? '').' '.($user->last_name ?? ''));
 
             // Vérifier si un client avec cet email existe déjà
             $existingClient = DB::table('clients')->where('email', $user->email)->first();
 
-            if (!$existingClient) {
+            if (! $existingClient) {
                 $clientId = Str::uuid()->toString();
 
                 DB::table('clients')->insert([
@@ -53,7 +53,7 @@ return new class extends Migration
             // Vérifier si un client avec cet email existe déjà
             $existingClient = DB::table('clients')->where('email', $guest->guest_email)->first();
 
-            if (!$existingClient) {
+            if (! $existingClient) {
                 $clientId = Str::uuid()->toString();
 
                 DB::table('clients')->insert([

@@ -100,6 +100,7 @@ class Client extends Model
         if ($this->user_id) {
             return Gallery::where('user_id', $this->user_id)->count();
         }
+
         return 0;
     }
 
@@ -138,7 +139,7 @@ class Client extends Model
     {
         return $query->where(function ($q) use ($search) {
             $q->where('name', 'ilike', "%{$search}%")
-              ->orWhere('email', 'ilike', "%{$search}%");
+                ->orWhere('email', 'ilike', "%{$search}%");
         });
     }
 

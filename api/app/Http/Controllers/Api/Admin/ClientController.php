@@ -76,14 +76,14 @@ class ClientController extends Controller
     {
         $validated = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
-            'email' => ['sometimes', 'email', 'unique:clients,email,' . $client->id],
+            'email' => ['sometimes', 'email', 'unique:clients,email,'.$client->id],
             'phone' => ['nullable', 'string', 'max:20'],
             'notes' => ['nullable', 'string', 'max:5000'],
             'gdpr_consent' => ['sometimes', 'boolean'],
         ]);
 
         // Si le consentement RGPD passe de false à true, enregistrer la date
-        if (isset($validated['gdpr_consent']) && $validated['gdpr_consent'] && !$client->gdpr_consent) {
+        if (isset($validated['gdpr_consent']) && $validated['gdpr_consent'] && ! $client->gdpr_consent) {
             $validated['gdpr_consent_at'] = now();
         }
 

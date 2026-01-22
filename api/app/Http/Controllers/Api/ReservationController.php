@@ -130,7 +130,7 @@ class ReservationController extends Controller
         if (isset($validated['date'])) {
             $date = $validated['date'];
             if (isset($validated['time']) && $validated['time']) {
-                $date = $date . ' ' . $validated['time'];
+                $date = $date.' '.$validated['time'];
             }
             $updateData['date'] = $date;
         }
@@ -245,5 +245,4 @@ class ReservationController extends Controller
             'data' => $events,
         ]);
     }
-
 }

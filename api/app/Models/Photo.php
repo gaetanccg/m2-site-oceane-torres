@@ -50,7 +50,8 @@ class Photo extends Model
 
         // Generate signed URL from MinIO
         try {
-            $storageService = new MinioStorageService();
+            $storageService = new MinioStorageService;
+
             return $storageService->getSignedUrl($storagePath, 3600);
         } catch (\Exception $e) {
             return null;
@@ -99,7 +100,7 @@ class Photo extends Model
 
     public function toggleLike(): bool
     {
-        $this->is_liked = !$this->is_liked;
+        $this->is_liked = ! $this->is_liked;
         $this->save();
 
         return $this->is_liked;
@@ -107,7 +108,7 @@ class Photo extends Model
 
     public function toggleDownloadable(): bool
     {
-        $this->is_downloadable = !$this->is_downloadable;
+        $this->is_downloadable = ! $this->is_downloadable;
         $this->save();
 
         return $this->is_downloadable;

@@ -80,7 +80,7 @@ const handleSubmit = async () => {
             errorMessage.value = data.message || 'Code invalide'
             codeInputRef.value?.clear()
         }
-    } catch (error) {
+    } catch (_error) {
         hasError.value = true
         errorMessage.value = 'Erreur de connexion'
     } finally {

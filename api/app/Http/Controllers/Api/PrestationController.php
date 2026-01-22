@@ -107,7 +107,7 @@ class PrestationController extends Controller
     public function toggle(Prestation $prestation): JsonResponse
     {
         $prestation->update([
-            'is_active' => !$prestation->is_active,
+            'is_active' => ! $prestation->is_active,
         ]);
 
         return response()->json([

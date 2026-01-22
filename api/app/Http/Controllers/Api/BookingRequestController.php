@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Client;
-use App\Models\Reservation;
 use App\Models\Prestation;
+use App\Models\Reservation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -29,7 +29,7 @@ class BookingRequestController extends Controller
 
         // Verifier que la prestation est active
         $prestation = Prestation::find($validated['prestation_id']);
-        if (!$prestation || !$prestation->is_active) {
+        if (! $prestation || ! $prestation->is_active) {
             return response()->json([
                 'message' => 'Cette prestation n\'est plus disponible.',
             ], 422);
@@ -38,7 +38,7 @@ class BookingRequestController extends Controller
         // Trouver ou creer le client
         $client = Client::where('email', $validated['email'])->first();
 
-        if (!$client) {
+        if (! $client) {
             $client = Client::create([
                 'name' => $validated['name'],
                 'email' => $validated['email'],
@@ -49,14 +49,14 @@ class BookingRequestController extends Controller
             ]);
         } else {
             // Mettre à jour le consentement si pas encore donné
-            if (!$client->gdpr_consent) {
+            if (! $client->gdpr_consent) {
                 $client->update([
                     'gdpr_consent' => true,
                     'gdpr_consent_at' => now(),
                 ]);
             }
             // Mettre à jour le téléphone si fourni
-            if (!empty($validated['phone']) && empty($client->phone)) {
+            if (! empty($validated['phone']) && empty($client->phone)) {
                 $client->update(['phone' => $validated['phone']]);
             }
         }
