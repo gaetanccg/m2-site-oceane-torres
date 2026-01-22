@@ -11,22 +11,6 @@ use Srmklive\PayPal\Services\PayPal as PayPalClient;
 
 class PaymentController extends Controller
 {
-    public function index(): JsonResponse
-    {
-        $payments = Payment::with(['user', 'reservation'])
-            ->latest()
-            ->paginate(20);
-
-        return response()->json($payments);
-    }
-
-    public function show(Payment $payment): JsonResponse
-    {
-        return response()->json([
-            'payment' => $payment->load(['user', 'reservation']),
-        ]);
-    }
-
     public function createStripeIntent(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -155,24 +139,6 @@ class PaymentController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
-    }
-
-    public function refund(Payment $payment): JsonResponse
-    {
-        if ($payment->status !== 'completed') {
-            return response()->json([
-                'message' => 'Ce paiement ne peut pas être remboursé.',
-            ], 422);
-        }
-
-        // TODO: Implement actual refund logic based on provider
-
-        $payment->update(['status' => 'refunded']);
-
-        return response()->json([
-            'payment' => $payment->fresh(),
-            'message' => 'Remboursement effectué.',
-        ]);
     }
 
     public function handleStripeWebhook(Request $request): JsonResponse

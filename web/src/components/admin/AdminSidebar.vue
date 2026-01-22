@@ -110,7 +110,7 @@ function isActive(path: string): boolean {
 
 async function handleLogout() {
     await authStore.logout()
-    router.push('/admin/login')
+    router.push('/connexion')
 }
 
 // Icons as functional components

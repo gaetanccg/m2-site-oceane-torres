@@ -198,7 +198,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
 const props = defineProps<{
@@ -210,6 +210,7 @@ const emit = defineEmits<{
 }>()
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 
 const activeTab = ref<'login' | 'register'>('login')
@@ -258,7 +259,13 @@ async function handleLogin() {
     const success = await authStore.loginClient(loginForm.email, loginForm.password)
     if (success) {
         close()
-        router.push('/mon-compte')
+        const redirect = route.query.redirect as string
+        if (redirect) {
+            router.push(redirect)
+        } else {
+            // Redirect based on role
+            router.push(authStore.isAdmin ? '/admin' : '/mon-compte')
+        }
     }
 }
 

@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Mail\GalleryAccessMail;
+use App\Models\Client;
 use App\Models\Gallery;
 use App\Services\MinioStorageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use ZipArchive;
 
@@ -74,7 +77,7 @@ class GalleryController extends Controller
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'client_id' => ['nullable', 'string'],
+            'client_id' => ['nullable', 'exists:clients,id'],
             'assigned_email' => ['nullable', 'email', 'max:255'],
         ]);
 
@@ -84,7 +87,9 @@ class GalleryController extends Controller
 
         // Gerer le choix : soit client_id, soit assigned_email
         if (!empty($validated['client_id'])) {
-            $validated['user_id'] = $validated['client_id'];
+            // Recuperer le user_id du client
+            $client = Client::find($validated['client_id']);
+            $validated['user_id'] = $client?->user_id;
             $validated['assigned_email'] = null;
         }
         unset($validated['client_id']);
@@ -103,16 +108,19 @@ class GalleryController extends Controller
         $validated = $request->validate([
             'title' => ['sometimes', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'client_id' => ['nullable', 'exists:users,id'],
+            'client_id' => ['nullable', 'exists:clients,id'],
             'assigned_email' => ['nullable', 'email', 'max:255'],
         ]);
 
         // Gerer le choix : soit client_id, soit assigned_email
         if (array_key_exists('client_id', $validated)) {
-            $validated['user_id'] = $validated['client_id'] ?: null;
-            // Si on assigne a un client existant, on retire l'email assigne
             if (!empty($validated['client_id'])) {
+                // Recuperer le user_id du client
+                $client = Client::find($validated['client_id']);
+                $validated['user_id'] = $client?->user_id;
                 $validated['assigned_email'] = null;
+            } else {
+                $validated['user_id'] = null;
             }
             unset($validated['client_id']);
         }
@@ -150,6 +158,48 @@ class GalleryController extends Controller
         return response()->json([
             'message' => 'Galerie supprimée avec succès.',
         ]);
+    }
+
+    public function sendAccessEmail(Request $request, Gallery $gallery): JsonResponse
+    {
+        $validated = $request->validate([
+            'email' => ['required', 'email'],
+            'recipient_name' => ['required', 'string', 'max:255'],
+        ]);
+
+        if (!$gallery->share_code) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cette galerie n\'a pas de code de partage.',
+            ], 400);
+        }
+
+        $galleryUrl = config('app.frontend_url', 'https://oceanetorresphotographie.fr') . '/gallery';
+
+        try {
+            Mail::to($validated['email'])->send(new GalleryAccessMail(
+                gallery: $gallery,
+                recipientName: $validated['recipient_name'],
+                galleryUrl: $galleryUrl,
+                shareCode: $gallery->share_code,
+            ));
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Email envoyé avec succès à ' . $validated['email'],
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Failed to send gallery access email', [
+                'gallery_id' => $gallery->id,
+                'email' => $validated['email'],
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de l\'envoi de l\'email: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     public function regenerateToken(Gallery $gallery): JsonResponse

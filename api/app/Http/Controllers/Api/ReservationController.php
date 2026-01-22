@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Reservation;
-use App\Models\AvailabilitySlot;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -247,60 +246,4 @@ class ReservationController extends Controller
         ]);
     }
 
-    /**
-     * Confirmer une reservation en lui assignant un creneau
-     */
-    public function confirmWithSlot(Request $request, Reservation $reservation): JsonResponse
-    {
-        $validated = $request->validate([
-            'slot_id' => ['required', 'exists:availability_slots,id'],
-        ]);
-
-        $slot = AvailabilitySlot::findOrFail($validated['slot_id']);
-
-        // Verifier que le creneau est disponible
-        if (!$slot->isAvailable()) {
-            return response()->json([
-                'message' => 'Ce creneau n\'est plus disponible.',
-            ], 422);
-        }
-
-        // Marquer le creneau comme reserve
-        $slot->markAsBooked($reservation);
-
-        // Mettre a jour la reservation
-        $reservation->update([
-            'status' => 'confirmed',
-            'availability_slot_id' => $slot->id,
-            'date' => $slot->date,
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'reservation' => $reservation->fresh()->load(['prestation', 'availabilitySlot']),
-            'message' => 'Reservation confirmée avec succes.',
-        ]);
-    }
-
-    /**
-     * Annuler une reservation et liberer le creneau
-     */
-    public function cancelWithSlotRelease(Reservation $reservation): JsonResponse
-    {
-        // Liberer le creneau si existant
-        if ($reservation->availabilitySlot) {
-            $reservation->availabilitySlot->release();
-        }
-
-        $reservation->update([
-            'status' => 'cancelled',
-            'availability_slot_id' => null,
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'reservation' => $reservation->fresh(),
-            'message' => 'Reservation annulée et creneau libere.',
-        ]);
-    }
 }

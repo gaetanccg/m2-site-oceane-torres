@@ -10,5 +10,7 @@ const app = createApp(App)
 app.use(createPinia())
 app.use(router)
 
-// Mount
-app.mount('#app')
+// Wait for router to be ready before mounting to prevent flash
+router.isReady().then(() => {
+    app.mount('#app')
+})

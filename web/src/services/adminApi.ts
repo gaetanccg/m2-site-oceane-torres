@@ -105,7 +105,7 @@ class AdminApiService {
 
             if (response.status === 401) {
                 localStorage.removeItem('auth_token')
-                window.location.href = '/admin/login'
+                window.location.href = '/?login=true'
                 throw new Error('Non autorisé')
             }
 
@@ -351,6 +351,20 @@ class AdminApiService {
         return this.request<AdminApiResponse<{ share_code: string }>>(
             `/admin/galleries/${id}/regenerate-code`,
             { method: 'POST' }
+        )
+    }
+
+    async sendGalleryAccessEmail(
+        galleryId: string,
+        email: string,
+        recipientName: string
+    ): Promise<AdminApiResponse<{ message: string }>> {
+        return this.request<AdminApiResponse<{ message: string }>>(
+            `/admin/galleries/${galleryId}/send-email`,
+            {
+                method: 'POST',
+                body: JSON.stringify({ email, recipient_name: recipientName }),
+            }
         )
     }
 

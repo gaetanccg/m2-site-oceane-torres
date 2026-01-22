@@ -268,7 +268,7 @@ export interface GalleryFormData {
     title: string
     description: string
     client_id: string
-    assigned_email?: string
+    assigned_email: string
 }
 
 // ============================================================================
