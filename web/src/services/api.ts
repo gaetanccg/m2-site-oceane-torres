@@ -117,6 +117,7 @@ class ApiService {
         prestation_id: string
         date_preferences: string
         message?: string
+        gdpr_consent: boolean
     }): Promise<ApiResponse<{ success: boolean; message: string }>> {
         return this.request<ApiResponse<{ success: boolean; message: string }>>('/booking-request', {
             method: 'POST',

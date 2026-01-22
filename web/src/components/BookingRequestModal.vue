@@ -136,6 +136,26 @@
                             />
                         </div>
 
+                        <!-- RGPD Consent -->
+                        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                            <label class="flex items-start gap-3 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    v-model="form.gdpr_consent"
+                                    required
+                                    class="mt-1 rounded border-gray-300 text-gold focus:ring-gold"
+                                />
+                                <div class="text-sm text-gray-600">
+                                    <span class="text-red-500">*</span>
+                                    J'accepte que mes donnees personnelles soient traitees pour la gestion de ma demande de shooting.
+                                    Ces donnees ne seront jamais cedees a des tiers.
+                                    <a href="/mentions-legales" target="_blank" class="text-gold hover:underline">
+                                        En savoir plus
+                                    </a>
+                                </div>
+                            </label>
+                        </div>
+
                         <!-- Error message -->
                         <div v-if="error" class="p-3 bg-red-50 text-red-600 rounded-lg text-sm">
                             {{ error }}
@@ -191,6 +211,7 @@ const form = reactive({
     prestation_id: '',
     date_preferences: '',
     message: '',
+    gdpr_consent: false,
 })
 
 function close() {
@@ -205,6 +226,7 @@ function close() {
         form.prestation_id = ''
         form.date_preferences = ''
         form.message = ''
+        form.gdpr_consent = false
     }, 300)
 }
 
@@ -225,6 +247,12 @@ async function loadPrestations() {
 
 async function submit() {
     error.value = ''
+
+    if (!form.gdpr_consent) {
+        error.value = 'Vous devez accepter le traitement de vos donnees personnelles pour continuer.'
+        return
+    }
+
     isLoading.value = true
 
     try {
@@ -235,6 +263,7 @@ async function submit() {
             prestation_id: form.prestation_id,
             date_preferences: form.date_preferences,
             message: form.message || undefined,
+            gdpr_consent: form.gdpr_consent,
         })
         isSuccess.value = true
     } catch (err) {
