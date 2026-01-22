@@ -112,22 +112,58 @@ export interface CalendarEvent {
 // Clients
 // ============================================================================
 
+export type ClientSource = 'reservation' | 'manual' | 'contact'
+
 export interface Client {
     id: string
-    first_name: string
-    last_name: string
+    name: string
     email: string
     phone?: string
+    notes?: string
+    source: ClientSource
+    total_paid: number
+    gdpr_consent: boolean
+    gdpr_consent_at?: string
     reservations_count?: number
     galleries_count?: number
-    total_spent?: number
+    user_id?: string
     created_at: string
     updated_at: string
 }
 
-// Helper pour obtenir le nom complet du client
-export function getClientFullName(client: Client): string {
-    return `${client.first_name} ${client.last_name}`
+export interface ClientFormData {
+    name: string
+    email: string
+    phone?: string
+    notes?: string
+    gdpr_consent?: boolean
+}
+
+export interface ClientGdprExport {
+    personal_data: {
+        name: string
+        email: string
+        phone?: string
+        created_at: string
+    }
+    consent: {
+        gdpr_consent: boolean
+        gdpr_consent_at?: string
+    }
+    reservations: Array<{
+        id: string
+        prestation?: string
+        date?: string
+        status: string
+        created_at: string
+    }>
+    payments: Array<{
+        amount: number
+        currency: string
+        status: string
+        created_at: string
+    }>
+    exported_at: string
 }
 
 // ============================================================================

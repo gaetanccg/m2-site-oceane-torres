@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Client;
 use App\Models\Reservation;
 use App\Models\Prestation;
 use Illuminate\Http\JsonResponse;
@@ -23,6 +24,7 @@ class BookingRequestController extends Controller
             'prestation_id' => ['required', 'exists:prestations,id'],
             'date_preferences' => ['required', 'string', 'max:1000'],
             'message' => ['nullable', 'string', 'max:2000'],
+            'gdpr_consent' => ['required', 'accepted'],
         ]);
 
         // Verifier que la prestation est active
@@ -33,9 +35,36 @@ class BookingRequestController extends Controller
             ], 422);
         }
 
+        // Trouver ou creer le client
+        $client = Client::where('email', $validated['email'])->first();
+
+        if (!$client) {
+            $client = Client::create([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'phone' => $validated['phone'] ?? null,
+                'source' => 'reservation',
+                'gdpr_consent' => true,
+                'gdpr_consent_at' => now(),
+            ]);
+        } else {
+            // Mettre à jour le consentement si pas encore donné
+            if (!$client->gdpr_consent) {
+                $client->update([
+                    'gdpr_consent' => true,
+                    'gdpr_consent_at' => now(),
+                ]);
+            }
+            // Mettre à jour le téléphone si fourni
+            if (!empty($validated['phone']) && empty($client->phone)) {
+                $client->update(['phone' => $validated['phone']]);
+            }
+        }
+
         // Creer la reservation en tant que demande (sans user_id, sans date fixe)
         $reservation = Reservation::create([
             'user_id' => null,
+            'client_id' => $client->id,
             'prestation_id' => $validated['prestation_id'],
             'guest_name' => $validated['name'],
             'guest_email' => $validated['email'],
@@ -48,6 +77,7 @@ class BookingRequestController extends Controller
 
         Log::info('New booking request received', [
             'reservation_id' => $reservation->id,
+            'client_id' => $client->id,
             'guest_name' => $reservation->guest_name,
             'guest_email' => $reservation->guest_email,
             'prestation' => $prestation->title,

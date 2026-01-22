@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\AvailabilityController;
 use App\Http\Controllers\Api\BookingRequestController;
 use App\Http\Controllers\Api\Admin\DashboardController;
 use App\Http\Controllers\Api\Admin\UserController;
+use App\Http\Controllers\Api\Admin\ClientController;
 use App\Http\Controllers\Api\Admin\NotificationController;
 use Illuminate\Support\Facades\Route;
 
@@ -122,6 +123,11 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
 
     // Users management
     Route::apiResource('users', UserController::class);
+
+    // Clients management
+    Route::apiResource('clients', ClientController::class);
+    Route::get('/clients/{client}/reservations', [ClientController::class, 'reservations']);
+    Route::post('/clients/{client}/gdpr-export', [ClientController::class, 'gdprExport']);
 
     // Prestations management
     Route::get('/prestations', [PrestationController::class, 'adminIndex']);
