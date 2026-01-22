@@ -27,6 +27,10 @@ class Gallery extends Model
         'views_count',
     ];
 
+    protected $appends = [
+        'client_id',
+    ];
+
     protected function casts(): array
     {
         return [
@@ -112,6 +116,18 @@ class Gallery extends Model
     public function getTotalLikesAttribute(): int
     {
         return $this->photos()->where('is_liked', true)->count();
+    }
+
+    /**
+     * Get the client_id (from clients table) based on user_id
+     */
+    public function getClientIdAttribute(): ?string
+    {
+        if (!$this->user_id) {
+            return null;
+        }
+
+        return Client::where('user_id', $this->user_id)->value('id');
     }
 
     public function getDownloadablePhotosCountAttribute(): int

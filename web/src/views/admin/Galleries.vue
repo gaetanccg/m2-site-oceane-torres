@@ -142,6 +142,15 @@
                                 <td class="px-4 py-3">
                                     <div class="flex justify-end gap-1">
                                         <button
+                                            @click="openEmailModal(gallery)"
+                                            class="p-1.5 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
+                                            title="Envoyer par email"
+                                        >
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                            </svg>
+                                        </button>
+                                        <button
                                             @click="openGallery(gallery)"
                                             class="p-1.5 text-gold hover:bg-gold/10 rounded transition-colors"
                                             title="Gerer les photos"
@@ -498,6 +507,50 @@
             </template>
         </Modal>
 
+        <!-- Send Email Modal -->
+        <Modal v-model="showEmailModal" title="Envoyer la galerie par email" size="sm">
+            <div class="space-y-4">
+                <p class="text-gray-600 text-sm">
+                    Envoyez un email au client avec le lien et le code d'acces pour la galerie
+                    <strong class="text-gold">{{ galleryForEmail?.title }}</strong>.
+                </p>
+
+                <div class="bg-gold/10 rounded-lg p-3 text-center">
+                    <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Code d'acces</p>
+                    <p class="text-2xl font-mono font-bold text-gold tracking-widest">{{ galleryForEmail?.share_code }}</p>
+                </div>
+
+                <FormField
+                    v-model="emailForm.recipientName"
+                    label="Nom du destinataire"
+                    required
+                    placeholder="Ex: Marie Dupont"
+                />
+
+                <FormField
+                    v-model="emailForm.email"
+                    type="email"
+                    label="Adresse email"
+                    required
+                    placeholder="email@exemple.com"
+                />
+            </div>
+
+            <template #footer>
+                <Button variant="secondary" @click="showEmailModal = false">Annuler</Button>
+                <Button
+                    :loading="isSendingEmail"
+                    :disabled="!emailForm.email || !emailForm.recipientName"
+                    @click="sendGalleryEmail"
+                >
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    Envoyer
+                </Button>
+            </template>
+        </Modal>
+
         <!-- Lightbox -->
         <Teleport to="body">
             <div
@@ -573,6 +626,13 @@ const selectionMode = ref(false)
 const selectedPhotos = ref<string[]>([])
 const isBulkProcessing = ref(false)
 const showBulkDeleteModal = ref(false)
+const showEmailModal = ref(false)
+const galleryForEmail = ref<AdminGallery | null>(null)
+const isSendingEmail = ref(false)
+const emailForm = reactive({
+    email: '',
+    recipientName: '',
+})
 
 const form = reactive<GalleryFormData>({
     title: '',
@@ -582,7 +642,7 @@ const form = reactive<GalleryFormData>({
 })
 
 const clientOptions = computed(() =>
-    clients.value.map(c => ({value: c.id, label: `${c.first_name} ${c.last_name}`}))
+    clients.value.map(c => ({value: c.id, label: c.name || c.email}))
 )
 
 const likedPhotos = computed(() => galleryPhotos.value.filter(p => p.is_liked))
@@ -704,6 +764,37 @@ async function openGallery(gallery: AdminGallery) {
 function confirmDelete(gallery: AdminGallery) {
     galleryToDelete.value = gallery
     showDeleteModal.value = true
+}
+
+function openEmailModal(gallery: AdminGallery) {
+    galleryForEmail.value = gallery
+    // Pre-fill the email form
+    emailForm.email = gallery.assigned_email || gallery.user?.email || ''
+    emailForm.recipientName = gallery.user?.name || ''
+    showEmailModal.value = true
+}
+
+async function sendGalleryEmail() {
+    if (!galleryForEmail.value || !emailForm.email || !emailForm.recipientName) return
+
+    isSendingEmail.value = true
+    try {
+        await adminApi.sendGalleryAccessEmail(
+            galleryForEmail.value.id,
+            emailForm.email,
+            emailForm.recipientName
+        )
+        showEmailModal.value = false
+        galleryForEmail.value = null
+        emailForm.email = ''
+        emailForm.recipientName = ''
+        alert('Email envoye avec succes !')
+    } catch (error) {
+        console.error('Error sending email:', error)
+        alert('Erreur lors de l\'envoi de l\'email')
+    } finally {
+        isSendingEmail.value = false
+    }
 }
 
 async function fetchGalleries() {

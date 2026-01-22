@@ -36,6 +36,17 @@
                         {{ link.name }}
                     </router-link>
 
+                    <!-- Ma galerie button (always visible) -->
+                    <router-link
+                        to="/gallery"
+                        class="flex items-center gap-2 px-4 py-2 border-2 border-gold text-gold rounded-full text-sm font-medium hover:bg-gold hover:text-white transition-colors"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                        </svg>
+                        Ma galerie
+                    </router-link>
+
                     <!-- Espace Client button -->
                     <div class="relative ml-4" ref="userMenuRef">
                         <button
@@ -74,16 +85,6 @@
                                         </svg>
                                         Mon espace
                                     </router-link>
-                                    <router-link
-                                        to="/gallery"
-                                        @click="userMenuOpen = false"
-                                        class="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                                    >
-                                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                                        </svg>
-                                        Acceder avec un code
-                                    </router-link>
                                 </div>
                                 <div class="border-t border-gray-100 py-1">
                                     <button
@@ -120,6 +121,18 @@
                         {{ link.name }}
                     </router-link>
 
+                    <!-- Ma galerie button (always visible) -->
+                    <router-link
+                        to="/gallery"
+                        @click="mobileMenuOpen = false"
+                        class="flex items-center justify-center gap-2 w-full px-4 py-3 border-2 border-gold text-gold rounded-lg text-lg font-medium hover:bg-gold hover:text-white transition-colors"
+                    >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                        </svg>
+                        Ma galerie
+                    </router-link>
+
                     <!-- Mobile: Espace Client section -->
                     <div class="pt-4 border-t border-gray-100 space-y-4">
                         <template v-if="authStore.isAuthenticated">
@@ -132,13 +145,6 @@
                                 class="block text-lg font-light hover:text-gold transition-colors"
                             >
                                 Mon espace
-                            </router-link>
-                            <router-link
-                                to="/gallery"
-                                @click="mobileMenuOpen = false"
-                                class="block text-lg font-light hover:text-gold transition-colors"
-                            >
-                                Acceder avec un code
                             </router-link>
                             <button
                                 @click="handleLogout"
@@ -154,13 +160,6 @@
                             >
                                 Espace Client
                             </button>
-                            <router-link
-                                to="/gallery"
-                                @click="mobileMenuOpen = false"
-                                class="block text-center text-sm text-gray-500 hover:text-gold transition-colors"
-                            >
-                                Acceder a une galerie avec un code
-                            </router-link>
                         </template>
                     </div>
                 </div>
@@ -173,14 +172,15 @@
 </template>
 
 <script setup lang="ts">
-import {ref, onMounted, onUnmounted} from 'vue'
-import {useRouter} from 'vue-router'
+import {ref, onMounted, onUnmounted, watch} from 'vue'
+import {useRouter, useRoute} from 'vue-router'
 import {NAV_LINKS} from '@/config/constants'
 import {IconMenu, IconClose} from './icons'
 import {useAuthStore} from '@/stores/auth'
 import AuthModal from '@/components/auth/AuthModal.vue'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 
 const scrolled = ref(false)
@@ -218,6 +218,15 @@ async function handleLogout() {
     await authStore.logout()
     router.push('/')
 }
+
+// Open auth modal when redirected with ?login=true
+watch(() => route.query.login, (loginQuery) => {
+    if (loginQuery === 'true' && !authStore.isAuthenticated) {
+        showAuthModal.value = true
+        // Remove the query param to clean up the URL
+        router.replace({ query: { ...route.query, login: undefined, redirect: route.query.redirect } })
+    }
+}, { immediate: true })
 
 onMounted(() => {
     window.addEventListener('scroll', handleScroll)

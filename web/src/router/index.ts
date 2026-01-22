@@ -26,15 +26,11 @@ const DownloadGallery = () => import('@/views/DownloadGallery.vue')
 const Events = () => import('@/views/Events.vue')
 const EventGallery = () => import('@/views/EventGallery.vue')
 
-// Auth pages (public)
-const Login = () => import('@/views/auth/Login.vue')
-const Register = () => import('@/views/auth/Register.vue')
 
 // Account pages (client)
 const AccountDashboard = () => import('@/views/account/Dashboard.vue')
 
 // Admin pages
-const AdminLogin = () => import('@/views/admin/Login.vue')
 const AdminDashboard = () => import('@/views/admin/Dashboard.vue')
 const AdminGalleries = () => import('@/views/admin/Galleries.vue')
 const AdminClients = () => import('@/views/admin/Clients.vue')
@@ -145,27 +141,6 @@ export const routes: RouteRecordRaw[] = [
             description: 'Galerie photos d\'evenement par Oceane Torres Photographie.'
         }
     },
-    // Auth routes (public)
-    {
-        path: '/connexion',
-        name: 'login',
-        component: Login,
-        meta: {
-            title: 'Connexion',
-            guestOnly: true,
-            robots: 'noindex, nofollow'
-        }
-    },
-    {
-        path: '/inscription',
-        name: 'register',
-        component: Register,
-        meta: {
-            title: 'Inscription',
-            guestOnly: true,
-            robots: 'noindex, nofollow'
-        }
-    },
     // Account routes (client)
     {
         path: '/mon-compte',
@@ -179,52 +154,46 @@ export const routes: RouteRecordRaw[] = [
     },
     // Admin routes
     {
-        path: '/admin/login',
-        name: 'admin-login',
-        component: AdminLogin,
-        meta: {title: 'Connexion Admin', layout: 'admin'}
-    },
-    {
         path: '/admin',
         name: 'admin-dashboard',
         component: AdminDashboard,
-        meta: {title: 'Dashboard', layout: 'admin', requiresAuth: true}
+        meta: {title: 'Dashboard', layout: 'admin', requiresAdmin: true}
     },
     {
         path: '/admin/galleries',
         name: 'admin-galleries',
         component: AdminGalleries,
-        meta: {title: 'Galeries', layout: 'admin', requiresAuth: true}
+        meta: {title: 'Galeries', layout: 'admin', requiresAdmin: true}
     },
     {
         path: '/admin/clients',
         name: 'admin-clients',
         component: AdminClients,
-        meta: {title: 'Clients', layout: 'admin', requiresAuth: true}
+        meta: {title: 'Clients', layout: 'admin', requiresAdmin: true}
     },
     {
         path: '/admin/prestations',
         name: 'admin-prestations',
         component: AdminPrestations,
-        meta: {title: 'Prestations', layout: 'admin', requiresAuth: true}
+        meta: {title: 'Prestations', layout: 'admin', requiresAdmin: true}
     },
     {
         path: '/admin/reservations',
         name: 'admin-reservations',
         component: AdminReservations,
-        meta: {title: 'Réservations', layout: 'admin', requiresAuth: true}
+        meta: {title: 'Réservations', layout: 'admin', requiresAdmin: true}
     },
     {
         path: '/admin/gift-cards',
         name: 'admin-gift-cards',
         component: AdminGiftCards,
-        meta: {title: 'Bons Cadeaux', layout: 'admin', requiresAuth: true}
+        meta: {title: 'Bons Cadeaux', layout: 'admin', requiresAdmin: true}
     },
     {
         path: '/admin/events',
         name: 'admin-events',
         component: AdminEventGalleries,
-        meta: {title: 'Galeries Evenements', layout: 'admin', requiresAuth: true}
+        meta: {title: 'Galeries Evenements', layout: 'admin', requiresAdmin: true}
     },
     // Catch-all redirect to home
     {
@@ -247,16 +216,21 @@ const router = createRouter({
 // Auth guard for protected routes
 router.beforeEach(async (to, _from, next) => {
     const authStore = useAuthStore()
-    const requiresAuth = to.meta.requiresAuth
+    const requiresAdmin = to.meta.requiresAdmin
     const requiresClientAuth = to.meta.requiresClientAuth
-    const guestOnly = to.meta.guestOnly
 
-    // Admin auth guard
-    if (requiresAuth) {
+    // Admin auth guard - requires authentication AND admin role
+    if (requiresAdmin) {
         const isAuthenticated = await authStore.checkAuth()
 
         if (!isAuthenticated) {
-            next({name: 'admin-login', query: {redirect: to.fullPath}})
+            next({name: 'home', query: {login: 'true', redirect: to.fullPath}})
+            return
+        }
+
+        // User is authenticated but not admin - redirect to account
+        if (!authStore.isAdmin) {
+            next({name: 'account'})
             return
         }
     }
@@ -266,22 +240,7 @@ router.beforeEach(async (to, _from, next) => {
         const isAuthenticated = await authStore.checkAuth()
 
         if (!isAuthenticated) {
-            next({name: 'login', query: {redirect: to.fullPath}})
-            return
-        }
-    }
-
-    // Guest only guard (redirect logged users away from login/register)
-    if (guestOnly) {
-        const isAuthenticated = await authStore.checkAuth()
-
-        if (isAuthenticated) {
-            // Redirect admin to admin dashboard, clients to account
-            if (authStore.isAdmin) {
-                next({name: 'admin-dashboard'})
-            } else {
-                next({name: 'account'})
-            }
+            next({name: 'home', query: {login: 'true', redirect: to.fullPath}})
             return
         }
     }

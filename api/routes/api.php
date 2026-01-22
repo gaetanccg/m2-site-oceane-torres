@@ -172,6 +172,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::delete('/photos/{photo}', [PhotoController::class, 'destroy']);
     Route::put('/galleries/{gallery}/regenerate-token', [GalleryController::class, 'regenerateToken']);
     Route::post('/galleries/{gallery}/regenerate-code', [GalleryController::class, 'regenerateShareCode']);
+    Route::post('/galleries/{gallery}/send-email', [GalleryController::class, 'sendAccessEmail']);
 
     // Photos management
     Route::put('/photos/{photo}/toggle-downloadable', [PhotoController::class, 'toggleDownloadable']);
