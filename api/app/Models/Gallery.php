@@ -15,6 +15,7 @@ class Gallery extends Model
 
     protected $fillable = [
         'user_id',
+        'assigned_email',
         'title',
         'description',
         'event_date',

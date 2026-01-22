@@ -56,7 +56,10 @@ class GalleryController extends Controller
 
     public function myGalleries(Request $request): JsonResponse
     {
-        $galleries = Gallery::where('user_id', $request->user()->id)
+        $user = $request->user();
+
+        $galleries = Gallery::where('user_id', $user->id)
+            ->orWhere('assigned_email', $user->email)
             ->with('photos')
             ->latest()
             ->get();
@@ -72,14 +75,17 @@ class GalleryController extends Controller
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'client_id' => ['nullable', 'string'],
+            'assigned_email' => ['nullable', 'email', 'max:255'],
         ]);
 
         $validated['type'] = 'private';
         $validated['access_token'] = Str::random(64);
         $validated['share_code'] = Gallery::generateUniqueShareCode();
 
+        // Gerer le choix : soit client_id, soit assigned_email
         if (!empty($validated['client_id'])) {
             $validated['user_id'] = $validated['client_id'];
+            $validated['assigned_email'] = null;
         }
         unset($validated['client_id']);
 
@@ -98,11 +104,22 @@ class GalleryController extends Controller
             'title' => ['sometimes', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'client_id' => ['nullable', 'exists:users,id'],
+            'assigned_email' => ['nullable', 'email', 'max:255'],
         ]);
 
+        // Gerer le choix : soit client_id, soit assigned_email
         if (array_key_exists('client_id', $validated)) {
             $validated['user_id'] = $validated['client_id'] ?: null;
+            // Si on assigne a un client existant, on retire l'email assigne
+            if (!empty($validated['client_id'])) {
+                $validated['assigned_email'] = null;
+            }
             unset($validated['client_id']);
+        }
+
+        // Si on assigne par email, on retire l'user_id
+        if (!empty($validated['assigned_email'])) {
+            $validated['user_id'] = null;
         }
 
         $gallery->update($validated);

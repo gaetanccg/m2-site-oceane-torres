@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Gallery;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -32,6 +33,11 @@ class AuthController extends Controller
             'password' => Hash::make($validated['password']),
             'role' => 'client',
         ]);
+
+        // Lier les galeries assignees par email a ce nouvel utilisateur
+        Gallery::where('assigned_email', $validated['email'])
+            ->whereNull('user_id')
+            ->update(['user_id' => $user->id]);
 
         $token = $user->createToken('auth-token')->plainTextToken;
 

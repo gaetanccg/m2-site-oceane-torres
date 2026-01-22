@@ -198,7 +198,7 @@
 
         <!-- Date Preferences (for guest requests) -->
         <div v-if="selectedReservation.date_preferences">
-          <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Dates souhaitees</h3>
+          <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Dates souhaitées</h3>
           <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
             <p class="text-gray-700 whitespace-pre-wrap">{{ selectedReservation.date_preferences }}</p>
           </div>
@@ -301,7 +301,7 @@
 
         <!-- Notes admin -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Notes (privees)</label>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Notes (privées)</label>
           <textarea
             v-model="editForm.notes"
             rows="3"

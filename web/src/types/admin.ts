@@ -232,6 +232,7 @@ export interface AdminGallery {
     client_id?: string
     client?: Client
     user?: Client
+    assigned_email?: string
     access_token?: string
     share_code?: string
     photos_count: number
@@ -267,6 +268,7 @@ export interface GalleryFormData {
     title: string
     description: string
     client_id: string
+    assigned_email?: string
 }
 
 // ============================================================================
