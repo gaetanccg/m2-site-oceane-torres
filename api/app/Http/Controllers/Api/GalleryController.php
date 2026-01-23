@@ -348,6 +348,9 @@ class GalleryController extends Controller
         $galleries->getCollection()->transform(function ($gallery) {
             $gallery->downloadable_count = $gallery->photos->where('is_downloadable', true)->count();
             $gallery->liked_photos_count = $gallery->photos->where('is_liked', true)->count();
+            $gallery->total_downloads_count = $gallery->photos->sum('downloads_count');
+            $gallery->downloaded_photos_count = $gallery->photos->where('downloads_count', '>', 0)->count();
+            $gallery->download_status = $gallery->download_status;
 
             return $gallery;
         });
@@ -363,6 +366,9 @@ class GalleryController extends Controller
 
         $gallery->downloadable_count = $gallery->photos->where('is_downloadable', true)->count();
         $gallery->liked_photos_count = $gallery->photos->where('is_liked', true)->count();
+        $gallery->total_downloads_count = $gallery->photos->sum('downloads_count');
+        $gallery->downloaded_photos_count = $gallery->photos->where('downloads_count', '>', 0)->count();
+        $gallery->download_status = $gallery->download_status;
 
         return response()->json([
             'success' => true,

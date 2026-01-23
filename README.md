@@ -69,6 +69,7 @@ Objectifs principaux :
 ## Installation rapide
 
 ### Prérequis
+
 - PHP 8.3+
 - Composer
 - Docker & Docker Compose
@@ -133,10 +134,10 @@ make prune         # Supprimer toutes les données Docker
 
 ## URLs en développement
 
-| Service | URL |
-|---------|-----|
-| API Laravel | http://localhost:8000 |
-| Frontend Vue | http://localhost:5173 |
+| Service          | URL                   |
+|------------------|-----------------------|
+| API Laravel      | http://localhost:8000 |
+| Frontend Vue     | http://localhost:5173 |
 | MailHog (emails) | http://localhost:8025 |
 
 ---
@@ -144,44 +145,48 @@ make prune         # Supprimer toutes les données Docker
 ## API Endpoints
 
 ### Authentification
-| Méthode | Endpoint | Description |
-|---------|----------|-------------|
-| POST | `/api/auth/register` | Inscription |
-| POST | `/api/auth/login` | Connexion |
-| POST | `/api/auth/logout` | Déconnexion |
-| GET | `/api/auth/user` | Utilisateur connecté |
-| PUT | `/api/auth/profile` | Modifier profil |
+
+| Méthode | Endpoint             | Description          |
+|---------|----------------------|----------------------|
+| POST    | `/api/auth/register` | Inscription          |
+| POST    | `/api/auth/login`    | Connexion            |
+| POST    | `/api/auth/logout`   | Déconnexion          |
+| GET     | `/api/auth/user`     | Utilisateur connecté |
+| PUT     | `/api/auth/profile`  | Modifier profil      |
 
 ### Public
-| Méthode | Endpoint | Description |
-|---------|----------|-------------|
-| GET | `/api/prestations` | Liste des prestations |
-| GET | `/api/galleries` | Galeries publiques |
-| GET | `/api/galleries/token/{token}` | Galerie par token |
-| POST | `/api/contact` | Formulaire de contact |
+
+| Méthode | Endpoint                       | Description           |
+|---------|--------------------------------|-----------------------|
+| GET     | `/api/prestations`             | Liste des prestations |
+| GET     | `/api/galleries`               | Galeries publiques    |
+| GET     | `/api/galleries/token/{token}` | Galerie par token     |
+| POST    | `/api/contact`                 | Formulaire de contact |
 
 ### Client (authentifié)
-| Méthode | Endpoint | Description |
-|---------|----------|-------------|
-| GET | `/api/reservations` | Mes réservations |
-| POST | `/api/reservations` | Nouvelle réservation |
-| GET | `/api/my-galleries` | Mes galeries privées |
-| POST | `/api/payments/stripe/create-intent` | Créer paiement Stripe |
+
+| Méthode | Endpoint                             | Description           |
+|---------|--------------------------------------|-----------------------|
+| GET     | `/api/reservations`                  | Mes réservations      |
+| POST    | `/api/reservations`                  | Nouvelle réservation  |
+| GET     | `/api/my-galleries`                  | Mes galeries privées  |
+| POST    | `/api/payments/stripe/create-intent` | Créer paiement Stripe |
 
 ### Admin
-| Méthode | Endpoint | Description |
-|---------|----------|-------------|
-| GET | `/api/admin/dashboard` | Tableau de bord |
-| GET | `/api/admin/stats` | Statistiques |
-| CRUD | `/api/admin/users` | Gestion utilisateurs |
-| CRUD | `/api/admin/galleries` | Gestion galeries |
-| CRUD | `/api/admin/factures` | Gestion factures |
+
+| Méthode | Endpoint               | Description          |
+|---------|------------------------|----------------------|
+| GET     | `/api/admin/dashboard` | Tableau de bord      |
+| CRUD    | `/api/admin/users`     | Gestion utilisateurs |
+| CRUD    | `/api/admin/galleries` | Gestion galeries     |
+| CRUD    | `/api/admin/factures`  | Gestion factures     |
 
 ---
 
 ## Configuration Supabase
 
 Voir [supabase/README.md](supabase/README.md) pour :
+
 - Création du projet Supabase
 - Configuration des buckets Storage
 - Policies RLS (Row Level Security)
@@ -191,6 +196,7 @@ Voir [supabase/README.md](supabase/README.md) pour :
 ## Modèle de données
 
 ### Tables principales
+
 - **users** - Utilisateurs (admin/client)
 - **prestations** - Services proposés
 - **reservations** - Réservations clients

@@ -94,12 +94,32 @@
 
                                 <!-- DL -->
                                 <td class="px-4 py-3 text-center">
-                                    <span v-if="gallery.downloadable_count > 0" class="inline-flex items-center gap-1 text-green-600">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                        </svg>
-                                        {{ gallery.downloadable_count }}
-                                    </span>
+                                    <div v-if="gallery.downloadable_count > 0" class="flex flex-col items-center gap-1">
+                                        <!-- Status badge -->
+                                        <span
+                                            :class="[
+                                                'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium',
+                                                gallery.download_status === 'complete' ? 'bg-green-100 text-green-700' :
+                                                gallery.download_status === 'partial' ? 'bg-yellow-100 text-yellow-700' :
+                                                'bg-gray-100 text-gray-600'
+                                            ]"
+                                        >
+                                            <svg v-if="gallery.download_status === 'complete'" class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                            </svg>
+                                            <svg v-else-if="gallery.download_status === 'partial'" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            {{ gallery.download_status === 'complete' ? 'Complet' : gallery.download_status === 'partial' ? 'Partiel' : 'En attente' }}
+                                        </span>
+                                        <!-- Stats -->
+                                        <span class="text-xs text-gray-500">
+                                            {{ gallery.downloaded_photos_count }}/{{ gallery.downloadable_count }} photos
+                                            <span v-if="gallery.total_downloads_count > 0" class="text-gray-400">
+                                                ({{ gallery.total_downloads_count }} DL)
+                                            </span>
+                                        </span>
+                                    </div>
                                     <span v-else class="text-gray-400">-</span>
                                 </td>
 
@@ -456,10 +476,18 @@
 
                         <!-- Status indicators -->
                         <div class="absolute bottom-2 left-2 right-2 flex justify-between">
-                            <div v-if="photo.is_liked" class="flex items-center gap-1 text-white text-xs bg-red-500/90 rounded px-2 py-1">
-                                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                    <path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" />
-                                </svg>
+                            <div class="flex gap-1">
+                                <div v-if="photo.is_liked" class="flex items-center gap-1 text-white text-xs bg-red-500/90 rounded px-2 py-1">
+                                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" />
+                                    </svg>
+                                </div>
+                                <div v-if="photo.downloads_count > 0" class="flex items-center gap-1 text-white text-xs bg-blue-500/90 rounded px-2 py-1">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                    </svg>
+                                    {{ photo.downloads_count }}
+                                </div>
                             </div>
                             <div v-if="photo.is_downloadable" class="flex items-center gap-1 text-white text-xs bg-green-500/90 rounded px-2 py-1 ml-auto">
                                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
