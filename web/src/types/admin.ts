@@ -222,6 +222,8 @@ export interface EventGalleryFormData {
     event_link: string
 }
 
+export type DownloadStatus = 'none' | 'partial' | 'complete'
+
 export interface AdminGallery {
     id: string
     title: string
@@ -241,6 +243,10 @@ export interface AdminGallery {
     liked_photos_count: number
     views_count: number
     last_viewed_at?: string
+    // Download tracking
+    total_downloads_count: number
+    downloaded_photos_count: number
+    download_status: DownloadStatus
     photos?: AdminPhoto[]
     created_at: string
     updated_at: string
@@ -261,6 +267,7 @@ export interface AdminPhoto {
     height?: number
     is_liked: boolean
     is_downloadable: boolean
+    downloads_count: number
     created_at: string
 }
 

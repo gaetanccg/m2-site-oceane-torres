@@ -120,6 +120,12 @@ class PhotoController extends Controller
             ], 500);
         }
 
+        // Track the download
+        $photo->recordDownload(
+            $request->ip(),
+            $request->userAgent()
+        );
+
         return response()->json([
             'download_url' => $signedUrl,
             'filename' => $photo->title ?? basename($photo->file_path),

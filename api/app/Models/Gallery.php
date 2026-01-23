@@ -145,4 +145,55 @@ class Gallery extends Model
         $this->increment('views_count');
         $this->update(['last_viewed_at' => now()]);
     }
+
+    public function downloadLogs(): HasMany
+    {
+        return $this->hasMany(DownloadLog::class);
+    }
+
+    /**
+     * Get total downloads count across all photos
+     */
+    public function getTotalDownloadsCountAttribute(): int
+    {
+        return $this->photos()->sum('downloads_count');
+    }
+
+    /**
+     * Get count of photos that have been downloaded at least once
+     */
+    public function getDownloadedPhotosCountAttribute(): int
+    {
+        return $this->photos()->where('downloads_count', '>', 0)->count();
+    }
+
+    /**
+     * Get download status: 'none', 'partial', 'complete'
+     * - none: no downloadable photos have been downloaded
+     * - partial: some downloadable photos have been downloaded
+     * - complete: all downloadable photos have been downloaded at least once
+     */
+    public function getDownloadStatusAttribute(): string
+    {
+        $downloadableCount = $this->photos()->where('is_downloadable', true)->count();
+
+        if ($downloadableCount === 0) {
+            return 'none';
+        }
+
+        $downloadedCount = $this->photos()
+            ->where('is_downloadable', true)
+            ->where('downloads_count', '>', 0)
+            ->count();
+
+        if ($downloadedCount === 0) {
+            return 'none';
+        }
+
+        if ($downloadedCount >= $downloadableCount) {
+            return 'complete';
+        }
+
+        return 'partial';
+    }
 }
