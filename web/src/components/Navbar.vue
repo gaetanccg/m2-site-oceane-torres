@@ -12,7 +12,7 @@
                     to="/"
                     class="flex items-center gap-3 text-2xl font-light tracking-wider hover:text-gold transition-colors"
                 >
-                    <img src="/logo-oceane.png" alt="Logo Oceane" class="h-36 w-20 object-contain" />
+                    <img src="/logo-oceane.png" alt="Logo Océane" class="h-36 w-20 object-contain" />
                 </router-link>
 
                 <!-- Mobile menu button -->

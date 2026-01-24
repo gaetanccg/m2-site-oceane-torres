@@ -158,7 +158,7 @@ const menuItems = [
     {path: '/admin/clients', label: 'Clients', icon: UsersIcon},
     {path: '/admin/prestations', label: 'Prestations', icon: CameraIcon},
     {path: '/admin/galleries', label: 'Galeries Clients', icon: ImageIcon},
-    {path: '/admin/events', label: 'Galeries Evenements', icon: EventIcon},
+    {path: '/admin/events', label: 'Galeries Événements', icon: EventIcon},
     {path: '/admin/gift-cards', label: 'Bons Cadeaux', icon: GiftIcon},
 ]
 </script>

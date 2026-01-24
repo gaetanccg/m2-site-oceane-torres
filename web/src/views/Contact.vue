@@ -10,7 +10,7 @@
                 <div class="text-center mb-12">
                     <h1 class="text-5xl md:text-6xl font-light mb-6">Contact</h1>
                     <p class="text-xl text-gray-600 font-light max-w-2xl mx-auto">
-                        Vous avez un projet en tete ? Parlons-en ensemble !
+                        Vous avez un projet en tête ? Parlons-en ensemble !
                     </p>
                 </div>
 
@@ -135,7 +135,7 @@
                                         class="mt-1 w-4 h-4 text-gold border-gray-300 rounded focus:ring-gold"
                                     />
                                     <span class="text-sm text-gray-600">
-                                        J'accepte que mes donnees soient utilisees pour me recontacter dans le cadre de ma demande.
+                                        J'accepte que mes données soient utilisées pour me recontacter dans le cadre de ma demande.
                                         <span class="text-red-500">*</span>
                                     </span>
                                 </label>
@@ -177,7 +177,7 @@
                                 <div class="flex-1">
                                     <h3 class="text-lg font-medium mb-1">Email</h3>
                                     <p class="text-gray-600">{{ CONTACT_INFO.email }}</p>
-                                    <p class="text-sm text-gray-400 mt-2">Reponse sous 24h</p>
+                                    <p class="text-sm text-gray-400 mt-2">Réponse sous 24h</p>
                                 </div>
                             </div>
                         </div>
@@ -196,7 +196,7 @@
                                 <div class="flex-1">
                                     <h3 class="text-lg font-medium mb-1 group-hover:text-gold transition-colors">Instagram</h3>
                                     <p class="text-gray-600">@{{ CONTACT_INFO.instagram }}</p>
-                                    <p class="text-sm text-gray-400 mt-2">Pour voir mes dernieres realisations</p>
+                                    <p class="text-sm text-gray-400 mt-2">Pour voir mes dernières réalisations</p>
                                 </div>
                                 <svg class="w-5 h-5 text-gray-300 group-hover:text-gold group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
@@ -218,7 +218,6 @@
                                 <div class="flex-1">
                                     <h3 class="text-lg font-medium mb-1 group-hover:text-gold transition-colors">Telephone</h3>
                                     <p class="text-gray-600">{{ CONTACT_INFO.phone }}</p>
-                                    <p class="text-sm text-gray-400 mt-2">Pour les urgences</p>
                                 </div>
                                 <svg class="w-5 h-5 text-gray-300 group-hover:text-gold group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
@@ -259,7 +258,7 @@
                                         <h4 class="font-medium text-gray-900 mb-1">Zone d'intervention</h4>
                                         <p class="text-gray-600 text-sm">
                                             Auvergne-Rhone-Alpes<br>
-                                            <span class="text-gray-400">Frais de deplacement au-dela de {{ BUSINESS_INFO.travelZone.free }}{{ BUSINESS_INFO.travelZone.unit }}</span>
+                                            <span class="text-gray-400">Frais de déplacement au-delà de {{ BUSINESS_INFO.travelZone.free }}{{ BUSINESS_INFO.travelZone.unit }}</span>
                                         </p>
                                     </div>
                                 </div>
@@ -439,7 +438,7 @@ async function handleSubmit() {
 
         isSuccess.value = true
     } catch (error) {
-        submitError.value = 'Une erreur est survenue lors de l\'envoi. Veuillez reessayer.'
+        submitError.value = 'Une erreur est survenue lors de l\'envoi. Veuillez réessayer.'
         console.error('Contact form error:', error)
     } finally {
         isLoading.value = false
