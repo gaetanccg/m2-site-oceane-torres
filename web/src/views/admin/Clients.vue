@@ -367,7 +367,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch, onMounted } from 'vue'
+import { ref, reactive, watch, onMounted, onUnmounted } from 'vue'
 import AdminLayout from '@/components/admin/AdminLayout.vue'
 import AdminHeader from '@/components/admin/AdminHeader.vue'
 import DataTable from '@/components/admin/ui/DataTable.vue'
@@ -629,11 +629,32 @@ async function exportGdpr() {
   }
 }
 
-watch([currentPage, searchQuery], () => {
+// Debounce timer for search
+let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null
+
+// Watch currentPage changes (immediate fetch)
+watch(currentPage, () => {
   fetchClients()
+})
+
+// Watch searchQuery with debounce (300ms delay)
+watch(searchQuery, () => {
+  if (searchDebounceTimer) {
+    clearTimeout(searchDebounceTimer)
+  }
+  searchDebounceTimer = setTimeout(() => {
+    currentPage.value = 1 // Reset to first page on search
+    fetchClients()
+  }, 300)
 })
 
 onMounted(() => {
   fetchClients()
+})
+
+onUnmounted(() => {
+  if (searchDebounceTimer) {
+    clearTimeout(searchDebounceTimer)
+  }
 })
 </script>
