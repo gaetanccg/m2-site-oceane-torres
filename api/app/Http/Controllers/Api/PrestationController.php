@@ -6,14 +6,18 @@ use App\Http\Controllers\Controller;
 use App\Models\Prestation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class PrestationController extends Controller
 {
     public function index(): JsonResponse
     {
-        $prestations = Prestation::active()
-            ->orderBy('sort_order')
-            ->get();
+        // Cache for 10 minutes - prestations rarely change
+        $prestations = Cache::remember('prestations_public', 600, function () {
+            return Prestation::active()
+                ->orderBy('sort_order')
+                ->get();
+        });
 
         return response()->json([
             'prestations' => $prestations,
@@ -61,6 +65,8 @@ class PrestationController extends Controller
 
         $prestation = Prestation::create($validated);
 
+        Cache::forget('prestations_public');
+
         return response()->json([
             'prestation' => $prestation,
             'message' => 'Prestation créée avec succès.',
@@ -89,6 +95,8 @@ class PrestationController extends Controller
 
         $prestation->update($validated);
 
+        Cache::forget('prestations_public');
+
         return response()->json([
             'prestation' => $prestation->fresh(),
             'message' => 'Prestation mise à jour avec succès.',
@@ -98,6 +106,8 @@ class PrestationController extends Controller
     public function destroy(Prestation $prestation): JsonResponse
     {
         $prestation->delete();
+
+        Cache::forget('prestations_public');
 
         return response()->json([
             'message' => 'Prestation supprimée avec succès.',
@@ -109,6 +119,8 @@ class PrestationController extends Controller
         $prestation->update([
             'is_active' => ! $prestation->is_active,
         ]);
+
+        Cache::forget('prestations_public');
 
         return response()->json([
             'prestation' => $prestation->fresh(),

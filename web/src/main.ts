@@ -12,13 +12,9 @@ const pinia = createPinia()
 app.use(pinia)
 app.use(router)
 
-// Initialize auth before mounting to restore session from localStorage
-const authStore = useAuthStore()
+// Mount app immediately for fast public page loading
+app.mount('#app')
 
-// Wait for auth initialization and router to be ready before mounting
-Promise.all([
-    authStore.initialize(),
-    router.isReady()
-]).then(() => {
-    app.mount('#app')
-})
+// Initialize auth in background (admin pages will show loader until ready)
+const authStore = useAuthStore()
+authStore.initialize()

@@ -213,17 +213,26 @@ const router = createRouter({
     }
 })
 
-// Auth guard for protected routes
+// Auth guard for protected routes only
 router.beforeEach(async (to, _from, next) => {
-    const authStore = useAuthStore()
     const requiresAdmin = to.meta.requiresAdmin
     const requiresClientAuth = to.meta.requiresClientAuth
 
+    // Public routes - no auth check needed, proceed immediately
+    if (!requiresAdmin && !requiresClientAuth) {
+        next()
+        return
+    }
+
+    // Protected routes - wait for auth initialization
+    const authStore = useAuthStore()
+    if (!authStore.isInitialized) {
+        await authStore.initialize()
+    }
+
     // Admin auth guard - requires authentication AND admin role
     if (requiresAdmin) {
-        const isAuthenticated = await authStore.checkAuth()
-
-        if (!isAuthenticated) {
+        if (!authStore.isAuthenticated) {
             next({name: 'home', query: {login: 'true', redirect: to.fullPath}})
             return
         }
@@ -237,9 +246,7 @@ router.beforeEach(async (to, _from, next) => {
 
     // Client auth guard
     if (requiresClientAuth) {
-        const isAuthenticated = await authStore.checkAuth()
-
-        if (!isAuthenticated) {
+        if (!authStore.isAuthenticated) {
             next({name: 'home', query: {login: 'true', redirect: to.fullPath}})
             return
         }

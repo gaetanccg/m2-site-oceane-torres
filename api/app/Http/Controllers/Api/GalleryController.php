@@ -9,6 +9,7 @@ use App\Models\Gallery;
 use App\Services\MinioStorageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use ZipArchive;
@@ -339,18 +340,29 @@ class GalleryController extends Controller
 
     public function adminIndex(): JsonResponse
     {
-        $galleries = Gallery::with(['photos', 'user'])
+        // Optimized query: use withCount instead of loading all photos
+        $galleries = Gallery::with(['user:id,first_name,last_name,email'])
             ->where('type', '!=', 'event')
-            ->withCount('photos')
+            ->withCount([
+                'photos',
+                'photos as downloadable_count' => function ($query) {
+                    $query->where('is_downloadable', true);
+                },
+                'photos as liked_photos_count' => function ($query) {
+                    $query->where('is_liked', true);
+                },
+                'photos as downloaded_photos_count' => function ($query) {
+                    $query->where('downloads_count', '>', 0);
+                },
+            ])
+            ->withSum('photos', 'downloads_count')
             ->latest()
             ->paginate(20);
 
         $galleries->getCollection()->transform(function ($gallery) {
-            $gallery->downloadable_count = $gallery->photos->where('is_downloadable', true)->count();
-            $gallery->liked_photos_count = $gallery->photos->where('is_liked', true)->count();
-            $gallery->total_downloads_count = $gallery->photos->sum('downloads_count');
-            $gallery->downloaded_photos_count = $gallery->photos->where('downloads_count', '>', 0)->count();
+            $gallery->total_downloads_count = $gallery->photos_sum_downloads_count ?? 0;
             $gallery->download_status = $gallery->download_status;
+            unset($gallery->photos_sum_downloads_count);
 
             return $gallery;
         });
@@ -382,13 +394,18 @@ class GalleryController extends Controller
 
     public function eventIndex(): JsonResponse
     {
-        $galleries = Gallery::where('type', 'event')
-            ->with(['photos' => function ($query) {
-                $query->ordered()->limit(6);
-            }])
-            ->withCount('photos')
-            ->latest()
-            ->paginate(12);
+        $page = request()->get('page', 1);
+
+        // Cache for 5 minutes per page
+        $galleries = Cache::remember("event_galleries_page_{$page}", 300, function () {
+            return Gallery::where('type', 'event')
+                ->with(['photos' => function ($query) {
+                    $query->ordered()->limit(6);
+                }])
+                ->withCount('photos')
+                ->latest()
+                ->paginate(12);
+        });
 
         return response()->json($galleries);
     }
@@ -464,6 +481,8 @@ class GalleryController extends Controller
 
         $gallery = Gallery::create($validated);
 
+        $this->clearEventGalleriesCache();
+
         return response()->json([
             'success' => true,
             'data' => $gallery,
@@ -487,6 +506,8 @@ class GalleryController extends Controller
         ]);
 
         $gallery->update($validated);
+
+        $this->clearEventGalleriesCache();
 
         return response()->json([
             'success' => true,
@@ -517,8 +538,21 @@ class GalleryController extends Controller
 
         $gallery->delete();
 
+        $this->clearEventGalleriesCache();
+
         return response()->json([
             'message' => 'Galerie événement supprimée avec succès.',
         ]);
+    }
+
+    /**
+     * Clear event galleries cache (all pages)
+     */
+    private function clearEventGalleriesCache(): void
+    {
+        // Clear first 10 pages of cache
+        for ($i = 1; $i <= 10; $i++) {
+            Cache::forget("event_galleries_page_{$i}");
+        }
     }
 }
