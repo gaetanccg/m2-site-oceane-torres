@@ -3,12 +3,16 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Mail\NewReservationRequestMail;
 use App\Models\Client;
+use App\Models\Notification;
 use App\Models\Prestation;
 use App\Models\Reservation;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class BookingRequestController extends Controller
 {
@@ -83,9 +87,65 @@ class BookingRequestController extends Controller
             'prestation' => $prestation->title,
         ]);
 
+        // Envoyer l'email a l'admin
+        $this->notifyAdmin($reservation, $prestation);
+
         return response()->json([
             'success' => true,
             'message' => 'Votre demande a été envoyée avec succes. Nous vous contacterons tres bientot !',
         ], 201);
+    }
+
+    /**
+     * Notifier l'admin par email et creer une notification dans l'app
+     */
+    private function notifyAdmin(Reservation $reservation, Prestation $prestation): void
+    {
+        try {
+            // Envoyer l'email a l'admin
+            $adminEmail = config('mail.admin_email', 'oceanetorresphotographie@gmail.com');
+            Mail::to($adminEmail)->send(new NewReservationRequestMail($reservation, $prestation));
+
+            Log::info('Admin notification email sent', [
+                'reservation_id' => $reservation->id,
+                'admin_email' => $adminEmail,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to send admin notification email', [
+                'reservation_id' => $reservation->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        try {
+            // Creer une notification pour tous les admins
+            $admins = User::where('role', 'admin')->get();
+
+            foreach ($admins as $admin) {
+                Notification::create([
+                    'user_id' => $admin->id,
+                    'type' => 'new_reservation',
+                    'title' => 'Nouvelle demande de reservation',
+                    'message' => "{$reservation->guest_name} souhaite reserver : {$prestation->title}",
+                    'data' => [
+                        'reservation_id' => $reservation->id,
+                        'guest_name' => $reservation->guest_name,
+                        'guest_email' => $reservation->guest_email,
+                        'prestation_id' => $prestation->id,
+                        'prestation_title' => $prestation->title,
+                    ],
+                ]);
+            }
+
+            Log::info('Admin notifications created', [
+                'reservation_id' => $reservation->id,
+                'admins_count' => $admins->count(),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to create admin notifications', [
+                'reservation_id' => $reservation->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 }
