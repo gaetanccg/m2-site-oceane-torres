@@ -2,6 +2,8 @@
 
 Ce guide explique comment déployer le backend Laravel sur ton NAS UGREEN avec Docker et l'exposer via Cloudflare Tunnel.
 
+> **Fichiers prêts à copier** : Tous les fichiers de configuration sont dans le dossier `/deploy/` avec les vraies valeurs. Il suffit de les copier sur le NAS.
+
 ## Architecture cible
 
 ```
@@ -67,21 +69,30 @@ Depuis ta machine locale, transfère les fichiers :
 # Depuis le répertoire du projet sur ta machine
 cd /Users/gaetanchollet/Projets/m2-site-oceane-torres
 
-# Transférer le dossier api (backend Laravel)
+# 1. Transférer les fichiers de configuration (depuis /deploy/)
+scp deploy/.env.deploy utilisateur@ip-du-nas:/volume1/docker/oceane-api/.env.prod
+scp deploy/docker-compose.prod.deploy.yml utilisateur@ip-du-nas:/volume1/docker/oceane-api/docker-compose.prod.yml
+scp deploy/nginx.prod.deploy.conf utilisateur@ip-du-nas:/volume1/docker/oceane-api/docker/nginx.prod.conf
+scp deploy/deploy.sh.deploy utilisateur@ip-du-nas:/volume1/docker/oceane-api/deploy.sh
+
+# 2. Transférer le dossier api (backend Laravel)
 rsync -avz --exclude 'vendor' --exclude 'node_modules' --exclude '.env' \
     ./api/ utilisateur@ip-du-nas:/volume1/docker/oceane-api/api/
 
-# Transférer les fichiers de configuration Docker
-rsync -avz ./docker/ utilisateur@ip-du-nas:/volume1/docker/oceane-api/docker/
+# 3. Transférer la config PHP
+scp docker/php.ini utilisateur@ip-du-nas:/volume1/docker/oceane-api/docker/php.ini
 ```
 
 ---
 
 ## Étape 2 : Configuration de production
 
-### 2.1 Créer le fichier docker-compose.prod.yml
+> **Note** : Les fichiers ci-dessous sont déjà créés dans `/deploy/` avec les vraies valeurs. Tu n'as qu'à les copier comme indiqué à l'étape 1.2.
 
-Sur le NAS, crée le fichier `/volume1/docker/oceane-api/docker-compose.prod.yml` :
+### 2.1 Fichier docker-compose.prod.yml
+
+Fichier source : `deploy/docker-compose.prod.deploy.yml`
+Destination : `/volume1/docker/oceane-api/docker-compose.prod.yml`
 
 ```yaml
 name: oceane-api-prod
@@ -134,9 +145,10 @@ networks:
     driver: bridge
 ```
 
-### 2.2 Créer la configuration Nginx de production
+### 2.2 Configuration Nginx de production
 
-Sur le NAS, crée le fichier `/volume1/docker/oceane-api/docker/nginx.prod.conf` :
+Fichier source : `deploy/nginx.prod.deploy.conf`
+Destination : `/volume1/docker/oceane-api/docker/nginx.prod.conf`
 
 ```nginx
 server {
@@ -202,9 +214,10 @@ server {
 }
 ```
 
-### 2.3 Créer le fichier d'environnement de production
+### 2.3 Fichier d'environnement de production
 
-Sur le NAS, crée le fichier `/volume1/docker/oceane-api/.env.prod` :
+Fichier source : `deploy/.env.deploy`
+Destination : `/volume1/docker/oceane-api/.env.prod`
 
 ```env
 # ===========================================
@@ -397,7 +410,10 @@ curl https://api.oceanetorresphotographie.fr/api/health
 
 ### 5.1 Script de déploiement
 
-Crée un script `/volume1/docker/oceane-api/deploy.sh` :
+Fichier source : `deploy/deploy.sh.deploy`
+Destination : `/volume1/docker/oceane-api/deploy.sh`
+
+Contenu du script :
 
 ```bash
 #!/bin/bash

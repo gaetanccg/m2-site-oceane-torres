@@ -25,7 +25,7 @@ export const NAV_LINKS: NavLink[] = [
     {name: 'Evenements', path: '/evenements'},
     {name: 'Prestations', path: '/prestations'},
     {name: 'Bons Cadeaux', path: '/bons'},
-    {name: 'A propos', path: '/a-propos'},
+    {name: 'À propos', path: '/a-propos'},
     {name: 'Contact', path: '/contact'},
 ]
 

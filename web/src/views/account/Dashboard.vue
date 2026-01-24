@@ -62,7 +62,7 @@
                         </svg>
                         <h3 class="text-lg font-medium text-gray-900 mb-2">Aucune galerie</h3>
                         <p class="text-gray-500 mb-6 max-w-sm mx-auto">
-                            Vos galeries photos apparaitront ici une fois qu'Oceane vous en aura partage.
+                            Vos galeries photos apparaitront ici une fois que je vous les aurai partagé.
                         </p>
                         <router-link
                             to="/gallery"
