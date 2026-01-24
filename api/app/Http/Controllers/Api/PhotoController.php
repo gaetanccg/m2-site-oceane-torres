@@ -8,6 +8,7 @@ use App\Models\Photo;
 use App\Services\MinioStorageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 
 class PhotoController extends Controller
@@ -58,6 +59,11 @@ class PhotoController extends Controller
             }
         }
 
+        // Clear event galleries cache if this is an event gallery
+        if ($gallery->type === 'event' && count($uploadedPhotos) > 0) {
+            $this->clearEventGalleriesCache();
+        }
+
         return response()->json([
             'success' => count($uploadedPhotos) > 0,
             'data' => $uploadedPhotos,
@@ -68,6 +74,9 @@ class PhotoController extends Controller
 
     public function destroy(Photo $photo): JsonResponse
     {
+        // Check if this is an event gallery photo before deleting
+        $isEventGallery = $photo->gallery?->type === 'event';
+
         // Delete from MinIO storage
         $storagePath = $photo->metadata['storage_path'] ?? $photo->metadata['supabase_path'] ?? $photo->file_path;
         if ($storagePath) {
@@ -76,6 +85,11 @@ class PhotoController extends Controller
         }
 
         $photo->delete();
+
+        // Clear event galleries cache if needed
+        if ($isEventGallery) {
+            $this->clearEventGalleriesCache();
+        }
 
         return response()->json([
             'success' => true,
@@ -182,5 +196,15 @@ class PhotoController extends Controller
         return response()->json([
             'message' => 'Ordre mis à jour.',
         ]);
+    }
+
+    /**
+     * Clear event galleries cache (all pages)
+     */
+    private function clearEventGalleriesCache(): void
+    {
+        for ($i = 1; $i <= 10; $i++) {
+            Cache::forget("event_galleries_page_{$i}");
+        }
     }
 }
