@@ -18,7 +18,7 @@
                 to="/evenements"
                 class="inline-block px-6 py-3 bg-gold text-white rounded-lg hover:opacity-90 transition-colors"
             >
-                Retour aux evenements
+                Retour aux événements
             </router-link>
         </div>
 
@@ -34,7 +34,7 @@
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                         </svg>
-                        Retour aux evenements
+                        Retour aux événements
                     </router-link>
 
                     <h1 class="text-4xl font-light mb-4">{{ gallery.title }}</h1>
@@ -57,7 +57,7 @@
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                             </svg>
-                            Site de l'evenement
+                            Site de l'événement
                         </a>
                         <span class="flex items-center gap-1">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -115,7 +115,7 @@
                 <div class="max-w-3xl mx-auto text-center">
                     <h2 class="text-2xl font-light mb-3">Vous vous reconnaissez ?</h2>
                     <p class="text-gray-600 font-light mb-6">
-                        Contactez-moi pour obtenir vos photos personnelles de cet evenement.
+                        Contactez-moi pour obtenir vos photos personnelles de cet événement.
                     </p>
                     <router-link
                         to="/contact"

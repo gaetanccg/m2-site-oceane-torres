@@ -111,4 +111,7 @@ cache/
 PROJECT_REFERENCE.md
 PROJECT_REFERENCE_MVP.md
 
+# Deployment files (contain secrets)
+/deploy/
+
 .claude

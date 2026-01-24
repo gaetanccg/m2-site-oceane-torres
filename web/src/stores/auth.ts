@@ -15,6 +15,7 @@ export const useAuthStore = defineStore('auth', () => {
     const user = ref<User | null>(null)
     const token = ref<string | null>(localStorage.getItem('auth_token'))
     const isLoading = ref(false)
+    const isInitialized = ref(false)
     const error = ref<string | null>(null)
 
     // Getters
@@ -147,10 +148,32 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     async function checkAuth(): Promise<boolean> {
-        if (!token.value) return false
+        if (!token.value) {
+            isInitialized.value = true
+            return false
+        }
+
+        // Si déjà initialisé et user présent, pas besoin de refaire l'appel API
+        if (isInitialized.value && user.value) {
+            return isAuthenticated.value
+        }
 
         await fetchUser()
+        isInitialized.value = true
         return isAuthenticated.value
+    }
+
+    /**
+     * Initialise l'auth au démarrage de l'app
+     * À appeler une seule fois dans main.ts
+     */
+    async function initialize(): Promise<void> {
+        if (isInitialized.value) return
+
+        if (token.value) {
+            await fetchUser()
+        }
+        isInitialized.value = true
     }
 
     function clearError(): void {
@@ -162,6 +185,7 @@ export const useAuthStore = defineStore('auth', () => {
         user,
         token,
         isLoading,
+        isInitialized,
         error,
         // Getters
         isAuthenticated,
@@ -176,6 +200,7 @@ export const useAuthStore = defineStore('auth', () => {
         logout,
         fetchUser,
         checkAuth,
+        initialize,
         clearError,
     }
 })

@@ -115,4 +115,16 @@ return [
         'name' => env('MAIL_FROM_NAME', 'Example'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Admin Email Address
+    |--------------------------------------------------------------------------
+    |
+    | This email address will receive admin notifications such as new
+    | reservation requests, contact form submissions, etc.
+    |
+    */
+
+    'admin_email' => env('MAIL_ADMIN_EMAIL', 'oceanetorresphotographie@gmail.com'),
+
 ];

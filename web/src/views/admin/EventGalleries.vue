@@ -1,12 +1,12 @@
 <template>
     <AdminLayout>
-        <AdminHeader title="Galeries d'evenements" subtitle="Gerez les galeries publiques de vos evenements">
+        <AdminHeader title="Galeries d'événements" subtitle="Gerez les galeries publiques de vos événements">
             <template #actions>
                 <Button @click="openCreateModal">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                     </svg>
-                    Nouvel evenement
+                    Nouvel événement
                 </Button>
             </template>
         </AdminHeader>
@@ -29,7 +29,7 @@
                     <svg class="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
-                    <p class="text-gray-500 mb-4">Aucune galerie d'evenement</p>
+                    <p class="text-gray-500 mb-4">Aucune galerie d'événement</p>
                     <Button @click="openCreateModal">Creer une galerie</Button>
                 </div>
 
@@ -132,11 +132,11 @@
         </div>
 
         <!-- Create/Edit Modal -->
-        <Modal v-model="showFormModal" :title="isEditing ? 'Modifier l\'evenement' : 'Nouvel evenement'" size="md">
+        <Modal v-model="showFormModal" :title="isEditing ? 'Modifier l\'événement' : 'Nouvel événement'" size="md">
             <form @submit.prevent="saveGallery" class="space-y-4">
                 <FormField
                     v-model="form.title"
-                    label="Nom de l'evenement"
+                    label="Nom de l'événement"
                     required
                     placeholder="Ex: Mariage Julie & Thomas"
                 />
@@ -144,8 +144,8 @@
                 <FormField
                     v-model="form.event_date"
                     type="date"
-                    label="Date de l'evenement"
-                    placeholder="Date de l'evenement"
+                    label="Date de l'événement"
+                    placeholder="Date de l'événement"
                 />
 
                 <FormField
@@ -153,7 +153,7 @@
                     type="textarea"
                     label="Description (optionnel)"
                     :rows="3"
-                    placeholder="Une courte description de l'evenement..."
+                    placeholder="Une courte description de l'événement..."
                 />
 
                 <FormField
@@ -399,14 +399,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import {ref, reactive, computed, onMounted} from 'vue'
 import AdminLayout from '@/components/admin/AdminLayout.vue'
 import AdminHeader from '@/components/admin/AdminHeader.vue'
 import Modal from '@/components/admin/ui/Modal.vue'
 import Button from '@/components/admin/ui/Button.vue'
 import FormField from '@/components/admin/ui/FormField.vue'
-import { adminApi } from '@/services/adminApi'
-import type { AdminGallery, AdminPhoto, EventGalleryFormData } from '@/types/admin'
+import {adminApi} from '@/services/adminApi'
+import type {AdminGallery, AdminPhoto, EventGalleryFormData} from '@/types/admin'
 
 interface EventGalleryWithCover extends AdminGallery {
     cover_photo?: AdminPhoto
@@ -445,7 +445,7 @@ const form = reactive<EventGalleryFormData>({
 const currentLightboxPhoto = computed(() => galleryPhotos.value[lightboxIndex.value] || null)
 
 function formatDate(dateStr: string): string {
-    return new Date(dateStr).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })
+    return new Date(dateStr).toLocaleDateString('fr-FR', {day: 'numeric', month: 'short', year: 'numeric'})
 }
 
 function resetForm() {
@@ -646,17 +646,17 @@ onMounted(() => {
 
 <style scoped>
 .slide-down-enter-active,
-.slide-down-leave-active {
+.slide-down-leave-active{
     transition: all 0.3s ease;
 }
 
 .slide-down-enter-from,
-.slide-down-leave-to {
+.slide-down-leave-to{
     opacity: 0;
     transform: translateY(-10px);
 }
 
-.line-clamp-2 {
+.line-clamp-2{
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
