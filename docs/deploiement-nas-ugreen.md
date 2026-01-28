@@ -52,7 +52,7 @@ Cloudflare Tunnel (cloudflared)
 
 ```bash
 # Se connecter en SSH au NAS
-ssh utilisateur@ip-du-nas
+ssh Gaetan-Admin@192.168.1.49
 
 # Créer le répertoire pour le backend
 mkdir -p /volume1/docker/oceane-api
@@ -63,25 +63,61 @@ cd /volume1/docker/oceane-api
 
 ### 1.2 Transférer les fichiers nécessaires
 
-Depuis ta machine locale, transfère les fichiers :
+> **Note importante (NAS UGREEN)** : La commande `scp` ne fonctionne pas correctement sur les NAS UGREEN. Utilise plutôt **l'interface web du NAS** (drag & drop) ou la méthode alternative `cat | ssh` décrite ci-dessous.
+
+#### Méthode recommandée : Interface web du NAS (drag & drop)
+
+1. Connecte-toi à l'interface web de ton NAS UGREEN
+2. Navigue vers `/volume1/docker/oceane-api/`
+3. Crée la structure de dossiers suivante :
+   ```
+   /volume1/docker/oceane-api/
+   ├── api/                    # Dossier du backend Laravel
+   ├── docker/                 # Dossier des configs Docker
+   │   ├── nginx.prod.conf     # ATTENTION: doit être un FICHIER, pas un dossier
+   │   └── php.ini
+   ├── .env.prod
+   ├── docker-compose.prod.yml
+   └── deploy.sh
+   ```
+
+4. Transfère les fichiers depuis `/deploy/` en les renommant :
+   - `deploy/.env.deploy` → `.env.prod`
+   - `deploy/docker-compose.prod.deploy.yml` → `docker-compose.prod.yml`
+   - `deploy/nginx.prod.deploy.conf` → `docker/nginx.prod.conf`
+   - `deploy/deploy.sh.deploy` → `deploy.sh`
+   - `docker/php.ini` → `docker/php.ini`
+
+5. Transfère le dossier `api/` (sans `vendor/`, `node_modules/` et `.env`)
+
+#### Méthode alternative : via SSH (cat | ssh)
+
+Si tu préfères la ligne de commande :
 
 ```bash
 # Depuis le répertoire du projet sur ta machine
 cd /Users/gaetanchollet/Projets/m2-site-oceane-torres
 
-# 1. Transférer les fichiers de configuration (depuis /deploy/)
-scp deploy/.env.deploy utilisateur@ip-du-nas:/volume1/docker/oceane-api/.env.prod
-scp deploy/docker-compose.prod.deploy.yml utilisateur@ip-du-nas:/volume1/docker/oceane-api/docker-compose.prod.yml
-scp deploy/nginx.prod.deploy.conf utilisateur@ip-du-nas:/volume1/docker/oceane-api/docker/nginx.prod.conf
-scp deploy/deploy.sh.deploy utilisateur@ip-du-nas:/volume1/docker/oceane-api/deploy.sh
+# 1. Créer la structure de dossiers sur le NAS
+ssh Gaetan-Admin@192.168.1.49 "mkdir -p /volume1/docker/oceane-api/docker"
 
-# 2. Transférer le dossier api (backend Laravel)
+# 2. Transférer les fichiers de configuration
+cat deploy/.env.deploy | ssh Gaetan-Admin@192.168.1.49 "cat > /volume1/docker/oceane-api/.env.prod"
+cat deploy/docker-compose.prod.deploy.yml | ssh Gaetan-Admin@192.168.1.49 "cat > /volume1/docker/oceane-api/docker-compose.prod.yml"
+cat deploy/nginx.prod.deploy.conf | ssh Gaetan-Admin@192.168.1.49 "cat > /volume1/docker/oceane-api/docker/nginx.prod.conf"
+cat deploy/deploy.sh.deploy | ssh Gaetan-Admin@192.168.1.49 "cat > /volume1/docker/oceane-api/deploy.sh"
+cat docker/php.ini | ssh Gaetan-Admin@192.168.1.49 "cat > /volume1/docker/oceane-api/docker/php.ini"
+
+# 3. Transférer le dossier api (backend Laravel)
 rsync -avz --exclude 'vendor' --exclude 'node_modules' --exclude '.env' \
-    ./api/ utilisateur@ip-du-nas:/volume1/docker/oceane-api/api/
-
-# 3. Transférer la config PHP
-scp docker/php.ini utilisateur@ip-du-nas:/volume1/docker/oceane-api/docker/php.ini
+    ./api/ Gaetan-Admin@192.168.1.49:/volume1/docker/oceane-api/api/
 ```
+
+> **Attention** : Vérifie que `docker/nginx.prod.conf` est bien un **fichier** et non un dossier. Si c'est un dossier, supprime-le et recrée-le comme fichier :
+> ```bash
+> ssh Gaetan-Admin@192.168.1.49 "rm -rf /volume1/docker/oceane-api/docker/nginx.prod.conf"
+> cat deploy/nginx.prod.deploy.conf | ssh Gaetan-Admin@192.168.1.49 "cat > /volume1/docker/oceane-api/docker/nginx.prod.conf"
+> ```
 
 ---
 
@@ -186,7 +222,7 @@ server {
     location ~ \.php$ {
         fastcgi_pass laravel:9000;
         fastcgi_index index.php;
-        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
         include fastcgi_params;
         fastcgi_buffers 16 16k;
         fastcgi_buffer_size 32k;
@@ -331,8 +367,13 @@ ingress:
 1. Connecte-toi à [Cloudflare Dashboard](https://dash.cloudflare.com)
 2. Sélectionne le domaine `oceanetorresphotographie.fr`
 3. Va dans **DNS** > **Records**
-4. Le sous-domaine `api` devrait déjà pointer vers ton tunnel (CNAME vers `xxx.cfargotunnel.com`)
-   - Si ce n'est pas le cas, ajoute un enregistrement CNAME
+4. Ajoute un enregistrement CNAME pour `api` :
+   - **Type** : CNAME
+   - **Name** : `api`
+   - **Target** : La même valeur que ton CNAME `minio` existant (format : `<tunnel-id>.cfargotunnel.com`)
+   - **Proxy status** : Proxied (orange)
+
+> **Astuce** : Pour trouver la target, regarde l'enregistrement CNAME existant pour `minio.oceanetorresphotographie.fr` et utilise la même valeur.
 
 ### 3.4 Redémarrer cloudflared
 
@@ -341,12 +382,18 @@ ingress:
 sudo systemctl restart cloudflared
 
 # Ou si c'est un container Docker
-docker restart cloudflared
+sudo docker restart cloudflared
 ```
 
 ---
 
 ## Étape 4 : Déploiement initial
+
+> **Note (NAS UGREEN)** : Toutes les commandes Docker nécessitent `sudo` sur UGREEN. Pour éviter cela, tu peux ajouter ton utilisateur au groupe docker :
+> ```bash
+> sudo usermod -aG docker Gaetan-Admin
+> ```
+> Puis déconnecte-toi et reconnecte-toi en SSH.
 
 ### 4.1 Builder et lancer les containers
 
@@ -354,17 +401,22 @@ docker restart cloudflared
 cd /volume1/docker/oceane-api
 
 # Builder l'image Laravel
-docker compose -f docker-compose.prod.yml build
+sudo docker compose -f docker-compose.prod.yml build
 
 # Lancer les services
-docker compose -f docker-compose.prod.yml up -d
+sudo docker compose -f docker-compose.prod.yml up -d
+
+# Vérifier que les containers tournent
+sudo docker ps
 ```
+
+Tu devrais voir `oceane-laravel` et `oceane-nginx` en plus de `minio`.
 
 ### 4.2 Initialiser Laravel
 
 ```bash
 # Entrer dans le container Laravel
-docker exec -it oceane-laravel sh
+sudo docker exec -it oceane-laravel sh
 
 # Installer les dépendances (si pas fait au build)
 composer install --no-dev --optimize-autoloader
@@ -395,7 +447,7 @@ exit
 
 ```bash
 # Vérifier les logs
-docker compose -f docker-compose.prod.yml logs -f
+sudo docker compose -f docker-compose.prod.yml logs -f
 
 # Tester localement
 curl http://localhost:8080/api/health
@@ -426,25 +478,25 @@ echo "📦 Pulling latest changes..."
 # cd api && git pull origin main && cd ..
 
 echo "🔨 Building containers..."
-docker compose -f docker-compose.prod.yml build --no-cache
+sudo docker compose -f docker-compose.prod.yml build --no-cache
 
 echo "🔄 Restarting services..."
-docker compose -f docker-compose.prod.yml down
-docker compose -f docker-compose.prod.yml up -d
+sudo docker compose -f docker-compose.prod.yml down
+sudo docker compose -f docker-compose.prod.yml up -d
 
 echo "⏳ Waiting for containers to be ready..."
 sleep 10
 
 echo "🚀 Running migrations..."
-docker exec oceane-laravel php artisan migrate --force
+sudo docker exec oceane-laravel php artisan migrate --force
 
 echo "🧹 Clearing caches..."
-docker exec oceane-laravel php artisan config:cache
-docker exec oceane-laravel php artisan route:cache
-docker exec oceane-laravel php artisan view:cache
+sudo docker exec oceane-laravel php artisan config:cache
+sudo docker exec oceane-laravel php artisan route:cache
+sudo docker exec oceane-laravel php artisan view:cache
 
 echo "✅ Deployment complete!"
-docker compose -f docker-compose.prod.yml ps
+sudo docker compose -f docker-compose.prod.yml ps
 ```
 
 Rends-le exécutable :
@@ -457,27 +509,49 @@ chmod +x deploy.sh
 
 Pour mettre à jour le backend :
 
+**Option 1 : Via l'interface web du NAS (drag & drop)**
+1. Transfère le dossier `api/` (sans `vendor/`, `node_modules/` et `.env`) via l'interface web
+2. Connecte-toi en SSH et lance le script de déploiement
+
+**Option 2 : Via rsync**
 ```bash
 # Depuis ta machine locale
 rsync -avz --exclude 'vendor' --exclude '.env' \
-    ./api/ utilisateur@ip-du-nas:/volume1/docker/oceane-api/api/
+    ./api/ Gaetan-Admin@192.168.1.49:/volume1/docker/oceane-api/api/
+```
 
-# Sur le NAS
-ssh utilisateur@ip-du-nas
+Puis sur le NAS :
+```bash
+ssh Gaetan-Admin@192.168.1.49
 cd /volume1/docker/oceane-api
-./deploy.sh
+sudo ./deploy.sh
 ```
 
 ---
 
 ## Troubleshooting
 
+> **Rappel** : Toutes les commandes Docker nécessitent `sudo` sur NAS UGREEN.
+
 ### Les containers ne démarrent pas
 
 ```bash
 # Voir les logs détaillés
-docker compose -f docker-compose.prod.yml logs laravel
-docker compose -f docker-compose.prod.yml logs nginx
+sudo docker compose -f docker-compose.prod.yml logs laravel
+sudo docker compose -f docker-compose.prod.yml logs nginx
+```
+
+### Erreur "not a directory" au démarrage de nginx
+
+Cette erreur survient quand `nginx.prod.conf` est un dossier au lieu d'un fichier :
+
+```bash
+# Vérifier le type
+ls -la /volume1/docker/oceane-api/docker/nginx.prod.conf
+
+# Si c'est un dossier (commence par 'd'), le supprimer et recréer comme fichier
+sudo rm -rf /volume1/docker/oceane-api/docker/nginx.prod.conf
+# Puis retransfère le fichier via l'interface web ou cat | ssh
 ```
 
 ### Erreur 502 Bad Gateway
@@ -486,17 +560,17 @@ Le container Laravel n'est pas prêt ou PHP-FPM ne répond pas :
 
 ```bash
 # Vérifier que PHP-FPM écoute
-docker exec oceane-laravel ps aux | grep php-fpm
+sudo docker exec oceane-laravel ps aux | grep php-fpm
 
 # Vérifier les logs Laravel
-docker exec oceane-laravel cat storage/logs/laravel.log
+sudo docker exec oceane-laravel cat storage/logs/laravel.log
 ```
 
 ### Erreur de connexion à la base de données
 
 ```bash
 # Tester la connexion depuis le container
-docker exec oceane-laravel php artisan tinker
+sudo docker exec oceane-laravel php artisan tinker
 # Puis dans tinker :
 DB::connection()->getPdo();
 ```
@@ -510,14 +584,14 @@ cloudflared tunnel ingress validate
 # Vérifier les logs cloudflared
 journalctl -u cloudflared -f
 # ou
-docker logs cloudflared -f
+sudo docker logs cloudflared -f
 ```
 
 ### Permissions storage
 
 ```bash
-docker exec oceane-laravel chmod -R 775 storage bootstrap/cache
-docker exec oceane-laravel chown -R www-data:www-data storage bootstrap/cache
+sudo docker exec oceane-laravel chmod -R 775 storage bootstrap/cache
+sudo docker exec oceane-laravel chown -R www-data:www-data storage bootstrap/cache
 ```
 
 ---
