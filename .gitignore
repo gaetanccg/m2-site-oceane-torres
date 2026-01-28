@@ -83,7 +83,6 @@ web/.eslintcache
 # Local dev server files
 web/pnpm-debug.log
 web/yarn.lock
-web/package-lock.json
 
 
 # ============================================
