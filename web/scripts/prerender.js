@@ -110,7 +110,8 @@ async function main() {
         process.exit(1)
     } finally {
         await browser.close()
-        server.kill()
+        server.kill('SIGKILL')
+        process.exit(0)
     }
 }
 
