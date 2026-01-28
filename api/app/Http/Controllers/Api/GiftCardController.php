@@ -67,14 +67,14 @@ class GiftCardController extends Controller
     {
         $giftCard = GiftCard::where('code', $code)->first();
 
-        if (!$giftCard) {
+        if (! $giftCard) {
             return response()->json([
                 'valid' => false,
                 'message' => 'Code invalide.',
             ], 404);
         }
 
-        if (!$giftCard->isValid()) {
+        if (! $giftCard->isValid()) {
             return response()->json([
                 'valid' => false,
                 'message' => 'Ce bon cadeau a expiré ou a déjà été utilisé.',

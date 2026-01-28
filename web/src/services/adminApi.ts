@@ -15,11 +15,14 @@ import type {
     ReservationStatus,
     CalendarEvent,
     Client,
+    ClientFormData,
+    ClientGdprExport,
     AdminPrestation,
     PrestationFormData,
     AdminGallery,
     AdminPhoto,
     GalleryFormData,
+    EventGalleryFormData,
     AdminGiftCard,
     Notification,
 } from '@/types/admin'
@@ -102,7 +105,7 @@ class AdminApiService {
 
             if (response.status === 401) {
                 localStorage.removeItem('auth_token')
-                window.location.href = '/admin/login'
+                window.location.href = '/?login=true'
                 throw new Error('Non autorisé')
             }
 
@@ -185,6 +188,16 @@ class AdminApiService {
         })
     }
 
+    async updateReservation(
+        id: string,
+        data: { date?: string; time?: string; status?: ReservationStatus; notes?: string }
+    ): Promise<AdminApiResponse<Reservation>> {
+        return this.request<AdminApiResponse<Reservation>>(`/admin/reservations/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+        })
+    }
+
     async getCalendarEvents(
         start: string,
         end: string
@@ -194,6 +207,12 @@ class AdminApiService {
         )
     }
 
+    async deleteReservation(id: string): Promise<AdminApiResponse<null>> {
+        return this.request<AdminApiResponse<null>>(`/admin/reservations/${id}`, {
+            method: 'DELETE',
+        })
+    }
+
     // ========================================================================
     // Clients
     // ========================================================================
@@ -201,27 +220,46 @@ class AdminApiService {
     async getClients(
         page = 1,
         perPage = 20,
-        search?: string
+        search?: string,
+        source?: string
     ): Promise<AdminPaginatedResponse<Client>> {
         let query = `?page=${page}&per_page=${perPage}`
         if (search) query += `&search=${encodeURIComponent(search)}`
-        return this.request<AdminPaginatedResponse<Client>>(`/admin/users${query}`)
+        if (source) query += `&source=${encodeURIComponent(source)}`
+        return this.request<AdminPaginatedResponse<Client>>(`/admin/clients${query}`)
     }
 
-    async getClient(id: string): Promise<AdminApiResponse<Client>> {
-        return this.request<AdminApiResponse<Client>>(`/admin/users/${id}`)
+    async getClient(id: string): Promise<{ client: Client }> {
+        return this.request<{ client: Client }>(`/admin/clients/${id}`)
     }
 
-    async updateClient(id: string, data: Partial<Client>): Promise<AdminApiResponse<Client>> {
-        return this.request<AdminApiResponse<Client>>(`/admin/users/${id}`, {
+    async createClient(data: ClientFormData): Promise<{ client: Client; message: string }> {
+        return this.request<{ client: Client; message: string }>('/admin/clients', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        })
+    }
+
+    async updateClient(id: string, data: Partial<ClientFormData>): Promise<{ client: Client; message: string }> {
+        return this.request<{ client: Client; message: string }>(`/admin/clients/${id}`, {
             method: 'PUT',
             body: JSON.stringify(data),
         })
     }
 
-    async deleteClient(id: string): Promise<AdminApiResponse<null>> {
-        return this.request<AdminApiResponse<null>>(`/admin/users/${id}`, {
+    async deleteClient(id: string): Promise<{ message: string }> {
+        return this.request<{ message: string }>(`/admin/clients/${id}`, {
             method: 'DELETE',
+        })
+    }
+
+    async getClientReservations(id: string, page = 1): Promise<AdminPaginatedResponse<Reservation>> {
+        return this.request<AdminPaginatedResponse<Reservation>>(`/admin/clients/${id}/reservations?page=${page}`)
+    }
+
+    async exportClientGdpr(id: string): Promise<{ data: ClientGdprExport; message: string }> {
+        return this.request<{ data: ClientGdprExport; message: string }>(`/admin/clients/${id}/gdpr-export`, {
+            method: 'POST',
         })
     }
 
@@ -230,7 +268,7 @@ class AdminApiService {
     // ========================================================================
 
     async getPrestations(): Promise<AdminApiResponse<AdminPrestation[]>> {
-        return this.request<AdminApiResponse<AdminPrestation[]>>('/prestations')
+        return this.request<AdminApiResponse<AdminPrestation[]>>('/admin/prestations')
     }
 
     async getPrestation(id: string): Promise<AdminApiResponse<AdminPrestation>> {
@@ -316,6 +354,20 @@ class AdminApiService {
         )
     }
 
+    async sendGalleryAccessEmail(
+        galleryId: string,
+        email: string,
+        recipientName: string
+    ): Promise<AdminApiResponse<{ message: string }>> {
+        return this.request<AdminApiResponse<{ message: string }>>(
+            `/admin/galleries/${galleryId}/send-email`,
+            {
+                method: 'POST',
+                body: JSON.stringify({ email, recipient_name: recipientName }),
+            }
+        )
+    }
+
     async togglePhotoDownloadable(id: string): Promise<AdminApiResponse<{ is_downloadable: boolean }>> {
         return this.request<AdminApiResponse<{ is_downloadable: boolean }>>(
             `/admin/photos/${id}/toggle-downloadable`,
@@ -357,6 +409,72 @@ class AdminApiService {
         return this.request<AdminApiResponse<null>>(`/admin/photos/${id}`, {
             method: 'DELETE',
         })
+    }
+
+    // ========================================================================
+    // Event Galleries
+    // ========================================================================
+
+    async getEventGalleries(
+        page = 1,
+        perPage = 20
+    ): Promise<AdminPaginatedResponse<AdminGallery>> {
+        const query = `?page=${page}&per_page=${perPage}`
+        return this.request<AdminPaginatedResponse<AdminGallery>>(`/admin/events${query}`)
+    }
+
+    async getEventGallery(id: string): Promise<AdminApiResponse<AdminGallery>> {
+        return this.request<AdminApiResponse<AdminGallery>>(`/admin/events/${id}`)
+    }
+
+    async createEventGallery(data: EventGalleryFormData): Promise<AdminApiResponse<AdminGallery>> {
+        return this.request<AdminApiResponse<AdminGallery>>('/admin/events', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        })
+    }
+
+    async updateEventGallery(id: string, data: EventGalleryFormData): Promise<AdminApiResponse<AdminGallery>> {
+        return this.request<AdminApiResponse<AdminGallery>>(`/admin/events/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+        })
+    }
+
+    async deleteEventGallery(id: string): Promise<AdminApiResponse<null>> {
+        return this.request<AdminApiResponse<null>>(`/admin/events/${id}`, {
+            method: 'DELETE',
+        })
+    }
+
+    async uploadEventPhotos(galleryId: string, files: File[]): Promise<AdminApiResponse<AdminPhoto[]>> {
+        const formData = new FormData()
+        files.forEach((file) => formData.append('photos[]', file))
+
+        const token = this.getToken()
+        const xsrfToken = this.getXsrfToken()
+        const headers: Record<string, string> = {
+            'Accept': 'application/json',
+        }
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`
+        }
+        if (xsrfToken) {
+            headers['X-XSRF-TOKEN'] = xsrfToken
+        }
+
+        const response = await fetch(`${this.baseUrl}/admin/events/${galleryId}/photos`, {
+            method: 'POST',
+            headers,
+            credentials: 'include',
+            body: formData,
+        })
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`)
+        }
+
+        return response.json()
     }
 
     // ========================================================================

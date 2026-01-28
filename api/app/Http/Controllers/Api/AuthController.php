@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Gallery;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -33,6 +34,11 @@ class AuthController extends Controller
             'role' => 'client',
         ]);
 
+        // Lier les galeries assignees par email a ce nouvel utilisateur
+        Gallery::where('assigned_email', $validated['email'])
+            ->whereNull('user_id')
+            ->update(['user_id' => $user->id]);
+
         $token = $user->createToken('auth-token')->plainTextToken;
 
         return response()->json([
@@ -48,7 +54,7 @@ class AuthController extends Controller
             'password' => ['required'],
         ]);
 
-        if (!Auth::attempt($request->only('email', 'password'))) {
+        if (! Auth::attempt($request->only('email', 'password'))) {
             throw ValidationException::withMessages([
                 'email' => ['Les identifiants fournis sont incorrects.'],
             ]);
@@ -93,7 +99,7 @@ class AuthController extends Controller
             'first_name' => ['sometimes', 'string', 'max:255'],
             'last_name' => ['sometimes', 'string', 'max:255'],
             'phone' => ['nullable', 'string', 'max:20'],
-            'email' => ['sometimes', 'email', 'unique:users,email,' . $user->id],
+            'email' => ['sometimes', 'email', 'unique:users,email,'.$user->id],
         ]);
 
         $user->update($validated);

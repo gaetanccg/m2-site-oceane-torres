@@ -13,10 +13,17 @@ class Prestation extends Model
 
     protected $fillable = [
         'title',
+        'icon',
         'description',
+        'features',
         'price',
+        'price_text',
+        'price_unit',
         'duration',
         'category',
+        'background_image',
+        'background_opacity',
+        'disclaimer',
         'is_active',
         'sort_order',
     ];
@@ -25,6 +32,8 @@ class Prestation extends Model
     {
         return [
             'price' => 'decimal:2',
+            'background_opacity' => 'decimal:2',
+            'features' => 'array',
             'is_active' => 'boolean',
         ];
     }

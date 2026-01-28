@@ -9,6 +9,7 @@ use Illuminate\Support\Str;
 class MinioStorageService
 {
     private string $bucket;
+
     private string $disk = 'minio';
 
     public function __construct()
@@ -19,7 +20,7 @@ class MinioStorageService
     public function uploadPhoto(UploadedFile $file, string $galleryId): ?array
     {
         $extension = $file->getClientOriginalExtension();
-        $filename = Str::uuid() . '.' . $extension;
+        $filename = Str::uuid().'.'.$extension;
         $path = "{$galleryId}/{$filename}";
 
         try {
@@ -34,6 +35,7 @@ class MinioStorageService
             ];
         } catch (\Exception $e) {
             \Log::error('MinIO upload failed', ['error' => $e->getMessage()]);
+
             return null;
         }
     }
@@ -44,6 +46,7 @@ class MinioStorageService
             return Storage::disk($this->disk)->delete($path);
         } catch (\Exception $e) {
             \Log::error('MinIO delete failed', ['error' => $e->getMessage()]);
+
             return false;
         }
     }
@@ -60,6 +63,7 @@ class MinioStorageService
             return Storage::disk($this->disk)->delete($files);
         } catch (\Exception $e) {
             \Log::error('MinIO folder delete failed', ['error' => $e->getMessage()]);
+
             return false;
         }
     }
@@ -70,6 +74,7 @@ class MinioStorageService
             return Storage::disk($this->disk)->files($galleryId);
         } catch (\Exception $e) {
             \Log::error('MinIO list failed', ['error' => $e->getMessage()]);
+
             return [];
         }
     }
@@ -80,6 +85,7 @@ class MinioStorageService
             return Storage::disk($this->disk)->temporaryUrl($path, now()->addSeconds($expiresIn));
         } catch (\Exception $e) {
             \Log::error('MinIO signed URL failed', ['error' => $e->getMessage()]);
+
             return null;
         }
     }
@@ -90,6 +96,7 @@ class MinioStorageService
             return Storage::disk($this->disk)->get($path);
         } catch (\Exception $e) {
             \Log::error('MinIO download failed', ['error' => $e->getMessage()]);
+
             return null;
         }
     }

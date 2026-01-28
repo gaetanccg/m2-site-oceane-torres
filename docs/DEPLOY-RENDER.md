@@ -1,298 +1,378 @@
-# Deploiement sur Render
+# Deploiement du Frontend sur Render
 
-Ce guide explique comment deployer l'ensemble du projet (Frontend Vue + API Laravel) sur Render.
+Ce guide explique comment deployer le frontend Vue.js sur Render et le connecter au backend Laravel heberge sur ton NAS UGREEN.
 
 ## Architecture
 
 ```
-oceanetorresphotographie.fr (Frontend)
-    └── Static Site (Vue/Vite)
-
-api.oceanetorresphotographie.fr (API)
-    └── Web Service (Laravel/PHP)
-
-Supabase (externe)
-    └── PostgreSQL Database
-
-MinIO (NAS via Cloudflare Tunnel)
-    └── Storage S3 (photos) - s3.oceanetorresphotographie.fr
+                         Internet
+                             │
+            ┌────────────────┼────────────────┐
+            │                │                │
+            ▼                ▼                ▼
+   ┌─────────────┐   ┌─────────────┐   ┌─────────────┐
+   │   Render    │   │  Cloudflare │   │  Supabase   │
+   │ Static Site │   │   Tunnel    │   │ (PostgreSQL)│
+   └─────────────┘   └──────┬──────┘   └─────────────┘
+         │                  │                │
+         │           ┌──────┴──────┐         │
+         │           │             │         │
+         │           ▼             ▼         │
+         │    ┌───────────┐ ┌───────────┐    │
+         │    │  Laravel  │ │   MinIO   │    │
+         │    │   API     │ │  Storage  │    │
+         │    └───────────┘ └───────────┘    │
+         │           │             │         │
+         │           └──────┬──────┘         │
+         │                  │                │
+         │           ┌──────┴──────┐         │
+         │           │  NAS UGREEN │◄────────┘
+         │           └─────────────┘
+         │
+         ▼
+oceanetorresphotographie.fr (Frontend Vue.js)
+         │
+         ├── api.oceanetorresphotographie.fr (Backend Laravel - NAS)
+         ├── s3.oceanetorresphotographie.fr (MinIO Storage - NAS)
+         └── Supabase (Base de donnees PostgreSQL)
 ```
+
+## Services utilises
+
+| Service        | Role                               | URL                             |
+|----------------|------------------------------------|---------------------------------|
+| **Render**     | Hebergement frontend (Static Site) | oceanetorresphotographie.fr     |
+| **NAS UGREEN** | Backend API Laravel + Nginx        | api.oceanetorresphotographie.fr |
+| **NAS UGREEN** | Stockage MinIO (S3)                | s3.oceanetorresphotographie.fr  |
+| **Supabase**   | Base de donnees PostgreSQL         | (connexion via API)             |
+| **Cloudflare** | DNS + Tunnel vers NAS              | -                               |
 
 ---
 
 ## Prerequis
 
-- Compte Render (https://render.com)
-- Compte Supabase avec projet configure
-- Domaine `oceanetorresphotographie.fr` configure
+Avant de deployer le frontend, assure-toi que :
+
+- [x] **Backend API** deploye sur le NAS et accessible via `https://api.oceanetorresphotographie.fr`
+- [x] **MinIO** configure sur le NAS et accessible via `https://s3.oceanetorresphotographie.fr`
+- [x] **Supabase** projet cree avec la base de donnees configuree
+- [x] **Cloudflare** domaine configure avec les tunnels actifs
+- [ ] **Compte Render** cree (https://render.com)
+
+### Verifier que le backend fonctionne
+
+```bash
+curl https://api.oceanetorresphotographie.fr/api/health
+```
+
+Doit retourner :
+
+```json
+{
+    "status": "ok",
+    "message": "API Oceane Torres Photographie",
+    "version": "1.0.0",
+    ...
+}
+```
 
 ---
 
-## 1. Deployer l'API Laravel
+## Etape 1 : Creer le Static Site sur Render
 
-### 1.1 Creer un Web Service
+### 1.1 Connexion et creation
 
-1. Dashboard Render → **New** → **Web Service**
-2. Connecter le repository GitHub
-3. Configuration :
+1. Va sur [Render Dashboard](https://dashboard.render.com)
+2. Clique sur **New** → **Static Site**
+3. Connecte ton repository GitHub `m2-site-oceane-torres`
 
-| Parametre      | Valeur                    |
-|----------------|---------------------------|
-| Name           | `oceane-torres-api`       |
-| Region         | Frankfurt (EU Central)    |
-| Branch         | `main`                    |
-| Root Directory | `api`                     |
-| Runtime        | Docker                    |
-| Instance Type  | Starter ($7/mois) ou Free |
+### 1.2 Configuration du service
 
-### 1.2 Dockerfile
+| Parametre             | Valeur                                   |
+|-----------------------|------------------------------------------|
+| **Name**              | `oceane-torres-web`                      |
+| **Branch**            | `main`                                   |
+| **Root Directory**    | `web`                                    |
+| **Build Command**     | `npm install && npm run build:prerender` |
+| **Publish Directory** | `dist`                                   |
 
-Le Dockerfile (`api/Dockerfile`) est deja configure pour Render :
+> **Important SEO** : La commande `build:prerender` genere des pages HTML statiques pour les routes publiques, permettant a Google d'indexer le contenu sans JavaScript.
 
-- Utilise `php:8.4-cli-alpine` avec `php artisan serve`
-- Execute les migrations automatiquement au demarrage
-- Cache les configurations pour la production
-- Utilise la variable `PORT` de Render
+### 1.3 Prerendering SEO (pages generees)
 
-### 1.3 Variables d'environnement API
+Le script de prerendering genere des pages HTML statiques pour les routes suivantes :
 
-Le fichier `api/.env.render` contient toutes les variables pretes a copier-coller.
+| Route          | Description           |
+|----------------|-----------------------|
+| `/`            | Page d'accueil        |
+| `/portfolio`   | Portfolio photos      |
+| `/prestations` | Services proposes     |
+| `/bons`        | Bons cadeaux          |
+| `/a-propos`    | Presentation          |
+| `/contact`     | Formulaire de contact |
+| `/evenements`  | Evenements            |
 
-Dans Render → **Environment** → **Add from .env** → coller le contenu de `api/.env.render`
+**Avantages SEO :**
 
-Ou ajouter manuellement les variables essentielles :
+- Google peut indexer le contenu sans executer JavaScript
+- Meilleur temps de chargement initial (First Contentful Paint)
+- Meilleur score Core Web Vitals
+- Les meta tags et Open Graph sont presents dans le HTML initial
 
-```env
-# Application
-APP_NAME="Oceane Torres Photographie"
-APP_ENV=production
-APP_KEY=base64:votre_cle_generee
-APP_DEBUG=false
-APP_URL=https://api.oceanetorresphotographie.fr
-FRONTEND_URL=https://oceanetorresphotographie.fr
+> **Note technique** : Le prerendering utilise Puppeteer pour generer les pages. Render supporte Puppeteer nativement.
 
-# Database Supabase
-DB_CONNECTION=pgsql
-DB_HOST=db.xxxx.supabase.co
-DB_PORT=5432
-DB_DATABASE=postgres
-DB_USERNAME=postgres
-DB_PASSWORD=votre_password_supabase
+### 1.4 Variables d'environnement
 
-# MinIO Storage (S3 compatible)
-MINIO_ENDPOINT=https://s3.oceanetorresphotographie.fr
-MINIO_ACCESS_KEY=votre_access_key
-MINIO_SECRET_KEY=votre_secret_key
-MINIO_BUCKET=galleries
-MINIO_REGION=us-east-1
+Dans Render → **Environment** → **Add Environment Variable** :
 
-# Supabase (database only)
-SUPABASE_URL=https://xxxx.supabase.co
-SUPABASE_KEY=votre_anon_key
-SUPABASE_SERVICE_KEY=votre_service_role_key
+| Variable       | Valeur                                        |
+|----------------|-----------------------------------------------|
+| `VITE_API_URL` | `https://api.oceanetorresphotographie.fr/api` |
 
-# Session & Cache (file car pas de table sessions)
-SESSION_DRIVER=file
-CACHE_STORE=file
-QUEUE_CONNECTION=sync
+> **Important** : Le `/api` a la fin est necessaire car c'est le prefixe des routes Laravel.
 
-# CORS & Sanctum
-CORS_ALLOWED_ORIGINS=https://oceanetorresphotographie.fr,https://www.oceanetorresphotographie.fr
-SANCTUM_STATEFUL_DOMAINS=oceanetorresphotographie.fr,www.oceanetorresphotographie.fr
+### 1.5 Configuration pour Puppeteer (prerendering)
 
-# Logs
-LOG_CHANNEL=stderr
-LOG_LEVEL=error
-```
+Pour que Puppeteer fonctionne sur Render, ajoute ces variables d'environnement :
 
-> **Note**: `APP_KEY` est deja genere dans `api/.env.render`. Si besoin d'en regenerer un : `php artisan key:generate --show`
+| Variable                           | Valeur  |
+|------------------------------------|---------|
+| `PUPPETEER_SKIP_CHROMIUM_DOWNLOAD` | `false` |
 
-### 1.4 Configurer le domaine API
-
-1. Render → Settings → Custom Domains
-2. Ajouter `api.oceanetorresphotographie.fr`
-3. Configurer le DNS :
-    - Type: `CNAME`
-    - Name: `api`
-    - Value: `oceane-torres-api.onrender.com`
+Render installe automatiquement les dependances Chromium necessaires pour Puppeteer.
 
 ---
 
-## 2. Deployer le Frontend Vue
+## Etape 2 : Configurer le domaine personnalise
 
-### 2.1 Creer un Static Site
+### 2.1 Ajouter le domaine dans Render
 
-1. Dashboard Render → **New** → **Static Site**
-2. Connecter le repository GitHub
-3. Configuration :
+1. Render → ton service → **Settings** → **Custom Domains**
+2. Clique sur **Add Custom Domain**
+3. Entre : `oceanetorresphotographie.fr`
+4. Ajoute aussi : `www.oceanetorresphotographie.fr`
 
-| Parametre         | Valeur                         |
-|-------------------|--------------------------------|
-| Name              | `oceane-torres-web`            |
-| Branch            | `main`                         |
-| Root Directory    | `web`                          |
-| Build Command     | `npm install && npm run build` |
-| Publish Directory | `dist`                         |
+### 2.2 Configurer le DNS dans Cloudflare
 
-### 2.2 Variables d'environnement Frontend
+Va dans **Cloudflare Dashboard** → **DNS** → **Records** et ajoute :
 
-```env
-VITE_API_URL=https://api.oceanetorresphotographie.fr
-VITE_SUPABASE_URL=https://ekhlybdoblhjigpnpbff.supabase.co
-VITE_SUPABASE_ANON_KEY=votre_anon_key
-```
+| Type  | Name  | Target                           | Proxy           |
+|-------|-------|----------------------------------|-----------------|
+| CNAME | `@`   | `oceane-torres-web.onrender.com` | DNS only (gris) |
+| CNAME | `www` | `oceane-torres-web.onrender.com` | DNS only (gris) |
 
-### 2.3 Configurer les Redirects (SPA)
+> **Important** : Desactive le proxy Cloudflare (icone grise) pour le frontend car Render gere le SSL.
 
-Creer le fichier `web/public/_redirects` :
+### 2.3 Attendre la propagation
+
+- Le certificat SSL sera automatiquement genere par Render
+- La propagation DNS peut prendre quelques minutes a quelques heures
+
+---
+
+## Etape 3 : Configurer les redirections SPA
+
+Le frontend est une Single Page Application (SPA). Toutes les routes doivent rediriger vers `index.html`.
+
+### Option A : Fichier _redirects (recommande)
+
+Le fichier `web/public/_redirects` doit contenir :
 
 ```
 /*    /index.html   200
 ```
 
-Ou ajouter dans Render → Redirects/Rewrites :
+Ce fichier est deja present dans le projet.
 
-- Source: `/*`
-- Destination: `/index.html`
-- Action: Rewrite
+### Option B : Via Render Dashboard
 
-### 2.4 Configurer le domaine
-
-Le domaine `oceanetorresphotographie.fr` est probablement deja configure. Verifier :
-
-- `oceanetorresphotographie.fr` → pointe vers le Static Site
-- `www.oceanetorresphotographie.fr` → redirige vers le domaine principal
+1. Render → ton service → **Redirects/Rewrites**
+2. Ajoute une regle :
+    - **Source** : `/*`
+    - **Destination** : `/index.html`
+    - **Action** : Rewrite
 
 ---
 
-## 3. Configuration DNS complete
+## Etape 4 : Deployer
 
-Dans votre registrar DNS :
+### 4.1 Trigger le premier deploiement
 
-| Type  | Name | Value                          | TTL |
-|-------|------|--------------------------------|-----|
-| A     | @    | IP Render (voir dashboard)     | 300 |
-| CNAME | www  | oceane-torres-web.onrender.com | 300 |
-| CNAME | api  | oceane-torres-api.onrender.com | 300 |
+1. Clique sur **Create Static Site** (ou **Deploy** si deja cree)
+2. Render va :
+    - Cloner le repository
+    - Installer les dependances (`npm install`)
+    - Builder le projet (`npm run build`)
+    - Publier le dossier `dist`
 
----
+### 4.2 Suivre le deploiement
 
-## 4. Services externes
+- Va dans **Logs** pour suivre le build en temps reel
+- Le build prend generalement 1-3 minutes
 
-### 4.1 Supabase (Database)
+### 4.3 Verifier le deploiement
 
-1. Supabase Dashboard → Settings → Database
-2. Copier le **Connection string** (mode: URI)
-3. Utiliser les credentials dans les variables d'environnement Render
+Une fois termine, verifie :
 
-### 4.2 MinIO (Storage)
-
-Le stockage des photos est gere par MinIO sur ton NAS, accessible via Cloudflare Tunnel.
-
-**Prerequis :**
-- Tunnel Cloudflare configure pour `s3.oceanetorresphotographie.fr`
-- Bucket `galleries` cree dans MinIO
-- Access Key / Secret Key configures
-
-**Verifier la connectivite :**
 ```bash
-curl -I https://s3.oceanetorresphotographie.fr/minio/health/live
+# Via l'URL Render
+curl -I https://oceane-torres-web.onrender.com
+
+# Via ton domaine (apres propagation DNS)
+curl -I https://oceanetorresphotographie.fr
 ```
 
-> Note: Les Edge Functions Supabase ne sont plus utilisees. Le nettoyage des fichiers est gere directement par Laravel.
-
 ---
 
-## 5. Verification post-deploiement
+## Etape 5 : Verification complete
 
-### Checklist
+### Checklist post-deploiement
 
 - [ ] `https://oceanetorresphotographie.fr` charge le frontend
-- [ ] `https://api.oceanetorresphotographie.fr` repond (test: `/api/galleries`)
-- [ ] Login admin fonctionne
+- [ ] Les pages se chargent correctement (accueil, prestations, contact, etc.)
+- [ ] L'API repond : `https://api.oceanetorresphotographie.fr/api/health`
+- [ ] Les galeries publiques s'affichent
+- [ ] Le login admin fonctionne (`/admin`)
 - [ ] Upload de photos fonctionne (vers MinIO)
-- [ ] Affichage des photos fonctionne (signed URLs MinIO)
-- [ ] Suppression de galerie nettoie le storage MinIO
-- [ ] HTTPS actif sur les deux domaines
+- [ ] Les images s'affichent correctement (signed URLs MinIO)
 
-### Test API
+### Tests manuels
 
 ```bash
-# Verifier que l'API repond
-curl https://api.oceanetorresphotographie.fr/api/galleries
+# Test frontend
+curl -I https://oceanetorresphotographie.fr
 
-# Verifier la sante
+# Test API health
 curl https://api.oceanetorresphotographie.fr/api/health
+
+# Test API database
+curl https://api.oceanetorresphotographie.fr/api/health/database
+
+# Test galeries publiques
+curl https://api.oceanetorresphotographie.fr/api/galleries
 ```
 
 ---
 
-## 6. Maintenance
+## Deployements automatiques
 
-### Logs
+Par defaut, Render declenche un nouveau deploiement a chaque push sur la branche `main`.
 
-- Render Dashboard → Logs (temps reel)
-- Pour Laravel : `LOG_CHANNEL=stderr` envoi les logs dans Render
+### Desactiver les deploiements automatiques
 
-### Migrations
+Si tu preferes deployer manuellement :
 
-Les migrations s'executent automatiquement au demarrage (voir CMD dans Dockerfile).
+1. Render → ton service → **Settings**
+2. **Build & Deploy** → **Auto-Deploy** → Desactiver
 
-Pour executer manuellement :
+### Deployer manuellement
 
-1. Render → Shell
-2. `php artisan migrate --force`
-
-### Cache
-
-Si besoin de vider le cache :
-
-```bash
-php artisan cache:clear
-php artisan config:clear
-php artisan route:clear
-php artisan view:clear
-```
+1. Render → ton service → **Manual Deploy** → **Deploy latest commit**
 
 ---
 
-## 7. Couts estimes
+## Configuration DNS complete
 
-| Service                | Plan    | Cout/mois   |
-|------------------------|---------|-------------|
-| Static Site (Frontend) | Free    | $0          |
-| Web Service (API)      | Starter | $7          |
-| Supabase               | Free    | $0          |
-| **Total**              |         | **$7/mois** |
+Voici la configuration DNS complete dans Cloudflare pour tout le projet :
 
-> Note: Le plan Free de Render pour les Web Services met le service en veille apres 15min d'inactivite (cold start de ~30s). Le plan Starter ($7) garde le service actif.
+| Type  | Name  | Target                           | Proxy    |
+|-------|-------|----------------------------------|----------|
+| CNAME | `@`   | `oceane-torres-web.onrender.com` | DNS only |
+| CNAME | `www` | `oceane-torres-web.onrender.com` | DNS only |
+| CNAME | `api` | `<tunnel-id>.cfargotunnel.com`   | Proxied  |
+| CNAME | `s3`  | `<tunnel-id>.cfargotunnel.com`   | Proxied  |
+
+> **Note** : `api` et `s3` pointent vers le tunnel Cloudflare qui redirige vers ton NAS.
 
 ---
 
 ## Troubleshooting
 
-### L'API ne demarre pas
+### Le frontend ne charge pas
 
-1. Verifier les logs Render
-2. Verifier que `APP_KEY` est defini
-3. Verifier la connexion DB (credentials Supabase)
+1. Verifier les logs de build dans Render
+2. Verifier que `VITE_API_URL` est correctement configure
+3. Verifier la propagation DNS : `nslookup oceanetorresphotographie.fr`
 
 ### Erreur CORS
 
-1. Verifier `CORS_ALLOWED_ORIGINS` dans l'API
-2. Verifier `SANCTUM_STATEFUL_DOMAINS`
-3. Verifier que le frontend utilise bien `https://`
+Si tu vois des erreurs CORS dans la console du navigateur :
 
-### Photos ne s'affichent pas
+1. Verifie que l'API a les bons CORS configures dans `.env.prod` sur le NAS :
+   ```env
+   CORS_ALLOWED_ORIGINS=https://oceanetorresphotographie.fr,https://www.oceanetorresphotographie.fr
+   SANCTUM_STATEFUL_DOMAINS=oceanetorresphotographie.fr,www.oceanetorresphotographie.fr
+   ```
 
-1. Verifier les variables MinIO (`MINIO_ENDPOINT`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`)
-2. Verifier que le bucket `galleries` existe dans MinIO
-3. Verifier que le tunnel Cloudflare est actif pour `s3.oceanetorresphotographie.fr`
-4. Tester la connectivite : `curl -I https://s3.oceanetorresphotographie.fr/minio/health/live`
+2. Redemarrer les containers sur le NAS :
+   ```bash
+   cd /volume1/docker/oceane-api
+   sudo docker compose -f docker-compose.prod.yml restart
+   ```
 
-### Cold start lent (plan Free)
+### Les images ne s'affichent pas
 
-Le premier appel apres 15min d'inactivite prend ~30s. Solutions :
+1. Verifier que MinIO est accessible : `curl -I https://s3.oceanetorresphotographie.fr/minio/health/live`
+2. Verifier les credentials MinIO dans `.env.prod` sur le NAS
+3. Verifier que le bucket `galleries` existe dans MinIO
 
-- Passer au plan Starter ($7/mois)
-- Utiliser un service de ping externe (UptimeRobot, cron-job.org)
+### Page blanche ou erreur 404
+
+1. Verifier que le fichier `_redirects` existe dans `web/public/`
+2. Verifier que la regle de rewrite est configuree dans Render
+
+### Build echoue
+
+1. Verifier les logs de build dans Render
+2. Tester le build en local :
+   ```bash
+   cd web
+   npm install
+   npm run build:prerender
+   ```
+
+### Prerendering echoue sur Render
+
+Si le prerendering echoue avec une erreur Puppeteer :
+
+1. Verifier que `PUPPETEER_SKIP_CHROMIUM_DOWNLOAD` n'est pas sur `true`
+2. Essayer d'ajouter ces variables d'environnement :
+   ```
+   PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable
+   ```
+3. En dernier recours, utiliser le build sans prerendering :
+    - Changer Build Command en `npm install && npm run build`
+    - Le SEO sera moins optimal mais le site fonctionnera
+
+---
+
+## Couts
+
+| Service            | Plan         | Cout/mois              |
+|--------------------|--------------|------------------------|
+| Render Static Site | Free         | $0                     |
+| Supabase           | Free         | $0                     |
+| NAS UGREEN         | Auto-heberge | Electricite uniquement |
+| Cloudflare         | Free         | $0                     |
+| **Total**          |              | **$0/mois**            |
+
+---
+
+## Maintenance
+
+### Mettre a jour le frontend
+
+```bash
+# Push sur main declenche automatiquement un deploiement
+git push origin main
+```
+
+### Voir les logs
+
+- Render Dashboard → ton service → **Logs**
+
+### Vider le cache
+
+Si tu as des problemes de cache, tu peux forcer un rebuild :
+
+1. Render → ton service → **Manual Deploy** → **Clear build cache & deploy**

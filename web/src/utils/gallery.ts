@@ -9,7 +9,7 @@ import type {GalleryItem} from '@/types'
  * Extrait le numéro du fichier depuis l'URL
  * Support des formats: "1.jpg", "1-xxxx.jpg", "1_abc.jpg"
  */
-export function getFileNumber(url: string): number {
+function getFileNumber(url: string): number {
     const filename = url.split('/').pop() ?? ''
     const match = filename.match(/^(\d+)/)
     return match ? parseInt(match[1], 10) : Infinity
@@ -25,7 +25,7 @@ export function sortByFilename(items: GalleryItem[]): GalleryItem[] {
 /**
  * Fisher-Yates shuffle - mélange aléatoire d'un tableau
  */
-export function shuffle<T>(arr: T[]): T[] {
+function shuffle<T>(arr: T[]): T[] {
     const result = [...arr]
     for (let i = result.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1))
@@ -114,29 +114,3 @@ export function getShuffledAllItems(
     return shuffle(result)
 }
 
-/**
- * Crée un observateur d'intersection pour le lazy loading
- */
-export function createImageObserver(
-    onIntersect: (src: string) => void,
-    options: IntersectionObserverInit = {}
-): IntersectionObserver {
-    const defaultOptions: IntersectionObserverInit = {
-        root: null,
-        rootMargin: '600px 0px',
-        threshold: 0.01,
-        ...options,
-    }
-
-    return new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                const img = entry.target as HTMLImageElement
-                const src = img.getAttribute('data-src')
-                if (src) {
-                    onIntersect(src)
-                }
-            }
-        })
-    }, defaultOptions)
-}

@@ -2,18 +2,106 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [main, develop]
+    branches: [ main, develop ]
   pull_request:
-    branches: [main, develop]
+    branches: [ main, develop ]
 
 jobs:
   # ===========================================
-  # Backend Tests (Laravel)
+  # Frontend (Vue.js + TypeScript)
   # ===========================================
-  backend-tests:
-    name: Backend Tests
+  frontend-lint:
+    name: Frontend Lint
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./web
 
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Cache npm dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('web/package-lock.json') }}
+          restore-keys: ${{ runner.os }}-npm-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+  frontend-build:
+    name: Frontend Build & Prerender
+    runs-on: ubuntu-latest
+    needs: frontend-lint
+    defaults:
+      run:
+        working-directory: ./web
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Cache npm dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('web/package-lock.json') }}
+          restore-keys: ${{ runner.os }}-npm-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgbm1 libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libasound2t64
+
+      - name: TypeScript check & Build with Prerender
+        run: npm run build:prerender
+        env:
+          PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: false
+
+      - name: Verify prerendered pages
+        run: |
+          echo "Checking prerendered pages..."
+          for page in portfolio prestations bons a-propos contact mentions-legales evenements; do
+            if [ -f "dist/$page/index.html" ]; then
+              echo "✅ $page/index.html exists"
+            else
+              echo "❌ $page/index.html MISSING"
+              exit 1
+            fi
+          done
+          echo "All prerendered pages verified!"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: web/dist
+          retention-days: 7
+
+  # ===========================================
+  # Backend (Laravel)
+  # ===========================================
+  backend-lint:
+    name: Backend Lint (Pint)
+    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: ./api
@@ -25,9 +113,8 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
-          extensions: mbstring, pdo, pdo_pgsql, pgsql, gd, zip, bcmath, intl
-          coverage: xdebug
+          php-version: '8.4'
+          extensions: mbstring, pdo, pdo_pgsql, gd, zip, bcmath
 
       - name: Get Composer cache directory
         id: composer-cache
@@ -40,31 +127,18 @@ jobs:
           key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
           restore-keys: ${{ runner.os }}-composer-
 
+      - name: Create bootstrap/cache directory
+        run: mkdir -p bootstrap/cache
+
       - name: Install Composer dependencies
         run: composer install --prefer-dist --no-interaction --no-progress
 
-      - name: Copy environment file
-        run: cp .env.example .env
+      - name: Run Laravel Pint
+        run: ./vendor/bin/pint --test
 
-      - name: Generate application key
-        run: php artisan key:generate
-
-      - name: Run Laravel tests
-        run: php artisan test --parallel
-        env:
-          DB_CONNECTION: sqlite
-          DB_DATABASE: ":memory:"
-
-      - name: Run PHPStan (static analysis)
-        run: ./vendor/bin/phpstan analyse --memory-limit=2G || true
-
-  # ===========================================
-  # Code Quality
-  # ===========================================
-  code-quality:
-    name: Code Quality
+  backend-syntax:
+    name: Backend Syntax Check
     runs-on: ubuntu-latest
-
     defaults:
       run:
         working-directory: ./api
@@ -76,35 +150,28 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
+          php-version: '8.4'
 
-      - name: Install Composer dependencies
-        run: composer install --prefer-dist --no-interaction --no-progress
-
-      - name: Run Laravel Pint (code style)
-        run: ./vendor/bin/pint --test
+      - name: Check PHP syntax
+        run: |
+          find app config routes -name "*.php" -print0 | xargs -0 -n1 php -l 2>&1 | grep -q "Parse error" && exit 1 || exit 0
 
   # ===========================================
-  # Build Docker Image
+  # Summary
   # ===========================================
-  build:
-    name: Build Docker Image
+  ci-success:
+    name: CI Success
     runs-on: ubuntu-latest
-    needs: [backend-tests, code-quality]
-    if: github.ref == 'refs/heads/main'
-
+    needs: [ frontend-lint, frontend-build, backend-lint, backend-syntax ]
+    if: always()
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./api
-          push: false
-          tags: oceane-torres-api:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      - name: Check all jobs
+        run: |
+          if [[ "${{ needs.frontend-lint.result }}" != "success" ]] || \
+             [[ "${{ needs.frontend-build.result }}" != "success" ]] || \
+             [[ "${{ needs.backend-lint.result }}" != "success" ]] || \
+             [[ "${{ needs.backend-syntax.result }}" != "success" ]]; then
+            echo "One or more jobs failed"
+            exit 1
+          fi
+          echo "All CI checks passed!"

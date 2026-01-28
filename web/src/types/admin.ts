@@ -69,13 +69,31 @@ export type ReservationStatus = 'pending' | 'confirmed' | 'cancelled' | 'complet
 
 export interface Reservation {
     id: string
-    client: Client
-    prestation: AdminPrestation
-    date: string
-    time: string
+    user_id?: string
+    user?: Client // Relation user (peut etre null pour les guests)
+    prestation?: AdminPrestation
+    date?: string
+    time?: string
     status: ReservationStatus
     notes?: string
     message?: string
+    // Champs guest (demandes sans compte)
+    guest_name?: string
+    guest_email?: string
+    guest_phone?: string
+    date_preferences?: string
+    // Champs clientForm (anciennes reservations)
+    client_form?: {
+        fullname?: string
+        phone?: string
+        requirements?: string
+        message?: string
+    }
+    // Attributs calcules par le backend (via $appends)
+    client_name?: string
+    client_email?: string
+    client_phone?: string
+    is_guest?: boolean
     created_at: string
     updated_at: string
 }
@@ -94,35 +112,80 @@ export interface CalendarEvent {
 // Clients
 // ============================================================================
 
+export type ClientSource = 'reservation' | 'manual' | 'contact'
+
 export interface Client {
     id: string
-    first_name: string
-    last_name: string
+    name: string
     email: string
     phone?: string
+    notes?: string
+    source: ClientSource
+    total_paid: number
+    gdpr_consent: boolean
+    gdpr_consent_at?: string
     reservations_count?: number
     galleries_count?: number
-    total_spent?: number
+    user_id?: string
     created_at: string
     updated_at: string
 }
 
-// Helper pour obtenir le nom complet du client
-export function getClientFullName(client: Client): string {
-    return `${client.first_name} ${client.last_name}`
+export interface ClientFormData {
+    name: string
+    email: string
+    phone?: string
+    notes?: string
+    gdpr_consent?: boolean
+}
+
+export interface ClientGdprExport {
+    personal_data: {
+        name: string
+        email: string
+        phone?: string
+        created_at: string
+    }
+    consent: {
+        gdpr_consent: boolean
+        gdpr_consent_at?: string
+    }
+    reservations: Array<{
+        id: string
+        prestation?: string
+        date?: string
+        status: string
+        created_at: string
+    }>
+    payments: Array<{
+        amount: number
+        currency: string
+        status: string
+        created_at: string
+    }>
+    exported_at: string
 }
 
 // ============================================================================
 // Prestations
 // ============================================================================
 
+export type PrestationIcon = 'portrait' | 'sport' | 'animal' | 'moto' | 'entreprise' | 'video'
+
 export interface AdminPrestation {
     id: string
     title: string
+    icon: PrestationIcon | null
     description: string
+    features: string[] | null
     price: number
-    duration: number // en minutes
+    price_text: string | null
+    price_unit: string | null
+    duration: number | null
     category: string
+    background_image: string | null
+    background_opacity: number
+    disclaimer: string | null
     is_active: boolean
     sort_order: number
     created_at: string
@@ -131,37 +194,59 @@ export interface AdminPrestation {
 
 export interface PrestationFormData {
     title: string
+    icon: PrestationIcon | null
     description: string
+    features: string[]
     price: number
-    duration: number
+    price_text: string
+    price_unit: string
+    duration: number | null
     category: string
+    background_image: string
+    background_opacity: number
+    disclaimer: string
     is_active: boolean
+    sort_order: number
 }
 
 // ============================================================================
 // Galleries
 // ============================================================================
 
-export type GalleryType = 'public' | 'private'
+export type GalleryType = 'public' | 'private' | 'event'
+
+export interface EventGalleryFormData {
+    title: string
+    description: string
+    event_date: string
+    event_link: string
+}
+
+export type DownloadStatus = 'none' | 'partial' | 'complete'
 
 export interface AdminGallery {
     id: string
     title: string
     description?: string
+    event_date?: string
+    event_link?: string
     type: GalleryType
     client_id?: string
     client?: Client
+    user?: Client
+    assigned_email?: string
     access_token?: string
     share_code?: string
-    expires_at?: string
-    cover_image?: string
     photos_count: number
     total_likes: number
     downloadable_count: number
     liked_photos_count: number
     views_count: number
     last_viewed_at?: string
-    is_active: boolean
+    // Download tracking
+    total_downloads_count: number
+    downloaded_photos_count: number
+    download_status: DownloadStatus
     photos?: AdminPhoto[]
     created_at: string
     updated_at: string
@@ -182,6 +267,7 @@ export interface AdminPhoto {
     height?: number
     is_liked: boolean
     is_downloadable: boolean
+    downloads_count: number
     created_at: string
 }
 
@@ -189,8 +275,20 @@ export interface GalleryFormData {
     title: string
     description: string
     client_id: string
-    expires_at: string
-    is_active: boolean
+    assigned_email: string
+}
+
+// ============================================================================
+// Booking Request (Public)
+// ============================================================================
+
+export interface BookingRequestData {
+    name: string
+    email: string
+    phone?: string
+    prestation_id: string
+    date_preferences: string
+    message?: string
 }
 
 // ============================================================================

@@ -6,7 +6,16 @@
 
             <div :class="['flex flex-col sm:flex-row items-center justify-center gap-4', multipleButtons ? '' : 'mt-10']">
                 <slot>
+                    <!-- Primary button: router-link for internal, <a> for external -->
+                    <router-link
+                        v-if="isPrimaryInternal"
+                        :to="primaryLink"
+                        :class="primaryButtonClasses"
+                    >
+                        {{ primaryText }}
+                    </router-link>
                     <a
+                        v-else
                         :href="primaryLink"
                         :target="isExternal ? '_blank' : undefined"
                         :rel="isExternal ? 'noopener noreferrer' : undefined"
@@ -15,15 +24,25 @@
                         {{ primaryText }}
                     </a>
 
-                    <a
-                        v-if="secondaryText && secondaryLink"
-                        :href="secondaryLink"
-                        :target="isSecondaryExternal ? '_blank' : undefined"
-                        :rel="isSecondaryExternal ? 'noopener noreferrer' : undefined"
-                        :class="secondaryButtonClasses"
-                    >
-                        {{ secondaryText }}
-                    </a>
+                    <!-- Secondary button: router-link for internal, <a> for external -->
+                    <template v-if="secondaryText && secondaryLink">
+                        <router-link
+                            v-if="isSecondaryInternal"
+                            :to="secondaryLink"
+                            :class="secondaryButtonClasses"
+                        >
+                            {{ secondaryText }}
+                        </router-link>
+                        <a
+                            v-else
+                            :href="secondaryLink"
+                            :target="isSecondaryExternal ? '_blank' : undefined"
+                            :rel="isSecondaryExternal ? 'noopener noreferrer' : undefined"
+                            :class="secondaryButtonClasses"
+                        >
+                            {{ secondaryText }}
+                        </a>
+                    </template>
                 </slot>
             </div>
         </div>
@@ -32,7 +51,7 @@
 
 <script setup lang="ts">
 import {computed} from 'vue'
-import {SOCIAL_LINKS, CONTACT_INFO} from '@/config/constants'
+import {SOCIAL_LINKS} from '@/config/constants'
 
 interface Props {
     title: string
@@ -47,8 +66,8 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-    primaryText: 'Me contacter par Mail',
-    primaryLink: `mailto:${CONTACT_INFO.email}`,
+    primaryText: 'Me contacter',
+    primaryLink: '/contact',
     secondaryText: 'Me contacter sur Instagram',
     secondaryLink: SOCIAL_LINKS[0].url,
     variant: 'dark',
@@ -57,6 +76,10 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const multipleButtons = computed(() => !!props.secondaryText && !!props.secondaryLink)
+
+// Check if link is internal (starts with /)
+const isPrimaryInternal = computed(() => props.primaryLink.startsWith('/'))
+const isSecondaryInternal = computed(() => props.secondaryLink?.startsWith('/') ?? false)
 
 const sectionClasses = computed(() => [
     'py-16 px-6 lg:px-12',
