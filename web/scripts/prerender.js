@@ -12,24 +12,24 @@ import { fileURLToPath } from 'url'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const distDir = path.resolve(__dirname, '../dist')
 
-// Routes à prerendre
-const routes = [
+// Routes statiques à prerendre
+const staticRoutes = [
     '/',
     '/portfolio',
     '/prestations',
     '/bons',
     '/a-propos',
     '/contact',
-    '/mentions-legales'
+    '/mentions-legales',
+    '/evenements'
 ]
 
 const PORT = 4567
 
 async function startServer() {
     return new Promise((resolve, reject) => {
-        const server = spawn('npx', ['serve', distDir, '-p', PORT, '-s'], {
-            stdio: 'pipe',
-            shell: true
+        const server = spawn('npx', ['serve', distDir, '-p', String(PORT), '-s'], {
+            stdio: 'pipe'
         })
 
         server.stdout.on('data', (data) => {
@@ -98,16 +98,20 @@ async function main() {
     })
 
     try {
-        for (const route of routes) {
+        console.log(`Prerendering ${staticRoutes.length} routes...\n`)
+
+        for (const route of staticRoutes) {
             await prerenderRoute(browser, route)
         }
-        console.log('\nPrerendering complete!')
+
+        console.log(`\n✅ Prerendering complete! ${staticRoutes.length} pages generated.`)
     } catch (error) {
         console.error('Error during prerendering:', error)
         process.exit(1)
     } finally {
         await browser.close()
-        server.kill()
+        server.kill('SIGKILL')
+        process.exit(0)
     }
 }
 

@@ -8,6 +8,7 @@ use App\Models\Photo;
 use App\Services\MinioStorageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 
 class PhotoController extends Controller
@@ -26,7 +27,7 @@ class PhotoController extends Controller
             'photos.*' => ['required', 'file', 'mimes:jpeg,png,jpg,gif,webp', 'max:51200'], // 50MB max per file
         ]);
 
-        $storageService = new MinioStorageService();
+        $storageService = new MinioStorageService;
         $uploadedPhotos = [];
         $errors = [];
 
@@ -58,24 +59,37 @@ class PhotoController extends Controller
             }
         }
 
+        // Clear event galleries cache if this is an event gallery
+        if ($gallery->type === 'event' && count($uploadedPhotos) > 0) {
+            $this->clearEventGalleriesCache();
+        }
+
         return response()->json([
             'success' => count($uploadedPhotos) > 0,
             'data' => $uploadedPhotos,
             'errors' => $errors,
-            'message' => count($uploadedPhotos) . ' photo(s) uploadée(s) avec succès.',
+            'message' => count($uploadedPhotos).' photo(s) uploadée(s) avec succès.',
         ], 201);
     }
 
     public function destroy(Photo $photo): JsonResponse
     {
+        // Check if this is an event gallery photo before deleting
+        $isEventGallery = $photo->gallery?->type === 'event';
+
         // Delete from MinIO storage
         $storagePath = $photo->metadata['storage_path'] ?? $photo->metadata['supabase_path'] ?? $photo->file_path;
         if ($storagePath) {
-            $storageService = new MinioStorageService();
+            $storageService = new MinioStorageService;
             $storageService->deletePhoto($storagePath);
         }
 
         $photo->delete();
+
+        // Clear event galleries cache if needed
+        if ($isEventGallery) {
+            $this->clearEventGalleriesCache();
+        }
 
         return response()->json([
             'success' => true,
@@ -98,27 +112,33 @@ class PhotoController extends Controller
         $token = $request->query('token');
         $gallery = $photo->gallery;
 
-        if (!$gallery->isAccessible($token)) {
+        if (! $gallery->isAccessible($token)) {
             return response()->json([
                 'message' => 'Accès non autorisé.',
             ], 403);
         }
 
-        if (!$photo->is_downloadable) {
+        if (! $photo->is_downloadable) {
             return response()->json([
                 'message' => 'Cette photo n\'est pas téléchargeable.',
             ], 403);
         }
 
-        $storageService = new MinioStorageService();
+        $storageService = new MinioStorageService;
         $storagePath = $photo->metadata['storage_path'] ?? $photo->metadata['supabase_path'] ?? $photo->file_path;
         $signedUrl = $storageService->getSignedUrl($storagePath, 300);
 
-        if (!$signedUrl) {
+        if (! $signedUrl) {
             return response()->json([
                 'message' => 'Erreur lors de la génération du lien.',
             ], 500);
         }
+
+        // Track the download
+        $photo->recordDownload(
+            $request->ip(),
+            $request->userAgent()
+        );
 
         return response()->json([
             'download_url' => $signedUrl,
@@ -176,5 +196,15 @@ class PhotoController extends Controller
         return response()->json([
             'message' => 'Ordre mis à jour.',
         ]);
+    }
+
+    /**
+     * Clear event galleries cache (all pages)
+     */
+    private function clearEventGalleriesCache(): void
+    {
+        for ($i = 1; $i <= 10; $i++) {
+            Cache::forget("event_galleries_page_{$i}");
+        }
     }
 }

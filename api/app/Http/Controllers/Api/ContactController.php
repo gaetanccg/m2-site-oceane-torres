@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Mail\ContactConfirmationMail;
+use App\Mail\ContactFormMail;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
@@ -19,20 +21,23 @@ class ContactController extends Controller
             'message' => ['required', 'string', 'max:5000'],
         ]);
 
-        // Send email to admin
-        Mail::raw(
-            "Nouveau message de contact:\n\n" .
-            "Nom: {$validated['name']}\n" .
-            "Email: {$validated['email']}\n" .
-            "Téléphone: " . ($validated['phone'] ?? 'Non renseigné') . "\n" .
-            "Sujet: {$validated['subject']}\n\n" .
-            "Message:\n{$validated['message']}",
-            function ($mail) use ($validated) {
-                $mail->to(config('mail.from.address'))
-                    ->replyTo($validated['email'], $validated['name'])
-                    ->subject("Contact: {$validated['subject']}");
-            }
-        );
+        // Send notification to admin
+        Mail::to(config('mail.from.address'))
+            ->send(new ContactFormMail(
+                senderName: $validated['name'],
+                senderEmail: $validated['email'],
+                senderPhone: $validated['phone'] ?? null,
+                messageSubject: $validated['subject'],
+                messageContent: $validated['message'],
+            ));
+
+        // Send confirmation to user
+        Mail::to($validated['email'])
+            ->send(new ContactConfirmationMail(
+                senderName: $validated['name'],
+                messageSubject: $validated['subject'],
+                messageContent: $validated['message'],
+            ));
 
         return response()->json([
             'message' => 'Votre message a été envoyé avec succès.',

@@ -2,82 +2,112 @@
     <Transition name="fade">
         <div
             v-if="isOpen"
-            class="fixed inset-0 z-50 flex items-center justify-center bg-black/95"
+            class="fixed inset-0 z-50 flex flex-col bg-black/95"
             @click="close"
             @contextmenu.prevent
         >
             <!-- Close button -->
             <button
                 @click="close"
-                class="absolute top-6 right-6 text-white hover:text-gold transition-colors z-10"
+                class="absolute top-4 right-4 md:top-6 md:right-6 text-white hover:text-gold transition-colors z-20"
                 aria-label="Fermer"
             >
-                <IconClose class="w-8 h-8" />
+                <IconClose class="w-7 h-7 md:w-8 md:h-8" />
             </button>
 
-            <!-- Previous button -->
-            <button
-                v-if="currentIndex > 0"
-                @click.stop="previous"
-                class="absolute left-6 text-white hover:text-gold transition-colors z-10"
-                aria-label="Précédent"
-            >
-                <IconChevronLeft class="w-10 h-10" />
-            </button>
+            <!-- Main content area -->
+            <div class="flex-1 flex items-center justify-center relative min-h-0">
+                <!-- Previous button -->
+                <button
+                    v-if="currentIndex > 0"
+                    @click.stop="previous"
+                    class="absolute left-2 md:left-6 text-white hover:text-gold transition-colors z-10"
+                    aria-label="Précédent"
+                >
+                    <IconChevronLeft class="w-8 h-8 md:w-10 md:h-10" />
+                </button>
 
-            <!-- Media container -->
-            <div class="media-container" @click.stop>
-                <div class="media-wrapper">
-                    <img
-                        v-if="images[currentIndex]?.type === 'image'"
-                        :src="images[currentIndex].url"
-                        :alt="images[currentIndex].alt"
-                        draggable="false"
-                        class="media-content select-none"
-                    />
-                    <video
-                        v-else-if="images[currentIndex]?.type === 'video'"
-                        :src="images[currentIndex].url"
-                        controls
-                        class="media-content"
-                    />
-                    <!-- YouTube iframe -->
-                    <iframe
-                        v-else-if="images[currentIndex]?.type === 'youtube'"
-                        :src="`https://www.youtube.com/embed/${images[currentIndex].youtubeId}?autoplay=1&rel=0`"
-                        class="youtube-iframe"
-                        frameborder="0"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowfullscreen
-                    />
+                <!-- Media container -->
+                <div class="media-container" @click.stop>
+                    <div class="media-wrapper">
+                        <img
+                            v-if="images[currentIndex]?.type === 'image'"
+                            :src="images[currentIndex].url"
+                            :alt="images[currentIndex].alt"
+                            draggable="false"
+                            class="media-content select-none"
+                        />
+                        <video
+                            v-else-if="images[currentIndex]?.type === 'video'"
+                            :src="images[currentIndex].url"
+                            controls
+                            class="media-content"
+                        />
+                        <!-- YouTube iframe -->
+                        <iframe
+                            v-else-if="images[currentIndex]?.type === 'youtube'"
+                            :src="`https://www.youtube.com/embed/${images[currentIndex].youtubeId}?autoplay=1&rel=0`"
+                            class="youtube-iframe"
+                            frameborder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowfullscreen
+                        />
 
-                    <!-- Watermark overlay (uniquement pour les images) -->
-                    <div v-if="images[currentIndex]?.type === 'image'" class="watermark-overlay" aria-hidden="true">
-                        <span v-for="n in 20" :key="n">@Océane Torres Photographie</span>
+                        <!-- Watermark overlay (uniquement pour les images) -->
+                        <div v-if="showWatermark && images[currentIndex]?.type === 'image'" class="watermark-overlay" aria-hidden="true">
+                            <span v-for="n in 20" :key="n">@Océane Torres Photographie</span>
+                        </div>
                     </div>
                 </div>
+
+                <!-- Next button -->
+                <button
+                    v-if="currentIndex < images.length - 1"
+                    @click.stop="next"
+                    class="absolute right-2 md:right-6 text-white hover:text-gold transition-colors z-10"
+                    aria-label="Suivant"
+                >
+                    <IconChevronRight class="w-8 h-8 md:w-10 md:h-10" />
+                </button>
             </div>
 
-            <!-- Next button -->
-            <button
-                v-if="currentIndex < images.length - 1"
-                @click.stop="next"
-                class="absolute right-6 text-white hover:text-gold transition-colors z-10"
-                aria-label="Suivant"
-            >
-                <IconChevronRight class="w-10 h-10" />
-            </button>
+            <!-- Bottom thumbnail gallery -->
+            <div class="thumbnail-bar" @click.stop>
+                <div class="thumbnail-container" ref="thumbnailContainer">
+                    <button
+                        v-for="(image, index) in images"
+                        :key="index"
+                        :ref="el => { if (el && index === currentIndex) scrollToThumbnail(el as HTMLElement) }"
+                        @click="goToIndex(index)"
+                        class="thumbnail-item"
+                        :class="{ 'active': index === currentIndex }"
+                    >
+                        <img
+                            v-if="image.type === 'image'"
+                            :src="image.url"
+                            :alt="image.alt || `Photo ${index + 1}`"
+                            class="thumbnail-img"
+                            loading="lazy"
+                        />
+                        <div v-else class="thumbnail-placeholder">
+                            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M8 5v14l11-7z"/>
+                            </svg>
+                        </div>
+                    </button>
+                </div>
 
-            <!-- Counter -->
-            <div class="absolute bottom-6 left-0 right-0 text-center text-white text-sm">
-                {{ currentIndex + 1 }} / {{ images.length }}
+                <!-- Counter -->
+                <div class="thumbnail-counter">
+                    {{ currentIndex + 1 }} / {{ images.length }}
+                </div>
             </div>
         </div>
     </Transition>
 </template>
 
 <script setup lang="ts">
-import {ref, watch, onMounted, onUnmounted} from 'vue'
+import {ref, watch, onMounted, onUnmounted, nextTick} from 'vue'
 import type {LightboxImage} from '@/types'
 import {IconClose, IconChevronLeft, IconChevronRight} from './icons'
 
@@ -85,12 +115,16 @@ interface Props {
     images: LightboxImage[]
     isOpen: boolean
     initialIndex: number
+    showWatermark?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+    showWatermark: true
+})
 const emit = defineEmits<{ close: [] }>()
 
 const currentIndex = ref(props.initialIndex)
+const thumbnailContainer = ref<HTMLElement | null>(null)
 
 watch(() => props.initialIndex, (newVal) => {
     currentIndex.value = newVal
@@ -108,6 +142,20 @@ const next = () => {
     if (currentIndex.value < props.images.length - 1) {
         currentIndex.value++
     }
+}
+
+const goToIndex = (index: number) => {
+    currentIndex.value = index
+}
+
+const scrollToThumbnail = (el: HTMLElement) => {
+    nextTick(() => {
+        el.scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest',
+            inline: 'center'
+        })
+    })
 }
 
 const handleKeydown = (e: KeyboardEvent) => {
@@ -136,35 +184,35 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.media-container{
+.media-container {
     display: flex;
     align-items: center;
     justify-content: center;
     max-width: calc(100vw - 120px);
-    max-height: 90vh;
+    max-height: calc(100vh - 160px);
     padding: 0 20px;
 }
 
-.media-wrapper{
+.media-wrapper {
     position: relative;
     display: inline-block;
     line-height: 0;
 }
 
-.media-content{
+.media-content {
     max-width: calc(100vw - 160px);
-    max-height: 90vh;
+    max-height: calc(100vh - 180px);
     object-fit: contain;
 }
 
-.youtube-iframe{
+.youtube-iframe {
     width: 80vw;
     height: 45vw;
     max-width: 1280px;
     max-height: 720px;
 }
 
-.watermark-overlay{
+.watermark-overlay {
     position: absolute;
     inset: 0;
     display: flex;
@@ -179,7 +227,7 @@ onUnmounted(() => {
     overflow: hidden;
 }
 
-.watermark-overlay span{
+.watermark-overlay span {
     font-size: 0.85rem;
     font-weight: 300;
     color: rgba(255, 255, 255, 0.2);
@@ -189,38 +237,129 @@ onUnmounted(() => {
     transform: rotate(-25deg);
 }
 
+/* Thumbnail bar */
+.thumbnail-bar {
+    flex-shrink: 0;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.7));
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.thumbnail-container {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    max-width: 100%;
+    padding: 4px;
+    scroll-behavior: smooth;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+
+.thumbnail-container::-webkit-scrollbar {
+    height: 4px;
+}
+
+.thumbnail-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.thumbnail-container::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+}
+
+.thumbnail-item {
+    flex-shrink: 0;
+    width: 60px;
+    height: 60px;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 2px solid transparent;
+    opacity: 0.5;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.thumbnail-item:hover {
+    opacity: 0.8;
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.thumbnail-item.active {
+    opacity: 1;
+    border-color: #dcb253;
+    transform: scale(1.05);
+}
+
+.thumbnail-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.thumbnail-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.thumbnail-counter {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.75rem;
+    font-weight: 300;
+}
+
 .fade-enter-active,
-.fade-leave-active{
+.fade-leave-active {
     transition: opacity 0.3s ease;
 }
 
 .fade-enter-from,
-.fade-leave-to{
+.fade-leave-to {
     opacity: 0;
 }
 
-@media (max-width: 768px){
-    .media-container{
+@media (max-width: 768px) {
+    .media-container {
         max-width: 100vw;
         padding: 0 10px;
+        max-height: calc(100vh - 140px);
     }
 
-    .media-content{
+    .media-content {
         max-width: calc(100vw - 20px);
+        max-height: calc(100vh - 160px);
     }
 
-    .youtube-iframe{
+    .youtube-iframe {
         width: calc(100vw - 20px);
         height: calc((100vw - 20px) * 9 / 16);
     }
 
-    .watermark-overlay{
+    .watermark-overlay {
         gap: 1.5rem;
         padding: 1rem;
     }
 
-    .watermark-overlay span{
+    .watermark-overlay span {
         font-size: 0.65rem;
+    }
+
+    .thumbnail-bar {
+        padding: 8px 12px;
+    }
+
+    .thumbnail-item {
+        width: 48px;
+        height: 48px;
     }
 }
 </style>

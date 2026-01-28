@@ -22,14 +22,22 @@ const GalleryAccess = () => import('@/views/GalleryAccess.vue')
 const ProtectedGallery = () => import('@/views/ProtectedGallery.vue')
 const DownloadGallery = () => import('@/views/DownloadGallery.vue')
 
+// Event galleries (public)
+const Events = () => import('@/views/Events.vue')
+const EventGallery = () => import('@/views/EventGallery.vue')
+
+
+// Account pages (client)
+const AccountDashboard = () => import('@/views/account/Dashboard.vue')
+
 // Admin pages
-const AdminLogin = () => import('@/views/admin/Login.vue')
 const AdminDashboard = () => import('@/views/admin/Dashboard.vue')
 const AdminGalleries = () => import('@/views/admin/Galleries.vue')
 const AdminClients = () => import('@/views/admin/Clients.vue')
 const AdminPrestations = () => import('@/views/admin/Prestations.vue')
 const AdminReservations = () => import('@/views/admin/Reservations.vue')
 const AdminGiftCards = () => import('@/views/admin/GiftCards.vue')
+const AdminEventGalleries = () => import('@/views/admin/EventGalleries.vue')
 
 export const routes: RouteRecordRaw[] = [
     {
@@ -114,48 +122,78 @@ export const routes: RouteRecordRaw[] = [
         component: ProtectedGallery,
         meta: {title: 'Galerie', robots: 'noindex, nofollow'}
     },
-    // Admin routes
+    // Event galleries (public)
     {
-        path: '/admin/login',
-        name: 'admin-login',
-        component: AdminLogin,
-        meta: {title: 'Connexion Admin', layout: 'admin'}
+        path: '/evenements',
+        name: 'events',
+        component: Events,
+        meta: {
+            title: 'Galeries d\'evenements',
+            description: 'Decouvrez les galeries photos des evenements captures par Oceane Torres. Mariages, baptemes, anniversaires et celebrations en Loire et Lyon.'
+        }
     },
+    {
+        path: '/evenements/:id',
+        name: 'event-gallery',
+        component: EventGallery,
+        meta: {
+            title: 'Galerie Evenement',
+            description: 'Galerie photos d\'evenement par Oceane Torres Photographie.'
+        }
+    },
+    // Account routes (client)
+    {
+        path: '/mon-compte',
+        name: 'account',
+        component: AccountDashboard,
+        meta: {
+            title: 'Mon compte',
+            requiresClientAuth: true,
+            robots: 'noindex, nofollow'
+        }
+    },
+    // Admin routes
     {
         path: '/admin',
         name: 'admin-dashboard',
         component: AdminDashboard,
-        meta: {title: 'Dashboard', layout: 'admin', requiresAuth: true}
+        meta: {title: 'Dashboard', layout: 'admin', requiresAdmin: true}
     },
     {
         path: '/admin/galleries',
         name: 'admin-galleries',
         component: AdminGalleries,
-        meta: {title: 'Galeries', layout: 'admin', requiresAuth: true}
+        meta: {title: 'Galeries', layout: 'admin', requiresAdmin: true}
     },
     {
         path: '/admin/clients',
         name: 'admin-clients',
         component: AdminClients,
-        meta: {title: 'Clients', layout: 'admin', requiresAuth: true}
+        meta: {title: 'Clients', layout: 'admin', requiresAdmin: true}
     },
     {
         path: '/admin/prestations',
         name: 'admin-prestations',
         component: AdminPrestations,
-        meta: {title: 'Prestations', layout: 'admin', requiresAuth: true}
+        meta: {title: 'Prestations', layout: 'admin', requiresAdmin: true}
     },
     {
         path: '/admin/reservations',
         name: 'admin-reservations',
         component: AdminReservations,
-        meta: {title: 'Réservations', layout: 'admin', requiresAuth: true}
+        meta: {title: 'Réservations', layout: 'admin', requiresAdmin: true}
     },
     {
         path: '/admin/gift-cards',
         name: 'admin-gift-cards',
         component: AdminGiftCards,
-        meta: {title: 'Bons Cadeaux', layout: 'admin', requiresAuth: true}
+        meta: {title: 'Bons Cadeaux', layout: 'admin', requiresAdmin: true}
+    },
+    {
+        path: '/admin/events',
+        name: 'admin-events',
+        component: AdminEventGalleries,
+        meta: {title: 'Galeries Evenements', layout: 'admin', requiresAdmin: true}
     },
     // Catch-all redirect to home
     {
@@ -175,16 +213,41 @@ const router = createRouter({
     }
 })
 
-// Auth guard for protected routes
+// Auth guard for protected routes only
 router.beforeEach(async (to, _from, next) => {
-    const requiresAuth = to.meta.requiresAuth
+    const requiresAdmin = to.meta.requiresAdmin
+    const requiresClientAuth = to.meta.requiresClientAuth
 
-    if (requiresAuth) {
-        const authStore = useAuthStore()
-        const isAuthenticated = await authStore.checkAuth()
+    // Public routes - no auth check needed, proceed immediately
+    if (!requiresAdmin && !requiresClientAuth) {
+        next()
+        return
+    }
 
-        if (!isAuthenticated) {
-            next({name: 'admin-login', query: {redirect: to.fullPath}})
+    // Protected routes - wait for auth initialization
+    const authStore = useAuthStore()
+    if (!authStore.isInitialized) {
+        await authStore.initialize()
+    }
+
+    // Admin auth guard - requires authentication AND admin role
+    if (requiresAdmin) {
+        if (!authStore.isAuthenticated) {
+            next({name: 'home', query: {login: 'true', redirect: to.fullPath}})
+            return
+        }
+
+        // User is authenticated but not admin - redirect to account
+        if (!authStore.isAdmin) {
+            next({name: 'account'})
+            return
+        }
+    }
+
+    // Client auth guard
+    if (requiresClientAuth) {
+        if (!authStore.isAuthenticated) {
+            next({name: 'home', query: {login: 'true', redirect: to.fullPath}})
             return
         }
     }
@@ -203,13 +266,13 @@ router.afterEach((to) => {
 
     // Update meta description
     if (pageDescription) {
-        let metaDescription = document.querySelector('meta[name="description"]')
+        const metaDescription = document.querySelector('meta[name="description"]')
         if (metaDescription) {
             metaDescription.setAttribute('content', pageDescription)
         }
 
         // Also update OG description
-        let ogDescription = document.querySelector('meta[property="og:description"]')
+        const ogDescription = document.querySelector('meta[property="og:description"]')
         if (ogDescription) {
             ogDescription.setAttribute('content', pageDescription)
         }
@@ -223,7 +286,7 @@ router.afterEach((to) => {
 
     // Update robots meta tag
     const robotsContent = to.meta.robots as string | undefined
-    let robotsMeta = document.querySelector('meta[name="robots"]')
+    const robotsMeta = document.querySelector('meta[name="robots"]')
     if (robotsMeta) {
         robotsMeta.setAttribute('content', robotsContent || 'index, follow')
     }

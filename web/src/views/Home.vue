@@ -19,14 +19,12 @@
                     >
                         Voir le portfolio
                     </router-link>
-                    <a
-                        href="mailto:oceanetorresphotographie@gmail.com"
-                        target="_blank"
-                        rel="noopener noreferrer"
+                    <router-link
+                        to="/contact"
                         class="px-10 py-4 border-2 border-white text-white hover:bg-white hover:text-black transition-all duration-300 text-sm uppercase tracking-widest font-light"
                     >
-                        Me contacter par mail
-                    </a>
+                        Me contacter
+                    </router-link>
                 </div>
             </div>
         </section>

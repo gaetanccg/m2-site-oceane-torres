@@ -1,25 +1,43 @@
 /**
  * Store d'authentification Pinia
- * Gère l'état de connexion et les tokens
+ * Gere l'etat de connexion et les tokens pour admin et clients
  */
 
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { User } from '@/types/admin'
+import type { RegisterData } from '@/types/account'
 import { adminApi } from '@/services/adminApi'
+import { authApi } from '@/services/authApi'
 
 export const useAuthStore = defineStore('auth', () => {
     // State
     const user = ref<User | null>(null)
     const token = ref<string | null>(localStorage.getItem('auth_token'))
     const isLoading = ref(false)
+    const isInitialized = ref(false)
     const error = ref<string | null>(null)
 
     // Getters
     const isAuthenticated = computed(() => !!token.value && !!user.value)
     const isAdmin = computed(() => user.value?.role === 'admin')
+    const isClient = computed(() => user.value?.role === 'client')
+    const userFullName = computed(() => {
+        if (!user.value) return ''
+        return `${user.value.first_name} ${user.value.last_name}`
+    })
+    const userInitials = computed(() => {
+        if (!user.value) return ''
+        const first = user.value.first_name?.[0] || ''
+        const last = user.value.last_name?.[0] || ''
+        return `${first}${last}`.toUpperCase()
+    })
 
     // Actions
+
+    /**
+     * Login pour admin (utilise adminApi pour redirection vers /admin/login)
+     */
     async function login(email: string, password: string): Promise<boolean> {
         isLoading.value = true
         error.value = null
@@ -44,9 +62,63 @@ export const useAuthStore = defineStore('auth', () => {
         }
     }
 
+    /**
+     * Login pour client (utilise authApi)
+     */
+    async function loginClient(email: string, password: string): Promise<boolean> {
+        isLoading.value = true
+        error.value = null
+
+        try {
+            const response = await authApi.login(email, password)
+
+            if (response.success && response.data) {
+                token.value = response.data.token
+                user.value = response.data.user
+                localStorage.setItem('auth_token', response.data.token)
+                return true
+            }
+
+            error.value = response.message || 'Erreur de connexion'
+            return false
+        } catch (e) {
+            error.value = e instanceof Error ? e.message : 'Erreur de connexion'
+            return false
+        } finally {
+            isLoading.value = false
+        }
+    }
+
+    /**
+     * Inscription d'un nouveau client
+     */
+    async function register(data: RegisterData): Promise<boolean> {
+        isLoading.value = true
+        error.value = null
+
+        try {
+            const response = await authApi.register(data)
+
+            if (response.user && response.token) {
+                token.value = response.token
+                user.value = response.user
+                localStorage.setItem('auth_token', response.token)
+                return true
+            }
+
+            error.value = 'Erreur lors de l\'inscription'
+            return false
+        } catch (e) {
+            error.value = e instanceof Error ? e.message : 'Erreur lors de l\'inscription'
+            return false
+        } finally {
+            isLoading.value = false
+        }
+    }
+
     async function logout(): Promise<void> {
         try {
-            await adminApi.logout()
+            await authApi.logout()
         } catch {
             // Ignorer les erreurs de logout
         } finally {
@@ -61,7 +133,7 @@ export const useAuthStore = defineStore('auth', () => {
 
         isLoading.value = true
         try {
-            const response = await adminApi.getUser()
+            const response = await authApi.getUser()
             if (response.success && response.data) {
                 user.value = response.data
             } else {
@@ -76,10 +148,36 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     async function checkAuth(): Promise<boolean> {
-        if (!token.value) return false
+        if (!token.value) {
+            isInitialized.value = true
+            return false
+        }
+
+        // Si déjà initialisé et user présent, pas besoin de refaire l'appel API
+        if (isInitialized.value && user.value) {
+            return isAuthenticated.value
+        }
 
         await fetchUser()
+        isInitialized.value = true
         return isAuthenticated.value
+    }
+
+    /**
+     * Initialise l'auth au démarrage de l'app
+     * À appeler une seule fois dans main.ts
+     */
+    async function initialize(): Promise<void> {
+        if (isInitialized.value) return
+
+        if (token.value) {
+            await fetchUser()
+        }
+        isInitialized.value = true
+    }
+
+    function clearError(): void {
+        error.value = null
     }
 
     return {
@@ -87,14 +185,22 @@ export const useAuthStore = defineStore('auth', () => {
         user,
         token,
         isLoading,
+        isInitialized,
         error,
         // Getters
         isAuthenticated,
         isAdmin,
+        isClient,
+        userFullName,
+        userInitials,
         // Actions
         login,
+        loginClient,
+        register,
         logout,
         fetchUser,
         checkAuth,
+        initialize,
+        clearError,
     }
 })

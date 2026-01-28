@@ -37,12 +37,12 @@
 
                         <!-- CTA Buttons -->
                         <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
-                            <a
-                                :href="`mailto:${CONTACT_INFO.email}?subject=Demande de carte cadeau`"
+                            <router-link
+                                to="/contact?sujet=carte-cadeau"
                                 class="w-full sm:w-auto inline-block px-10 py-4 bg-gold text-black hover:bg-gold/90 transition-all duration-300 text-sm uppercase tracking-widest font-medium"
                             >
-                                Commander par mail
-                            </a>
+                                Commander une carte cadeau
+                            </router-link>
                             <a
                                 :href="SOCIAL_LINKS[0].url"
                                 target="_blank"
@@ -103,7 +103,7 @@
 
 <script setup lang="ts">
 import PageHeader from '@/components/PageHeader.vue'
-import {SOCIAL_LINKS, CONTACT_INFO} from '@/config/constants'
+import {SOCIAL_LINKS} from '@/config/constants'
 
 const features = [
     'Montant de votre choix (à partir de 35€)',

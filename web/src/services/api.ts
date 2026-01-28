@@ -97,10 +97,30 @@ class ApiService {
     async sendContactMessage(data: {
         name: string
         email: string
+        phone?: string
+        subject: string
         message: string
-        subject?: string
-    }): Promise<ApiResponse<{ success: boolean }>> {
-        return this.request<ApiResponse<{ success: boolean }>>('/contact', {
+    }): Promise<ApiResponse<{ message: string }>> {
+        return this.request<ApiResponse<{ message: string }>>('/contact', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        })
+    }
+
+    // ============================================================================
+    // Booking Request (demande de reservation)
+    // ============================================================================
+
+    async sendBookingRequest(data: {
+        name: string
+        email: string
+        phone?: string
+        prestation_id: string
+        date_preferences: string
+        message?: string
+        gdpr_consent: boolean
+    }): Promise<ApiResponse<{ success: boolean; message: string }>> {
+        return this.request<ApiResponse<{ success: boolean; message: string }>>('/booking-request', {
             method: 'POST',
             body: JSON.stringify(data),
         })

@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Photo extends Model
 {
@@ -24,6 +25,7 @@ class Photo extends Model
         'sort_order',
         'is_liked',
         'is_downloadable',
+        'downloads_count',
         'metadata',
     ];
 
@@ -35,6 +37,7 @@ class Photo extends Model
             'is_video' => 'boolean',
             'is_liked' => 'boolean',
             'is_downloadable' => 'boolean',
+            'downloads_count' => 'integer',
             'metadata' => 'array',
         ];
     }
@@ -50,7 +53,8 @@ class Photo extends Model
 
         // Generate signed URL from MinIO
         try {
-            $storageService = new MinioStorageService();
+            $storageService = new MinioStorageService;
+
             return $storageService->getSignedUrl($storagePath, 3600);
         } catch (\Exception $e) {
             return null;
@@ -99,7 +103,7 @@ class Photo extends Model
 
     public function toggleLike(): bool
     {
-        $this->is_liked = !$this->is_liked;
+        $this->is_liked = ! $this->is_liked;
         $this->save();
 
         return $this->is_liked;
@@ -107,9 +111,26 @@ class Photo extends Model
 
     public function toggleDownloadable(): bool
     {
-        $this->is_downloadable = !$this->is_downloadable;
+        $this->is_downloadable = ! $this->is_downloadable;
         $this->save();
 
         return $this->is_downloadable;
+    }
+
+    public function downloadLogs(): HasMany
+    {
+        return $this->hasMany(DownloadLog::class);
+    }
+
+    public function recordDownload(?string $ipAddress = null, ?string $userAgent = null): void
+    {
+        $this->increment('downloads_count');
+
+        $this->downloadLogs()->create([
+            'gallery_id' => $this->gallery_id,
+            'ip_address' => $ipAddress,
+            'user_agent' => $userAgent ? substr($userAgent, 0, 255) : null,
+            'downloaded_at' => now(),
+        ]);
     }
 }

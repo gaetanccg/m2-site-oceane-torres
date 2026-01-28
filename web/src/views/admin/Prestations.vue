@@ -11,7 +11,18 @@
       </template>
     </AdminHeader>
 
-    <div class="p-6">
+    <!-- Loading State -->
+    <div v-if="isLoading" class="p-6 flex items-center justify-center min-h-[400px]">
+      <div class="flex flex-col items-center gap-3">
+        <svg class="animate-spin h-8 w-8 text-gold" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <span class="text-gray-500">Chargement...</span>
+      </div>
+    </div>
+
+    <div v-else class="p-6">
       <div class="grid gap-6">
         <!-- Prestations List -->
         <div
@@ -39,20 +50,35 @@
                 <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-gold/10 text-gold">
                   {{ prestation.category }}
                 </span>
+                <span v-if="prestation.icon" class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-50 text-blue-700">
+                  {{ prestation.icon }}
+                </span>
               </div>
-              <p class="text-gray-600 mb-4">{{ prestation.description }}</p>
-              <div class="flex items-center gap-6 text-sm">
+              <p class="text-gray-600 mb-4 line-clamp-2">{{ prestation.description }}</p>
+              <div class="flex items-center gap-6 text-sm flex-wrap">
                 <div class="flex items-center gap-2">
                   <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <span class="font-semibold text-gray-900">{{ formatCurrency(prestation.price) }}</span>
+                  <span class="font-semibold text-gray-900">
+                    {{ prestation.price_text || formatCurrency(prestation.price) }}
+                  </span>
+                  <span v-if="prestation.price_unit" class="text-gray-500 text-xs">({{ prestation.price_unit }})</span>
                 </div>
-                <div class="flex items-center gap-2">
+                <div v-if="prestation.duration" class="flex items-center gap-2">
                   <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <span class="text-gray-600">{{ formatDuration(prestation.duration) }}</span>
+                </div>
+                <div v-if="prestation.features?.length" class="flex items-center gap-2">
+                  <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                  <span class="text-gray-600">{{ prestation.features.length }} caracteristiques</span>
+                </div>
+                <div class="flex items-center gap-2 text-gray-400">
+                  <span>Ordre: {{ prestation.sort_order }}</span>
                 </div>
               </div>
             </div>
@@ -112,62 +138,164 @@
           <svg class="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
           </svg>
-          <p class="text-gray-500 mb-4">Aucune prestation créée</p>
-          <Button @click="openCreateModal">Créer une prestation</Button>
+          <p class="text-gray-500 mb-4">Aucune prestation creee</p>
+          <Button @click="openCreateModal">Creer une prestation</Button>
         </div>
       </div>
     </div>
 
     <!-- Create/Edit Modal -->
-    <Modal v-model="showFormModal" :title="isEditing ? 'Modifier la prestation' : 'Nouvelle prestation'" size="lg">
-      <form @submit.prevent="savePrestation" class="space-y-4">
-        <div class="grid grid-cols-2 gap-4">
-          <FormField
-            v-model="form.title"
-            label="Titre"
-            required
-            :error="formErrors.title"
-          />
-          <FormField
-            v-model="form.category"
-            type="select"
-            label="Catégorie"
-            required
-            :options="categoryOptions"
-            :error="formErrors.category"
-          />
+    <Modal v-model="showFormModal" :title="isEditing ? 'Modifier la prestation' : 'Nouvelle prestation'" size="xl">
+      <form @submit.prevent="savePrestation" class="space-y-6">
+        <!-- Section: Informations generales -->
+        <div class="border-b border-gray-200 pb-4">
+          <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4">Informations generales</h3>
+          <div class="grid grid-cols-2 gap-4">
+            <FormField
+              v-model="form.title"
+              label="Titre"
+              required
+              :error="formErrors.title"
+            />
+            <FormField
+              v-model="form.icon"
+              type="select"
+              label="Icone"
+              :options="iconOptions"
+              :error="formErrors.icon"
+            />
+          </div>
+          <div class="grid grid-cols-2 gap-4 mt-4">
+            <FormField
+              v-model="form.category"
+              type="select"
+              label="Categorie"
+              required
+              :options="categoryOptions"
+              :error="formErrors.category"
+            />
+            <FormField
+              v-model.number="form.sort_order"
+              type="number"
+              label="Ordre d'affichage"
+              :min="0"
+            />
+          </div>
+          <div class="mt-4">
+            <FormField
+              v-model="form.description"
+              type="textarea"
+              label="Description"
+              required
+              :rows="4"
+              :error="formErrors.description"
+            />
+          </div>
         </div>
 
-        <FormField
-          v-model="form.description"
-          type="textarea"
-          label="Description"
-          required
-          :rows="4"
-          :error="formErrors.description"
-        />
-
-        <div class="grid grid-cols-2 gap-4">
-          <FormField
-            v-model.number="form.price"
-            type="number"
-            label="Prix (€)"
-            required
-            :min="0"
-            :step="0.01"
-            :error="formErrors.price"
-          />
-          <FormField
-            v-model.number="form.duration"
-            type="number"
-            label="Durée (minutes)"
-            required
-            :min="15"
-            :step="15"
-            :error="formErrors.duration"
-          />
+        <!-- Section: Prix -->
+        <div class="border-b border-gray-200 pb-4">
+          <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4">Prix et duree</h3>
+          <div class="grid grid-cols-3 gap-4">
+            <FormField
+              v-model.number="form.price"
+              type="number"
+              label="Prix de base (€)"
+              required
+              :min="0"
+              :step="0.01"
+              :error="formErrors.price"
+            />
+            <FormField
+              v-model="form.price_text"
+              label="Prix affiche"
+              placeholder="Ex: 50€, sur devis"
+            />
+            <FormField
+              v-model="form.price_unit"
+              label="Unite de prix"
+              placeholder="Ex: A partir de"
+            />
+          </div>
+          <div class="mt-4">
+            <FormField
+              v-model.number="form.duration"
+              type="number"
+              label="Durée (minutes)"
+              :min="0"
+              :step="15"
+              placeholder="Laisser vide si variable"
+            />
+          </div>
         </div>
 
+        <!-- Section: Caracteristiques -->
+        <div class="border-b border-gray-200 pb-4">
+          <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4">Caracteristiques</h3>
+          <div class="space-y-2">
+            <div v-for="(_feature, index) in form.features" :key="index" class="flex items-center gap-2">
+              <input
+                v-model="form.features[index]"
+                type="text"
+                class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-gold"
+                placeholder="Ex: 1h de shooting"
+              />
+              <button
+                type="button"
+                @click="removeFeature(index)"
+                class="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <button
+              type="button"
+              @click="addFeature"
+              class="flex items-center gap-2 px-4 py-2 text-sm text-gold hover:bg-gold/10 rounded-lg transition-colors"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              Ajouter une caracteristique
+            </button>
+          </div>
+        </div>
+
+        <!-- Section: Affichage -->
+        <div class="border-b border-gray-200 pb-4">
+          <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4">Affichage</h3>
+          <div class="grid grid-cols-2 gap-4">
+            <FormField
+              v-model="form.background_image"
+              label="Image de fond (URL)"
+              placeholder="Ex: /optimized/Portraits/20.webp"
+            />
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Opacite du fond ({{ form.background_opacity }})</label>
+              <input
+                v-model.number="form.background_opacity"
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                class="w-full"
+              />
+            </div>
+          </div>
+          <div class="mt-4">
+            <FormField
+              v-model="form.disclaimer"
+              type="textarea"
+              label="Avertissement (optionnel)"
+              :rows="2"
+              placeholder="Ex: L'offre est evolutive en fonction de vos envies..."
+            />
+          </div>
+        </div>
+
+        <!-- Section: Statut -->
         <FormField
           v-model="form.is_active"
           type="checkbox"
@@ -178,7 +306,7 @@
       <template #footer>
         <Button variant="secondary" @click="showFormModal = false">Annuler</Button>
         <Button :loading="isSaving" @click="savePrestation">
-          {{ isEditing ? 'Enregistrer' : 'Créer' }}
+          {{ isEditing ? 'Enregistrer' : 'Creer' }}
         </Button>
       </template>
     </Modal>
@@ -186,8 +314,8 @@
     <!-- Delete Confirmation Modal -->
     <Modal v-model="showDeleteModal" title="Confirmer la suppression" size="sm">
       <p class="text-gray-600">
-        Êtes-vous sûr de vouloir supprimer la prestation <strong>{{ prestationToDelete?.title }}</strong> ?
-        Cette action est irréversible.
+        Etes-vous sur de vouloir supprimer la prestation <strong>{{ prestationToDelete?.title }}</strong> ?
+        Cette action est irreversible.
       </p>
 
       <template #footer>
@@ -209,6 +337,7 @@ import { adminApi } from '@/services/adminApi'
 import type { AdminPrestation, PrestationFormData } from '@/types/admin'
 
 const prestations = ref<AdminPrestation[]>([])
+const isLoading = ref(true)
 const showFormModal = ref(false)
 const showDeleteModal = ref(false)
 const isEditing = ref(false)
@@ -219,20 +348,38 @@ const prestationToDelete = ref<AdminPrestation | null>(null)
 
 const form = reactive<PrestationFormData>({
   title: '',
+  icon: null,
   description: '',
+  features: [],
   price: 0,
-  duration: 60,
+  price_text: '',
+  price_unit: '',
+  duration: null,
   category: '',
+  background_image: '',
+  background_opacity: 0.15,
+  disclaimer: '',
   is_active: true,
+  sort_order: 0,
 })
 
 const formErrors = reactive({
   title: '',
   description: '',
   price: '',
-  duration: '',
   category: '',
+  icon: '',
 })
+
+const iconOptions = [
+  { value: '', label: 'Aucune' },
+  { value: 'portrait', label: 'Portrait' },
+  { value: 'sport', label: 'Sport' },
+  { value: 'animal', label: 'Animal' },
+  { value: 'moto', label: 'Moto/Automobile' },
+  { value: 'entreprise', label: 'Entreprise' },
+  { value: 'video', label: 'Video' },
+]
 
 const categoryOptions = [
   { value: 'portrait', label: 'Portrait' },
@@ -240,7 +387,7 @@ const categoryOptions = [
   { value: 'animalier', label: 'Animalier' },
   { value: 'automobile', label: 'Automobile' },
   { value: 'entreprise', label: 'Entreprise' },
-  { value: 'video', label: 'Vidéo' },
+  { value: 'video', label: 'Video' },
 ]
 
 function formatCurrency(amount: number): string {
@@ -258,13 +405,29 @@ function formatDuration(minutes: number): string {
   return `${hours}h${mins}`
 }
 
+function addFeature() {
+  form.features.push('')
+}
+
+function removeFeature(index: number) {
+  form.features.splice(index, 1)
+}
+
 function resetForm() {
   form.title = ''
+  form.icon = null
   form.description = ''
+  form.features = []
   form.price = 0
-  form.duration = 60
+  form.price_text = ''
+  form.price_unit = ''
+  form.duration = null
   form.category = ''
+  form.background_image = ''
+  form.background_opacity = 0.15
+  form.disclaimer = ''
   form.is_active = true
+  form.sort_order = 0
   Object.keys(formErrors).forEach(key => {
     formErrors[key as keyof typeof formErrors] = ''
   })
@@ -279,11 +442,19 @@ function openCreateModal() {
 
 function openEditModal(prestation: AdminPrestation) {
   form.title = prestation.title
+  form.icon = prestation.icon
   form.description = prestation.description
+  form.features = prestation.features ? [...prestation.features] : []
   form.price = prestation.price
+  form.price_text = prestation.price_text || ''
+  form.price_unit = prestation.price_unit || ''
   form.duration = prestation.duration
   form.category = prestation.category
+  form.background_image = prestation.background_image || ''
+  form.background_opacity = prestation.background_opacity || 0.15
+  form.disclaimer = prestation.disclaimer || ''
   form.is_active = prestation.is_active
+  form.sort_order = prestation.sort_order
   isEditing.value = true
   editingId.value = prestation.id
   showFormModal.value = true
@@ -302,6 +473,8 @@ async function fetchPrestations() {
     }
   } catch {
     // Silently fail
+  } finally {
+    isLoading.value = false
   }
 }
 
@@ -328,16 +501,12 @@ function validateForm(): boolean {
     formErrors.description = 'La description est requise'
     isValid = false
   }
-  if (form.price <= 0) {
-    formErrors.price = 'Le prix doit être supérieur à 0'
-    isValid = false
-  }
-  if (form.duration < 15) {
-    formErrors.duration = 'La durée minimum est de 15 minutes'
+  if (form.price < 0) {
+    formErrors.price = 'Le prix doit etre positif'
     isValid = false
   }
   if (!form.category) {
-    formErrors.category = 'La catégorie est requise'
+    formErrors.category = 'La categorie est requise'
     isValid = false
   }
 
@@ -349,10 +518,18 @@ async function savePrestation() {
 
   isSaving.value = true
   try {
+    // Filter empty features
+    const dataToSend = {
+      ...form,
+      icon: form.icon || null,
+      features: form.features.filter(f => f.trim() !== ''),
+      duration: form.duration || null,
+    }
+
     if (isEditing.value && editingId.value) {
-      await adminApi.updatePrestation(editingId.value, form)
+      await adminApi.updatePrestation(editingId.value, dataToSend)
     } else {
-      await adminApi.createPrestation(form)
+      await adminApi.createPrestation(dataToSend)
     }
     showFormModal.value = false
     fetchPrestations()

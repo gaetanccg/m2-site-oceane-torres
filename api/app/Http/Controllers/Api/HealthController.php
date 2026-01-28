@@ -58,7 +58,7 @@ class HealthController extends Controller
                 ORDER BY table_name
             ");
 
-            $tableNames = array_map(fn($t) => $t->table_name, $tables);
+            $tableNames = array_map(fn ($t) => $t->table_name, $tables);
 
             return response()->json([
                 'status' => 'ok',

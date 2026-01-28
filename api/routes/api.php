@@ -1,17 +1,21 @@
 <?php
 
+use App\Http\Controllers\Api\AccountController;
+use App\Http\Controllers\Api\Admin\ClientController;
+use App\Http\Controllers\Api\Admin\DashboardController;
+use App\Http\Controllers\Api\Admin\NotificationController;
+use App\Http\Controllers\Api\Admin\UserController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\AvailabilityController;
+use App\Http\Controllers\Api\BookingRequestController;
+use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\GalleryController;
+use App\Http\Controllers\Api\GiftCardController;
 use App\Http\Controllers\Api\HealthController;
+use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PhotoController;
 use App\Http\Controllers\Api\PrestationController;
 use App\Http\Controllers\Api\ReservationController;
-use App\Http\Controllers\Api\GiftCardController;
-use App\Http\Controllers\Api\PaymentController;
-use App\Http\Controllers\Api\ContactController;
-use App\Http\Controllers\Api\Admin\DashboardController;
-use App\Http\Controllers\Api\Admin\UserController;
-use App\Http\Controllers\Api\Admin\NotificationController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -58,8 +62,15 @@ Route::get('/photos/{photo}/download', [PhotoController::class, 'download']);
 // Contact
 Route::post('/contact', [ContactController::class, 'send']);
 
+// Event Galleries (public)
+Route::get('/events', [GalleryController::class, 'eventIndex']);
+Route::get('/events/{gallery}', [GalleryController::class, 'eventShow']);
+
 // Gift cards (public)
 Route::get('/gift-cards/validate/{code}', [GiftCardController::class, 'validate']);
+
+// Booking request (public - sans authentification)
+Route::post('/booking-request', [BookingRequestController::class, 'store']);
 
 /*
 |--------------------------------------------------------------------------
@@ -98,6 +109,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::put('/notifications/{notification}/read', [NotificationController::class, 'markAsRead']);
     Route::put('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
+
+    // Account (client dashboard)
+    Route::get('/account/dashboard', [AccountController::class, 'dashboard']);
 });
 
 /*
@@ -114,14 +128,41 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     // Users management
     Route::apiResource('users', UserController::class);
 
+    // Clients management
+    Route::apiResource('clients', ClientController::class);
+    Route::get('/clients/{client}/reservations', [ClientController::class, 'reservations']);
+    Route::post('/clients/{client}/gdpr-export', [ClientController::class, 'gdprExport']);
+
     // Prestations management
+    Route::get('/prestations', [PrestationController::class, 'adminIndex']);
     Route::apiResource('prestations', PrestationController::class)->except(['index', 'show']);
     Route::put('/prestations/{prestation}/toggle', [PrestationController::class, 'toggle']);
 
     // Reservations management
     Route::get('/reservations', [ReservationController::class, 'adminIndex']);
-    Route::put('/reservations/{reservation}/status', [ReservationController::class, 'updateStatus']);
     Route::get('/reservations/calendar', [ReservationController::class, 'calendar']);
+    Route::get('/reservations/{reservation}', [ReservationController::class, 'adminShow']);
+    Route::put('/reservations/{reservation}', [ReservationController::class, 'adminUpdate']);
+    Route::put('/reservations/{reservation}/status', [ReservationController::class, 'updateStatus']);
+    Route::delete('/reservations/{reservation}', [ReservationController::class, 'adminDestroy']);
+
+    // Availability management
+    Route::prefix('availability')->group(function () {
+        // Slots
+        Route::get('/slots', [AvailabilityController::class, 'indexSlots']);
+        Route::get('/slots/available', [AvailabilityController::class, 'availableSlots']);
+        Route::post('/slots', [AvailabilityController::class, 'storeSlot']);
+        Route::put('/slots/{slot}', [AvailabilityController::class, 'updateSlot']);
+        Route::delete('/slots/{slot}', [AvailabilityController::class, 'destroySlot']);
+
+        // Patterns
+        Route::get('/patterns', [AvailabilityController::class, 'indexPatterns']);
+        Route::post('/patterns', [AvailabilityController::class, 'storePattern']);
+        Route::put('/patterns/{pattern}', [AvailabilityController::class, 'updatePattern']);
+        Route::delete('/patterns/{pattern}', [AvailabilityController::class, 'destroyPattern']);
+        Route::post('/patterns/{pattern}/generate', [AvailabilityController::class, 'generateSlots']);
+        Route::put('/patterns/{pattern}/toggle', [AvailabilityController::class, 'togglePattern']);
+    });
 
     // Galleries management
     Route::get('/galleries', [GalleryController::class, 'adminIndex']);
@@ -131,11 +172,20 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::delete('/photos/{photo}', [PhotoController::class, 'destroy']);
     Route::put('/galleries/{gallery}/regenerate-token', [GalleryController::class, 'regenerateToken']);
     Route::post('/galleries/{gallery}/regenerate-code', [GalleryController::class, 'regenerateShareCode']);
+    Route::post('/galleries/{gallery}/send-email', [GalleryController::class, 'sendAccessEmail']);
 
     // Photos management
     Route::put('/photos/{photo}/toggle-downloadable', [PhotoController::class, 'toggleDownloadable']);
     Route::put('/photos/bulk-downloadable', [PhotoController::class, 'bulkToggleDownloadable']);
     Route::put('/photos/sort-order', [PhotoController::class, 'updateSortOrder']);
+
+    // Event Galleries management
+    Route::get('/events', [GalleryController::class, 'adminEventIndex']);
+    Route::get('/events/{gallery}', [GalleryController::class, 'adminEventShow']);
+    Route::post('/events', [GalleryController::class, 'storeEvent']);
+    Route::put('/events/{gallery}', [GalleryController::class, 'updateEvent']);
+    Route::delete('/events/{gallery}', [GalleryController::class, 'destroyEvent']);
+    Route::post('/events/{gallery}/photos', [PhotoController::class, 'store']);
 
     // Gift cards
     Route::get('/gift-cards', [GiftCardController::class, 'index']);
