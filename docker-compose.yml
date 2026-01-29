@@ -36,6 +36,10 @@ services:
     container_name: laravel
     restart: unless-stopped
     working_dir: /var/www
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 1.1.1.1
     volumes:
       - ./api:/var/www
       - ./docker/php.ini:/usr/local/etc/php/conf.d/custom.ini

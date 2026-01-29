@@ -60,9 +60,13 @@
                                 v-model="form.name"
                                 type="text"
                                 required
-                                class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-gold/50 focus:border-gold transition-colors"
+                                :class="[
+                                    'w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-gold/50 focus:border-gold transition-colors',
+                                    fieldErrors.name ? 'border-red-300 bg-red-50' : 'border-gray-200'
+                                ]"
                                 placeholder="Votre nom"
                             />
+                            <p v-if="fieldErrors.name" class="mt-1 text-sm text-red-600">{{ fieldErrors.name }}</p>
                         </div>
 
                         <!-- Email -->
@@ -74,9 +78,13 @@
                                 v-model="form.email"
                                 type="email"
                                 required
-                                class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-gold/50 focus:border-gold transition-colors"
+                                :class="[
+                                    'w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-gold/50 focus:border-gold transition-colors',
+                                    fieldErrors.email ? 'border-red-300 bg-red-50' : 'border-gray-200'
+                                ]"
                                 placeholder="votre@email.com"
                             />
+                            <p v-if="fieldErrors.email" class="mt-1 text-sm text-red-600">{{ fieldErrors.email }}</p>
                         </div>
 
                         <!-- Telephone -->
@@ -87,9 +95,13 @@
                             <input
                                 v-model="form.phone"
                                 type="tel"
-                                class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-gold/50 focus:border-gold transition-colors"
+                                :class="[
+                                    'w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-gold/50 focus:border-gold transition-colors',
+                                    fieldErrors.phone ? 'border-red-300 bg-red-50' : 'border-gray-200'
+                                ]"
                                 placeholder="06 XX XX XX XX"
                             />
+                            <p v-if="fieldErrors.phone" class="mt-1 text-sm text-red-600">{{ fieldErrors.phone }}</p>
                         </div>
 
                         <!-- Prestation -->
@@ -100,13 +112,17 @@
                             <select
                                 v-model="form.prestation_id"
                                 required
-                                class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-gold/50 focus:border-gold transition-colors bg-white"
+                                :class="[
+                                    'w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-gold/50 focus:border-gold transition-colors bg-white',
+                                    fieldErrors.prestation_id ? 'border-red-300 bg-red-50' : 'border-gray-200'
+                                ]"
                             >
                                 <option value="" disabled>Selectionnez une prestation</option>
                                 <option v-for="p in prestations" :key="p.id" :value="p.id">
                                     {{ p.title }}
                                 </option>
                             </select>
+                            <p v-if="fieldErrors.prestation_id" class="mt-1 text-sm text-red-600">{{ fieldErrors.prestation_id }}</p>
                         </div>
 
                         <!-- Dates souhaitées -->
@@ -118,9 +134,13 @@
                                 v-model="form.date_preferences"
                                 required
                                 rows="3"
-                                class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-gold/50 focus:border-gold transition-colors resize-none"
+                                :class="[
+                                    'w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-gold/50 focus:border-gold transition-colors resize-none',
+                                    fieldErrors.date_preferences ? 'border-red-300 bg-red-50' : 'border-gray-200'
+                                ]"
                                 placeholder="Ex: Week-end du 15 fevrier, ou en semaine entre le 10 et le 20 mars..."
                             />
+                            <p v-if="fieldErrors.date_preferences" class="mt-1 text-sm text-red-600">{{ fieldErrors.date_preferences }}</p>
                         </div>
 
                         <!-- Message -->
@@ -184,7 +204,9 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
-import { api } from '@/services/api'
+import { api, ApiServiceError } from '@/services/api'
+import { useToast } from '@/composables/useToast'
+import { ERROR_MESSAGES } from '@/utils/errorHandler'
 
 interface Prestation {
     id: string
@@ -199,10 +221,12 @@ const emit = defineEmits<{
     (e: 'close'): void
 }>()
 
+const toast = useToast()
 const prestations = ref<Prestation[]>([])
 const isLoading = ref(false)
 const isSuccess = ref(false)
 const error = ref('')
+const fieldErrors = ref<Record<string, string>>({})
 
 const form = reactive({
     name: '',
@@ -220,6 +244,7 @@ function close() {
     setTimeout(() => {
         isSuccess.value = false
         error.value = ''
+        fieldErrors.value = {}
         form.name = ''
         form.email = ''
         form.phone = ''
@@ -241,12 +266,15 @@ async function loadPrestations() {
             prestations.value = response.data.map(p => ({ id: String(p.id || ''), title: p.title }))
         }
     } catch (err) {
-        console.error('Failed to load prestations:', err)
+        if (err instanceof ApiServiceError) {
+            toast.error('Impossible de charger les prestations', err.apiError.message)
+        }
     }
 }
 
 async function submit() {
     error.value = ''
+    fieldErrors.value = {}
 
     if (!form.gdpr_consent) {
         error.value = 'Vous devez accepter le traitement de vos données personnelles pour continuer.'
@@ -266,8 +294,28 @@ async function submit() {
             gdpr_consent: form.gdpr_consent,
         })
         isSuccess.value = true
+        toast.success('Demande envoyée', 'Nous vous recontacterons très rapidement.')
     } catch (err) {
-        error.value = err instanceof Error ? err.message : 'Une erreur est survenue. Veuillez réessayer.'
+        if (err instanceof ApiServiceError) {
+            const apiError = err.apiError
+
+            // Erreurs de validation par champ
+            if (apiError.isValidationError && apiError.errors) {
+                fieldErrors.value = {}
+                for (const [field, messages] of Object.entries(apiError.errors)) {
+                    fieldErrors.value[field] = messages[0]
+                }
+                error.value = 'Veuillez corriger les erreurs ci-dessous.'
+            } else if (apiError.isNetworkError) {
+                error.value = ERROR_MESSAGES.generic.networkError
+            } else if (apiError.isServerError) {
+                error.value = ERROR_MESSAGES.generic.serverError
+            } else {
+                error.value = apiError.message
+            }
+        } else {
+            error.value = ERROR_MESSAGES.generic.unknownError
+        }
     } finally {
         isLoading.value = false
     }

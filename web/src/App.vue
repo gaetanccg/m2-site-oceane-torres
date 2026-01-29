@@ -18,6 +18,9 @@
         </main>
         <Footer />
     </div>
+
+    <!-- Toast notifications (global) -->
+    <ToastContainer />
 </template>
 
 <script setup lang="ts">
@@ -26,6 +29,7 @@ import {useRoute} from 'vue-router'
 import {useAuthStore} from '@/stores/auth'
 import Navbar from './components/Navbar.vue'
 import Footer from './components/Footer.vue'
+import ToastContainer from './components/ui/ToastContainer.vue'
 
 const route = useRoute()
 const authStore = useAuthStore()
