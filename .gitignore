@@ -73,6 +73,7 @@ api/database/*.sqlite
 # ============================================
 
 web/node_modules/
+web/dist/
 web/.vite/
 web/.vitepress/
 web/.nuxt/
