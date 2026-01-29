@@ -3,13 +3,13 @@
  * Gere l'etat de connexion et les tokens pour admin et clients
  */
 
-import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
-import type { User } from '@/types/admin'
-import type { RegisterData } from '@/types/account'
-import { adminApi, AdminApiError } from '@/services/adminApi'
-import { authApi, AuthApiError } from '@/services/authApi'
-import { ERROR_MESSAGES, type ApiError } from '@/utils/errorHandler'
+import {defineStore} from 'pinia'
+import {ref, computed} from 'vue'
+import type {User} from '@/types/admin'
+import type {RegisterData} from '@/types/account'
+import {adminApi, AdminApiError} from '@/services/adminApi'
+import {authApi, AuthApiError} from '@/services/authApi'
+import {ERROR_MESSAGES} from '@/utils/errorHandler'
 
 export const useAuthStore = defineStore('auth', () => {
     // State
