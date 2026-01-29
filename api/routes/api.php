@@ -78,7 +78,8 @@ Route::post('/booking-request', [BookingRequestController::class, 'store']);
 Route::prefix('cart')->group(function () {
     Route::get('/', [CartController::class, 'show']);
     Route::post('/add', [CartController::class, 'addItem']);
-    Route::delete('/remove/{photo}', [CartController::class, 'removeItem']);
+    Route::put('/item/{item}/type', [CartController::class, 'updateItemType']);
+    Route::delete('/item/{item}', [CartController::class, 'removeItem']);
     Route::delete('/clear', [CartController::class, 'clear']);
     Route::put('/email', [CartController::class, 'updateEmail']);
 });
@@ -223,6 +224,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     // Orders management
     Route::get('/orders', [OrderController::class, 'adminIndex']);
     Route::get('/orders/{order}', [OrderController::class, 'adminShow']);
+    Route::delete('/orders/{order}', [OrderController::class, 'adminDestroy']);
 });
 
 /*

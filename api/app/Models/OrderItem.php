@@ -14,6 +14,7 @@ class OrderItem extends Model
     protected $fillable = [
         'order_id',
         'photo_id',
+        'product_type',
         'photo_title',
         'gallery_title',
         'price',
@@ -46,5 +47,21 @@ class OrderItem extends Model
             'is_downloaded' => true,
             'downloaded_at' => now(),
         ]);
+    }
+
+    /**
+     * Check if this item is a print order
+     */
+    public function isPrint(): bool
+    {
+        return CartItem::isPrintType($this->product_type ?? 'digital');
+    }
+
+    /**
+     * Get product type label
+     */
+    public function getProductTypeLabel(): string
+    {
+        return CartItem::getLabelForType($this->product_type ?? 'digital');
     }
 }

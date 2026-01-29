@@ -4,7 +4,7 @@
 
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { cartApi, type Cart, type CartItem, CartApiError } from '@/services/cartApi'
+import { cartApi, type Cart, type ProductType, CartApiError } from '@/services/cartApi'
 import { useAuthStore } from './auth'
 
 export const useCartStore = defineStore('cart', () => {
@@ -21,6 +21,12 @@ export const useCartStore = defineStore('cart', () => {
     const total = computed(() => cart.value?.total ?? 0)
     const currency = computed(() => cart.value?.currency ?? 'EUR')
     const isEmpty = computed(() => itemsCount.value === 0)
+    const hasPrints = computed(() => cart.value?.has_prints ?? false)
+    const productTypes = computed(() => cart.value?.product_types ?? {
+        digital: { label: 'Fichier numérique', price: 13, is_print: false },
+        print_10x15: { label: 'Tirage 10x15 cm', price: 10, is_print: true },
+        print_15x20: { label: 'Tirage 15x20 cm', price: 15, is_print: true },
+    })
 
     const isPhotoInCart = computed(() => {
         return (photoId: string) => {
@@ -56,12 +62,12 @@ export const useCartStore = defineStore('cart', () => {
     /**
      * Add a photo to cart
      */
-    async function addItem(photoId: string): Promise<boolean> {
+    async function addItem(photoId: string, productType: ProductType = 'digital'): Promise<boolean> {
         isLoading.value = true
         error.value = null
 
         try {
-            const response = await cartApi.addToCart(photoId)
+            const response = await cartApi.addToCart(photoId, productType)
             if (response.success) {
                 cart.value = response.cart
                 return true
@@ -77,14 +83,37 @@ export const useCartStore = defineStore('cart', () => {
     }
 
     /**
-     * Remove a photo from cart
+     * Update item product type
      */
-    async function removeItem(photoId: string): Promise<boolean> {
+    async function updateItemType(itemId: string, productType: ProductType): Promise<boolean> {
         isLoading.value = true
         error.value = null
 
         try {
-            const response = await cartApi.removeFromCart(photoId)
+            const response = await cartApi.updateItemType(itemId, productType)
+            if (response.success) {
+                cart.value = response.cart
+                return true
+            }
+            error.value = response.message ?? 'Erreur lors de la mise à jour'
+            return false
+        } catch (e) {
+            error.value = e instanceof CartApiError ? e.apiError.message : 'Erreur lors de la mise à jour'
+            return false
+        } finally {
+            isLoading.value = false
+        }
+    }
+
+    /**
+     * Remove an item from cart
+     */
+    async function removeItem(itemId: string): Promise<boolean> {
+        isLoading.value = true
+        error.value = null
+
+        try {
+            const response = await cartApi.removeFromCart(itemId)
             if (response.success) {
                 cart.value = response.cart
                 return true
@@ -208,10 +237,13 @@ export const useCartStore = defineStore('cart', () => {
         total,
         currency,
         isEmpty,
+        hasPrints,
+        productTypes,
         isPhotoInCart,
         // Actions
         initialize,
         addItem,
+        updateItemType,
         removeItem,
         clearCart,
         mergeAfterLogin,

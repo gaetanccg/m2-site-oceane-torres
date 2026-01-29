@@ -68,6 +68,27 @@
                                         <p v-if="item.photo.gallery_title" class="text-sm text-gray-500 mt-1">
                                             {{ item.photo.gallery_title }}
                                         </p>
+
+                                        <!-- Product type selector -->
+                                        <div class="mt-2">
+                                            <select
+                                                :value="item.product_type"
+                                                @change="updateItemType(item.id, ($event.target as HTMLSelectElement).value)"
+                                                class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold"
+                                                :disabled="cartStore.isLoading"
+                                            >
+                                                <option value="digital">
+                                                    Fichier numérique - {{ formatPrice(cartStore.productTypes.digital?.price || 13) }}
+                                                </option>
+                                                <option value="print_10x15">
+                                                    Tirage 10x15 cm - {{ formatPrice(cartStore.productTypes.print_10x15?.price || 10) }}
+                                                </option>
+                                                <option value="print_15x20">
+                                                    Tirage 15x20 cm - {{ formatPrice(cartStore.productTypes.print_15x20?.price || 15) }}
+                                                </option>
+                                            </select>
+                                        </div>
+
                                         <p class="text-gold font-semibold mt-2">
                                             {{ formatPrice(item.price) }}
                                         </p>
@@ -75,7 +96,7 @@
 
                                     <!-- Remove -->
                                     <button
-                                        @click="removeItem(item.photo_id)"
+                                        @click="removeItem(item.id)"
                                         class="flex-shrink-0 p-2 text-gray-400 hover:text-red-500 transition-colors"
                                     >
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -102,7 +123,7 @@
 
                             <div class="space-y-3 text-sm">
                                 <div class="flex justify-between">
-                                    <span class="text-gray-600">{{ cartStore.itemsCount }} photo(s)</span>
+                                    <span class="text-gray-600">{{ cartStore.itemsCount }} article(s)</span>
                                     <span>{{ formatPrice(cartStore.total) }}</span>
                                 </div>
                             </div>
@@ -112,6 +133,13 @@
                                     <span>Total</span>
                                     <span class="text-gold">{{ formatPrice(cartStore.total) }}</span>
                                 </div>
+                            </div>
+
+                            <!-- Print notice -->
+                            <div v-if="cartStore.hasPrints" class="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                <p class="text-xs text-amber-800">
+                                    <strong>Tirages papier</strong> : votre commande contient des tirages qui seront préparés et expédiés par la photographe.
+                                </p>
                             </div>
 
                             <router-link
@@ -135,6 +163,7 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import { useCartStore } from '@/stores/cart'
+import type { ProductType } from '@/services/cartApi'
 
 const cartStore = useCartStore()
 
@@ -151,8 +180,12 @@ function formatPrice(price: number): string {
     }).format(price)
 }
 
-async function removeItem(photoId: string) {
-    await cartStore.removeItem(photoId)
+async function updateItemType(itemId: string, productType: string) {
+    await cartStore.updateItemType(itemId, productType as ProductType)
+}
+
+async function removeItem(itemId: string) {
+    await cartStore.removeItem(itemId)
 }
 
 async function handleClear() {

@@ -43,6 +43,7 @@ const AdminPrestations = () => import('@/views/admin/Prestations.vue')
 const AdminReservations = () => import('@/views/admin/Reservations.vue')
 const AdminGiftCards = () => import('@/views/admin/GiftCards.vue')
 const AdminEventGalleries = () => import('@/views/admin/EventGalleries.vue')
+const AdminOrders = () => import('@/views/admin/Orders.vue')
 
 export const routes: RouteRecordRaw[] = [
     {
@@ -238,7 +239,13 @@ export const routes: RouteRecordRaw[] = [
         path: '/admin/events',
         name: 'admin-events',
         component: AdminEventGalleries,
-        meta: {title: 'Galeries Evenements', layout: 'admin', requiresAdmin: true}
+        meta: {title: 'Galeries Événements', layout: 'admin', requiresAdmin: true}
+    },
+    {
+        path: '/admin/orders',
+        name: 'admin-orders',
+        component: AdminOrders,
+        meta: {title: 'Commandes', layout: 'admin', requiresAdmin: true}
     },
     // Catch-all redirect to home
     {

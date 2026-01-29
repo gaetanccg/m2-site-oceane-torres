@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Cart;
+use App\Models\CartItem;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
@@ -65,6 +66,7 @@ class OrderService
                 OrderItem::create([
                     'order_id' => $order->id,
                     'photo_id' => $item->photo_id,
+                    'product_type' => $item->product_type ?? 'digital',
                     'photo_title' => $item->photo->title,
                     'gallery_title' => $item->photo->gallery?->title,
                     'price' => $item->price,
@@ -89,19 +91,66 @@ class OrderService
         }
 
         try {
+            // If order already has a checkout, verify it's still valid and reuse it
+            if ($order->sumup_checkout_id) {
+                try {
+                    $existingCheckout = $this->sumUpService->getCheckout($order->sumup_checkout_id);
+
+                    // If checkout is still pending, reuse it
+                    if (in_array($existingCheckout['status'] ?? '', ['PENDING', 'NEW'])) {
+                        Log::info('Reusing existing SumUp checkout', [
+                            'order_id' => $order->id,
+                            'checkout_id' => $order->sumup_checkout_id,
+                        ]);
+
+                        return [
+                            'checkout_id' => $order->sumup_checkout_id,
+                            'order_id' => $order->id,
+                            'order_number' => $order->order_number,
+                        ];
+                    }
+
+                    // If checkout is paid, complete the order
+                    if ($existingCheckout['status'] === 'PAID') {
+                        $this->completeOrder($order, $existingCheckout['transaction_id'] ?? $order->sumup_checkout_id);
+                        throw new \Exception('Cette commande a déjà été payée.');
+                    }
+
+                    // If checkout failed or expired, deactivate it and create new one
+                    $this->sumUpService->deactivateCheckout($order->sumup_checkout_id);
+                    $order->update(['sumup_checkout_id' => null]);
+                } catch (\Exception $e) {
+                    // If we can't get the checkout, it might be expired - create a new one
+                    Log::warning('Could not reuse existing checkout, creating new one', [
+                        'order_id' => $order->id,
+                        'checkout_id' => $order->sumup_checkout_id,
+                        'error' => $e->getMessage(),
+                    ]);
+                    $order->update(['sumup_checkout_id' => null]);
+                }
+            }
+
             $checkout = $this->sumUpService->createCheckout($order);
 
-            // Create payment record
-            Payment::create([
-                'order_id' => $order->id,
-                'user_id' => $order->user_id,
-                'provider' => 'sumup',
-                'provider_payment_id' => $checkout['id'],
-                'amount' => $order->total,
-                'currency' => $order->currency,
-                'type' => 'photo_purchase',
-                'status' => 'pending',
-            ]);
+            // Create or update payment record
+            $existingPayment = Payment::where('order_id', $order->id)->first();
+            if ($existingPayment) {
+                $existingPayment->update([
+                    'provider_payment_id' => $checkout['id'],
+                    'status' => 'pending',
+                ]);
+            } else {
+                Payment::create([
+                    'order_id' => $order->id,
+                    'user_id' => $order->user_id,
+                    'provider' => 'sumup',
+                    'provider_payment_id' => $checkout['id'],
+                    'amount' => $order->total,
+                    'currency' => $order->currency,
+                    'type' => 'photo_purchase',
+                    'status' => 'pending',
+                ]);
+            }
 
             return [
                 'checkout_id' => $checkout['id'],
@@ -140,8 +189,16 @@ class OrderService
             // Generate download token
             $order->generateDownloadToken();
 
+            // Load items to check for prints
+            $order->load('items');
+
             // Send confirmation email
             $this->sendOrderConfirmationEmail($order);
+
+            // Send admin notification if order contains prints
+            if ($order->hasPrintItems()) {
+                $this->sendPrintOrderNotification($order);
+            }
 
             return $order->fresh(['items.photo']);
         });
@@ -230,6 +287,31 @@ class OrderService
             });
         } catch (\Exception $e) {
             Log::error('Failed to send order confirmation email', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Send notification to admin for print orders
+     */
+    private function sendPrintOrderNotification(Order $order): void
+    {
+        try {
+            $adminEmail = config('mail.admin_email', config('mail.from.address'));
+            if (!$adminEmail) {
+                return;
+            }
+
+            Mail::send('emails.print-order-notification', [
+                'order' => $order,
+            ], function ($message) use ($adminEmail, $order) {
+                $message->to($adminEmail)
+                    ->subject('Nouvelle commande avec tirage - ' . $order->order_number);
+            });
+        } catch (\Exception $e) {
+            Log::error('Failed to send print order notification', [
                 'order_id' => $order->id,
                 'error' => $e->getMessage(),
             ]);

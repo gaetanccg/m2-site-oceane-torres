@@ -311,6 +311,52 @@ export interface AdminGiftCard {
 }
 
 // ============================================================================
+// Orders
+// ============================================================================
+
+export type OrderStatus = 'pending' | 'paid' | 'failed' | 'refunded' | 'expired'
+export type ProductType = 'digital' | 'print_10x15' | 'print_15x20'
+
+export interface AdminOrderItem {
+    id: string
+    photo_id: string
+    product_type: ProductType
+    product_type_label: string
+    is_print: boolean
+    photo_title: string | null
+    gallery_title: string | null
+    price: number
+    is_downloaded: boolean
+    display_url: string | null
+}
+
+export interface AdminOrder {
+    id: string
+    order_number: string
+    status: OrderStatus
+    subtotal: number
+    total: number
+    currency: string
+    paid_at: string | null
+    created_at: string
+    items: AdminOrderItem[]
+    has_prints: boolean
+    customer_email: string
+    customer_name: string
+    user?: {
+        id: string
+        email: string
+        name: string
+    } | null
+    payment?: {
+        id: string
+        provider: string
+        status: string
+        provider_payment_id: string
+    } | null
+}
+
+// ============================================================================
 // Notifications
 // ============================================================================
 
