@@ -90,12 +90,39 @@ class MinioStorageService
         }
     }
 
+    /**
+     * Download a photo and return the temporary file path
+     */
     public function downloadPhoto(string $path): ?string
+    {
+        try {
+            $content = Storage::disk($this->disk)->get($path);
+            if (!$content) {
+                return null;
+            }
+
+            // Create a temp file and write content
+            $extension = pathinfo($path, PATHINFO_EXTENSION) ?: 'jpg';
+            $tempFile = tempnam(sys_get_temp_dir(), 'photo_') . '.' . $extension;
+            file_put_contents($tempFile, $content);
+
+            return $tempFile;
+        } catch (\Exception $e) {
+            \Log::error('MinIO download failed', ['path' => $path, 'error' => $e->getMessage()]);
+
+            return null;
+        }
+    }
+
+    /**
+     * Get raw file content
+     */
+    public function getFileContent(string $path): ?string
     {
         try {
             return Storage::disk($this->disk)->get($path);
         } catch (\Exception $e) {
-            \Log::error('MinIO download failed', ['error' => $e->getMessage()]);
+            \Log::error('MinIO get content failed', ['error' => $e->getMessage()]);
 
             return null;
         }

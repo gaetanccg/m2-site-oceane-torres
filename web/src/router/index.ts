@@ -26,6 +26,11 @@ const DownloadGallery = () => import('@/views/DownloadGallery.vue')
 const Events = () => import('@/views/Events.vue')
 const EventGallery = () => import('@/views/EventGallery.vue')
 
+// Cart & Checkout
+const Cart = () => import('@/views/Cart.vue')
+const Checkout = () => import('@/views/Checkout.vue')
+const OrderConfirmation = () => import('@/views/OrderConfirmation.vue')
+
 
 // Account pages (client)
 const AccountDashboard = () => import('@/views/account/Dashboard.vue')
@@ -139,6 +144,46 @@ export const routes: RouteRecordRaw[] = [
         meta: {
             title: 'Galerie Evenement',
             description: 'Galerie photos d\'evenement par Oceane Torres Photographie.'
+        }
+    },
+    // Cart & Checkout
+    {
+        path: '/panier',
+        name: 'cart',
+        component: Cart,
+        meta: {
+            title: 'Mon Panier',
+            robots: 'noindex, nofollow'
+        }
+    },
+    {
+        path: '/checkout',
+        name: 'checkout',
+        component: Checkout,
+        meta: {
+            title: 'Finaliser la commande',
+            robots: 'noindex, nofollow'
+        }
+    },
+    {
+        path: '/commande/confirmation',
+        name: 'order-confirmation-legacy',
+        redirect: to => {
+            // Redirect SumUp callback to proper order page
+            const orderId = to.query.order as string
+            if (orderId) {
+                return { name: 'order-confirmation', params: { id: orderId }, query: to.query }
+            }
+            return { name: 'home' }
+        }
+    },
+    {
+        path: '/commande/:id',
+        name: 'order-confirmation',
+        component: OrderConfirmation,
+        meta: {
+            title: 'Confirmation de commande',
+            robots: 'noindex, nofollow'
         }
     },
     // Account routes (client)

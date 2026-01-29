@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "b89c1377c8584bbb05c95238ef18dc06",
+    "content-hash": "b302a708c2facbf1f3bfa3f8a580b3c2",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -4071,6 +4071,63 @@
                 "source": "https://github.com/stripe/stripe-php/tree/v17.6.0"
             },
             "time": "2025-08-27T19:32:42+00:00"
+        },
+        {
+            "name": "sumup/sumup-ecom-php-sdk",
+            "version": "1.4.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/sumup/sumup-ecom-php-sdk.git",
+                "reference": "8d51db9cb202b2889a48612b4fe3dce8cb7d9c87"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/sumup/sumup-ecom-php-sdk/zipball/8d51db9cb202b2889a48612b4fe3dce8cb7d9c87",
+                "reference": "8d51db9cb202b2889a48612b4fe3dce8cb7d9c87",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^5.6|^7.0|^8.0"
+            },
+            "require-dev": {
+                "friendsofphp/php-cs-fixer": "3.5.0",
+                "phpunit/phpunit": "^9.6"
+            },
+            "suggest": {
+                "guzzlehttp/guzzle": "Allows for implementation of the Guzzle HTTP client"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "SumUp\\": "src/SumUp/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "Apache-2.0"
+            ],
+            "authors": [
+                {
+                    "name": "SumUp",
+                    "email": "integration@sumup.com",
+                    "homepage": "https://github.com/sumup"
+                }
+            ],
+            "description": "SumUp PHP SDK",
+            "homepage": "https://developer.sumup.com",
+            "keywords": [
+                "checkout",
+                "ecommerce",
+                "payment",
+                "payment processing",
+                "sdk",
+                "sumup"
+            ],
+            "support": {
+                "issues": "https://github.com/sumup/sumup-ecom-php-sdk/issues",
+                "source": "https://github.com/sumup/sumup-ecom-php-sdk/tree/v1.4.0"
+            },
+            "time": "2025-11-12T21:19:44+00:00"
         },
         {
             "name": "symfony/clock",
@@ -9309,5 +9366,5 @@
         "php": "^8.2"
     },
     "platform-dev": {},
-    "plugin-api-version": "2.6.0"
+    "plugin-api-version": "2.9.0"
 }

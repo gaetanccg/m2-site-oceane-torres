@@ -78,23 +78,33 @@
                             :key="photo.id"
                             class="break-inside-avoid"
                         >
-                            <div
-                                class="relative group bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow cursor-pointer"
-                                @click="openLightbox(index)"
-                            >
-                                <img
-                                    :src="photo.display_url || photo.file_path"
-                                    :alt="photo.title || 'Photo'"
-                                    class="w-full h-auto"
-                                    loading="lazy"
-                                />
-                                <!-- Hover overlay -->
-                                <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                                    <div class="opacity-0 group-hover:opacity-100 transition-opacity p-3 bg-white/90 rounded-full">
-                                        <svg class="w-6 h-6 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
-                                        </svg>
+                            <div class="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow">
+                                <div
+                                    class="relative group cursor-pointer"
+                                    @click="openLightbox(index)"
+                                >
+                                    <img
+                                        :src="photo.display_url || photo.file_path"
+                                        :alt="photo.title || 'Photo'"
+                                        class="w-full h-auto"
+                                        loading="lazy"
+                                    />
+                                    <!-- Hover overlay -->
+                                    <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                                        <div class="opacity-0 group-hover:opacity-100 transition-opacity p-3 bg-white/90 rounded-full">
+                                            <svg class="w-6 h-6 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                                            </svg>
+                                        </div>
                                     </div>
+                                </div>
+                                <!-- Add to cart button -->
+                                <div class="p-3 flex justify-center border-t border-gray-100">
+                                    <AddToCartButton
+                                        :photo-id="photo.id"
+                                        size="md"
+                                        show-label
+                                    />
                                 </div>
                             </div>
                         </div>
@@ -110,22 +120,33 @@
                 </div>
             </section>
 
-            <!-- Contact CTA -->
+            <!-- Purchase CTA -->
             <section class="py-12 px-6 bg-cream">
                 <div class="max-w-3xl mx-auto text-center">
                     <h2 class="text-2xl font-light mb-3">Vous vous reconnaissez ?</h2>
                     <p class="text-gray-600 font-light mb-6">
-                        Contactez-moi pour obtenir vos photos personnelles de cet événement.
+                        Ajoutez les photos qui vous plaisent au panier et commandez-les en haute qualité.
                     </p>
-                    <router-link
-                        to="/contact"
-                        class="inline-flex items-center gap-2 px-6 py-3 bg-gold text-white rounded-lg font-medium hover:opacity-90 transition-opacity"
-                    >
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                        </svg>
-                        Me contacter
-                    </router-link>
+                    <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+                        <router-link
+                            to="/panier"
+                            class="inline-flex items-center gap-2 px-6 py-3 bg-gold text-white rounded-lg font-medium hover:opacity-90 transition-opacity"
+                        >
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
+                            Voir mon panier
+                        </router-link>
+                        <router-link
+                            to="/contact"
+                            class="inline-flex items-center gap-2 px-6 py-3 border-2 border-gold text-gold rounded-lg font-medium hover:bg-gold hover:text-white transition-colors"
+                        >
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                            Me contacter
+                        </router-link>
+                    </div>
                 </div>
             </section>
         </template>
@@ -145,6 +166,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import Lightbox from '@/components/Lightbox.vue'
+import AddToCartButton from '@/components/cart/AddToCartButton.vue'
 import { API_CONFIG } from '@/config/constants'
 import type { LightboxImage } from '@/types'
 
@@ -197,7 +219,7 @@ const openLightbox = (index: number) => {
 const fetchGallery = async () => {
     const id = route.params.id as string
     if (!id) {
-        error.value = 'Galerie non trouvee'
+        error.value = 'Galerie non trouvée'
         isLoading.value = false
         return
     }
@@ -214,7 +236,7 @@ const fetchGallery = async () => {
             gallery.value = data.gallery
         } else {
             const data = await response.json()
-            error.value = data.message || 'Galerie non trouvee'
+            error.value = data.message || 'Galerie non trouvée'
         }
     } catch (_err) {
         error.value = 'Erreur de connexion'
