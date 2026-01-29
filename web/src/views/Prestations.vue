@@ -24,10 +24,26 @@
 
                 <!-- Error State -->
                 <div v-else-if="error" class="text-center py-20">
-                    <p class="text-gray-600 mb-4">{{ error }}</p>
-                    <button @click="loadPrestations" class="px-6 py-3 bg-gold text-white hover:opacity-90 transition-all">
-                        Réessayer
-                    </button>
+                    <div class="max-w-md mx-auto">
+                        <svg class="w-16 h-16 text-gold/60 mx-auto mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                        </svg>
+                        <p class="text-gray-600 font-light text-lg leading-relaxed">
+                            Je suis en train de recréer mes offres pour cette nouvelle année, alors un peu de patience, dans quelques jours tout sera à jour et disponible !
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Empty State -->
+                <div v-else-if="prestations.length === 0" class="text-center py-20">
+                    <div class="max-w-md mx-auto">
+                        <svg class="w-16 h-16 text-gold/60 mx-auto mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                        </svg>
+                        <p class="text-gray-600 font-light text-lg leading-relaxed">
+                            Je suis en train de recréer mes offres pour cette nouvelle année, alors un peu de patience, dans quelques jours tout sera à jour et disponible !
+                        </p>
+                    </div>
                 </div>
 
                 <!-- Prestations Grid -->
@@ -102,7 +118,7 @@
                 <h2 class="text-3xl font-light mb-8 text-center">Informations pratiques</h2>
 
                 <div class="space-y-6 text-gray-600 font-light">
-<div>
+                    <div>
                         <h3 class="text-xl font-normal text-black mb-2">Reservation</h3>
                         <p>Les reservations se font par mail ou via Instagram, avec un acompte de 30% pour confirmer votre date.</p>
                         <p>En cas de reel imprevu, il est possible d'annuler ou de deplacer le shooting en fonction des disponibilites.</p>
@@ -118,7 +134,7 @@
                         <h3 class="text-xl font-normal text-black mb-2">Zone d'intervention</h3>
                         <p>Deplacement dans toute la region Auvergne-Rhone-Alpes. Des frais additionnels peuvent s'ajouter en fonction de la distance.</p>
                     </div>
-</div>
+                </div>
             </div>
         </section>
 
