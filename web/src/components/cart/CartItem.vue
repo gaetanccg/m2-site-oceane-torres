@@ -102,7 +102,7 @@ function formatPrice(price: number): string {
 
 async function handleRemove() {
     isRemoving.value = true
-    await cartStore.removeItem(props.item.photo_id)
+    await cartStore.removeItem(props.item.id)
     isRemoving.value = false
 }
 </script>

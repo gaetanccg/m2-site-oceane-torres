@@ -180,4 +180,36 @@ class Order extends Model
 
         return true;
     }
+
+    /**
+     * Check if order has any print items
+     */
+    public function hasPrintItems(): bool
+    {
+        return $this->items->contains(fn ($item) => $item->isPrint());
+    }
+
+    /**
+     * Check if order is 100% digital
+     */
+    public function isFullyDigital(): bool
+    {
+        return !$this->hasPrintItems();
+    }
+
+    /**
+     * Get print items only
+     */
+    public function printItems()
+    {
+        return $this->items->filter(fn ($item) => $item->isPrint());
+    }
+
+    /**
+     * Get digital items only
+     */
+    public function digitalItems()
+    {
+        return $this->items->filter(fn ($item) => !$item->isPrint());
+    }
 }

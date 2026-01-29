@@ -16,6 +16,14 @@ export class CartApiError extends Error {
 }
 
 // Types
+export type ProductType = 'digital' | 'print_10x15' | 'print_15x20'
+
+export interface ProductTypeInfo {
+    label: string
+    price: number
+    is_print: boolean
+}
+
 export interface CartItem {
     id: string
     photo_id: string
@@ -25,6 +33,9 @@ export interface CartItem {
         display_url: string | null
         gallery_title: string | null
     }
+    product_type: ProductType
+    product_type_label: string
+    is_print: boolean
     price: number
 }
 
@@ -33,7 +44,9 @@ export interface Cart {
     items: CartItem[]
     items_count: number
     total: number
+    has_prints: boolean
     currency: string
+    product_types: Record<ProductType, ProductTypeInfo>
 }
 
 export interface CartResponse {
@@ -46,6 +59,9 @@ export interface CartResponse {
 export interface OrderItem {
     id: string
     photo_id: string
+    product_type: ProductType
+    product_type_label: string
+    is_print: boolean
     photo_title: string | null
     gallery_title: string | null
     price: number
@@ -63,6 +79,7 @@ export interface Order {
     paid_at: string | null
     created_at: string
     items: OrderItem[]
+    has_prints: boolean
     customer_email: string
     customer_name: string
 }
@@ -178,10 +195,10 @@ class CartApiService {
         return response
     }
 
-    async addToCart(photoId: string): Promise<CartResponse> {
+    async addToCart(photoId: string, productType: ProductType = 'digital'): Promise<CartResponse> {
         const response = await this.request<CartResponse>('/cart/add', {
             method: 'POST',
-            body: JSON.stringify({ photo_id: photoId }),
+            body: JSON.stringify({ photo_id: photoId, product_type: productType }),
         })
         if (response.session_id) {
             this.setSessionId(response.session_id)
@@ -189,8 +206,15 @@ class CartApiService {
         return response
     }
 
-    async removeFromCart(photoId: string): Promise<CartResponse> {
-        return this.request<CartResponse>(`/cart/remove/${photoId}`, {
+    async updateItemType(itemId: string, productType: ProductType): Promise<CartResponse> {
+        return this.request<CartResponse>(`/cart/item/${itemId}/type`, {
+            method: 'PUT',
+            body: JSON.stringify({ product_type: productType }),
+        })
+    }
+
+    async removeFromCart(itemId: string): Promise<CartResponse> {
+        return this.request<CartResponse>(`/cart/item/${itemId}`, {
             method: 'DELETE',
         })
     }

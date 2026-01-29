@@ -41,20 +41,22 @@ class CartController extends Controller
     {
         $validated = $request->validate([
             'photo_id' => ['required', 'uuid', 'exists:photos,id'],
+            'product_type' => ['nullable', 'string', 'in:digital,print_10x15,print_15x20'],
             'session_id' => ['nullable', 'string'],
         ]);
 
         $user = $request->user();
         $sessionId = $request->header('X-Cart-Session') ?? $validated['session_id'] ?? null;
+        $productType = $validated['product_type'] ?? 'digital';
 
         try {
             $cart = $this->cartService->getOrCreateCart($user, $sessionId);
-            $this->cartService->addItem($cart, $validated['photo_id']);
+            $this->cartService->addItem($cart, $validated['photo_id'], $productType);
             $summary = $this->cartService->getCartSummary($cart->fresh(['items.photo']));
 
             return response()->json([
                 'success' => true,
-                'message' => 'Photo ajoutee au panier.',
+                'message' => 'Photo ajoutée au panier.',
                 'cart' => $summary,
                 'session_id' => $cart->session_id,
             ]);
@@ -67,20 +69,51 @@ class CartController extends Controller
     }
 
     /**
-     * Remove a photo from cart
+     * Update item product type
      */
-    public function removeItem(Request $request, string $photoId): JsonResponse
+    public function updateItemType(Request $request, string $itemId): JsonResponse
+    {
+        $validated = $request->validate([
+            'product_type' => ['required', 'string', 'in:digital,print_10x15,print_15x20'],
+            'session_id' => ['nullable', 'string'],
+        ]);
+
+        $user = $request->user();
+        $sessionId = $request->header('X-Cart-Session') ?? $validated['session_id'] ?? null;
+
+        try {
+            $cart = $this->cartService->getOrCreateCart($user, $sessionId);
+            $this->cartService->updateItemType($cart, $itemId, $validated['product_type']);
+            $summary = $this->cartService->getCartSummary($cart->fresh(['items.photo']));
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Type de produit mis à jour.',
+                'cart' => $summary,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+    /**
+     * Remove an item from cart by item ID
+     */
+    public function removeItem(Request $request, string $itemId): JsonResponse
     {
         $user = $request->user();
         $sessionId = $request->header('X-Cart-Session') ?? $request->input('session_id');
 
         $cart = $this->cartService->getOrCreateCart($user, $sessionId);
-        $removed = $this->cartService->removeItem($cart, $photoId);
+        $removed = $this->cartService->removeItem($cart, $itemId);
 
         if (! $removed) {
             return response()->json([
                 'success' => false,
-                'message' => 'Photo non trouvee dans le panier.',
+                'message' => 'Article non trouvé dans le panier.',
             ], 404);
         }
 
@@ -88,7 +121,7 @@ class CartController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Photo retiree du panier.',
+            'message' => 'Article retiré du panier.',
             'cart' => $summary,
         ]);
     }

@@ -72,37 +72,89 @@ class CartService
     }
 
     /**
-     * Add a photo to the cart
+     * Add a photo to the cart with a specific product type
      */
-    public function addItem(Cart $cart, string $photoId): CartItem
+    public function addItem(Cart $cart, string $photoId, string $productType = 'digital'): CartItem
     {
         $photo = Photo::findOrFail($photoId);
+
+        // Validate product type
+        if (!array_key_exists($productType, CartItem::PRODUCT_TYPES)) {
+            $productType = 'digital';
+        }
 
         // Check if photo is purchasable
         if (! $photo->is_purchasable) {
             throw new \Exception('Cette photo n\'est pas disponible à l\'achat.');
         }
 
-        // Check if already in cart
-        $existingItem = $cart->items()->where('photo_id', $photoId)->first();
+        // Check if same photo with same product type already in cart
+        $existingItem = $cart->items()
+            ->where('photo_id', $photoId)
+            ->where('product_type', $productType)
+            ->first();
+
         if ($existingItem) {
             return $existingItem;
         }
 
-        // Get price (custom price or default)
-        $price = $photo->effective_price;
+        // Get price for product type
+        $price = CartItem::getPriceForType($productType);
 
         return CartItem::create([
             'cart_id' => $cart->id,
             'photo_id' => $photoId,
+            'product_type' => $productType,
             'price' => $price,
         ]);
     }
 
     /**
-     * Remove a photo from the cart
+     * Update product type for a cart item
      */
-    public function removeItem(Cart $cart, string $photoId): bool
+    public function updateItemType(Cart $cart, string $itemId, string $productType): CartItem
+    {
+        // Validate product type
+        if (!array_key_exists($productType, CartItem::PRODUCT_TYPES)) {
+            throw new \Exception('Type de produit invalide.');
+        }
+
+        $item = $cart->items()->where('id', $itemId)->firstOrFail();
+
+        // Check if another item with same photo and product type exists
+        $existingItem = $cart->items()
+            ->where('photo_id', $item->photo_id)
+            ->where('product_type', $productType)
+            ->where('id', '!=', $itemId)
+            ->first();
+
+        if ($existingItem) {
+            // Delete current item and return existing
+            $item->delete();
+            return $existingItem;
+        }
+
+        // Update product type and price
+        $item->update([
+            'product_type' => $productType,
+            'price' => CartItem::getPriceForType($productType),
+        ]);
+
+        return $item->fresh();
+    }
+
+    /**
+     * Remove an item from the cart by item ID
+     */
+    public function removeItem(Cart $cart, string $itemId): bool
+    {
+        return $cart->items()->where('id', $itemId)->delete() > 0;
+    }
+
+    /**
+     * Remove a photo from the cart (all product types)
+     */
+    public function removePhoto(Cart $cart, string $photoId): bool
     {
         return $cart->items()->where('photo_id', $photoId)->delete() > 0;
     }
@@ -124,10 +176,17 @@ class CartService
 
         // Move items from guest cart to user cart
         foreach ($guestCart->items as $item) {
-            if (! $userCart->hasPhoto($item->photo_id)) {
+            // Check if same photo with same product type exists
+            $exists = $userCart->items()
+                ->where('photo_id', $item->photo_id)
+                ->where('product_type', $item->product_type ?? 'digital')
+                ->exists();
+
+            if (!$exists) {
                 CartItem::create([
                     'cart_id' => $userCart->id,
                     'photo_id' => $item->photo_id,
+                    'product_type' => $item->product_type ?? 'digital',
                     'price' => $item->price,
                 ]);
             }
@@ -166,6 +225,9 @@ class CartService
                     'display_url' => $item->photo->display_url,
                     'gallery_title' => $item->photo->gallery?->title,
                 ],
+                'product_type' => $item->product_type ?? 'digital',
+                'product_type_label' => CartItem::getLabelForType($item->product_type ?? 'digital'),
+                'is_print' => $item->isPrint(),
                 'price' => (float) $item->price,
             ];
         });
@@ -175,7 +237,9 @@ class CartService
             'items' => $items,
             'items_count' => $items->count(),
             'total' => $items->sum('price'),
+            'has_prints' => $items->contains('is_print', true),
             'currency' => config('sumup.photo.currency', 'EUR'),
+            'product_types' => CartItem::PRODUCT_TYPES,
         ];
     }
 

@@ -359,6 +359,47 @@ class OrderController extends Controller
     }
 
     /**
+     * Admin: Delete a pending order
+     */
+    public function adminDestroy(string $orderId): JsonResponse
+    {
+        $order = Order::findOrFail($orderId);
+
+        // Only allow deleting pending or failed orders
+        if (!in_array($order->status, ['pending', 'failed'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Seules les commandes en attente ou échouées peuvent être supprimées.',
+            ], 400);
+        }
+
+        // Deactivate SumUp checkout if exists
+        if ($order->sumup_checkout_id) {
+            try {
+                $sumupService = new \App\Services\SumUpService();
+                $sumupService->deactivateCheckout($order->sumup_checkout_id);
+            } catch (\Exception $e) {
+                // Log but don't block deletion
+                \Illuminate\Support\Facades\Log::warning('Failed to deactivate SumUp checkout', [
+                    'order_id' => $order->id,
+                    'checkout_id' => $order->sumup_checkout_id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        // Delete related items and payment
+        $order->items()->delete();
+        $order->payment?->delete();
+        $order->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Commande supprimée.',
+        ]);
+    }
+
+    /**
      * Format order for API response
      */
     private function formatOrder(Order $order): array
@@ -375,12 +416,16 @@ class OrderController extends Controller
             'items' => $order->items->map(fn ($item) => [
                 'id' => $item->id,
                 'photo_id' => $item->photo_id,
+                'product_type' => $item->product_type ?? 'digital',
+                'product_type_label' => $item->getProductTypeLabel(),
+                'is_print' => $item->isPrint(),
                 'photo_title' => $item->photo_title,
                 'gallery_title' => $item->gallery_title,
                 'price' => (float) $item->price,
                 'is_downloaded' => $item->is_downloaded,
                 'display_url' => $item->photo?->display_url,
             ]),
+            'has_prints' => $order->hasPrintItems(),
             'customer_email' => $order->customer_email,
             'customer_name' => $order->customer_name,
         ];

@@ -47,6 +47,21 @@
                         </div>
                     </div>
 
+                    <!-- Print notice -->
+                    <div v-if="order.has_prints" class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
+                        <div class="flex items-start gap-3">
+                            <svg class="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                            </svg>
+                            <div>
+                                <p class="font-medium text-amber-800">Tirages papier inclus</p>
+                                <p class="text-sm text-amber-700 mt-1">
+                                    Votre commande contient des tirages papier qui seront préparés et expédiés par la photographe. Vous serez contacté(e) pour les détails de livraison.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Order summary -->
                     <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
                         <h2 class="font-medium text-gray-900 mb-4">Récapitulatif</h2>
@@ -67,6 +82,16 @@
                                 <div class="flex-1">
                                     <p class="font-medium text-gray-900">{{ item.photo_title || 'Photo' }}</p>
                                     <p v-if="item.gallery_title" class="text-sm text-gray-500">{{ item.gallery_title }}</p>
+                                    <span
+                                        :class="[
+                                            'inline-flex items-center mt-1 px-2 py-0.5 rounded text-xs font-medium',
+                                            item.is_print
+                                                ? 'bg-amber-100 text-amber-800'
+                                                : 'bg-blue-100 text-blue-800'
+                                        ]"
+                                    >
+                                        {{ item.product_type_label }}
+                                    </span>
                                 </div>
                                 <div class="text-gold font-medium">
                                     {{ formatPrice(item.price) }}
@@ -79,16 +104,16 @@
                         </div>
                     </div>
 
-                    <!-- Download section -->
-                    <div class="bg-white rounded-xl shadow-sm p-6">
-                        <h2 class="font-medium text-gray-900 mb-4">Télécharger vos photos</h2>
+                    <!-- Download section (only for digital items) -->
+                    <div v-if="digitalItems.length > 0" class="bg-white rounded-xl shadow-sm p-6">
+                        <h2 class="font-medium text-gray-900 mb-4">Télécharger vos photos numériques</h2>
                         <p class="text-sm text-gray-600 mb-4">
                             Cliquez sur les boutons ci-dessous pour télécharger vos photos en haute qualité.
                         </p>
 
                         <!-- Download all button -->
                         <button
-                            v-if="order.items.length > 1"
+                            v-if="digitalItems.length > 1"
                             @click="downloadAllPhotos"
                             :disabled="isDownloadingAll"
                             class="w-full mb-4 flex items-center justify-center gap-2 px-4 py-3 bg-gold text-white rounded-lg hover:bg-gold/90 transition-colors disabled:opacity-50"
@@ -111,7 +136,7 @@
                         <!-- Individual download buttons -->
                         <div class="space-y-3">
                             <button
-                                v-for="item in order.items"
+                                v-for="item in digitalItems"
                                 :key="item.id"
                                 @click="downloadPhoto(item.id, item.photo_title)"
                                 :disabled="downloadingItem === item.id"
@@ -217,7 +242,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { cartApi, type Order } from '@/services/cartApi'
 import { API_CONFIG } from '@/config/constants'
@@ -230,6 +255,11 @@ const error = ref('')
 const downloadingItem = ref<string | null>(null)
 const isDownloadingAll = ref(false)
 let pollInterval: number | null = null
+
+const digitalItems = computed(() => {
+    if (!order.value) return []
+    return order.value.items.filter(item => !item.is_print)
+})
 
 function formatPrice(price: number): string {
     return new Intl.NumberFormat('fr-FR', {

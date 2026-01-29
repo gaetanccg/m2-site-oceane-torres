@@ -107,11 +107,11 @@
                     <!-- Actions -->
                     <div class="space-y-2">
                         <router-link
-                            to="/checkout"
+                            to="/panier"
                             @click="cartStore.closeDrawer()"
                             class="block w-full py-3 bg-gold text-white text-center font-medium rounded-lg hover:bg-gold/90 transition-colors"
                         >
-                            Commander
+                            Voir le panier
                         </router-link>
                         <button
                             @click="handleClear"
