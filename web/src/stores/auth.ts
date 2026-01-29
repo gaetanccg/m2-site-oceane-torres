@@ -3,12 +3,13 @@
  * Gere l'etat de connexion et les tokens pour admin et clients
  */
 
-import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
-import type { User } from '@/types/admin'
-import type { RegisterData } from '@/types/account'
-import { adminApi } from '@/services/adminApi'
-import { authApi } from '@/services/authApi'
+import {defineStore} from 'pinia'
+import {ref, computed} from 'vue'
+import type {User} from '@/types/admin'
+import type {RegisterData} from '@/types/account'
+import {adminApi, AdminApiError} from '@/services/adminApi'
+import {authApi, AuthApiError} from '@/services/authApi'
+import {ERROR_MESSAGES} from '@/utils/errorHandler'
 
 export const useAuthStore = defineStore('auth', () => {
     // State
@@ -17,6 +18,37 @@ export const useAuthStore = defineStore('auth', () => {
     const isLoading = ref(false)
     const isInitialized = ref(false)
     const error = ref<string | null>(null)
+    const fieldErrors = ref<Record<string, string>>({})
+
+    /**
+     * Extrait le message d'erreur approprié
+     */
+    function extractErrorMessage(e: unknown, defaultMessage: string): string {
+        if (e instanceof AdminApiError || e instanceof AuthApiError) {
+            return e.apiError.message
+        }
+        if (e instanceof Error) {
+            return e.message
+        }
+        return defaultMessage
+    }
+
+    /**
+     * Extrait les erreurs par champ pour les formulaires
+     */
+    function extractFieldErrors(e: unknown): Record<string, string> {
+        if (e instanceof AdminApiError || e instanceof AuthApiError) {
+            const apiError = e.apiError
+            if (apiError.errors) {
+                const result: Record<string, string> = {}
+                for (const [field, messages] of Object.entries(apiError.errors)) {
+                    result[field] = messages[0]
+                }
+                return result
+            }
+        }
+        return {}
+    }
 
     // Getters
     const isAuthenticated = computed(() => !!token.value && !!user.value)
@@ -41,6 +73,7 @@ export const useAuthStore = defineStore('auth', () => {
     async function login(email: string, password: string): Promise<boolean> {
         isLoading.value = true
         error.value = null
+        fieldErrors.value = {}
 
         try {
             const response = await adminApi.login(email, password)
@@ -52,10 +85,11 @@ export const useAuthStore = defineStore('auth', () => {
                 return true
             }
 
-            error.value = response.message || 'Erreur de connexion'
+            error.value = response.message || ERROR_MESSAGES.auth.invalidCredentials
             return false
         } catch (e) {
-            error.value = e instanceof Error ? e.message : 'Erreur de connexion'
+            error.value = extractErrorMessage(e, ERROR_MESSAGES.auth.invalidCredentials)
+            fieldErrors.value = extractFieldErrors(e)
             return false
         } finally {
             isLoading.value = false
@@ -68,6 +102,7 @@ export const useAuthStore = defineStore('auth', () => {
     async function loginClient(email: string, password: string): Promise<boolean> {
         isLoading.value = true
         error.value = null
+        fieldErrors.value = {}
 
         try {
             const response = await authApi.login(email, password)
@@ -79,10 +114,11 @@ export const useAuthStore = defineStore('auth', () => {
                 return true
             }
 
-            error.value = response.message || 'Erreur de connexion'
+            error.value = response.message || ERROR_MESSAGES.auth.invalidCredentials
             return false
         } catch (e) {
-            error.value = e instanceof Error ? e.message : 'Erreur de connexion'
+            error.value = extractErrorMessage(e, ERROR_MESSAGES.auth.invalidCredentials)
+            fieldErrors.value = extractFieldErrors(e)
             return false
         } finally {
             isLoading.value = false
@@ -95,6 +131,7 @@ export const useAuthStore = defineStore('auth', () => {
     async function register(data: RegisterData): Promise<boolean> {
         isLoading.value = true
         error.value = null
+        fieldErrors.value = {}
 
         try {
             const response = await authApi.register(data)
@@ -106,10 +143,11 @@ export const useAuthStore = defineStore('auth', () => {
                 return true
             }
 
-            error.value = 'Erreur lors de l\'inscription'
+            error.value = 'Une erreur est survenue lors de l\'inscription.'
             return false
         } catch (e) {
-            error.value = e instanceof Error ? e.message : 'Erreur lors de l\'inscription'
+            error.value = extractErrorMessage(e, 'Une erreur est survenue lors de l\'inscription.')
+            fieldErrors.value = extractFieldErrors(e)
             return false
         } finally {
             isLoading.value = false
@@ -178,6 +216,7 @@ export const useAuthStore = defineStore('auth', () => {
 
     function clearError(): void {
         error.value = null
+        fieldErrors.value = {}
     }
 
     return {
@@ -187,6 +226,7 @@ export const useAuthStore = defineStore('auth', () => {
         isLoading,
         isInitialized,
         error,
+        fieldErrors,
         // Getters
         isAuthenticated,
         isAdmin,

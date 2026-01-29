@@ -26,6 +26,17 @@ import type {
     AdminGiftCard,
     Notification,
 } from '@/types/admin'
+import { extractErrorFromResponse, parseApiError, ERROR_MESSAGES, type ApiError } from '@/utils/errorHandler'
+
+export class AdminApiError extends Error {
+    public apiError: ApiError
+
+    constructor(apiError: ApiError) {
+        super(apiError.message)
+        this.name = 'AdminApiError'
+        this.apiError = apiError
+    }
+}
 
 class AdminApiService {
     private baseUrl: string
@@ -105,22 +116,33 @@ class AdminApiService {
 
             if (response.status === 401) {
                 localStorage.removeItem('auth_token')
+                const apiError: ApiError = {
+                    status: 401,
+                    message: ERROR_MESSAGES.auth.sessionExpired,
+                    isNetworkError: false,
+                    isValidationError: false,
+                    isAuthError: true,
+                    isServerError: false,
+                }
                 window.location.href = '/?login=true'
-                throw new Error('Non autorisé')
+                throw new AdminApiError(apiError)
             }
 
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}))
-                throw new Error(errorData.message || `HTTP error! status: ${response.status}`)
+                const apiError = await extractErrorFromResponse(response)
+                throw new AdminApiError(apiError)
             }
 
             return await response.json()
         } catch (error) {
             clearTimeout(timeoutId)
-            if (error instanceof Error && error.name === 'AbortError') {
-                throw new Error('Request timeout')
+
+            if (error instanceof AdminApiError) {
+                throw error
             }
-            throw error
+
+            const apiError = parseApiError(error)
+            throw new AdminApiError(apiError)
         }
     }
 
