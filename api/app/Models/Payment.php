@@ -14,6 +14,7 @@ class Payment extends Model
 
     protected $fillable = [
         'reservation_id',
+        'order_id',
         'user_id',
         'provider',
         'provider_payment_id',
@@ -45,6 +46,11 @@ class Payment extends Model
     public function giftCard(): HasOne
     {
         return $this->hasOne(GiftCard::class);
+    }
+
+    public function order(): BelongsTo
+    {
+        return $this->belongsTo(Order::class);
     }
 
     public function isCompleted(): bool
