@@ -145,7 +145,7 @@ class CartController extends Controller
                 'items' => [],
                 'items_count' => 0,
                 'total' => 0,
-                'currency' => config('sumup.photo.currency', 'EUR'),
+                'currency' => 'EUR',
             ],
         ]);
     }

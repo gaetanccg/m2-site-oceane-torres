@@ -57,7 +57,7 @@ class OrderService
                 'guest_name' => $guestName,
                 'subtotal' => $subtotal,
                 'total' => $total,
-                'currency' => config('sumup.photo.currency', 'EUR'),
+                'currency' => 'EUR',
                 'status' => 'pending',
             ]);
 

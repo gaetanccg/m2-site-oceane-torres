@@ -35,11 +35,4 @@ return [
         ],
     ],
 
-    'supabase' => [
-        'url' => env('SUPABASE_URL'),
-        'key' => env('SUPABASE_KEY'),
-        'service_key' => env('SUPABASE_SERVICE_KEY'),
-        'edge_function_url' => env('SUPABASE_EDGE_FUNCTION_URL', 'https://ekhlybdoblhjigpnpbff.supabase.co/functions/v1'),
-    ],
-
 ];

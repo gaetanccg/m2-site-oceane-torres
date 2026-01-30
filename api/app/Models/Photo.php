@@ -112,7 +112,9 @@ class Photo extends Model
 
     public function getEffectivePriceAttribute(): float
     {
-        return $this->price ?? (float) config('sumup.photo.default_price', 5.00);
+        // Prix par défaut si la photo n'a pas de prix défini
+        // Les prix réels sont définis dans CartItem::PRODUCT_TYPES
+        return $this->price ?? 13.00;
     }
 
     public function toggleLike(): bool
