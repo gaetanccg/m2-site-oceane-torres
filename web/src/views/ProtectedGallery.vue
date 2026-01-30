@@ -107,14 +107,19 @@
                                     </WatermarkOverlay>
                                 </div>
 
-                                <!-- Like button below image -->
-                                <div class="p-3 flex justify-center border-t border-gold">
+                                <!-- Actions below image -->
+                                <div class="p-3 flex items-center justify-center gap-3 border-t border-gold">
                                     <LikeButton
                                         :photo-id="photo.id"
                                         :liked="photo.is_liked"
                                         size="lg"
                                         show-label
                                         @like="handleLike"
+                                    />
+                                    <AddToCartButton
+                                        :photo-id="photo.id"
+                                        size="md"
+                                        show-label
                                     />
                                 </div>
                             </div>
@@ -141,6 +146,7 @@ import {useRoute} from 'vue-router'
 import WatermarkOverlay from '@/components/WatermarkOverlay.vue'
 import LikeButton from '@/components/LikeButton.vue'
 import Lightbox from '@/components/Lightbox.vue'
+import AddToCartButton from '@/components/cart/AddToCartButton.vue'
 import {API_CONFIG} from '@/config/constants'
 import type {LightboxImage} from '@/types'
 
