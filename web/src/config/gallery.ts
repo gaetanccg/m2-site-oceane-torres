@@ -86,15 +86,26 @@ const categories: CategoryConfig[] = [
     }
 ]
 
+// Alt texts SEO-friendly par catégorie
+const categoryAltPrefix: Record<string, string> = {
+    'Portraits': 'Photo portrait par Océane Torres photographe Loire Saint-Étienne',
+    'Sport': 'Photo sportive par Océane Torres photographe Lyon Rhône',
+    'Animalier': 'Photo animalière par Océane Torres photographe Auvergne-Rhône-Alpes',
+    'Automobile': 'Shooting automobile par Océane Torres photographe Saint-Étienne Loire',
+    'Entreprise': 'Photo entreprise par Océane Torres photographe Lyon Saint-Étienne',
+}
+
 export function getGalleryItems(): GalleryItem[] {
     const items: GalleryItem[] = []
 
     // Ajouter les images des catégories
     for (const category of categories) {
-        for (const image of category.images) {
+        for (let i = 0; i < category.images.length; i++) {
+            const image = category.images[i]
+            const altPrefix = categoryAltPrefix[category.name] || category.name
             items.push({
                 url: `${category.basePath}/${image}`,
-                alt: `${category.name} - ${image}`,
+                alt: `${altPrefix} - ${i + 1}`,
                 type: 'image',
                 category: category.name
             })

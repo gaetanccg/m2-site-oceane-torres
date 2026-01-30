@@ -257,7 +257,8 @@
                                     <div>
                                         <h4 class="font-medium text-gray-900 mb-1">Zone d'intervention</h4>
                                         <p class="text-gray-600 text-sm">
-                                            Auvergne-Rhone-Alpes<br>
+                                            Loire (42) et Rhône (69)<br>
+                                            Saint-Étienne, Lyon, Rive-de-Gier, Saint-Chamond, Givors, Lorette<br>
                                             <span class="text-gray-400">Frais de déplacement au-delà de {{ BUSINESS_INFO.travelZone.free }}{{ BUSINESS_INFO.travelZone.unit }}</span>
                                         </p>
                                     </div>
