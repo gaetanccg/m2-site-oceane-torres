@@ -72,9 +72,13 @@
                                     v-model="loginForm.email"
                                     type="email"
                                     required
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold/50 focus:border-gold transition-colors"
+                                    :class="[
+                                        'w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-gold/50 focus:border-gold transition-colors',
+                                        authStore.fieldErrors.email ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                                    ]"
                                     placeholder="votre@email.com"
                                 />
+                                <p v-if="authStore.fieldErrors.email" class="mt-1 text-sm text-red-600">{{ authStore.fieldErrors.email }}</p>
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Mot de passe</label>
@@ -82,9 +86,13 @@
                                     v-model="loginForm.password"
                                     type="password"
                                     required
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold/50 focus:border-gold transition-colors"
+                                    :class="[
+                                        'w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-gold/50 focus:border-gold transition-colors',
+                                        authStore.fieldErrors.password ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                                    ]"
                                     placeholder="********"
                                 />
+                                <p v-if="authStore.fieldErrors.password" class="mt-1 text-sm text-red-600">{{ authStore.fieldErrors.password }}</p>
                             </div>
                             <button
                                 type="submit"
@@ -108,9 +116,13 @@
                                         v-model="registerForm.first_name"
                                         type="text"
                                         required
-                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold/50 focus:border-gold transition-colors"
+                                        :class="[
+                                            'w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-gold/50 focus:border-gold transition-colors',
+                                            authStore.fieldErrors.first_name ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                                        ]"
                                         placeholder="Prenom"
                                     />
+                                    <p v-if="authStore.fieldErrors.first_name" class="mt-1 text-sm text-red-600">{{ authStore.fieldErrors.first_name }}</p>
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Nom</label>
@@ -118,9 +130,13 @@
                                         v-model="registerForm.last_name"
                                         type="text"
                                         required
-                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold/50 focus:border-gold transition-colors"
+                                        :class="[
+                                            'w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-gold/50 focus:border-gold transition-colors',
+                                            authStore.fieldErrors.last_name ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                                        ]"
                                         placeholder="Nom"
                                     />
+                                    <p v-if="authStore.fieldErrors.last_name" class="mt-1 text-sm text-red-600">{{ authStore.fieldErrors.last_name }}</p>
                                 </div>
                             </div>
                             <div>
@@ -129,18 +145,26 @@
                                     v-model="registerForm.email"
                                     type="email"
                                     required
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold/50 focus:border-gold transition-colors"
+                                    :class="[
+                                        'w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-gold/50 focus:border-gold transition-colors',
+                                        authStore.fieldErrors.email ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                                    ]"
                                     placeholder="votre@email.com"
                                 />
+                                <p v-if="authStore.fieldErrors.email" class="mt-1 text-sm text-red-600">{{ authStore.fieldErrors.email }}</p>
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Telephone (optionnel)</label>
                                 <input
                                     v-model="registerForm.phone"
                                     type="tel"
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold/50 focus:border-gold transition-colors"
+                                    :class="[
+                                        'w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-gold/50 focus:border-gold transition-colors',
+                                        authStore.fieldErrors.phone ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                                    ]"
                                     placeholder="06 XX XX XX XX"
                                 />
+                                <p v-if="authStore.fieldErrors.phone" class="mt-1 text-sm text-red-600">{{ authStore.fieldErrors.phone }}</p>
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Mot de passe</label>
@@ -149,9 +173,13 @@
                                     type="password"
                                     required
                                     minlength="8"
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold/50 focus:border-gold transition-colors"
+                                    :class="[
+                                        'w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-gold/50 focus:border-gold transition-colors',
+                                        authStore.fieldErrors.password ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                                    ]"
                                     placeholder="Minimum 8 caracteres"
                                 />
+                                <p v-if="authStore.fieldErrors.password" class="mt-1 text-sm text-red-600">{{ authStore.fieldErrors.password }}</p>
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Confirmer le mot de passe</label>
@@ -159,9 +187,13 @@
                                     v-model="registerForm.password_confirmation"
                                     type="password"
                                     required
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold/50 focus:border-gold transition-colors"
+                                    :class="[
+                                        'w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-gold/50 focus:border-gold transition-colors',
+                                        authStore.fieldErrors.password_confirmation ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                                    ]"
                                     placeholder="********"
                                 />
+                                <p v-if="authStore.fieldErrors.password_confirmation" class="mt-1 text-sm text-red-600">{{ authStore.fieldErrors.password_confirmation }}</p>
                             </div>
                             <div class="flex items-start gap-2">
                                 <input
@@ -200,6 +232,8 @@
 import { ref, reactive, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useToast } from '@/composables/useToast'
+import { ERROR_MESSAGES } from '@/utils/errorHandler'
 
 const props = defineProps<{
     modelValue: boolean
@@ -212,6 +246,7 @@ const emit = defineEmits<{
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const toast = useToast()
 
 const activeTab = ref<'login' | 'register'>('login')
 
@@ -259,6 +294,7 @@ async function handleLogin() {
     const success = await authStore.loginClient(loginForm.email, loginForm.password)
     if (success) {
         close()
+        toast.success('Connexion reussie', `Bienvenue ${authStore.user?.first_name} !`)
         const redirect = route.query.redirect as string
         if (redirect) {
             router.push(redirect)
@@ -271,7 +307,7 @@ async function handleLogin() {
 
 async function handleRegister() {
     if (registerForm.password !== registerForm.password_confirmation) {
-        authStore.error = 'Les mots de passe ne correspondent pas'
+        authStore.error = ERROR_MESSAGES.form.passwordMismatch
         return
     }
 
@@ -286,6 +322,7 @@ async function handleRegister() {
 
     if (success) {
         close()
+        toast.success('Inscription reussie', 'Bienvenue ! Votre compte a ete cree.')
         router.push('/mon-compte')
     }
 }

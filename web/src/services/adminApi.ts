@@ -24,8 +24,20 @@ import type {
     GalleryFormData,
     EventGalleryFormData,
     AdminGiftCard,
+    AdminOrder,
     Notification,
 } from '@/types/admin'
+import { extractErrorFromResponse, parseApiError, ERROR_MESSAGES, type ApiError } from '@/utils/errorHandler'
+
+export class AdminApiError extends Error {
+    public apiError: ApiError
+
+    constructor(apiError: ApiError) {
+        super(apiError.message)
+        this.name = 'AdminApiError'
+        this.apiError = apiError
+    }
+}
 
 class AdminApiService {
     private baseUrl: string
@@ -105,22 +117,33 @@ class AdminApiService {
 
             if (response.status === 401) {
                 localStorage.removeItem('auth_token')
+                const apiError: ApiError = {
+                    status: 401,
+                    message: ERROR_MESSAGES.auth.sessionExpired,
+                    isNetworkError: false,
+                    isValidationError: false,
+                    isAuthError: true,
+                    isServerError: false,
+                }
                 window.location.href = '/?login=true'
-                throw new Error('Non autorisé')
+                throw new AdminApiError(apiError)
             }
 
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}))
-                throw new Error(errorData.message || `HTTP error! status: ${response.status}`)
+                const apiError = await extractErrorFromResponse(response)
+                throw new AdminApiError(apiError)
             }
 
             return await response.json()
         } catch (error) {
             clearTimeout(timeoutId)
-            if (error instanceof Error && error.name === 'AbortError') {
-                throw new Error('Request timeout')
+
+            if (error instanceof AdminApiError) {
+                throw error
             }
-            throw error
+
+            const apiError = parseApiError(error)
+            throw new AdminApiError(apiError)
         }
     }
 
@@ -494,6 +517,44 @@ class AdminApiService {
         return this.request<AdminApiResponse<AdminGiftCard>>(`/admin/gift-cards/${id}`, {
             method: 'PUT',
             body: JSON.stringify(data),
+        })
+    }
+
+    // ========================================================================
+    // Orders
+    // ========================================================================
+
+    async getOrders(
+        page = 1,
+        perPage = 20,
+        status?: string,
+        search?: string
+    ): Promise<{
+        success: boolean
+        orders: AdminOrder[]
+        pagination: {
+            current_page: number
+            last_page: number
+            per_page: number
+            total: number
+        }
+    }> {
+        const params = new URLSearchParams()
+        params.append('page', page.toString())
+        params.append('per_page', perPage.toString())
+        if (status) params.append('status', status)
+        if (search) params.append('search', search)
+
+        return this.request(`/admin/orders?${params.toString()}`)
+    }
+
+    async getOrder(id: string): Promise<{ success: boolean; order: AdminOrder }> {
+        return this.request(`/admin/orders/${id}`)
+    }
+
+    async deleteOrder(id: string): Promise<{ success: boolean; message: string }> {
+        return this.request(`/admin/orders/${id}`, {
+            method: 'DELETE',
         })
     }
 

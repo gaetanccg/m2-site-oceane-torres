@@ -152,9 +152,14 @@ const EventIcon = () => h('svg', {class: 'w-5 h-5', fill: 'none', stroke: 'curre
     h('path', {'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M12 11v4m0 0l-2-2m2 2l2-2'})
 ])
 
+const OrderIcon = () => h('svg', {class: 'w-5 h-5', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24'}, [
+    h('path', {'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z'})
+])
+
 const menuItems = [
     {path: '/admin', label: 'Tableau de bord', icon: DashboardIcon},
-    {path: '/admin/reservations', label: 'Reservations', icon: CalendarIcon},
+    {path: '/admin/reservations', label: 'Réservations', icon: CalendarIcon},
+    {path: '/admin/orders', label: 'Commandes', icon: OrderIcon},
     {path: '/admin/clients', label: 'Clients', icon: UsersIcon},
     {path: '/admin/prestations', label: 'Prestations', icon: CameraIcon},
     {path: '/admin/galleries', label: 'Galeries Clients', icon: ImageIcon},
