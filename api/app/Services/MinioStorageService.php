@@ -97,13 +97,13 @@ class MinioStorageService
     {
         try {
             $content = Storage::disk($this->disk)->get($path);
-            if (!$content) {
+            if (! $content) {
                 return null;
             }
 
             // Create a temp file and write content
             $extension = pathinfo($path, PATHINFO_EXTENSION) ?: 'jpg';
-            $tempFile = tempnam(sys_get_temp_dir(), 'photo_') . '.' . $extension;
+            $tempFile = tempnam(sys_get_temp_dir(), 'photo_').'.'.$extension;
             file_put_contents($tempFile, $content);
 
             return $tempFile;

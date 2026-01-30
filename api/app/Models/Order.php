@@ -94,7 +94,7 @@ class Order extends Model
     public function getCustomerNameAttribute(): string
     {
         if ($this->user) {
-            return trim($this->user->first_name . ' ' . $this->user->last_name);
+            return trim($this->user->first_name.' '.$this->user->last_name);
         }
 
         return $this->guest_name ?? '';
@@ -194,7 +194,7 @@ class Order extends Model
      */
     public function isFullyDigital(): bool
     {
-        return !$this->hasPrintItems();
+        return ! $this->hasPrintItems();
     }
 
     /**
@@ -210,6 +210,6 @@ class Order extends Model
      */
     public function digitalItems()
     {
-        return $this->items->filter(fn ($item) => !$item->isPrint());
+        return $this->items->filter(fn ($item) => ! $item->isPrint());
     }
 }

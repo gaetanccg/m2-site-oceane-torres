@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Cart;
-use App\Models\CartItem;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
@@ -37,6 +36,7 @@ class OrderService
                 'order_id' => $existingOrder->id,
                 'cart_id' => $cart->id,
             ]);
+
             return $existingOrder;
         }
 
@@ -276,14 +276,14 @@ class OrderService
             }
 
             $downloadToken = $order->metadata['download_token'] ?? null;
-            $downloadUrl = config('app.frontend_url') . '/commande/' . $order->id . '?token=' . $downloadToken;
+            $downloadUrl = config('app.frontend_url').'/commande/'.$order->id.'?token='.$downloadToken;
 
             Mail::send('emails.order-confirmation', [
                 'order' => $order,
                 'downloadUrl' => $downloadUrl,
             ], function ($message) use ($email, $order) {
                 $message->to($email)
-                    ->subject('Confirmation de commande - ' . $order->order_number);
+                    ->subject('Confirmation de commande - '.$order->order_number);
             });
         } catch (\Exception $e) {
             Log::error('Failed to send order confirmation email', [
@@ -300,7 +300,7 @@ class OrderService
     {
         try {
             $adminEmail = config('mail.admin_email', config('mail.from.address'));
-            if (!$adminEmail) {
+            if (! $adminEmail) {
                 return;
             }
 
@@ -308,7 +308,7 @@ class OrderService
                 'order' => $order,
             ], function ($message) use ($adminEmail, $order) {
                 $message->to($adminEmail)
-                    ->subject('Nouvelle commande avec tirage - ' . $order->order_number);
+                    ->subject('Nouvelle commande avec tirage - '.$order->order_number);
             });
         } catch (\Exception $e) {
             Log::error('Failed to send print order notification', [

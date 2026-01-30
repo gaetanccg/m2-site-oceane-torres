@@ -38,7 +38,7 @@ class OrderController extends Controller
             'session_id' => ['nullable', 'string'],
         ];
 
-        if (!$user) {
+        if (! $user) {
             $rules['guest_email'] = ['required', 'email'];
         } else {
             $rules['guest_email'] = ['nullable', 'email'];
@@ -217,7 +217,7 @@ class OrderController extends Controller
             $order = $this->orderService->getOrderForDownload($orderId, $token, $user);
 
             $storageService = new MinioStorageService;
-            $zipFile = tempnam(sys_get_temp_dir(), 'order_photos_') . '.zip';
+            $zipFile = tempnam(sys_get_temp_dir(), 'order_photos_').'.zip';
             $zip = new \ZipArchive;
 
             if ($zip->open($zipFile, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
@@ -259,7 +259,7 @@ class OrderController extends Controller
                 }
             }
 
-            return Response::download($zipFile, 'commande_' . $order->order_number . '.zip', [
+            return Response::download($zipFile, 'commande_'.$order->order_number.'.zip', [
                 'Content-Type' => 'application/zip',
             ])->deleteFileAfterSend(true);
         } catch (\Exception $e) {
@@ -344,7 +344,7 @@ class OrderController extends Controller
                 'user' => $order->user ? [
                     'id' => $order->user->id,
                     'email' => $order->user->email,
-                    'name' => trim($order->user->first_name . ' ' . $order->user->last_name),
+                    'name' => trim($order->user->first_name.' '.$order->user->last_name),
                 ] : null,
                 'payment' => $order->payment ? [
                     'id' => $order->payment->id,
@@ -366,7 +366,7 @@ class OrderController extends Controller
         $order = Order::findOrFail($orderId);
 
         // Only allow deleting pending or failed orders
-        if (!in_array($order->status, ['pending', 'failed'])) {
+        if (! in_array($order->status, ['pending', 'failed'])) {
             return response()->json([
                 'success' => false,
                 'message' => 'Seules les commandes en attente ou échouées peuvent être supprimées.',
@@ -376,7 +376,7 @@ class OrderController extends Controller
         // Deactivate SumUp checkout if exists
         if ($order->sumup_checkout_id) {
             try {
-                $sumupService = new \App\Services\SumUpService();
+                $sumupService = new \App\Services\SumUpService;
                 $sumupService->deactivateCheckout($order->sumup_checkout_id);
             } catch (\Exception $e) {
                 // Log but don't block deletion

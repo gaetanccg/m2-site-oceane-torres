@@ -32,15 +32,15 @@ class SumUpService
         // Use order ID (UUID) as checkout_reference to ensure uniqueness
         // even if order_number gets reused after deletion
         $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $this->apiKey,
+            'Authorization' => 'Bearer '.$this->apiKey,
             'Content-Type' => 'application/json',
-        ])->post($this->apiUrl . '/v0.1/checkouts', [
+        ])->post($this->apiUrl.'/v0.1/checkouts', [
             'checkout_reference' => $order->id,
             'amount' => (float) $order->total,
             'currency' => $order->currency,
             'merchant_code' => $this->merchantCode,
-            'description' => 'Commande photos - ' . $order->order_number,
-            'return_url' => $this->returnUrl . '?order=' . $order->id,
+            'description' => 'Commande photos - '.$order->order_number,
+            'return_url' => $this->returnUrl.'?order='.$order->id,
         ]);
 
         if (! $response->successful()) {
@@ -50,7 +50,7 @@ class SumUpService
                 'response' => $response->json(),
             ]);
 
-            throw new \Exception('Erreur lors de la création du checkout SumUp: ' . ($response->json()['message'] ?? 'Unknown error'));
+            throw new \Exception('Erreur lors de la création du checkout SumUp: '.($response->json()['message'] ?? 'Unknown error'));
         }
 
         $data = $response->json();
@@ -69,8 +69,8 @@ class SumUpService
     public function getCheckout(string $checkoutId): array
     {
         $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $this->apiKey,
-        ])->get($this->apiUrl . '/v0.1/checkouts/' . $checkoutId);
+            'Authorization' => 'Bearer '.$this->apiKey,
+        ])->get($this->apiUrl.'/v0.1/checkouts/'.$checkoutId);
 
         if (! $response->successful()) {
             Log::error('SumUp get checkout failed', [
@@ -92,9 +92,9 @@ class SumUpService
     public function processCheckout(string $checkoutId, array $cardData): array
     {
         $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $this->apiKey,
+            'Authorization' => 'Bearer '.$this->apiKey,
             'Content-Type' => 'application/json',
-        ])->put($this->apiUrl . '/v0.1/checkouts/' . $checkoutId, [
+        ])->put($this->apiUrl.'/v0.1/checkouts/'.$checkoutId, [
             'payment_type' => 'card',
             'card' => $cardData,
         ]);
@@ -142,8 +142,8 @@ class SumUpService
     public function deactivateCheckout(string $checkoutId): bool
     {
         $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $this->apiKey,
-        ])->delete($this->apiUrl . '/v0.1/checkouts/' . $checkoutId);
+            'Authorization' => 'Bearer '.$this->apiKey,
+        ])->delete($this->apiUrl.'/v0.1/checkouts/'.$checkoutId);
 
         return $response->successful();
     }
@@ -154,8 +154,8 @@ class SumUpService
     public function getPaymentMethods(): array
     {
         $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $this->apiKey,
-        ])->get($this->apiUrl . '/v0.1/merchants/' . $this->merchantCode . '/payment-methods');
+            'Authorization' => 'Bearer '.$this->apiKey,
+        ])->get($this->apiUrl.'/v0.1/merchants/'.$this->merchantCode.'/payment-methods');
 
         if (! $response->successful()) {
             return [];
