@@ -594,6 +594,80 @@ sudo docker exec oceane-laravel chmod -R 775 storage bootstrap/cache
 sudo docker exec oceane-laravel chown -R www-data:www-data storage bootstrap/cache
 ```
 
+### Erreur CORS "No 'Access-Control-Allow-Origin' header"
+
+Cette erreur masque souvent une **erreur 500** côté serveur. Laravel ne renvoie pas les headers CORS quand il crash.
+
+**Diagnostic :**
+```bash
+# Tester directement l'API
+curl -I https://api.oceanetorresphotographie.fr/api/cart
+
+# Si 500, vérifier les logs Laravel
+sudo docker exec oceane-laravel tail -50 /var/www/storage/logs/laravel.log
+```
+
+**Causes fréquentes :**
+- Variables d'environnement manquantes (voir ci-dessous)
+- Cache de configuration obsolète
+
+### Erreur "Cannot assign null to property" (ex: SumUpService::$apiKey)
+
+Le `.env` est correct mais Laravel utilise des valeurs en cache.
+
+**Solution :**
+```bash
+# Vider TOUS les caches
+sudo docker exec oceane-laravel php artisan config:clear
+sudo docker exec oceane-laravel php artisan cache:clear
+sudo docker exec oceane-laravel php artisan route:clear
+sudo docker exec oceane-laravel php artisan view:clear
+
+# Vérifier que la config est bien lue
+sudo docker exec oceane-laravel php artisan tinker --execute="echo config('sumup.api_key') ? 'OK' : 'NULL';"
+```
+
+### Erreur 404 sur toutes les routes API
+
+Nginx retourne 404 sans passer à PHP-FPM.
+
+**Causes possibles :**
+
+1. **Mauvais hostname dans nginx.conf** - Vérifier que `fastcgi_pass` utilise le bon nom de conteneur :
+   ```bash
+   sudo docker exec oceane-nginx cat /etc/nginx/conf.d/default.conf | grep fastcgi_pass
+   # Doit afficher : fastcgi_pass oceane-laravel:9000;
+   ```
+
+2. **Permissions des fichiers PHP** - Les fichiers doivent être lisibles par nginx :
+   ```bash
+   # Vérifier les permissions
+   sudo docker exec oceane-nginx ls -la /var/www/public/index.php
+   # Si -rw------- (600), nginx ne peut pas lire !
+
+   # Corriger les permissions sur le NAS
+   find /volume1/docker/oceane-api/api -type f -name "*.php" -exec chmod 644 {} \;
+   find /volume1/docker/oceane-api/api -type d -exec chmod 755 {} \;
+   ```
+
+3. **Conteneurs sur des réseaux différents** :
+   ```bash
+   # Vérifier que nginx peut atteindre laravel
+   sudo docker exec oceane-nginx ping -c 1 oceane-laravel
+   ```
+
+### Après transfert de fichiers : toujours vérifier les permissions
+
+Quand tu transfères des fichiers sur le NAS (via interface web, rsync, scp...), les permissions peuvent être incorrectes. **Toujours exécuter après un transfert :**
+
+```bash
+# Sur le NAS
+find /volume1/docker/oceane-api/api -type f -exec chmod 644 {} \;
+find /volume1/docker/oceane-api/api -type d -exec chmod 755 {} \;
+chmod -R 775 /volume1/docker/oceane-api/api/storage
+chmod -R 775 /volume1/docker/oceane-api/api/bootstrap/cache
+```
+
 ---
 
 ## Configuration du Frontend (Render)
