@@ -18,10 +18,10 @@ class SumUpService
 
     public function __construct()
     {
-        $this->apiKey = config('sumup.api_key');
-        $this->merchantCode = config('sumup.merchant_code');
-        $this->apiUrl = config('sumup.api_url');
-        $this->returnUrl = config('sumup.checkout.return_url');
+        $this->apiKey = config('sumup.api_key') ?? throw new \RuntimeException('SUMUP_API_KEY non configuré');
+        $this->merchantCode = config('sumup.merchant_code') ?? throw new \RuntimeException('SUMUP_MERCHANT_CODE non configuré');
+        $this->apiUrl = config('sumup.api_url') ?? 'https://api.sumup.com';
+        $this->returnUrl = config('sumup.checkout.return_url') ?? throw new \RuntimeException('FRONTEND_URL non configuré');
     }
 
     /**

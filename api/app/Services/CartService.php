@@ -238,7 +238,7 @@ class CartService
             'items_count' => $items->count(),
             'total' => $items->sum('price'),
             'has_prints' => $items->contains('is_print', true),
-            'currency' => config('sumup.photo.currency', 'EUR'),
+            'currency' => 'EUR',
             'product_types' => CartItem::PRODUCT_TYPES,
         ];
     }

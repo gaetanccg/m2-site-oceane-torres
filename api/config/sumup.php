@@ -13,7 +13,6 @@ return [
     'api_key' => env('SUMUP_API_KEY'),
     'public_key' => env('SUMUP_PUBLIC_KEY'),
     'merchant_code' => env('SUMUP_MERCHANT_CODE'),
-    'affiliate_key' => env('SUMUP_AFFILIATE_KEY'),
 
     /*
     |--------------------------------------------------------------------------
@@ -45,19 +44,8 @@ return [
     */
 
     'checkout' => [
-        'currency' => env('PHOTO_CURRENCY', 'EUR'),
+        'currency' => 'EUR',
         'locale' => 'fr-FR',
         'return_url' => env('FRONTEND_URL', 'http://localhost:5173') . '/commande/confirmation',
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Photo Pricing
-    |--------------------------------------------------------------------------
-    */
-
-    'photo' => [
-        'default_price' => (float) env('PHOTO_DEFAULT_PRICE', 5.00),
-        'currency' => env('PHOTO_CURRENCY', 'EUR'),
     ],
 ];
