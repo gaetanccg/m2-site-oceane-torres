@@ -8,14 +8,16 @@ use App\Http\Controllers\Api\Admin\UserController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AvailabilityController;
 use App\Http\Controllers\Api\BookingRequestController;
+use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\GalleryController;
 use App\Http\Controllers\Api\GiftCardController;
 use App\Http\Controllers\Api\HealthController;
-use App\Http\Controllers\Api\PaymentController;
+use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\PhotoController;
 use App\Http\Controllers\Api\PrestationController;
 use App\Http\Controllers\Api\ReservationController;
+use App\Http\Controllers\Api\SumUpPaymentController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -72,6 +74,31 @@ Route::get('/gift-cards/validate/{code}', [GiftCardController::class, 'validate'
 // Booking request (public - sans authentification)
 Route::post('/booking-request', [BookingRequestController::class, 'store']);
 
+// Cart (public - works with session for guests)
+Route::prefix('cart')->group(function () {
+    Route::get('/', [CartController::class, 'show']);
+    Route::post('/add', [CartController::class, 'addItem']);
+    Route::put('/item/{item}/type', [CartController::class, 'updateItemType']);
+    Route::delete('/item/{item}', [CartController::class, 'removeItem']);
+    Route::delete('/clear', [CartController::class, 'clear']);
+    Route::put('/email', [CartController::class, 'updateEmail']);
+});
+
+// Checkout & Orders (public for guest checkout)
+Route::post('/checkout', [OrderController::class, 'createFromCart']);
+Route::get('/orders/{order}', [OrderController::class, 'show']);
+Route::get('/orders/{order}/download/{item}', [OrderController::class, 'downloadPhoto']);
+Route::get('/orders/{order}/download-all', [OrderController::class, 'downloadAll']);
+Route::post('/orders/by-email', [OrderController::class, 'getByEmail']);
+
+// SumUp Payment (public)
+Route::prefix('payments/sumup')->group(function () {
+    Route::get('/config', [SumUpPaymentController::class, 'getConfig']);
+    Route::post('/create-checkout', [SumUpPaymentController::class, 'createCheckout']);
+    Route::get('/callback', [SumUpPaymentController::class, 'callback']);
+    Route::post('/verify', [SumUpPaymentController::class, 'verifyPayment']);
+});
+
 /*
 |--------------------------------------------------------------------------
 | Authenticated Routes
@@ -91,12 +118,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/reservations/{reservation}', [ReservationController::class, 'update']);
     Route::delete('/reservations/{reservation}', [ReservationController::class, 'destroy']);
 
-    // Payments
-    Route::post('/payments/stripe/create-intent', [PaymentController::class, 'createStripeIntent']);
-    Route::post('/payments/stripe/confirm', [PaymentController::class, 'confirmStripePayment']);
-    Route::post('/payments/paypal/create-order', [PaymentController::class, 'createPayPalOrder']);
-    Route::post('/payments/paypal/capture', [PaymentController::class, 'capturePayPalOrder']);
-
     // Gift cards
     Route::post('/gift-cards', [GiftCardController::class, 'store']);
     Route::get('/gift-cards/{giftCard}', [GiftCardController::class, 'show']);
@@ -112,6 +133,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Account (client dashboard)
     Route::get('/account/dashboard', [AccountController::class, 'dashboard']);
+
+    // Cart merge (after login)
+    Route::post('/cart/merge', [CartController::class, 'merge']);
+
+    // User orders
+    Route::get('/orders', [OrderController::class, 'index']);
 });
 
 /*
@@ -193,6 +220,11 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
 
     // Notifications
     Route::post('/notifications', [NotificationController::class, 'store']);
+
+    // Orders management
+    Route::get('/orders', [OrderController::class, 'adminIndex']);
+    Route::get('/orders/{order}', [OrderController::class, 'adminShow']);
+    Route::delete('/orders/{order}', [OrderController::class, 'adminDestroy']);
 });
 
 /*
@@ -202,6 +234,5 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
 */
 
 Route::prefix('webhooks')->group(function () {
-    Route::post('/stripe', [PaymentController::class, 'handleStripeWebhook']);
-    Route::post('/paypal', [PaymentController::class, 'handlePayPalWebhook']);
+    Route::post('/sumup', [SumUpPaymentController::class, 'webhook']);
 });

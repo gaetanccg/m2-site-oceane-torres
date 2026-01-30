@@ -6,6 +6,17 @@
 import { API_CONFIG } from '@/config/constants'
 import type { User, AdminApiResponse } from '@/types/admin'
 import type { AccountDashboard, RegisterData } from '@/types/account'
+import { extractErrorFromResponse, parseApiError, type ApiError } from '@/utils/errorHandler'
+
+export class AuthApiError extends Error {
+    public apiError: ApiError
+
+    constructor(apiError: ApiError) {
+        super(apiError.message)
+        this.name = 'AuthApiError'
+        this.apiError = apiError
+    }
+}
 
 class AuthApiService {
     private baseUrl: string
@@ -75,17 +86,20 @@ class AuthApiService {
             clearTimeout(timeoutId)
 
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}))
-                throw new Error(errorData.message || `HTTP error! status: ${response.status}`)
+                const apiError = await extractErrorFromResponse(response)
+                throw new AuthApiError(apiError)
             }
 
             return await response.json()
         } catch (error) {
             clearTimeout(timeoutId)
-            if (error instanceof Error && error.name === 'AbortError') {
-                throw new Error('Request timeout')
+
+            if (error instanceof AuthApiError) {
+                throw error
             }
-            throw error
+
+            const apiError = parseApiError(error)
+            throw new AuthApiError(apiError)
         }
     }
 

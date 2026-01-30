@@ -5,6 +5,17 @@
 
 import {API_CONFIG} from '@/config/constants'
 import type {ApiResponse, PaginatedResponse, GalleryItem, Prestation, GiftCard} from '@/types'
+import {extractErrorFromResponse, parseApiError, type ApiError} from '@/utils/errorHandler'
+
+export class ApiServiceError extends Error {
+    public apiError: ApiError
+
+    constructor(apiError: ApiError) {
+        super(apiError.message)
+        this.name = 'ApiServiceError'
+        this.apiError = apiError
+    }
+}
 
 class ApiService {
     private baseUrl: string
@@ -36,16 +47,22 @@ class ApiService {
             clearTimeout(timeoutId)
 
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`)
+                const apiError = await extractErrorFromResponse(response)
+                throw new ApiServiceError(apiError)
             }
 
             return await response.json()
         } catch (error) {
             clearTimeout(timeoutId)
-            if (error instanceof Error && error.name === 'AbortError') {
-                throw new Error('Request timeout')
+
+            // Si c'est déjà une ApiServiceError, la propager
+            if (error instanceof ApiServiceError) {
+                throw error
             }
-            throw error
+
+            // Sinon, parser l'erreur
+            const apiError = parseApiError(error)
+            throw new ApiServiceError(apiError)
         }
     }
 

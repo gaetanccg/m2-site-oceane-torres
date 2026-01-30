@@ -17,19 +17,35 @@
             <router-view />
         </main>
         <Footer />
+        <!-- Cart drawer -->
+        <CartDrawer />
     </div>
+
+    <!-- Toast notifications (global) -->
+    <ToastContainer />
 </template>
 
 <script setup lang="ts">
-import {computed} from 'vue'
+import {computed, onMounted} from 'vue'
 import {useRoute} from 'vue-router'
 import {useAuthStore} from '@/stores/auth'
+import {useCartStore} from '@/stores/cart'
 import Navbar from './components/Navbar.vue'
 import Footer from './components/Footer.vue'
+import ToastContainer from './components/ui/ToastContainer.vue'
+import CartDrawer from './components/cart/CartDrawer.vue'
 
 const route = useRoute()
 const authStore = useAuthStore()
+const cartStore = useCartStore()
 
 // Check path directly - more reliable than route.meta on initial load
 const isAdminPath = computed(() => route.path.startsWith('/admin'))
+
+// Initialize cart store on app mount
+onMounted(() => {
+    if (!isAdminPath.value) {
+        cartStore.initialize()
+    }
+})
 </script>

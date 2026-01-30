@@ -26,6 +26,11 @@ const DownloadGallery = () => import('@/views/DownloadGallery.vue')
 const Events = () => import('@/views/Events.vue')
 const EventGallery = () => import('@/views/EventGallery.vue')
 
+// Cart & Checkout
+const Cart = () => import('@/views/Cart.vue')
+const Checkout = () => import('@/views/Checkout.vue')
+const OrderConfirmation = () => import('@/views/OrderConfirmation.vue')
+
 
 // Account pages (client)
 const AccountDashboard = () => import('@/views/account/Dashboard.vue')
@@ -38,6 +43,7 @@ const AdminPrestations = () => import('@/views/admin/Prestations.vue')
 const AdminReservations = () => import('@/views/admin/Reservations.vue')
 const AdminGiftCards = () => import('@/views/admin/GiftCards.vue')
 const AdminEventGalleries = () => import('@/views/admin/EventGalleries.vue')
+const AdminOrders = () => import('@/views/admin/Orders.vue')
 
 export const routes: RouteRecordRaw[] = [
     {
@@ -141,6 +147,46 @@ export const routes: RouteRecordRaw[] = [
             description: 'Galerie photos d\'evenement par Oceane Torres Photographie.'
         }
     },
+    // Cart & Checkout
+    {
+        path: '/panier',
+        name: 'cart',
+        component: Cart,
+        meta: {
+            title: 'Mon Panier',
+            robots: 'noindex, nofollow'
+        }
+    },
+    {
+        path: '/checkout',
+        name: 'checkout',
+        component: Checkout,
+        meta: {
+            title: 'Finaliser la commande',
+            robots: 'noindex, nofollow'
+        }
+    },
+    {
+        path: '/commande/confirmation',
+        name: 'order-confirmation-legacy',
+        redirect: to => {
+            // Redirect SumUp callback to proper order page
+            const orderId = to.query.order as string
+            if (orderId) {
+                return { name: 'order-confirmation', params: { id: orderId }, query: to.query }
+            }
+            return { name: 'home' }
+        }
+    },
+    {
+        path: '/commande/:id',
+        name: 'order-confirmation',
+        component: OrderConfirmation,
+        meta: {
+            title: 'Confirmation de commande',
+            robots: 'noindex, nofollow'
+        }
+    },
     // Account routes (client)
     {
         path: '/mon-compte',
@@ -193,7 +239,13 @@ export const routes: RouteRecordRaw[] = [
         path: '/admin/events',
         name: 'admin-events',
         component: AdminEventGalleries,
-        meta: {title: 'Galeries Evenements', layout: 'admin', requiresAdmin: true}
+        meta: {title: 'Galeries Événements', layout: 'admin', requiresAdmin: true}
+    },
+    {
+        path: '/admin/orders',
+        name: 'admin-orders',
+        component: AdminOrders,
+        meta: {title: 'Commandes', layout: 'admin', requiresAdmin: true}
     },
     // Catch-all redirect to home
     {
