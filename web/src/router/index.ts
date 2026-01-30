@@ -16,6 +16,7 @@ const BonsCadeaux = () => import('@/views/BonsCadeaux.vue')
 const About = () => import('@/views/About.vue')
 const Contact = () => import('@/views/Contact.vue')
 const MentionsLegales = () => import('@/views/MentionsLegales.vue')
+const CGV = () => import('@/views/CGV.vue')
 
 // Gallery access pages
 const GalleryAccess = () => import('@/views/GalleryAccess.vue')
@@ -52,7 +53,7 @@ export const routes: RouteRecordRaw[] = [
         component: Home,
         meta: {
             title: 'Océane Torres | Photographe Saint-Étienne, Loire & Lyon',
-            description: 'Océane Torres, photographe professionnelle à Saint-Étienne et Lyon. Portraits, sport, animaux, automobile, entreprise. Séances photo en Loire et Auvergne-Rhône-Alpes.'
+            description: 'Océane Torres, photographe professionnelle à Saint-Étienne, Lyon, Rive-de-Gier, Givors et Saint-Chamond. Portraits, sport, animaux, automobile, entreprise. Séances photo en Loire, Rhône et Auvergne-Rhône-Alpes.'
         }
     },
     {
@@ -61,7 +62,7 @@ export const routes: RouteRecordRaw[] = [
         component: Portfolio,
         meta: {
             title: 'Portfolio Photos',
-            description: 'Découvrez le portfolio d\'Océane Torres : portraits, photographie sportive, animaux, automobile et entreprise. Photographe professionnelle Loire et Lyon.'
+            description: 'Portfolio d\'Océane Torres photographe : portraits, sport, animaux, automobile, entreprise. Photos réalisées à Saint-Étienne, Lyon, Rive-de-Gier, Givors en Loire et Rhône.'
         }
     },
     {
@@ -70,7 +71,7 @@ export const routes: RouteRecordRaw[] = [
         component: Prestations,
         meta: {
             title: 'Tarifs & Prestations',
-            description: 'Tarifs et prestations photo : séances portrait, reportage sportif, shooting animalier, automobile et entreprise. Photographe Saint-Étienne, Loire, Lyon.'
+            description: 'Tarifs et prestations photo : portraits, sport, animaux, automobile, entreprise. Photographe à Saint-Étienne, Lyon, Rive-de-Gier, Saint-Chamond, Givors. Devis gratuit.'
         }
     },
     {
@@ -79,7 +80,7 @@ export const routes: RouteRecordRaw[] = [
         component: BonsCadeaux,
         meta: {
             title: 'Bons Cadeaux',
-            description: 'Offrez une séance photo avec Océane Torres. Bons cadeaux pour portraits, shooting couple, famille. Photographe Loire et région lyonnaise.'
+            description: 'Offrez une séance photo avec Océane Torres. Bons cadeaux pour portraits, shooting couple, famille. Photographe Saint-Étienne, Lyon, Rive-de-Gier, Loire et Rhône.'
         }
     },
     {
@@ -88,7 +89,7 @@ export const routes: RouteRecordRaw[] = [
         component: About,
         meta: {
             title: 'À propos - Océane Torres',
-            description: 'Découvrez Océane Torres, photographe et vidéaste professionnelle basée en Loire. Passionnée par le portrait, le sport et l\'animalier.'
+            description: 'Océane Torres, photographe et vidéaste professionnelle basée à Lorette (Loire). Passionnée par le portrait, le sport et l\'animalier. Interventions Saint-Étienne, Lyon, Rhône.'
         }
     },
     {
@@ -97,7 +98,7 @@ export const routes: RouteRecordRaw[] = [
         component: Contact,
         meta: {
             title: 'Contact',
-            description: 'Contactez Océane Torres pour réserver votre séance photo à Saint-Étienne, Lyon ou dans toute l\'Auvergne-Rhône-Alpes. Devis gratuit.'
+            description: 'Contactez Océane Torres photographe pour réserver votre séance photo à Saint-Étienne, Lyon, Rive-de-Gier, Givors, Saint-Chamond. Intervention Loire, Rhône, Auvergne-Rhône-Alpes.'
         }
     },
     {
@@ -107,6 +108,15 @@ export const routes: RouteRecordRaw[] = [
         meta: {
             title: 'Mentions légales',
             description: 'Mentions légales du site Océane Torres Photographie.'
+        }
+    },
+    {
+        path: '/cgv',
+        name: 'cgv',
+        component: CGV,
+        meta: {
+            title: 'Conditions Générales de Vente',
+            description: 'Conditions Générales de Vente du site Océane Torres Photographie.'
         }
     },
     // Gallery access routes (noindex pour éviter l'indexation de pages dynamiques)

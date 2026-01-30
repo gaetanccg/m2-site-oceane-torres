@@ -9,7 +9,7 @@
                     <div class="lg:col-span-5 lg:self-center">
                         <img
                             :src="contactImage"
-                            alt="Océane - Photographe"
+                            alt="Océane Torres - Photographe professionnelle Loire Rhône Auvergne-Rhône-Alpes"
                             class="w-full h-auto border border-gray-200 rounded-lg"
                             loading="lazy"
                         />
@@ -22,7 +22,7 @@
 
                         <div class="space-y-6 text-gray-600 font-light leading-relaxed text-lg">
                             <p>
-                                Photographe passionnée depuis plus de 4 ans, je suis maintenant professionnelle depuis 1 an. J'ai eu la chance de travailler avec plusieurs professionnels, comme une chorale (Les Choeurs Du Sud), l'équipe féminine de l'ASSE, j'ai fait quelques collaborations avec des cavaliers internationaux à EquitaLyon. J'ai aussi travaillé avec des artistes locaux comme des chanteurs et un restaurateur.
+                                Photographe passionnée depuis plus de 4 ans, je suis maintenant professionnelle depuis 1 an, basée à Lorette dans la Loire. J'interviens dans toute la région Auvergne-Rhône-Alpes, notamment à Saint-Étienne, Lyon, Rive-de-Gier, Saint-Chamond et Givors. J'ai eu la chance de travailler avec plusieurs professionnels, comme une chorale (Les Choeurs Du Sud à Rive-de-Gier), l'équipe féminine de l'ASSE à Saint-Étienne, et des cavaliers internationaux à EquitaLyon. J'ai aussi travaillé avec des artistes locaux comme des chanteurs et un restaurateur.
                             </p>
                             <p>
                                 Bien sûr, en plus des professionnels et artistes, j'ai également travaillé avec de nombreux particuliers pour des séances portraits, couple, famille, sport, moto, animaux de compagnie et événements divers.

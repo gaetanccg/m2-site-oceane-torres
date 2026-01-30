@@ -43,7 +43,7 @@
                             À propos de moi
                         </h2>
                         <p class="text-gray-600 font-light leading-relaxed mb-6 text-lg">
-                            Je m'appelle Océane, j'ai 23 ans et je suis photographe et vidéaste professionnelle basée en Auvergne-Rhône-Alpes. J'interviens dans toute la région, notamment dans le Rhône et la Loire.
+                            Je m'appelle Océane, j'ai 23 ans et je suis photographe et vidéaste professionnelle basée en Auvergne-Rhône-Alpes. J'interviens dans toute la région, notamment dans le Rhône et la Loire et plus précisément autour de Rive-de-Gier, Lorette, Saint-Chamond, Givors, Saint-Étienne et Lyon.
                         </p>
                         <p class="text-gray-600 font-light leading-relaxed mb-8 text-lg">
                             J'ai envie de créer des images qui racontent, qui touchent, qui marquent. Je propose un accompagnement qui reflète ce que j'aime réellement capturer : la spontanéité, l'émotion, l'énergie, et tout ce qui raconte une histoire.
@@ -123,21 +123,21 @@ const heroImage = '/images/hero.png'
 const personaImage = '/optimized/persona_rev_2.webp'
 
 const masonryItems: GalleryItem[] = [
-    {url: '/optimized/Automobile/4.webp', alt: 'Automobile - 1', type: 'image', category: 'Automobile'},
-    {url: '/optimized/Entreprise/2.webp', alt: 'Entreprise - 1', type: 'image', category: 'Entreprise'},
-    {url: '/optimized/Portraits/1.webp', alt: 'Portraits - 1', type: 'image', category: 'Portraits'},
-    {url: '/optimized/Animalier/1.webp', alt: 'Animalier - 1', type: 'image', category: 'Animalier'},
-    {url: '/optimized/Sport/5.webp', alt: 'Sport - 1', type: 'image', category: 'Sport'},
-    {url: '/optimized/Portraits/10.webp', alt: 'Portraits - 2', type: 'image', category: 'Portraits'},
-    {url: '/optimized/Animalier/3.webp', alt: 'Animalier - 2', type: 'image', category: 'Animalier'},
-    {url: '/optimized/Sport/18.webp', alt: 'Sport - 2', type: 'image', category: 'Sport'},
-    {url: '/optimized/Automobile/8.webp', alt: 'Automobile - 2', type: 'image', category: 'Automobile'},
-    {url: '/optimized/Entreprise/4.webp', alt: 'Entreprise - 2', type: 'image', category: 'Entreprise'},
-    {url: '/optimized/Sport/7.webp', alt: 'Sport - 3', type: 'image', category: 'Sport'},
-    {url: '/optimized/Automobile/10.webp', alt: 'Automobile - 3', type: 'image', category: 'Automobile'},
-    {url: '/optimized/Portraits/20.webp', alt: 'Portraits - 3', type: 'image', category: 'Portraits'},
-    {url: '/optimized/Portraits/2.webp', alt: 'Portraits - 4', type: 'image', category: 'Portraits'},
-    {url: '/optimized/Animalier/2.webp', alt: 'Animalier - 3', type: 'image', category: 'Animalier'},
+    {url: '/optimized/Automobile/4.webp', alt: 'Shooting photo automobile par Océane Torres photographe Loire', type: 'image', category: 'Automobile'},
+    {url: '/optimized/Entreprise/2.webp', alt: 'Photo entreprise professionnelle Saint-Étienne Lyon', type: 'image', category: 'Entreprise'},
+    {url: '/optimized/Portraits/1.webp', alt: 'Portrait photo professionnelle Auvergne-Rhône-Alpes', type: 'image', category: 'Portraits'},
+    {url: '/optimized/Animalier/1.webp', alt: 'Photographie animalière cheval Loire par Océane Torres', type: 'image', category: 'Animalier'},
+    {url: '/optimized/Sport/5.webp', alt: 'Photo reportage sportif équitation Saint-Étienne', type: 'image', category: 'Sport'},
+    {url: '/optimized/Portraits/10.webp', alt: 'Séance portrait couple photographe Rive-de-Gier', type: 'image', category: 'Portraits'},
+    {url: '/optimized/Animalier/3.webp', alt: 'Photo animalière chien photographe Loire Rhône', type: 'image', category: 'Animalier'},
+    {url: '/optimized/Sport/18.webp', alt: 'Reportage photo sport action Lyon Saint-Étienne', type: 'image', category: 'Sport'},
+    {url: '/optimized/Automobile/8.webp', alt: 'Photo voiture shooting automobile Givors Saint-Chamond', type: 'image', category: 'Automobile'},
+    {url: '/optimized/Entreprise/4.webp', alt: 'Photographe corporate entreprise Auvergne-Rhône-Alpes', type: 'image', category: 'Entreprise'},
+    {url: '/optimized/Sport/7.webp', alt: 'Photographie sportive boxe danse photographe Loire', type: 'image', category: 'Sport'},
+    {url: '/optimized/Automobile/10.webp', alt: 'Shooting moto voiture photographe Lorette Saint-Chamond', type: 'image', category: 'Automobile'},
+    {url: '/optimized/Portraits/20.webp', alt: 'Portrait professionnel CV LinkedIn photographe Lyon', type: 'image', category: 'Portraits'},
+    {url: '/optimized/Portraits/2.webp', alt: 'Séance photo portrait famille grossesse Saint-Étienne', type: 'image', category: 'Portraits'},
+    {url: '/optimized/Animalier/2.webp', alt: 'Photo animaux de compagnie photographe Rhône Loire', type: 'image', category: 'Animalier'},
 ]
 
 interface FeaturedPrestation {
