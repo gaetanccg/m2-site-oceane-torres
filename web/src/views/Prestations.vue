@@ -58,7 +58,7 @@
                         :price-unit="prestation.price_unit || undefined"
                         :features="prestation.features || []"
                         :background="prestation.background_image || undefined"
-                        :background-opacity="prestation.background_opacity"
+                        :background-opacity="Number(prestation.background_opacity)"
                         :disclaimer="prestation.disclaimer || undefined"
                     />
                 </div>
@@ -132,7 +132,7 @@
 
                     <div>
                         <h3 class="text-xl font-normal text-black mb-2">Zone d'intervention</h3>
-                        <p>Deplacement dans toute la region Auvergne-Rhone-Alpes. Des frais additionnels peuvent s'ajouter en fonction de la distance.</p>
+                        <p>Basée à Lorette (Loire), j'interviens principalement à Saint-Étienne, Lyon, Rive-de-Gier, Saint-Chamond et Givors. Déplacement possible dans toute la région Auvergne-Rhône-Alpes (Loire, Rhône, Haute-Loire, Isère...). Des frais additionnels peuvent s'ajouter en fonction de la distance.</p>
                     </div>
                 </div>
             </div>

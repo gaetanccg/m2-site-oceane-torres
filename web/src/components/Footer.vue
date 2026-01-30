@@ -40,14 +40,27 @@
                 <div>
                     <h4 class="text-sm uppercase tracking-widest mb-4 text-gold">Suivez-moi</h4>
                     <SocialLinks variant="dark" size="md" />
+                    <div class="mt-6 text-xs space-y-1" style="color: #4a4a4a;">
+                        <a href="https://www.annuaire-photographe.fr/" target="_blank" rel="noopener" class="block hover:opacity-80 transition-opacity">
+                            Trouvez un expert en photographie
+                        </a>
+                        <a href="https://www.missionphotographe.com" target="_blank" rel="noopener" class="block hover:opacity-80 transition-opacity">
+                            Mission Photographe
+                        </a>
+                    </div>
                 </div>
             </div>
 
             <div class="border-t border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center text-sm text-gray-400 font-light">
                 <p>&copy; {{ currentYear }} Océane Torres Photographie. Tous droits réservés.</p>
-                <router-link to="/mentions-legales" class="hover:text-gold transition-colors mt-4 md:mt-0">
-                    Mentions légales
-                </router-link>
+                <div class="flex space-x-4 mt-4 md:mt-0">
+                    <router-link to="/mentions-legales" class="hover:text-gold transition-colors">
+                        Mentions légales
+                    </router-link>
+                    <router-link to="/cgv" class="hover:text-gold transition-colors">
+                        CGV
+                    </router-link>
+                </div>
             </div>
         </div>
     </footer>
