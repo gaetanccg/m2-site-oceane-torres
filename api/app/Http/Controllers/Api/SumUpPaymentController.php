@@ -89,7 +89,7 @@ class SumUpPaymentController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la creation du paiement: ' . $e->getMessage(),
+                'message' => 'Erreur lors de la creation du paiement: '.$e->getMessage(),
             ], 500);
         }
     }

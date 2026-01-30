@@ -8,15 +8,15 @@ use App\Http\Controllers\Api\Admin\UserController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AvailabilityController;
 use App\Http\Controllers\Api\BookingRequestController;
+use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\GalleryController;
 use App\Http\Controllers\Api\GiftCardController;
 use App\Http\Controllers\Api\HealthController;
+use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\PhotoController;
 use App\Http\Controllers\Api\PrestationController;
 use App\Http\Controllers\Api\ReservationController;
-use App\Http\Controllers\Api\CartController;
-use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\SumUpPaymentController;
 use Illuminate\Support\Facades\Route;
 

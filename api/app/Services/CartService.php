@@ -79,7 +79,7 @@ class CartService
         $photo = Photo::findOrFail($photoId);
 
         // Validate product type
-        if (!array_key_exists($productType, CartItem::PRODUCT_TYPES)) {
+        if (! array_key_exists($productType, CartItem::PRODUCT_TYPES)) {
             $productType = 'digital';
         }
 
@@ -115,7 +115,7 @@ class CartService
     public function updateItemType(Cart $cart, string $itemId, string $productType): CartItem
     {
         // Validate product type
-        if (!array_key_exists($productType, CartItem::PRODUCT_TYPES)) {
+        if (! array_key_exists($productType, CartItem::PRODUCT_TYPES)) {
             throw new \Exception('Type de produit invalide.');
         }
 
@@ -131,6 +131,7 @@ class CartService
         if ($existingItem) {
             // Delete current item and return existing
             $item->delete();
+
             return $existingItem;
         }
 
@@ -182,7 +183,7 @@ class CartService
                 ->where('product_type', $item->product_type ?? 'digital')
                 ->exists();
 
-            if (!$exists) {
+            if (! $exists) {
                 CartItem::create([
                     'cart_id' => $userCart->id,
                     'photo_id' => $item->photo_id,
