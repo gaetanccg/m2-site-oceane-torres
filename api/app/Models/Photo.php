@@ -25,6 +25,8 @@ class Photo extends Model
         'sort_order',
         'is_liked',
         'is_downloadable',
+        'price',
+        'is_purchasable',
         'downloads_count',
         'metadata',
     ];
@@ -37,6 +39,8 @@ class Photo extends Model
             'is_video' => 'boolean',
             'is_liked' => 'boolean',
             'is_downloadable' => 'boolean',
+            'is_purchasable' => 'boolean',
+            'price' => 'decimal:2',
             'downloads_count' => 'integer',
             'metadata' => 'array',
         ];
@@ -99,6 +103,18 @@ class Photo extends Model
     public function scopeLiked($query)
     {
         return $query->where('is_liked', true);
+    }
+
+    public function scopePurchasable($query)
+    {
+        return $query->where('is_purchasable', true);
+    }
+
+    public function getEffectivePriceAttribute(): float
+    {
+        // Prix par défaut si la photo n'a pas de prix défini
+        // Les prix réels sont définis dans CartItem::PRODUCT_TYPES
+        return $this->price ?? 13.00;
     }
 
     public function toggleLike(): bool
