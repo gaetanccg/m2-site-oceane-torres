@@ -5,14 +5,14 @@
             scrolled ? 'bg-white/80 backdrop-blur-md shadow-sm' : 'bg-white'
         ]"
     >
-        <div class="max-w-7xl mx-auto px-6 lg:px-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
             <div class="flex items-center justify-between h-20">
                 <!-- Left: Logo -->
                 <router-link
                     to="/"
-                    class="flex items-center text-2xl font-light tracking-wider hover:text-gold transition-colors"
+                    class="flex-shrink-0 flex items-center hover:opacity-80 transition-opacity"
                 >
-                    <img src="/logo-oceane.png" alt="Logo Océane" class="h-36 w-20 object-contain" />
+                    <img src="/logo-oceane.png" alt="Logo Océane" class="h-16 md:h-20 max-w-[60px] md:max-w-[80px] object-contain" />
                 </router-link>
 
                 <!-- Center: Navigation (Desktop) -->

@@ -2,7 +2,10 @@
     <aside
         :class="[
       'fixed inset-y-0 left-0 z-50 flex flex-col bg-black border-r border-gray-800 transition-all duration-300',
-      isCollapsed ? 'w-16' : 'w-64'
+      isCollapsed ? 'lg:w-16' : 'lg:w-64',
+      'w-64',
+      // Mobile: hidden by default, shown when isMobileOpen
+      isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
     ]"
     >
         <!-- Logo -->
@@ -40,6 +43,7 @@
                 v-for="item in menuItems"
                 :key="item.path"
                 :to="item.path"
+                @click="emit('closeMobile')"
                 :class="[
           'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors group',
           isActive(item.path)
@@ -48,7 +52,8 @@
         ]"
             >
                 <component :is="item.icon" class="w-5 h-5 flex-shrink-0" />
-                <span v-if="!isCollapsed" class="text-sm font-medium">{{ item.label }}</span>
+                <span v-if="!isCollapsed" class="text-sm font-medium lg:inline hidden">{{ item.label }}</span>
+                <span class="text-sm font-medium lg:hidden">{{ item.label }}</span>
             </router-link>
         </nav>
 
@@ -89,6 +94,18 @@
 import {ref, computed, h} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
 import {useAuthStore} from '@/stores/auth'
+
+interface Props {
+    isMobileOpen?: boolean
+}
+
+withDefaults(defineProps<Props>(), {
+    isMobileOpen: false
+})
+
+const emit = defineEmits<{
+    (e: 'closeMobile'): void
+}>()
 
 const route = useRoute()
 const router = useRouter()
