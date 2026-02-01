@@ -39,10 +39,7 @@
                             </div>
                             <div>
                                 <h3 class="font-medium text-gray-900">Confirmation envoyée</h3>
-                                <p class="text-sm text-gray-600 mt-1">
-                                    Un email de confirmation avec le lien de téléchargement a été envoyé à
-                                    <strong>{{ order.customer_email }}</strong>
-                                </p>
+                                <p class="text-sm text-gray-600 mt-1" v-html="confirmationMessage"></p>
                             </div>
                         </div>
                     </div>
@@ -259,6 +256,36 @@ let pollInterval: number | null = null
 const digitalItems = computed(() => {
     if (!order.value) return []
     return order.value.items.filter(item => !item.is_print)
+})
+
+const hasDigitalItems = computed(() => digitalItems.value.length > 0)
+
+const hasPrintItems = computed(() => {
+    if (!order.value) return false
+    return order.value.has_prints
+})
+
+// Calcule le type de commande pour adapter le message
+const orderType = computed(() => {
+    if (hasDigitalItems.value && hasPrintItems.value) return 'mixed'
+    if (hasDigitalItems.value) return 'digital'
+    return 'print'
+})
+
+// Message de confirmation dynamique selon le type de commande
+const confirmationMessage = computed(() => {
+    if (!order.value) return ''
+
+    switch (orderType.value) {
+        case 'digital':
+            return `Un email avec votre lien de téléchargement a été envoyé à <strong>${order.value.customer_email}</strong>.<br>Merci de conserver cet email.`
+        case 'print':
+            return `Un email de confirmation de votre commande a été envoyé à <strong>${order.value.customer_email}</strong>.<br>Merci de conserver cet email jusqu'à la réception de vos photos.`
+        case 'mixed':
+            return `Un email récapitulatif avec votre lien de téléchargement et les informations de livraison a été envoyé à <strong>${order.value.customer_email}</strong>.<br>Merci de conserver cet email.`
+        default:
+            return `Un email de confirmation a été envoyé à <strong>${order.value.customer_email}</strong>.`
+    }
 })
 
 function formatPrice(price: number): string {
