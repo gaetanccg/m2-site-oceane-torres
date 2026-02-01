@@ -1,6 +1,6 @@
 <template>
     <div
-        class="group bg-white border border-gray-200 hover:border-gold transition-all duration-300 p-8 lg:p-12 relative overflow-hidden"
+        class="group bg-white border border-gray-200 hover:border-gold transition-all duration-300 p-5 sm:p-8 lg:p-12 relative overflow-hidden"
     >
         <!-- Background image -->
         <div

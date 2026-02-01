@@ -12,7 +12,7 @@
                 />
 
                 <!-- Modal -->
-                <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+                <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] max-h-[90dvh] overflow-y-auto mx-2 sm:mx-0">
                     <!-- Header -->
                     <div class="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
                         <h2 class="text-xl font-light">Demande de shooting</h2>
