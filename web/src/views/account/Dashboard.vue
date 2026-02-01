@@ -22,32 +22,32 @@
 
             <template v-else>
                 <!-- Tabs -->
-                <div class="flex gap-1 mb-6 bg-gray-100 p-1 rounded-xl w-fit">
+                <div class="flex gap-1 mb-6 bg-gray-100 p-1 rounded-xl w-full sm:w-fit overflow-x-auto">
                     <button
                         @click="activeTab = 'galleries'"
                         :class="[
-                            'px-6 py-2.5 text-sm font-medium rounded-lg transition-colors',
+                            'px-4 sm:px-6 py-2.5 text-sm font-medium rounded-lg transition-colors whitespace-nowrap flex-shrink-0',
                             activeTab === 'galleries'
                                 ? 'bg-white text-gray-900 shadow-sm'
                                 : 'text-gray-600 hover:text-gray-900'
                         ]"
                     >
                         Mes galeries
-                        <span v-if="galleries.length > 0" class="ml-2 text-xs bg-gold/10 text-gold px-2 py-0.5 rounded-full">
+                        <span v-if="galleries.length > 0" class="ml-1 sm:ml-2 text-xs bg-gold/10 text-gold px-2 py-0.5 rounded-full">
                             {{ galleries.length }}
                         </span>
                     </button>
                     <button
                         @click="activeTab = 'reservations'"
                         :class="[
-                            'px-6 py-2.5 text-sm font-medium rounded-lg transition-colors',
+                            'px-4 sm:px-6 py-2.5 text-sm font-medium rounded-lg transition-colors whitespace-nowrap flex-shrink-0',
                             activeTab === 'reservations'
                                 ? 'bg-white text-gray-900 shadow-sm'
                                 : 'text-gray-600 hover:text-gray-900'
                         ]"
                     >
                         Mes reservations
-                        <span v-if="reservations.length > 0" class="ml-2 text-xs bg-gold/10 text-gold px-2 py-0.5 rounded-full">
+                        <span v-if="reservations.length > 0" class="ml-1 sm:ml-2 text-xs bg-gold/10 text-gold px-2 py-0.5 rounded-full">
                             {{ reservations.length }}
                         </span>
                     </button>

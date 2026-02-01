@@ -25,19 +25,19 @@
         <!-- Gallery content -->
         <template v-else-if="gallery">
             <!-- Header -->
-            <section class="py-12 px-6 bg-white border-b border-gray-100">
+            <section class="py-8 sm:py-12 px-4 sm:px-6 bg-white border-b border-gray-100">
                 <div class="max-w-5xl mx-auto">
                     <router-link
                         to="/evenements"
-                        class="inline-flex items-center gap-2 text-gray-500 hover:text-gold transition-colors mb-6"
+                        class="inline-flex items-center gap-2 text-gray-500 hover:text-gold transition-colors mb-4 sm:mb-6 text-sm sm:text-base"
                     >
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                         </svg>
                         Retour aux événements
                     </router-link>
 
-                    <h1 class="text-4xl font-light mb-4">{{ gallery.title }}</h1>
+                    <h1 class="text-2xl sm:text-3xl md:text-4xl font-light mb-4">{{ gallery.title }}</h1>
                     <p v-if="gallery.description" class="text-gray-600 font-light max-w-2xl mb-4">
                         {{ gallery.description }}
                     </p>
@@ -70,9 +70,9 @@
             </section>
 
             <!-- Photos grid (masonry-style) -->
-            <section class="py-12 px-6 lg:px-12">
+            <section class="py-8 sm:py-12 px-4 sm:px-6 lg:px-12">
                 <div class="max-w-7xl mx-auto">
-                    <div class="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-6 space-y-6">
+                    <div class="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4 sm:gap-6 space-y-4 sm:space-y-6">
                         <div
                             v-for="(photo, index) in gallery.photos"
                             :key="photo.id"

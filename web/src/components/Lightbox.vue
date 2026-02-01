@@ -330,18 +330,22 @@ onUnmounted(() => {
 @media (max-width: 768px) {
     .media-container {
         max-width: 100vw;
-        padding: 0 10px;
-        max-height: calc(100vh - 140px);
+        padding: 0 8px;
+        max-height: calc(100vh - 130px);
+        max-height: calc(100dvh - 130px);
     }
 
     .media-content {
-        max-width: calc(100vw - 20px);
-        max-height: calc(100vh - 160px);
+        max-width: calc(100vw - 16px);
+        max-height: calc(100vh - 150px);
+        max-height: calc(100dvh - 150px);
     }
 
     .youtube-iframe {
-        width: calc(100vw - 20px);
-        height: calc((100vw - 20px) * 9 / 16);
+        width: calc(100vw - 16px);
+        height: calc((100vw - 16px) * 9 / 16);
+        max-height: calc(100vh - 180px);
+        max-height: calc(100dvh - 180px);
     }
 
     .watermark-overlay {
@@ -350,16 +354,24 @@ onUnmounted(() => {
     }
 
     .watermark-overlay span {
-        font-size: 0.65rem;
+        font-size: 0.6rem;
     }
 
     .thumbnail-bar {
-        padding: 8px 12px;
+        padding: 6px 8px;
     }
 
     .thumbnail-item {
-        width: 48px;
-        height: 48px;
+        width: 44px;
+        height: 44px;
+    }
+}
+
+/* Very small screens */
+@media (max-width: 380px) {
+    .thumbnail-item {
+        width: 36px;
+        height: 36px;
     }
 }
 </style>

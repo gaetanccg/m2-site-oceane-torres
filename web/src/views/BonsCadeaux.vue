@@ -9,14 +9,14 @@
                 />
 
                 <!-- Single Gift Card Option -->
-                <div class="bg-black text-white p-10 lg:p-16 text-center border-2 border-gold mb-16">
+                <div class="bg-black text-white p-6 sm:p-10 lg:p-16 text-center border-2 border-gold mb-16">
                     <div class="max-w-2xl mx-auto">
-                        <h3 class="text-3xl lg:text-4xl font-light mb-4">Carte Cadeau Personnalisée</h3>
-                        <p class="text-gray-400 text-lg mb-8">
+                        <h3 class="text-2xl sm:text-3xl lg:text-4xl font-light mb-4">Carte Cadeau Personnalisée</h3>
+                        <p class="text-gray-400 text-base sm:text-lg mb-6 sm:mb-8">
                             Choisissez le montant que vous souhaitez offrir
                         </p>
 
-                        <div class="text-gold text-6xl lg:text-7xl font-light mb-8">
+                        <div class="text-gold text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-light mb-6 sm:mb-8">
                             À partir de 35€
                         </div>
 

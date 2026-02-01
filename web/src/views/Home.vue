@@ -1,9 +1,9 @@
 <template>
     <div>
         <!-- Hero Section -->
-        <section class="relative h-[85vh] flex items-center justify-center overflow-hidden">
+        <section class="relative min-h-[100svh] sm:min-h-[85vh] flex items-center justify-center overflow-hidden">
             <div
-                class="absolute inset-0 bg-cover md:bg-contain bg-center bg-no-repeat"
+                class="absolute inset-0 bg-cover bg-center bg-no-repeat"
                 :style="{ backgroundImage: `url(${heroImage})` }"
             />
 
@@ -12,16 +12,16 @@
                 <h2 class="hero-title-script">Océane Torres Photographie</h2>
                 <p class="hero-subtitle">PHOTOGRAPHE ET VIDÉASTE</p>
 
-                <div class="flex flex-col sm:flex-row gap-6 justify-center mt-12">
+                <div class="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center mt-8 sm:mt-12 px-4">
                     <router-link
                         to="/portfolio"
-                        class="px-10 py-4 bg-white text-black hover:bg-gold hover:text-white transition-all duration-300 text-sm uppercase tracking-widest font-light"
+                        class="px-6 sm:px-10 py-3 sm:py-4 bg-white text-black hover:bg-gold hover:text-white transition-all duration-300 text-xs sm:text-sm uppercase tracking-widest font-light text-center"
                     >
                         Voir le portfolio
                     </router-link>
                     <router-link
                         to="/contact"
-                        class="px-10 py-4 border-2 border-white text-white hover:bg-white hover:text-black transition-all duration-300 text-sm uppercase tracking-widest font-light"
+                        class="px-6 sm:px-10 py-3 sm:py-4 border-2 border-white text-white hover:bg-white hover:text-black transition-all duration-300 text-xs sm:text-sm uppercase tracking-widest font-light text-center"
                     >
                         Me contacter
                     </router-link>

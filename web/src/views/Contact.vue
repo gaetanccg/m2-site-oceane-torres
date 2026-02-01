@@ -285,14 +285,14 @@
         </section>
 
         <!-- Steps Before Contacting -->
-        <section class="py-20 px-6 lg:px-12 bg-white">
+        <section class="py-12 sm:py-20 px-6 lg:px-12 bg-white">
             <div class="max-w-5xl mx-auto">
-                <div class="text-center mb-4">
-                    <h2 class="text-3xl md:text-4xl font-light mb-4">Avant de me contacter</h2>
-                    <p class="text-gray-600 font-light">Quelques etapes pour preparer notre echange</p>
+                <div class="text-center mb-6 sm:mb-8">
+                    <h2 class="text-2xl sm:text-3xl md:text-4xl font-light mb-3 sm:mb-4">Avant de me contacter</h2>
+                    <p class="text-gray-600 font-light text-sm sm:text-base">Quelques etapes pour preparer notre echange</p>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8">
                     <div v-for="(step, index) in steps" :key="step.title" class="relative">
                         <div class="relative bg-cream rounded-2xl p-8 text-center">
                             <div class="w-12 h-12 mx-auto mb-6 flex items-center justify-center bg-white border-2 border-gold rounded-full">

@@ -13,7 +13,7 @@
         <Transition name="slide">
             <div
                 v-if="cartStore.isDrawerOpen"
-                class="fixed top-0 right-0 bottom-0 w-full max-w-md bg-white shadow-xl z-50 flex flex-col"
+                class="fixed top-0 right-0 bottom-0 w-full sm:max-w-md bg-white shadow-xl z-50 flex flex-col"
             >
                 <!-- Header -->
                 <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
