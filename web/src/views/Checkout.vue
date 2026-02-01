@@ -21,9 +21,9 @@
                     </router-link>
                 </div>
 
-                <div v-else class="grid lg:grid-cols-3 gap-8">
+                <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
                     <!-- Form -->
-                    <div class="lg:col-span-2">
+                    <div class="lg:col-span-2 order-2 lg:order-1">
                         <div class="bg-white rounded-xl shadow-sm p-6">
                             <!-- Step 1: Customer info -->
                             <div v-if="!showPaymentWidget">
@@ -127,8 +127,8 @@
                     </div>
 
                     <!-- Summary -->
-                    <div class="lg:col-span-1">
-                        <div class="bg-white rounded-xl shadow-sm p-6 sticky top-24">
+                    <div class="lg:col-span-1 order-1 lg:order-2">
+                        <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6 lg:sticky lg:top-24">
                             <h2 class="text-lg font-medium mb-4">Votre commande</h2>
 
                             <div class="space-y-3 max-h-64 overflow-y-auto">

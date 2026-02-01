@@ -25,9 +25,9 @@
         <!-- Gallery content -->
         <template v-else-if="gallery">
             <!-- Gallery Header -->
-            <section class="py-12 px-6 lg:px-12 bg-white border-b border-gold">
+            <section class="py-8 sm:py-12 px-4 sm:px-6 lg:px-12 bg-white border-b border-gold">
                 <div class="max-w-4xl mx-auto text-center">
-                    <h1 class="text-4xl md:text-5xl font-light mb-4">{{ gallery.title }}</h1>
+                    <h1 class="text-3xl sm:text-4xl md:text-5xl font-light mb-4">{{ gallery.title }}</h1>
                     <p v-if="gallery.description" class="text-gray-600 font-light text-lg max-w-2xl mx-auto mb-2">
                         {{ gallery.description }}
                     </p>
@@ -38,13 +38,13 @@
             </section>
 
             <!-- How it works -->
-            <section class="py-10 px-6 lg:px-12 bg-gradient-to-b from-white to-cream">
+            <section class="py-8 sm:py-10 px-4 sm:px-6 lg:px-12 bg-gradient-to-b from-white to-cream">
                 <div class="max-w-5xl mx-auto">
-                    <h2 class="text-2xl md:text-3xl font-light text-center mb-10 text-gray-800">
+                    <h2 class="text-xl sm:text-2xl md:text-3xl font-light text-center mb-6 sm:mb-10 text-gray-800">
                         Comment fonctionne votre galerie ?
                     </h2>
 
-                    <div class="grid md:grid-cols-3 gap-6 md:gap-8">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
                         <!-- Step 1 -->
                         <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
                             <div class="w-10 h-10 bg-gold/10 rounded-full flex items-center justify-center mb-4">
@@ -82,10 +82,10 @@
             </section>
 
             <!-- Photos Gallery -->
-            <section class="py-12 px-6 lg:px-12">
+            <section class="py-8 sm:py-12 px-4 sm:px-6 lg:px-12">
                 <div class="max-w-7xl mx-auto">
                     <!-- Masonry-style grid -->
-                    <div class="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-6 space-y-6">
+                    <div class="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4 sm:gap-6 space-y-4 sm:space-y-6">
                         <div
                             v-for="(photo, index) in gallery.photos"
                             :key="photo.id"

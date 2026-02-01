@@ -1,6 +1,6 @@
 <template>
-    <section class="max-w-4xl mx-auto px-6 py-32">
-        <h1 class="text-3xl font-light mb-6">Mentions légales</h1>
+    <section class="max-w-4xl mx-auto px-4 sm:px-6 pt-24 sm:pt-32 pb-12 sm:pb-20">
+        <h1 class="text-2xl sm:text-3xl font-light mb-6">Mentions légales</h1>
 
         <section class="mb-6">
             <h2 class="text-xl font-medium mb-2">1. Éditeur du site</h2>

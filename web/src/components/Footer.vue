@@ -4,14 +4,14 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
                 <!-- Brand -->
                 <div>
-                    <div class="flex items-center space-x-4">
-                        <img src="/logo-oceane-white.png" class="h-20 w-auto object-contain" alt="Logo Océane" />
+                    <div class="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-4 sm:space-x-4">
+                        <img src="/logo-oceane-white.png" class="h-16 sm:h-20 w-auto object-contain flex-shrink-0" alt="Logo Océane" />
                         <div>
-                            <h3 class="text-2xl font-light tracking-wider mb-1">OCÉANE TORRES</h3>
+                            <h3 class="text-xl sm:text-2xl font-light tracking-wider mb-1">OCÉANE TORRES</h3>
                             <p class="text-gray-400 font-light text-sm">
                                 Photographe professionnelle
                             </p>
-                            <p class="text-gray-400 font-light text-sm">
+                            <p class="text-gray-400 font-light text-sm break-all sm:break-normal">
                                 {{ CONTACT_INFO.email }}
                             </p>
                             <p class="text-gray-400 font-light text-sm">
