@@ -10,9 +10,9 @@
                 <!-- Left: Logo -->
                 <router-link
                     to="/"
-                    class="flex items-center text-2xl font-light tracking-wider hover:text-gold transition-colors"
+                    class="flex-shrink-0 flex items-center hover:opacity-80 transition-opacity"
                 >
-                    <img src="/logo-oceane.png" alt="Logo Océane" class="h-24 sm:h-32 md:h-36 w-auto object-contain" />
+                    <img src="/logo-oceane.png" alt="Logo Océane" class="h-16 md:h-20 max-w-[60px] md:max-w-[80px] object-contain" />
                 </router-link>
 
                 <!-- Center: Navigation (Desktop) -->
