@@ -78,21 +78,46 @@
                                     </table>
                                 </div>
 
-                                <!-- CTA Button -->
-                                <table role="presentation" style="width: 100%; margin: 30px 0;">
-                                    <tr>
-                                        <td style="text-align: center;">
-                                            <a href="{{ $downloadUrl }}" style="display: inline-block; background-color: #D4AF37; color: #0a0708; padding: 16px 40px; text-decoration: none; border-radius: 4px; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">
-                                                Télécharger mes photos
-                                            </a>
-                                        </td>
-                                    </tr>
-                                </table>
+                                @php
+                                    $hasDigital = $order->digitalItems()->isNotEmpty();
+                                    $hasPrint = $order->hasPrintItems();
+                                @endphp
 
-                                <p style="margin: 25px 0 0 0; color: #888888; font-size: 13px; text-align: center; line-height: 1.6;">
-                                    Ce lien de téléchargement est valable pendant 7 jours.<br>
-                                    Vous pouvez également accéder à vos photos depuis votre espace client.
-                                </p>
+                                {{-- Section pour les photos numériques --}}
+                                @if($hasDigital)
+                                <div style="background-color: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 25px; margin: 25px 0;">
+                                    <h3 style="margin: 0 0 15px 0; color: #0369a1; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">
+                                        📥 Télécharger mes photos
+                                    </h3>
+                                    <table role="presentation" style="width: 100%; margin: 15px 0;">
+                                        <tr>
+                                            <td style="text-align: center;">
+                                                <a href="{{ $downloadUrl }}" style="display: inline-block; background-color: #D4AF37; color: #0a0708; padding: 16px 40px; text-decoration: none; border-radius: 4px; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">
+                                                    Télécharger mes photos
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                    <p style="margin: 15px 0 0 0; color: #0369a1; font-size: 13px; text-align: center; line-height: 1.6;">
+                                        Ce lien de téléchargement est valable pendant 7 jours.<br>
+                                        Merci de conserver cet email jusqu'au téléchargement complet de vos photos.
+                                    </p>
+                                </div>
+                                @endif
+
+                                {{-- Section pour les tirages papier --}}
+                                @if($hasPrint)
+                                <div style="background-color: #fffbeb; border: 1px solid #fcd34d; border-radius: 8px; padding: 25px; margin: 25px 0;">
+                                    <h3 style="margin: 0 0 15px 0; color: #92400e; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">
+                                        🖨️ Commande confirmée
+                                    </h3>
+                                    <p style="margin: 0; color: #78350f; font-size: 14px; line-height: 1.7;">
+                                        Votre commande de photos imprimées a bien été enregistrée.<br><br>
+                                        Je vous contacterai personnellement par email pour vous informer de la préparation et de l'envoi de vos photos.<br><br>
+                                        <strong>Merci de conserver cet email jusqu'à la réception de votre commande.</strong>
+                                    </p>
+                                </div>
+                                @endif
 
                                 <!-- Signature -->
                                 <div style="margin-top: 40px; padding-top: 25px; border-top: 1px solid #e0e0e0;">
@@ -112,7 +137,7 @@
                                     Auvergne-Rhône-Alpes
                                 </p>
                                 <p style="margin: 0; color: #666666; font-size: 11px;">
-                                    Conservez cet email, il contient votre lien de téléchargement.
+                                    Conservez précieusement cet email.
                                 </p>
                             </td>
                         </tr>
