@@ -1,14 +1,14 @@
 <template>
     <div>
         <!-- Filter buttons -->
-        <div v-if="toolbarFilters.length" class="flex flex-wrap justify-center gap-4 mb-4">
+        <div v-if="toolbarFilters.length" class="flex flex-wrap justify-center gap-2 sm:gap-4 mb-4 px-2 sm:px-0">
             <button
                 v-for="filter in toolbarFilters"
                 :key="filter"
                 @click="activeFilter = filter"
                 @mouseenter="precacheFilter(filter)"
                 :class="[
-          'px-6 py-2 text-sm uppercase tracking-widest font-light transition-all',
+          'px-3 sm:px-6 py-2 text-xs sm:text-sm uppercase tracking-wider sm:tracking-widest font-light transition-all',
           activeFilter === filter
             ? 'bg-black text-white'
             : 'bg-white border border-gray-300 hover:border-gold hover:text-gold'

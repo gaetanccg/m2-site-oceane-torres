@@ -47,9 +47,9 @@
         </div>
 
         <!-- Galleries Grid -->
-        <section v-else class="py-12 px-6 lg:px-12">
+        <section v-else class="py-8 sm:py-12 px-4 sm:px-6 lg:px-12">
             <div class="max-w-7xl mx-auto">
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
                     <router-link
                         v-for="gallery in galleries"
                         :key="gallery.id"

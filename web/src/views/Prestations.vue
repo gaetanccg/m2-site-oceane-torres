@@ -64,26 +64,26 @@
                 </div>
 
                 <!-- Why Choose Me Section -->
-                <div class="bg-white border border-gold/20 p-12 rounded-lg shadow-sm">
-                    <h3 class="text-3xl font-light text-center mb-8">Pourquoi me choisir ?</h3>
+                <div class="bg-white border border-gold/20 p-6 sm:p-8 lg:p-12 rounded-lg shadow-sm">
+                    <h3 class="text-2xl sm:text-3xl font-light text-center mb-6 sm:mb-8">Pourquoi me choisir ?</h3>
 
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-10 text-center">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-10 text-center">
                         <div>
-                            <p class="text-gold text-4xl mb-3">&#127912;</p>
-                            <h4 class="font-normal text-lg mb-2">Style naturel & elegant</h4>
-                            <p class="text-gray-600 font-light">Des images authentiques, qui marquent l'instant sans artifices.</p>
+                            <p class="text-gold text-3xl sm:text-4xl mb-3">&#127912;</p>
+                            <h4 class="font-normal text-base sm:text-lg mb-2">Style naturel & elegant</h4>
+                            <p class="text-gray-600 font-light text-sm sm:text-base">Des images authentiques, qui marquent l'instant sans artifices.</p>
                         </div>
 
                         <div>
-                            <p class="text-gold text-4xl mb-3">&#129309;</p>
-                            <h4 class="font-normal text-lg mb-2">Accompagnement complet</h4>
-                            <p class="text-gray-600 font-light">Conseils poses, tenues et lieu pour un resultat harmonieux qui vous ressemble.</p>
+                            <p class="text-gold text-3xl sm:text-4xl mb-3">&#129309;</p>
+                            <h4 class="font-normal text-base sm:text-lg mb-2">Accompagnement complet</h4>
+                            <p class="text-gray-600 font-light text-sm sm:text-base">Conseils poses, tenues et lieu pour un resultat harmonieux qui vous ressemble.</p>
                         </div>
 
                         <div>
-                            <p class="text-gold text-4xl mb-3">&#128247;</p>
-                            <h4 class="font-normal text-lg mb-2">Experience personnalisee</h4>
-                            <p class="text-gray-600 font-light">Chaque seance est concue pour refleter votre personnalite, nous discutons, nous nous comprenons, nous choisissons ensemble afin d'avoir le resultat que vous souhaitez.</p>
+                            <p class="text-gold text-3xl sm:text-4xl mb-3">&#128247;</p>
+                            <h4 class="font-normal text-base sm:text-lg mb-2">Experience personnalisee</h4>
+                            <p class="text-gray-600 font-light text-sm sm:text-base">Chaque seance est concue pour refleter votre personnalite, nous discutons, nous nous comprenons, nous choisissons ensemble afin d'avoir le resultat que vous souhaitez.</p>
                         </div>
                     </div>
                 </div>

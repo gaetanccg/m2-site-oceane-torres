@@ -96,12 +96,12 @@ const subtitleClasses = computed(() => [
 ])
 
 const primaryButtonClasses = computed(() => [
-    'w-full sm:w-auto inline-block px-10 py-4 text-sm uppercase tracking-widest font-medium transition-all duration-300',
+    'w-full sm:w-auto inline-block px-6 sm:px-10 py-3 sm:py-4 text-xs sm:text-sm uppercase tracking-wider sm:tracking-widest font-medium transition-all duration-300 text-center',
     'bg-gold text-black hover:bg-gold/90',
 ])
 
 const secondaryButtonClasses = computed(() => [
-    'w-full sm:w-auto inline-block px-10 py-4 border-2 text-sm uppercase tracking-widest font-light transition-all duration-300',
+    'w-full sm:w-auto inline-block px-6 sm:px-10 py-3 sm:py-4 border-2 text-xs sm:text-sm uppercase tracking-wider sm:tracking-widest font-light transition-all duration-300 text-center',
     'border-gold text-gold hover:bg-gold hover:text-black',
 ])
 </script>
