@@ -26,11 +26,18 @@
 @layer base{
 	body{
 		font-family: "Glacial Indifference", 'Inter', sans-serif;
-		text-align: justify;
+	}
+
+	/* Justify text only on larger screens for better readability */
+	@media (min-width: 640px){
+		body{
+			text-align: justify;
+		}
 	}
 
 	h1, h2, h3, h4, h5, h6{
 		font-family: 'Arial', Arial, sans-serif;
+		text-align: left;
 	}
 }
 
