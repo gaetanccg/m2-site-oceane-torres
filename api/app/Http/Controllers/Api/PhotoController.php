@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Gallery;
 use App\Models\Photo;
+use App\Services\ImageProcessingService;
 use App\Services\MinioStorageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -24,35 +25,65 @@ class PhotoController extends Controller
     {
         $validated = $request->validate([
             'photos' => ['required', 'array', 'min:1'],
-            'photos.*' => ['required', 'file', 'mimes:jpeg,png,jpg,gif,webp', 'max:51200'], // 50MB max per file
+            'photos.*' => ['required', 'file', 'mimes:jpeg,png,jpg,gif,webp,mp4,mov,avi', 'max:51200'], // 50MB max per file
         ]);
 
-        $storageService = new MinioStorageService;
+        $imageProcessingService = new ImageProcessingService;
         $uploadedPhotos = [];
         $errors = [];
 
         foreach ($request->file('photos') as $file) {
             try {
-                // Upload to MinIO
-                $result = $storageService->uploadPhoto($file, $gallery->id);
+                $mimeType = $file->getMimeType();
+                $isVideo = str_starts_with($mimeType, 'video/');
 
-                if ($result) {
-                    // Create photo entry in database
-                    $photo = $gallery->photos()->create([
-                        'file_path' => $result['path'],
-                        'title' => pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME),
-                        'is_downloadable' => false,
-                        'metadata' => [
-                            'original_filename' => $file->getClientOriginalName(),
-                            'size' => $file->getSize(),
-                            'mime_type' => $file->getMimeType(),
-                            'storage_path' => $result['path'],
-                        ],
-                    ]);
+                if ($isVideo) {
+                    // Videos: upload directly without processing
+                    $storageService = new MinioStorageService;
+                    $result = $storageService->uploadPhoto($file, $gallery->id);
 
-                    $uploadedPhotos[] = $photo;
+                    if ($result) {
+                        $photo = $gallery->photos()->create([
+                            'file_path' => $result['path'],
+                            'title' => pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME),
+                            'is_video' => true,
+                            'is_downloadable' => false,
+                            'is_processed' => true,
+                            'metadata' => [
+                                'original_filename' => $file->getClientOriginalName(),
+                                'size' => $file->getSize(),
+                                'mime_type' => $mimeType,
+                                'storage_path' => $result['path'],
+                            ],
+                        ]);
+                        $uploadedPhotos[] = $photo;
+                    } else {
+                        $errors[] = "Erreur lors de l'upload de {$file->getClientOriginalName()}";
+                    }
                 } else {
-                    $errors[] = "Erreur lors de l'upload de {$file->getClientOriginalName()}";
+                    // Images: process with watermarks and create versions
+                    $result = $imageProcessingService->processUploadedPhoto($file, $gallery->id);
+
+                    if ($result) {
+                        $photo = $gallery->photos()->create([
+                            'file_path' => $result['hd_path'],
+                            'file_path_hd' => $result['hd_path'],
+                            'file_path_preview' => $result['preview_path'],
+                            'file_path_thumbnail' => $result['thumbnail_path'],
+                            'is_processed' => true,
+                            'title' => pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME),
+                            'is_downloadable' => false,
+                            'metadata' => [
+                                'original_filename' => $file->getClientOriginalName(),
+                                'size' => $file->getSize(),
+                                'mime_type' => $mimeType,
+                                'storage_path' => $result['hd_path'],
+                            ],
+                        ]);
+                        $uploadedPhotos[] = $photo;
+                    } else {
+                        $errors[] = "Erreur lors du traitement de {$file->getClientOriginalName()}";
+                    }
                 }
             } catch (\Exception $e) {
                 $errors[] = "Erreur: {$file->getClientOriginalName()} - {$e->getMessage()}";

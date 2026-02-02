@@ -24,6 +24,8 @@ export interface RegisterData {
 export interface AccountPhoto {
     id: string
     display_url?: string
+    preview_url?: string
+    thumbnail_url?: string
     file_path?: string
     thumbnail_path?: string
 }

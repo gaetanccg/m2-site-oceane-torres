@@ -82,12 +82,14 @@
                                 <div
                                     class="relative group cursor-pointer"
                                     @click="openLightbox(index)"
+                                    @contextmenu.prevent
                                 >
                                     <img
-                                        :src="photo.display_url || photo.file_path"
+                                        :src="photo.preview_url || photo.display_url || photo.file_path"
                                         :alt="photo.title || 'Photo'"
-                                        class="w-full h-auto"
+                                        class="w-full h-auto select-none"
                                         loading="lazy"
+                                        draggable="false"
                                     />
                                     <!-- Hover overlay -->
                                     <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
@@ -151,12 +153,12 @@
             </section>
         </template>
 
-        <!-- Lightbox -->
+        <!-- Lightbox (watermark intégré côté serveur) -->
         <Lightbox
             :images="lightboxImages"
             :is-open="lightboxOpen"
             :initial-index="lightboxIndex"
-            :show-watermark="true"
+            :show-watermark="false"
             @close="lightboxOpen = false"
         />
     </div>
@@ -174,6 +176,8 @@ interface Photo {
     id: string
     file_path: string
     display_url?: string
+    preview_url?: string
+    thumbnail_url?: string
     title?: string
 }
 
@@ -205,7 +209,7 @@ const lightboxIndex = ref(0)
 const lightboxImages = computed<LightboxImage[]>(() => {
     if (!gallery.value?.photos) return []
     return gallery.value.photos.map(photo => ({
-        url: photo.display_url || photo.file_path,
+        url: photo.preview_url || photo.display_url || photo.file_path,
         alt: photo.title || 'Photo',
         type: 'image' as const
     }))
