@@ -5,8 +5,8 @@
             <div class="max-w-4xl mx-auto text-center">
                 <h1 class="text-4xl md:text-5xl font-light mb-4 text-center">Galeries d'événements</h1>
                 <p class="text-gray-600 font-light text-lg max-w-2xl mx-auto">
-                    Decouvrez les moments capturés lors de mes differents événements.
-                    Événements équestres, séance sportives, journées spéciales et bien plus encore.
+                    Découvrez les moments capturés lors de mes différents événements.
+                    Événements équestres, séances sportives, journées spéciales et bien plus encore.
                 </p>
             </div>
         </section>

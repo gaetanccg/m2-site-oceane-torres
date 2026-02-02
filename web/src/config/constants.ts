@@ -94,6 +94,17 @@ export const API_CONFIG = {
 } as const
 
 // ============================================================================
+// Upload Configuration
+// ============================================================================
+
+export const UPLOAD_CONFIG = {
+    chunkSize: 5,           // Number of files per chunk
+    timeout: 120000,        // 120 seconds timeout per request
+    pollInterval: 2000,     // Poll status every 2 seconds
+    maxFileSize: 50 * 1024 * 1024, // 50MB max per file
+} as const
+
+// ============================================================================
 // Business Info
 // ============================================================================
 
