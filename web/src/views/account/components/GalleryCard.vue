@@ -66,7 +66,7 @@ const props = defineProps<{
 const coverPhoto = computed(() => {
     if (props.gallery.photos && props.gallery.photos.length > 0) {
         const photo = props.gallery.photos[0]
-        return photo.display_url || photo.file_path || photo.thumbnail_path
+        return photo.thumbnail_url || photo.preview_url || photo.display_url || photo.file_path
     }
     return null
 })
