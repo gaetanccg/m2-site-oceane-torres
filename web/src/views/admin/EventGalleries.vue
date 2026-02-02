@@ -436,10 +436,10 @@ const isBulkProcessing = ref(false)
 
 // Chunked upload
 const {
-    files: uploadFiles,
+    files: _uploadFiles,
     isUploading,
     progress: uploadProgress,
-    completedPhotos,
+    completedPhotos: _completedPhotos,
     upload: chunkedUpload,
     cancel: cancelUpload,
     reset: resetUpload

@@ -2,7 +2,7 @@
  * Composable for chunked file uploads
  */
 
-import { ref, computed, type Ref } from 'vue'
+import { ref, type Ref } from 'vue'
 import { ChunkedUploadService } from '@/services/uploadService'
 import { UPLOAD_CONFIG } from '@/config/constants'
 import type {
