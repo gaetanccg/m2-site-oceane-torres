@@ -202,15 +202,13 @@
                 </div>
 
                 <!-- Upload Progress -->
-                <div v-if="uploadProgress > 0 && uploadProgress < 100" class="space-y-2">
-                    <div class="flex justify-between text-sm text-gray-600">
-                        <span>Upload en cours...</span>
-                        <span>{{ uploadProgress }}%</span>
-                    </div>
-                    <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div class="h-full bg-gold transition-all duration-300" :style="{ width: `${uploadProgress}%` }" />
-                    </div>
-                </div>
+                <UploadProgress
+                    v-if="isUploading || (uploadProgress && !uploadProgress.isComplete)"
+                    :progress="uploadProgress"
+                    :show-file-list="true"
+                    :show-cancel-button="true"
+                    @cancel="handleCancelUpload"
+                />
 
                 <!-- Loading State for Photos -->
                 <div v-if="isLoadingPhotos" class="flex items-center justify-center py-16">
@@ -405,7 +403,9 @@ import AdminHeader from '@/components/admin/AdminHeader.vue'
 import Modal from '@/components/admin/ui/Modal.vue'
 import Button from '@/components/admin/ui/Button.vue'
 import FormField from '@/components/admin/ui/FormField.vue'
+import UploadProgress from '@/components/admin/ui/UploadProgress.vue'
 import {adminApi} from '@/services/adminApi'
+import {useChunkedUpload} from '@/composables/useChunkedUpload'
 import type {AdminGallery, AdminPhoto, EventGalleryFormData} from '@/types/admin'
 
 interface EventGalleryWithCover extends AdminGallery {
@@ -424,7 +424,6 @@ const isEditing = ref(false)
 const isSaving = ref(false)
 const isDeleting = ref(false)
 const isDragging = ref(false)
-const uploadProgress = ref(0)
 const fileInput = ref<HTMLInputElement | null>(null)
 const editingId = ref<string | null>(null)
 const selectedGallery = ref<EventGalleryWithCover | null>(null)
@@ -434,6 +433,17 @@ const lightboxIndex = ref(0)
 const selectionMode = ref(false)
 const selectedPhotos = ref<string[]>([])
 const isBulkProcessing = ref(false)
+
+// Chunked upload
+const {
+    files: uploadFiles,
+    isUploading,
+    progress: uploadProgress,
+    completedPhotos,
+    upload: chunkedUpload,
+    cancel: cancelUpload,
+    reset: resetUpload
+} = useChunkedUpload()
 
 const form = reactive<EventGalleryFormData>({
     title: '',
@@ -560,20 +570,37 @@ function handleFileSelect(event: Event) {
 
 async function uploadPhotos(files: File[]) {
     if (!selectedGallery.value || files.length === 0) return
-    uploadProgress.value = 1
+
     try {
-        const response = await adminApi.uploadEventPhotos(selectedGallery.value.id, files)
-        if (response.success) {
-            galleryPhotos.value.push(...response.data)
+        const result = await chunkedUpload(selectedGallery.value.id, files)
+
+        // Refresh gallery photos after upload completes
+        if (result.completed > 0) {
+            await refreshGalleryPhotos()
         }
     } catch (error) {
-        console.error('Error uploading photos:', error)
-    } finally {
-        uploadProgress.value = 100
-        setTimeout(() => {
-            uploadProgress.value = 0
-        }, 1000)
+        if ((error as Error).message !== 'Upload cancelled') {
+            console.error('Error uploading photos:', error)
+        }
     }
+}
+
+async function refreshGalleryPhotos() {
+    if (!selectedGallery.value) return
+
+    try {
+        const response = await adminApi.getEventGallery(selectedGallery.value.id)
+        if (response.success && response.data) {
+            galleryPhotos.value = response.data.photos || []
+        }
+    } catch (error) {
+        console.error('Error refreshing gallery photos:', error)
+    }
+}
+
+function handleCancelUpload() {
+    cancelUpload()
+    resetUpload()
 }
 
 async function deletePhoto(photoId: string) {
