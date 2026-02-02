@@ -19,6 +19,9 @@ class Photo extends Model
         'file_path_web',
         'file_path_hd',
         'file_path_watermark',
+        'file_path_preview',
+        'file_path_thumbnail',
+        'is_processed',
         'is_video',
         'title',
         'description',
@@ -31,7 +34,7 @@ class Photo extends Model
         'metadata',
     ];
 
-    protected $appends = ['display_url'];
+    protected $appends = ['display_url', 'preview_url', 'thumbnail_url'];
 
     protected function casts(): array
     {
@@ -40,13 +43,56 @@ class Photo extends Model
             'is_liked' => 'boolean',
             'is_downloadable' => 'boolean',
             'is_purchasable' => 'boolean',
+            'is_processed' => 'boolean',
             'price' => 'decimal:2',
             'downloads_count' => 'integer',
             'metadata' => 'array',
         ];
     }
 
+    /**
+     * Get display URL (kept for backwards compatibility)
+     *
+     * @deprecated Use preview_url or thumbnail_url instead
+     */
     public function getDisplayUrlAttribute(): ?string
+    {
+        // Return preview URL for backwards compatibility
+        return $this->preview_url;
+    }
+
+    /**
+     * Get preview URL (1200px + watermark) via proxy
+     */
+    public function getPreviewUrlAttribute(): ?string
+    {
+        // For videos, return the original URL
+        if ($this->is_video) {
+            return $this->getVideoUrl();
+        }
+
+        // Return proxy URL
+        return url("/api/images/preview/{$this->id}");
+    }
+
+    /**
+     * Get thumbnail URL (400px + strong watermark) via proxy
+     */
+    public function getThumbnailUrlAttribute(): ?string
+    {
+        // For videos, return the original URL
+        if ($this->is_video) {
+            return $this->getVideoUrl();
+        }
+
+        // Return proxy URL
+        return url("/api/images/thumbnail/{$this->id}");
+    }
+
+    /**
+     * Get video URL (videos are not proxied)
+     */
+    private function getVideoUrl(): ?string
     {
         $storagePath = $this->metadata['storage_path'] ?? $this->metadata['supabase_path'] ?? $this->file_path;
 

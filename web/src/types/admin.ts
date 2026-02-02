@@ -258,6 +258,8 @@ export interface AdminPhoto {
     path: string
     file_path?: string
     display_url?: string
+    preview_url?: string
+    thumbnail_url?: string
     thumbnail_path?: string
     watermarked_path?: string
     original_filename?: string
@@ -267,6 +269,7 @@ export interface AdminPhoto {
     height?: number
     is_liked: boolean
     is_downloadable: boolean
+    is_processed?: boolean
     downloads_count: number
     created_at: string
 }
@@ -327,7 +330,9 @@ export interface AdminOrderItem {
     gallery_title: string | null
     price: number
     is_downloaded: boolean
-    display_url: string | null
+    display_url?: string
+    preview_url?: string
+    thumbnail_url?: string
 }
 
 export interface AdminOrder {
