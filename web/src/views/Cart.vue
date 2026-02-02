@@ -50,11 +50,11 @@
                                     :key="item.id"
                                     class="flex gap-4 p-4"
                                 >
-                                    <!-- Photo -->
+                                    <!-- Photo (thumbnail pour performance) -->
                                     <div class="w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100">
                                         <img
-                                            v-if="item.photo.display_url"
-                                            :src="item.photo.display_url"
+                                            v-if="item.photo.thumbnail_url || item.photo.display_url"
+                                            :src="item.photo.thumbnail_url || item.photo.display_url"
                                             :alt="item.photo.title || 'Photo'"
                                             class="w-full h-full object-cover"
                                         />

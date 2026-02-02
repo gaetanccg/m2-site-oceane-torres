@@ -3,8 +3,8 @@
         <!-- Photo thumbnail -->
         <div class="w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100">
             <img
-                v-if="item.photo.display_url"
-                :src="item.photo.display_url"
+                v-if="item.photo.thumbnail_url || item.photo.display_url"
+                :src="item.photo.thumbnail_url || item.photo.display_url"
                 :alt="item.photo.title || 'Photo'"
                 class="w-full h-full object-cover"
             />

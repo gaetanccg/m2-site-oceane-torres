@@ -66,7 +66,7 @@
                         >
                             <div class="relative group bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow">
                                 <img
-                                    :src="photo.display_url || photo.file_path"
+                                    :src="photo.preview_url || photo.display_url || photo.file_path"
                                     :alt="photo.title || 'Photo'"
                                     class="w-full h-auto cursor-pointer"
                                     loading="lazy"
@@ -118,6 +118,8 @@ interface Photo {
     id: string
     file_path: string
     display_url?: string
+    preview_url?: string
+    thumbnail_url?: string
     title?: string
 }
 
@@ -142,7 +144,7 @@ const downloadingPhotos = ref(new Set<string>())
 const lightboxImages = computed<LightboxImage[]>(() => {
     if (!gallery.value?.photos) return []
     return gallery.value.photos.map(photo => ({
-        url: photo.display_url || photo.file_path,
+        url: photo.preview_url || photo.display_url || photo.file_path,
         alt: photo.title || 'Photo',
         type: 'image' as const
     }))
