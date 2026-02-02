@@ -3,14 +3,17 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\ProcessPhotoJob;
 use App\Models\Gallery;
 use App\Models\Photo;
+use App\Models\PhotoUpload;
 use App\Services\ImageProcessingService;
 use App\Services\MinioStorageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class PhotoController extends Controller
 {
@@ -227,6 +230,86 @@ class PhotoController extends Controller
         return response()->json([
             'message' => 'Ordre mis à jour.',
         ]);
+    }
+
+    /**
+     * Store photos asynchronously via job queue
+     * Accepts chunks of up to 10 photos at a time
+     */
+    public function storeAsync(Request $request, Gallery $gallery): JsonResponse
+    {
+        $validated = $request->validate([
+            'photos' => ['required', 'array', 'min:1', 'max:10'],
+            'photos.*' => ['required', 'file', 'mimes:jpeg,png,jpg,gif,webp,mp4,mov,avi', 'max:51200'],
+            'batch_id' => ['required', 'string'],
+        ]);
+
+        $batchId = $validated['batch_id'];
+        $uploads = [];
+
+        foreach ($request->file('photos') as $file) {
+            try {
+                // Create PhotoUpload record
+                $upload = PhotoUpload::create([
+                    'batch_id' => $batchId,
+                    'gallery_id' => $gallery->id,
+                    'original_filename' => $file->getClientOriginalName(),
+                    'status' => 'uploading',
+                ]);
+
+                // Save file to temp storage
+                $tempPath = 'temp_uploads/'.$upload->id.'_'.$file->getClientOriginalName();
+                Storage::disk('local')->put($tempPath, file_get_contents($file->getRealPath()));
+
+                // Update status to pending and dispatch job
+                $upload->update(['status' => 'pending']);
+
+                ProcessPhotoJob::dispatch(
+                    $upload->id,
+                    $gallery->id,
+                    $tempPath,
+                    $file->getClientOriginalName(),
+                    $file->getMimeType()
+                );
+
+                $uploads[] = [
+                    'id' => $upload->id,
+                    'original_filename' => $upload->original_filename,
+                    'status' => $upload->status,
+                ];
+            } catch (\Exception $e) {
+                // If upload fails, mark as failed
+                if (isset($upload)) {
+                    $upload->markAsFailed($e->getMessage());
+                    $uploads[] = [
+                        'id' => $upload->id,
+                        'original_filename' => $upload->original_filename,
+                        'status' => 'failed',
+                        'error_message' => $e->getMessage(),
+                    ];
+                }
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'batch_id' => $batchId,
+            'uploads' => $uploads,
+        ]);
+    }
+
+    /**
+     * Get upload status for a batch
+     */
+    public function uploadStatus(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'batch_id' => ['required', 'string'],
+        ]);
+
+        $status = PhotoUpload::getBatchStatus($validated['batch_id']);
+
+        return response()->json($status);
     }
 
     /**
