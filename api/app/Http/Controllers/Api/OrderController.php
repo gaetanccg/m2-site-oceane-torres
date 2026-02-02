@@ -424,6 +424,8 @@ class OrderController extends Controller
                 'price' => (float) $item->price,
                 'is_downloaded' => $item->is_downloaded,
                 'display_url' => $item->photo?->display_url,
+                'preview_url' => $item->photo?->preview_url,
+                'thumbnail_url' => $item->photo?->thumbnail_url,
             ]),
             'has_prints' => $order->hasPrintItems(),
             'customer_email' => $order->customer_email,

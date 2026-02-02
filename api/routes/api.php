@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\GalleryController;
 use App\Http\Controllers\Api\GiftCardController;
 use App\Http\Controllers\Api\HealthController;
+use App\Http\Controllers\Api\ImageProxyController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\PhotoController;
 use App\Http\Controllers\Api\PrestationController;
@@ -60,6 +61,15 @@ Route::get('/galleries/{gallery}/download-file', [GalleryController::class, 'dow
 Route::get('/photos/{photo}', [PhotoController::class, 'show']);
 Route::post('/photos/{photo}/like', [PhotoController::class, 'like']);
 Route::get('/photos/{photo}/download', [PhotoController::class, 'download']);
+
+// Image proxy (secure image streaming with watermarks)
+Route::middleware('throttle:images')->group(function () {
+    Route::get('/images/preview/{photo}', [ImageProxyController::class, 'preview']);
+    Route::get('/images/thumbnail/{photo}', [ImageProxyController::class, 'thumbnail']);
+});
+Route::middleware('throttle:downloads')->group(function () {
+    Route::get('/images/download/{photo}', [ImageProxyController::class, 'download']);
+});
 
 // Contact
 Route::post('/contact', [ContactController::class, 'send']);

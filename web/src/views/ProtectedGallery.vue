@@ -92,19 +92,19 @@
                             class="break-inside-avoid"
                         >
                             <div class="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow">
-                                <!-- Photo -->
+                                <!-- Photo (watermark intégré côté serveur) -->
                                 <div
                                     class="cursor-pointer"
                                     @click="openLightbox(index)"
+                                    @contextmenu.prevent
                                 >
-                                    <WatermarkOverlay>
-                                        <img
-                                            :src="photo.display_url || photo.file_path"
-                                            :alt="photo.title || 'Photo'"
-                                            class="w-full h-auto"
-                                            loading="lazy"
-                                        />
-                                    </WatermarkOverlay>
+                                    <img
+                                        :src="photo.preview_url || photo.display_url || photo.file_path"
+                                        :alt="photo.title || 'Photo'"
+                                        class="w-full h-auto select-none"
+                                        loading="lazy"
+                                        draggable="false"
+                                    />
                                 </div>
 
                                 <!-- Actions below image -->
@@ -129,12 +129,12 @@
             </section>
         </template>
 
-        <!-- Lightbox -->
+        <!-- Lightbox (watermark intégré dans les images serveur) -->
         <Lightbox
             :images="lightboxImages"
             :is-open="lightboxOpen"
             :initial-index="lightboxIndex"
-            :show-watermark="true"
+            :show-watermark="false"
             @close="lightboxOpen = false"
         />
     </div>
@@ -143,7 +143,6 @@
 <script setup lang="ts">
 import {ref, computed, onMounted} from 'vue'
 import {useRoute} from 'vue-router'
-import WatermarkOverlay from '@/components/WatermarkOverlay.vue'
 import LikeButton from '@/components/LikeButton.vue'
 import Lightbox from '@/components/Lightbox.vue'
 import AddToCartButton from '@/components/cart/AddToCartButton.vue'
@@ -154,6 +153,8 @@ interface Photo {
     id: string
     file_path: string
     display_url?: string
+    preview_url?: string
+    thumbnail_url?: string
     title?: string
     is_liked: boolean
 }
@@ -176,7 +177,7 @@ const lightboxIndex = ref(0)
 const lightboxImages = computed<LightboxImage[]>(() => {
     if (!gallery.value?.photos) return []
     return gallery.value.photos.map(photo => ({
-        url: photo.display_url || photo.file_path,
+        url: photo.preview_url || photo.display_url || photo.file_path,
         alt: photo.title || 'Photo',
         type: 'image' as const
     }))

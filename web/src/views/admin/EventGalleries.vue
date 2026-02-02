@@ -47,7 +47,7 @@
                         >
                             <img
                                 v-if="gallery.cover_photo"
-                                :src="gallery.cover_photo.display_url || gallery.cover_photo.file_path"
+                                :src="gallery.cover_photo.thumbnail_url || gallery.cover_photo.preview_url || gallery.cover_photo.display_url || gallery.cover_photo.file_path"
                                 :alt="gallery.title"
                                 class="w-full h-full object-cover"
                             />
@@ -279,7 +279,7 @@
                         @click="selectionMode ? togglePhotoSelection(photo.id) : openLightbox(index)"
                     >
                         <img
-                            :src="photo.display_url || photo.file_path"
+                            :src="photo.preview_url || photo.display_url || photo.file_path"
                             :alt="photo.title"
                             class="w-full h-full object-cover"
                         />
@@ -384,7 +384,7 @@
 
                 <img
                     v-if="currentLightboxPhoto"
-                    :src="currentLightboxPhoto.display_url || currentLightboxPhoto.file_path"
+                    :src="currentLightboxPhoto.preview_url || currentLightboxPhoto.display_url || currentLightboxPhoto.file_path"
                     :alt="currentLightboxPhoto.title || 'Photo'"
                     class="max-h-[90vh] max-w-[90vw] object-contain"
                     @click.stop

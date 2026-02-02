@@ -224,3 +224,72 @@ Ajout d'une lightbox dans la gestion des galeries admin permettant de visualiser
 - `web/src/views/admin/Galleries.vue` : ajout du composant lightbox avec Teleport, variables d'état et fonctions de navigation
 
 ---
+
+### Résumé de l'implémentation 02/01/2026
+
+#### Backend (Laravel)
+
+**Nouveaux fichiers créés :**
+
+1. `api/app/Services/ImageProcessingService.php`
+    - Génère 3 versions : HD, preview (1200px), thumbnail (400px)
+    - Applique un watermark diagonal \@ Oceane Torres intégré dans l'image
+    - Supporte le traitement à la volée pour les photos existantes
+
+2. `api/app/Http/Controllers/Api/ImageProxyController.php`
+    - `GET /api/images/preview/{photo}` — stream de la version preview
+    - `GET /api/images/thumbnail/{photo}` — stream de la version thumbnail
+    - `GET /api/images/download/{photo}?token=&order=` — HD après validation d'achat
+    - Fallback automatique : génération à la volée si la photo n'est pas traitée
+
+3. `api/database/migrations/2026_02_02_000001_add_image_versions_to_photos.php`
+    - `file_path_preview` (string, nullable)
+    - `file_path_thumbnail` (string, nullable)
+    - `is_processed` (boolean, default false)
+
+4. `api/app/Console/Commands/ProcessExistingPhotos.php`
+    - Commande : `php artisan photos:process-existing --batch=25`
+    - Traite les photos existantes par batch
+
+**Fichiers modifiés :**
+
+- `api/app/Models/Photo.php` — nouveaux attributs : `preview_url`, `thumbnail_url`, `display_url` (rétrocompatible)
+- `api/app/Http/Controllers/PhotoController.php` — utilise `ImageProcessingService` à l'upload
+- `api/app/Http/Controllers/OrderController.php` — ajoute `preview_url` et `thumbnail_url` dans `formatOrder`
+- `api/routes/api.php` — nouvelles routes avec rate limiting
+- `api/app/Providers/AppServiceProvider.php` — configuration rate limiting (120/min images, 30/min downloads)
+
+#### Frontend (Vue)
+
+**Fichiers modifiés (11 composants Vue) :**
+
+- `web/src/views/ProtectedGallery.vue` — utilise `preview_url`, suppression de l'import `WatermarkOverlay`
+- `web/src/components/EventGallery.vue` — utilise `preview_url`
+- `web/src/views/DownloadGallery.vue` — utilise `preview_url`
+- `web/src/views/Events.vue` — utilise `thumbnail_url`
+- `web/src/components/Cart.vue` — utilise `thumbnail_url`
+- `web/src/views/Checkout.vue` — utilise `thumbnail_url`
+- `web/src/views/OrderConfirmation.vue` — utilise `thumbnail_url`
+- `web/src/components/CartItem.vue` — utilise `thumbnail_url`
+- `web/src/views/admin/Galleries.vue` — utilise `preview_url`
+- `web/src/views/admin/EventGalleries.vue` — utilise `thumbnail_url` et `preview_url`
+- `web/src/views/admin/Orders.vue` — utilise `thumbnail_url`
+- `web/src/components/account/GalleryCard.vue` — utilise `thumbnail_url`
+
+**Types TypeScript mis à jour :**
+
+- `src/types/admin.ts` — ajout : `preview_url`, `thumbnail_url`, `is_processed`
+- `src/types/account.ts` — ajout : `preview_url`, `thumbnail_url`
+- `src/services/cartApi.ts` — ajout : `preview_url`, `thumbnail_url`
+
+**Fichier supprimé :**
+
+- `web/src/components/WatermarkOverlay.vue` — watermark CSS devenu inutile
+
+#### Ordre de déploiement recommandé
+
+1. Déployer le backend avec la nouvelle migration
+2. Exécuter `php artisan migrate`
+3. Les galeries existantes continueront de fonctionner (fallback à la volée)
+4. Lancer en arrière-plan : `php artisan photos:process-existing --batch=25`
+5. Déployer le frontend
