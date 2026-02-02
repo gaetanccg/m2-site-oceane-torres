@@ -223,6 +223,10 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::put('/events/{gallery}', [GalleryController::class, 'updateEvent']);
     Route::delete('/events/{gallery}', [GalleryController::class, 'destroyEvent']);
     Route::post('/events/{gallery}/photos', [PhotoController::class, 'store']);
+    Route::post('/events/{gallery}/photos/async', [PhotoController::class, 'storeAsync']);
+
+    // Upload status (for polling)
+    Route::get('/upload-status', [PhotoController::class, 'uploadStatus']);
 
     // Gift cards
     Route::get('/gift-cards', [GiftCardController::class, 'index']);
