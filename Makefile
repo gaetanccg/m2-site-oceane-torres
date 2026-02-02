@@ -71,6 +71,10 @@ migrate: ## Run database migrations
 	docker-compose exec laravel php artisan migrate
 	@echo "✅ Migrations executed"
 
+processPhotos: ## Process existing photos (add watermarks)
+    docker-compose exec laravel php -d memory_limit=1G artisan photos:process-existing
+	@echo "✅ Process finished"
+
 seed: ## Run database seeders
 	docker-compose exec laravel php artisan db:seed
 	@echo "✅ Database seeded"

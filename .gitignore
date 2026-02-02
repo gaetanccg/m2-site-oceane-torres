@@ -115,3 +115,4 @@ PROJECT_REFERENCE_MVP.md
 /deploy/
 
 .claude
+*.tar.gz
