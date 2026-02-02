@@ -23,12 +23,12 @@ class ImageProcessingService
 
     private const THUMBNAIL_MAX_WIDTH = 400;
 
-    // Quality settings
-    private const HD_QUALITY = 95;
+    // Quality settings (kept high for better gallery display)
+    private const HD_QUALITY = 100;
 
-    private const PREVIEW_QUALITY = 80;
+    private const PREVIEW_QUALITY = 95;
 
-    private const THUMBNAIL_QUALITY = 70;
+    private const THUMBNAIL_QUALITY = 90;
 
     // Watermark settings
     private const WATERMARK_TEXT = '@ Oceane Torres';
@@ -251,8 +251,7 @@ class ImageProcessingService
         $width = $image->width();
         $height = $image->height();
 
-        // Calculate font size based on image dimensions
-        $fontSize = max(12, min($width, $height) / 20);
+        $fontSize = max(48, min($width, $height) / 5);
 
         // Create watermark pattern
         $watermarkText = self::WATERMARK_TEXT;
@@ -261,9 +260,8 @@ class ImageProcessingService
         $alpha = (int) ((1 - $opacity) * 127);
         $color = "rgba(255, 255, 255, {$opacity})";
 
-        // Calculate step for diagonal pattern
-        $stepX = $width / 4;
-        $stepY = $height / 4;
+        $stepX = $width / 3;
+        $stepY = $height / 3;
 
         // Apply watermarks in a diagonal grid pattern
         for ($y = -$height; $y < $height * 2; $y += $stepY) {
@@ -274,8 +272,7 @@ class ImageProcessingService
                 $posX = (int) ($x + $offsetX);
                 $posY = (int) $y;
 
-                // Only draw if within reasonable bounds
-                if ($posX > -100 && $posX < $width + 100 && $posY > -50 && $posY < $height + 50) {
+                if ($posX > -300 && $posX < $width + 300 && $posY > -150 && $posY < $height + 150) {
                     $image->text($watermarkText, $posX, $posY, function ($font) use ($fontSize, $color) {
                         $font->size($fontSize);
                         $font->color($color);
