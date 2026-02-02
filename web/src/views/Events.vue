@@ -3,10 +3,10 @@
         <!-- Hero Section -->
         <section class="py-16 px-6 bg-cream">
             <div class="max-w-4xl mx-auto text-center">
-                <h1 class="text-4xl md:text-5xl font-light mb-4">Galeries d'événements</h1>
+                <h1 class="text-4xl md:text-5xl font-light mb-4 text-center">Galeries d'événements</h1>
                 <p class="text-gray-600 font-light text-lg max-w-2xl mx-auto">
-                    Decouvrez les moments captures lors de mes differents événements.
-                    Mariages, baptemes, anniversaires et bien plus encore.
+                    Decouvrez les moments capturés lors de mes differents événements.
+                    Événements équestres, séance sportives, journées spéciales et bien plus encore.
                 </p>
             </div>
         </section>
@@ -149,8 +149,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { API_CONFIG } from '@/config/constants'
+import {ref, onMounted} from 'vue'
+import {API_CONFIG} from '@/config/constants'
 
 interface Photo {
     id: string
@@ -189,7 +189,7 @@ function formatDate(dateStr: string): string {
 async function fetchGalleries(page = 1) {
     try {
         const response = await fetch(`${API_CONFIG.baseUrl}/events?page=${page}`, {
-            headers: { 'Accept': 'application/json' }
+            headers: {'Accept': 'application/json'}
         })
 
         if (response.ok) {
@@ -224,7 +224,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.line-clamp-2 {
+.line-clamp-2{
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
