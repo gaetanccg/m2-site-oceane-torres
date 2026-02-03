@@ -12,6 +12,8 @@ export interface FileUploadState {
     progress: number
     errorMessage?: string
     photoId?: string
+    size?: number        // File size in bytes
+    uploadedBytes?: number // Bytes uploaded so far
 }
 
 export interface BatchUploadStatus {
@@ -67,4 +69,5 @@ export interface ChunkUploadOptions {
     timeout?: number
     pollInterval?: number
     maxRetries?: number
+    endpoint?: 'events' | 'galleries' // Which endpoint to use
 }
