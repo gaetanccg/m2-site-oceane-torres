@@ -88,6 +88,68 @@ services:
       - app-network
 
   # ----------------------------
+  # Queue Worker (Background Jobs)
+  # ----------------------------
+  queue:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+      target: development
+    container_name: queue-worker
+    restart: unless-stopped
+    working_dir: /var/www
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 1.1.1.1
+    volumes:
+      - ./api:/var/www
+      - ./docker/php.ini:/usr/local/etc/php/conf.d/custom.ini
+    environment:
+      # APP
+      - APP_NAME=${APP_NAME}
+      - APP_ENV=${APP_ENV:-local}
+      - APP_KEY=${APP_KEY}
+      - APP_DEBUG=${APP_DEBUG:-true}
+      - APP_URL=${APP_URL:-http://localhost:8000}
+      - APP_LOCALE=fr
+      - APP_TIMEZONE=Europe/Paris
+      # DATABASE
+      - DB_CONNECTION=pgsql
+      - DB_HOST=${DB_HOST_DOCKER}
+      - DB_PORT=${DB_PORT_DOCKER}
+      - DB_DATABASE=${DB_DATABASE}
+      - DB_USERNAME=${DB_USERNAME_DOCKER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      # SESSION & CACHE
+      - SESSION_DRIVER=${SESSION_DRIVER}
+      - SESSION_LIFETIME=${SESSION_LIFETIME}
+      - CACHE_STORE=${CACHE_STORE}
+      - QUEUE_CONNECTION=${QUEUE_CONNECTION}
+      # STORAGE
+      - FILESYSTEM_DISK=${FILESYSTEM_DISK}
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
+      - MINIO_BUCKET=${MINIO_BUCKET}
+      - MINIO_REGION=${MINIO_REGION}
+      - MINIO_USE_PATH_STYLE=${MINIO_USE_PATH_STYLE}
+      # MAIL
+      - MAIL_MAILER=${MAIL_MAILER}
+      - MAIL_HOST=${MAIL_HOST}
+      - MAIL_PORT=${MAIL_PORT}
+      - MAIL_USERNAME=${MAIL_USERNAME}
+      - MAIL_PASSWORD=${MAIL_PASSWORD}
+      - MAIL_ENCRYPTION=${MAIL_ENCRYPTION}
+      - MAIL_FROM_ADDRESS=${MAIL_FROM_ADDRESS}
+      - MAIL_FROM_NAME=${MAIL_FROM_NAME}
+    command: php artisan queue:work --sleep=3 --tries=3 --max-time=3600
+    depends_on:
+      - laravel
+    networks:
+      - app-network
+
+  # ----------------------------
   # Nginx (Reverse Proxy API)
   # ----------------------------
   nginx:

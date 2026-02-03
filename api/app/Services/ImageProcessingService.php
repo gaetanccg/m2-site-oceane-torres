@@ -19,23 +19,24 @@ class ImageProcessingService
     private string $disk = 'minio';
 
     // Image dimensions
-    private const PREVIEW_MAX_WIDTH = 1200;
+    private const PREVIEW_MAX_WIDTH = 2560; // QHD for high-quality gallery viewing
 
-    private const THUMBNAIL_MAX_WIDTH = 400;
+    private const THUMBNAIL_MAX_WIDTH = 600; // Larger thumbnails for better grid display
 
     // Quality settings (kept high for better gallery display)
-    private const HD_QUALITY = 100;
-
     private const PREVIEW_QUALITY = 95;
 
     private const THUMBNAIL_QUALITY = 90;
 
     // Watermark settings
-    private const WATERMARK_TEXT = '@ Oceane Torres';
+    private const WATERMARK_TEXT = '© Oceane Torres';
 
-    private const PREVIEW_WATERMARK_OPACITY = 0.3;
+    private const PREVIEW_WATERMARK_OPACITY = 0.4;
 
-    private const THUMBNAIL_WATERMARK_OPACITY = 0.5;
+    private const THUMBNAIL_WATERMARK_OPACITY = 0.6;
+
+    // Font path for watermark (TTF required for custom sizes)
+    private const WATERMARK_FONT = 'fonts/Amsterdam.ttf';
 
     public function __construct()
     {
@@ -44,7 +45,7 @@ class ImageProcessingService
     }
 
     /**
-     * Process an uploaded photo and create all versions (HD, preview, thumbnail)
+     * Process an uploaded photo and create all versions (original, preview, thumbnail)
      */
     public function processUploadedPhoto(UploadedFile $file, string $galleryId): ?array
     {
@@ -53,30 +54,31 @@ class ImageProcessingService
         $filename = "{$uuid}.{$extension}";
 
         try {
-            // Read original image
-            $image = $this->manager->read($file->getRealPath());
-
             // Define paths
-            $hdPath = "{$galleryId}/hd/{$filename}";
+            $originalPath = "{$galleryId}/original/{$filename}";
             $previewPath = "{$galleryId}/preview/{$filename}";
             $thumbnailPath = "{$galleryId}/thumbnail/{$filename}";
 
-            // 1. Upload HD (original, high quality)
-            $hdContent = $this->encodeImage($image, $extension, self::HD_QUALITY);
-            $this->uploadContent($hdPath, $hdContent, $file->getMimeType());
+            // 1. Upload original file as-is (no re-encoding, preserves 100% quality)
+            $originalContent = file_get_contents($file->getRealPath());
+            $this->uploadContent($originalPath, $originalContent, $file->getMimeType());
 
-            // 2. Create and upload preview (1200px + watermark)
+            // Read image for processing versions
+            $image = $this->manager->read($file->getRealPath());
+
+            // 2. Create and upload preview (2560px + watermark)
             $previewImage = $this->createPreviewVersion($image, $extension);
             $previewContent = $this->encodeImage($previewImage, $extension, self::PREVIEW_QUALITY);
             $this->uploadContent($previewPath, $previewContent, $file->getMimeType());
 
-            // 3. Create and upload thumbnail (400px + strong watermark)
+            // 3. Create and upload thumbnail (600px + strong watermark)
             $thumbnailImage = $this->createThumbnailVersion($image, $extension);
             $thumbnailContent = $this->encodeImage($thumbnailImage, $extension, self::THUMBNAIL_QUALITY);
             $this->uploadContent($thumbnailPath, $thumbnailContent, $file->getMimeType());
 
             return [
-                'hd_path' => $hdPath,
+                'hd_path' => $originalPath, // Keep key name for compatibility
+                'original_path' => $originalPath,
                 'preview_path' => $previewPath,
                 'thumbnail_path' => $thumbnailPath,
                 'filename' => $filename,
@@ -110,20 +112,19 @@ class ImageProcessingService
             $uuid = (string) Str::uuid();
             $filename = "{$uuid}.{$extension}";
 
-            // Read image from content
-            $image = $this->manager->read($content);
-
             // Get mime type
             $mimeType = $this->getMimeTypeFromExtension($extension);
 
             // Define paths
-            $hdPath = "{$galleryId}/hd/{$filename}";
+            $newOriginalPath = "{$galleryId}/original/{$filename}";
             $previewPath = "{$galleryId}/preview/{$filename}";
             $thumbnailPath = "{$galleryId}/thumbnail/{$filename}";
 
-            // 1. Upload HD (original, high quality)
-            $hdContent = $this->encodeImage($image, $extension, self::HD_QUALITY);
-            $this->uploadContent($hdPath, $hdContent, $mimeType);
+            // 1. Upload original as-is (no re-encoding)
+            $this->uploadContent($newOriginalPath, $content, $mimeType);
+
+            // Read image from content for processing
+            $image = $this->manager->read($content);
 
             // 2. Create and upload preview
             $previewImage = $this->createPreviewVersion($image, $extension);
@@ -136,7 +137,8 @@ class ImageProcessingService
             $this->uploadContent($thumbnailPath, $thumbnailContent, $mimeType);
 
             return [
-                'hd_path' => $hdPath,
+                'hd_path' => $newOriginalPath,
+                'original_path' => $newOriginalPath,
                 'preview_path' => $previewPath,
                 'thumbnail_path' => $thumbnailPath,
                 'filename' => $filename,
@@ -244,45 +246,117 @@ class ImageProcessingService
     }
 
     /**
-     * Apply diagonal watermark pattern to image
+     * Apply horizontal watermark pattern to image
      */
     private function applyWatermark(ImageInterface $image, float $opacity): void
     {
         $width = $image->width();
         $height = $image->height();
 
-        $fontSize = max(48, min($width, $height) / 5);
+        // Font size: 5% of the smaller dimension (half of previous)
+        $fontSize = (int) (min($width, $height) * 0.05);
+        $fontSize = max($fontSize, 12);
 
-        // Create watermark pattern
         $watermarkText = self::WATERMARK_TEXT;
+        $color = "rgba(255, 255, 255, $opacity)";
 
-        // Calculate alpha value (0-127 where 0 is opaque, 127 is transparent)
-        $alpha = (int) ((1 - $opacity) * 127);
-        $color = "rgba(255, 255, 255, {$opacity})";
+        $fontPath = $this->getFontPath();
 
-        $stepX = $width / 3;
-        $stepY = $height / 3;
+        // Estimate text dimensions (approximate: width ≈ fontSize * 0.6 * chars, height ≈ fontSize)
+        $textWidth = $fontSize * 0.6 * strlen($watermarkText);
+        $textHeight = $fontSize;
 
-        // Apply watermarks in a diagonal grid pattern
-        for ($y = -$height; $y < $height * 2; $y += $stepY) {
-            for ($x = -$width; $x < $width * 2; $x += $stepX) {
-                // Offset alternating rows
-                $offsetX = (($y / $stepY) % 2 == 0) ? 0 : $stepX / 2;
+        // Calculate grid spacing to avoid overlap
+        // Add padding (1.5x text size) between watermarks
+        $minStepX = $textWidth * 1.5;
+        $minStepY = $textHeight * 2.5;
 
-                $posX = (int) ($x + $offsetX);
-                $posY = (int) $y;
+        // Calculate number of columns and rows that fit without overlap
+        $cols = max(1, (int) floor($width / $minStepX));
+        $rows = max(1, (int) floor($height / $minStepY));
 
-                if ($posX > -300 && $posX < $width + 300 && $posY > -150 && $posY < $height + 150) {
-                    $image->text($watermarkText, $posX, $posY, function ($font) use ($fontSize, $color) {
-                        $font->size($fontSize);
-                        $font->color($color);
-                        $font->angle(-25);
-                        $font->align('center');
-                        $font->valign('middle');
-                    });
-                }
+        // Limit to reasonable numbers
+        $cols = min($cols, 3);
+        $rows = min($rows, 4);
+
+        $stepX = $width / $cols;
+        $stepY = $height / $rows;
+
+        for ($row = 0; $row < $rows; $row++) {
+            for ($col = 0; $col < $cols; $col++) {
+                $posX = (int) ($stepX * $col + $stepX / 2);
+                $posY = (int) ($stepY * $row + $stepY / 2);
+
+                $image->text($watermarkText, $posX, $posY, function ($font) use ($fontSize, $color, $fontPath) {
+                    if ($fontPath) {
+                        $font->filename($fontPath);
+                    }
+                    $font->size($fontSize);
+                    $font->color($color);
+                    $font->angle(0);
+                    $font->align('center');
+                    $font->valign('middle');
+                });
             }
         }
+    }
+
+    /**
+     * Get the path to the watermark font file
+     */
+    private function getFontPath(): ?string
+    {
+        // Try custom font in storage
+        $customFont = storage_path('app/'.self::WATERMARK_FONT);
+        if (file_exists($customFont)) {
+            Log::info('Watermark font found', ['path' => $customFont]);
+
+            return $customFont;
+        }
+
+        // Try system fonts (Alpine/Linux/Ubuntu/Docker)
+        $systemFonts = [
+            // Alpine Linux (ttf-dejavu package)
+            '/usr/share/fonts/ttf-dejavu/DejaVuSans.ttf',
+            '/usr/share/fonts/ttf-dejavu/DejaVuSans-Bold.ttf',
+            // Debian/Ubuntu
+            '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+            '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+            '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf',
+            '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf',
+            '/usr/share/fonts/truetype/freefont/FreeSans.ttf',
+            '/usr/share/fonts/truetype/freefont/FreeSansBold.ttf',
+            // Other Linux
+            '/usr/share/fonts/TTF/DejaVuSans.ttf',
+            '/usr/share/fonts/dejavu/DejaVuSans.ttf',
+        ];
+
+        foreach ($systemFonts as $font) {
+            if (file_exists($font)) {
+                Log::info('Watermark system font found', ['path' => $font]);
+
+                return $font;
+            }
+        }
+
+        // macOS system fonts
+        $macFonts = [
+            '/Library/Fonts/Arial.ttf',
+            '/System/Library/Fonts/Supplemental/Arial.ttf',
+            '/System/Library/Fonts/Helvetica.ttc',
+        ];
+
+        foreach ($macFonts as $font) {
+            if (file_exists($font)) {
+                Log::info('Watermark macOS font found', ['path' => $font]);
+
+                return $font;
+            }
+        }
+
+        Log::warning('No watermark font found! Watermarks will be tiny.');
+
+        return null;
     }
 
     /**
