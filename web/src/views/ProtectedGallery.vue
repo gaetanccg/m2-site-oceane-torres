@@ -91,24 +91,13 @@
                             :key="photo.id"
                             class="break-inside-avoid"
                         >
-                            <div class="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow">
-                                <!-- Photo (watermark intégré côté serveur) -->
-                                <div
-                                    class="cursor-pointer"
-                                    @click="openLightbox(index)"
-                                    @contextmenu.prevent
-                                >
-                                    <img
-                                        :src="photo.preview_url || photo.display_url || photo.file_path"
-                                        :alt="photo.title || 'Photo'"
-                                        class="w-full h-auto select-none"
-                                        loading="lazy"
-                                        draggable="false"
-                                    />
-                                </div>
-
-                                <!-- Actions below image -->
-                                <div class="p-3 flex items-center justify-center gap-3 border-t border-gold">
+                            <PhotoCard
+                                :src="photo.preview_url || photo.display_url || photo.file_path"
+                                :thumbnail-url="photo.thumbnail_url"
+                                :alt="photo.title || 'Photo'"
+                                @click="openLightbox(index)"
+                            >
+                                <template #actions>
                                     <LikeButton
                                         :photo-id="photo.id"
                                         :liked="photo.is_liked"
@@ -121,8 +110,8 @@
                                         size="md"
                                         show-label
                                     />
-                                </div>
-                            </div>
+                                </template>
+                            </PhotoCard>
                         </div>
                     </div>
                 </div>
@@ -145,6 +134,7 @@ import {ref, computed, onMounted} from 'vue'
 import {useRoute} from 'vue-router'
 import LikeButton from '@/components/LikeButton.vue'
 import Lightbox from '@/components/Lightbox.vue'
+import PhotoCard from '@/components/PhotoCard.vue'
 import AddToCartButton from '@/components/cart/AddToCartButton.vue'
 import {API_CONFIG} from '@/config/constants'
 import type {LightboxImage} from '@/types'
