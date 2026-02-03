@@ -81,7 +81,7 @@ class Gallery extends Model
 
     public function photos(): HasMany
     {
-        return $this->hasMany(Photo::class);
+        return $this->hasMany(Photo::class)->orderBy('title');
     }
 
     public function isAccessible(?string $token = null): bool
