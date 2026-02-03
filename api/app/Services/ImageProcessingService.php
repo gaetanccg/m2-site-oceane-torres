@@ -160,11 +160,11 @@ class ImageProcessingService
     {
         try {
             $content = $this->storageService->getFileContent($originalPath);
-            if (!$content) {
+            if (! $content) {
                 return null;
             }
 
-            $extension = strtolower(pathinfo($originalPath, PATHINFO_EXTENSION)) ? : 'jpg';
+            $extension = strtolower(pathinfo($originalPath, PATHINFO_EXTENSION)) ?: 'jpg';
             $image = $this->manager->read($content);
             $previewImage = $this->createPreviewVersion($image, $extension);
 
@@ -186,11 +186,11 @@ class ImageProcessingService
     {
         try {
             $content = $this->storageService->getFileContent($originalPath);
-            if (!$content) {
+            if (! $content) {
                 return null;
             }
 
-            $extension = strtolower(pathinfo($originalPath, PATHINFO_EXTENSION)) ? : 'jpg';
+            $extension = strtolower(pathinfo($originalPath, PATHINFO_EXTENSION)) ?: 'jpg';
             $image = $this->manager->read($content);
             $thumbnailImage = $this->createThumbnailVersion($image, $extension);
 
@@ -254,7 +254,7 @@ class ImageProcessingService
         $height = $image->height();
 
         // Font size: 5% of the smaller dimension (half of previous)
-        $fontSize = (int)(min($width, $height) * 0.05);
+        $fontSize = (int) (min($width, $height) * 0.05);
         $fontSize = max($fontSize, 12);
 
         $watermarkText = self::WATERMARK_TEXT;
@@ -272,8 +272,8 @@ class ImageProcessingService
         $minStepY = $textHeight * 2.5;
 
         // Calculate number of columns and rows that fit without overlap
-        $cols = max(1, (int)floor($width / $minStepX));
-        $rows = max(1, (int)floor($height / $minStepY));
+        $cols = max(1, (int) floor($width / $minStepX));
+        $rows = max(1, (int) floor($height / $minStepY));
 
         // Limit to reasonable numbers
         $cols = min($cols, 3);
@@ -282,10 +282,10 @@ class ImageProcessingService
         $stepX = $width / $cols;
         $stepY = $height / $rows;
 
-        for ($row = 0 ; $row < $rows ; $row++) {
-            for ($col = 0 ; $col < $cols ; $col++) {
-                $posX = (int)($stepX * $col + $stepX / 2);
-                $posY = (int)($stepY * $row + $stepY / 2);
+        for ($row = 0; $row < $rows; $row++) {
+            for ($col = 0; $col < $cols; $col++) {
+                $posX = (int) ($stepX * $col + $stepX / 2);
+                $posY = (int) ($stepY * $row + $stepY / 2);
 
                 $image->text($watermarkText, $posX, $posY, function ($font) use ($fontSize, $color, $fontPath) {
                     if ($fontPath) {

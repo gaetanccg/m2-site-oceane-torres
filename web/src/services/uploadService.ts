@@ -78,7 +78,7 @@ export class ChunkedUploadService {
         }
 
         const uploadedIds: Set<string> = new Set()
-        const totalChunks = chunks.length
+        const _totalChunks = chunks.length // Used for future progress tracking
 
         try {
             // Upload chunks in parallel batches
@@ -104,7 +104,7 @@ export class ChunkedUploadService {
                 this.notifyProgress(fileStates, callbacks)
 
                 // Upload all chunks in parallel with progress tracking
-                const uploadPromises = parallelChunks.map((chunk, chunkIndexInBatch) =>
+                const uploadPromises = parallelChunks.map((chunk, _chunkIndexInBatch) =>
                     this.uploadChunkWithProgress(
                         galleryId,
                         chunk,
@@ -185,7 +185,7 @@ export class ChunkedUploadService {
         this.activeXHRs.forEach(xhr => {
             try {
                 xhr.abort()
-            } catch (e) {
+            } catch (_e) {
                 // Ignore abort errors
             }
         })
@@ -228,7 +228,7 @@ export class ChunkedUploadService {
                     try {
                         const response = JSON.parse(xhr.responseText)
                         resolve(response)
-                    } catch (e) {
+                    } catch (_e) {
                         reject(new Error('Invalid JSON response'))
                     }
                 } else {
