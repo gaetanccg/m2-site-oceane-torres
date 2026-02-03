@@ -41,6 +41,50 @@ class ImageProxyController extends Controller
     }
 
     /**
+     * Stream clean version (no watermark) for downloadable galleries
+     */
+    public function clean(Request $request, Photo $photo): Response
+    {
+        $token = $request->query('token');
+        $gallery = $photo->gallery;
+
+        // Verify access via gallery token
+        if (! $gallery || ! $gallery->isAccessible($token)) {
+            return $this->errorResponse('Accès non autorisé.', 403);
+        }
+
+        // Only allow for downloadable photos
+        if (! $photo->is_downloadable) {
+            return $this->errorResponse('Photo non téléchargeable.', 403);
+        }
+
+        return $this->streamCleanImage($photo);
+    }
+
+    /**
+     * Stream clean image (resized but no watermark)
+     */
+    private function streamCleanImage(Photo $photo): Response
+    {
+        $originalPath = $photo->file_path_hd ?? $photo->metadata['storage_path'] ?? $photo->file_path;
+
+        // Generate clean preview on-the-fly with caching
+        $cacheKey = "image_clean_{$photo->id}";
+
+        $content = Cache::remember($cacheKey, 3600, function () use ($originalPath) {
+            return $this->imageProcessingService->generateCleanPreviewOnTheFly($originalPath);
+        });
+
+        if (! $content) {
+            return $this->errorResponse('Image non disponible.', 404);
+        }
+
+        $extension = pathinfo($photo->file_path, PATHINFO_EXTENSION) ?: 'jpg';
+
+        return $this->createImageResponse($content, "image.{$extension}");
+    }
+
+    /**
      * Download HD version after purchase validation
      */
     public function download(Request $request, Photo $photo): Response
