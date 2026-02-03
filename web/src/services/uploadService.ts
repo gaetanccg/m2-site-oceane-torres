@@ -78,7 +78,6 @@ export class ChunkedUploadService {
         }
 
         const uploadedIds: Set<string> = new Set()
-        const _totalChunks = chunks.length // Used for future progress tracking
 
         try {
             // Upload chunks in parallel batches
