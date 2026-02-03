@@ -233,12 +233,12 @@ class PhotoController extends Controller
 
     /**
      * Store photos asynchronously via job queue
-     * Accepts chunks of up to 10 photos at a time
+     * Accepts chunks of up to 15 photos at a time
      */
     public function storeAsync(Request $request, Gallery $gallery): JsonResponse
     {
         $validated = $request->validate([
-            'photos' => ['required', 'array', 'min:1', 'max:10'],
+            'photos' => ['required', 'array', 'min:1', 'max:15'],
             'photos.*' => ['required', 'file', 'mimes:jpeg,png,jpg,gif,webp,mp4,mov,avi', 'max:51200'],
             'batch_id' => ['required', 'string'],
         ]);

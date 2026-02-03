@@ -21,12 +21,17 @@
             </div>
 
             <!-- Progress Bar -->
-            <div class="h-3 bg-gray-200 rounded-full overflow-hidden">
-                <div
-                    class="h-full transition-all duration-300 rounded-full"
-                    :class="progressBarClass"
-                    :style="{ width: `${progress.percentage}%` }"
-                />
+            <div class="flex items-center gap-3">
+                <div class="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                        class="h-full transition-all duration-150 rounded-full"
+                        :class="progressBarClass"
+                        :style="{ width: `${progress.percentage}%` }"
+                    />
+                </div>
+                <span class="text-sm font-bold text-gray-700 w-12 text-right">
+                    {{ progress.percentage }}%
+                </span>
             </div>
 
             <!-- Stats -->
@@ -92,22 +97,26 @@
                             {{ file.errorMessage }}
                         </p>
                         <p v-else-if="file.status === 'uploading'" class="text-xs text-blue-500">
-                            Envoi en cours...
+                            Envoi: {{ formatBytes(file.uploadedBytes || 0) }} / {{ formatBytes(file.size || 0) }}
                         </p>
                         <p v-else-if="file.status === 'processing'" class="text-xs text-gold">
-                            Traitement...
+                            Traitement de l'image...
+                        </p>
+                        <p v-else-if="file.status === 'completed'" class="text-xs text-green-500">
+                            {{ formatBytes(file.size || 0) }}
                         </p>
                     </div>
 
                     <!-- Progress -->
-                    <div class="flex-shrink-0 w-16">
-                        <div class="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                    <div class="flex-shrink-0 flex items-center gap-2">
+                        <div class="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
                             <div
-                                class="h-full transition-all duration-300 rounded-full"
+                                class="h-full transition-all duration-150 rounded-full"
                                 :class="getFileProgressClass(file)"
                                 :style="{ width: `${file.progress}%` }"
                             />
                         </div>
+                        <span class="text-xs text-gray-500 w-8 text-right">{{ file.progress }}%</span>
                     </div>
                 </div>
             </div>
@@ -168,5 +177,13 @@ function getFileProgressClass(file: FileUploadState): string {
         default:
             return 'bg-gray-300'
     }
+}
+
+function formatBytes(bytes: number): string {
+    if (bytes === 0) return '0 B'
+    const k = 1024
+    const sizes = ['B', 'KB', 'MB', 'GB']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`
 }
 </script>
