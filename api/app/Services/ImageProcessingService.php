@@ -19,13 +19,11 @@ class ImageProcessingService
     private string $disk = 'minio';
 
     // Image dimensions
-    private const PREVIEW_MAX_WIDTH = 1920;
+    private const PREVIEW_MAX_WIDTH = 2560; // QHD for high-quality gallery viewing
 
-    private const THUMBNAIL_MAX_WIDTH = 400;
+    private const THUMBNAIL_MAX_WIDTH = 600; // Larger thumbnails for better grid display
 
     // Quality settings (kept high for better gallery display)
-    private const HD_QUALITY = 100;
-
     private const PREVIEW_QUALITY = 95;
 
     private const THUMBNAIL_QUALITY = 90;
@@ -47,39 +45,40 @@ class ImageProcessingService
     }
 
     /**
-     * Process an uploaded photo and create all versions (HD, preview, thumbnail)
+     * Process an uploaded photo and create all versions (original, preview, thumbnail)
      */
     public function processUploadedPhoto(UploadedFile $file, string $galleryId): ?array
     {
         $extension = strtolower($file->getClientOriginalExtension());
-        $uuid = (string)Str::uuid();
+        $uuid = (string) Str::uuid();
         $filename = "{$uuid}.{$extension}";
 
         try {
-            // Read original image
-            $image = $this->manager->read($file->getRealPath());
-
             // Define paths
-            $hdPath = "{$galleryId}/hd/{$filename}";
+            $originalPath = "{$galleryId}/original/{$filename}";
             $previewPath = "{$galleryId}/preview/{$filename}";
             $thumbnailPath = "{$galleryId}/thumbnail/{$filename}";
 
-            // 1. Upload HD (original, high quality)
-            $hdContent = $this->encodeImage($image, $extension, self::HD_QUALITY);
-            $this->uploadContent($hdPath, $hdContent, $file->getMimeType());
+            // 1. Upload original file as-is (no re-encoding, preserves 100% quality)
+            $originalContent = file_get_contents($file->getRealPath());
+            $this->uploadContent($originalPath, $originalContent, $file->getMimeType());
 
-            // 2. Create and upload preview (1200px + watermark)
+            // Read image for processing versions
+            $image = $this->manager->read($file->getRealPath());
+
+            // 2. Create and upload preview (2560px + watermark)
             $previewImage = $this->createPreviewVersion($image, $extension);
             $previewContent = $this->encodeImage($previewImage, $extension, self::PREVIEW_QUALITY);
             $this->uploadContent($previewPath, $previewContent, $file->getMimeType());
 
-            // 3. Create and upload thumbnail (400px + strong watermark)
+            // 3. Create and upload thumbnail (600px + strong watermark)
             $thumbnailImage = $this->createThumbnailVersion($image, $extension);
             $thumbnailContent = $this->encodeImage($thumbnailImage, $extension, self::THUMBNAIL_QUALITY);
             $this->uploadContent($thumbnailPath, $thumbnailContent, $file->getMimeType());
 
             return [
-                'hd_path' => $hdPath,
+                'hd_path' => $originalPath, // Keep key name for compatibility
+                'original_path' => $originalPath,
                 'preview_path' => $previewPath,
                 'thumbnail_path' => $thumbnailPath,
                 'filename' => $filename,
@@ -102,31 +101,30 @@ class ImageProcessingService
         try {
             // Get the original file content
             $content = $this->storageService->getFileContent($originalPath);
-            if (!$content) {
+            if (! $content) {
                 Log::error('Could not retrieve original file', ['path' => $originalPath]);
 
                 return null;
             }
 
             // Get extension from path
-            $extension = strtolower(pathinfo($originalPath, PATHINFO_EXTENSION)) ? : 'jpg';
-            $uuid = (string)Str::uuid();
+            $extension = strtolower(pathinfo($originalPath, PATHINFO_EXTENSION)) ?: 'jpg';
+            $uuid = (string) Str::uuid();
             $filename = "{$uuid}.{$extension}";
-
-            // Read image from content
-            $image = $this->manager->read($content);
 
             // Get mime type
             $mimeType = $this->getMimeTypeFromExtension($extension);
 
             // Define paths
-            $hdPath = "{$galleryId}/hd/{$filename}";
+            $newOriginalPath = "{$galleryId}/original/{$filename}";
             $previewPath = "{$galleryId}/preview/{$filename}";
             $thumbnailPath = "{$galleryId}/thumbnail/{$filename}";
 
-            // 1. Upload HD (original, high quality)
-            $hdContent = $this->encodeImage($image, $extension, self::HD_QUALITY);
-            $this->uploadContent($hdPath, $hdContent, $mimeType);
+            // 1. Upload original as-is (no re-encoding)
+            $this->uploadContent($newOriginalPath, $content, $mimeType);
+
+            // Read image from content for processing
+            $image = $this->manager->read($content);
 
             // 2. Create and upload preview
             $previewImage = $this->createPreviewVersion($image, $extension);
@@ -139,7 +137,8 @@ class ImageProcessingService
             $this->uploadContent($thumbnailPath, $thumbnailContent, $mimeType);
 
             return [
-                'hd_path' => $hdPath,
+                'hd_path' => $newOriginalPath,
+                'original_path' => $newOriginalPath,
                 'preview_path' => $previewPath,
                 'thumbnail_path' => $thumbnailPath,
                 'filename' => $filename,

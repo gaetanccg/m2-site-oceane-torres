@@ -17,7 +17,7 @@ class ProcessPhotoJob implements ShouldQueue
 
     public int $tries = 3;
 
-    public int $timeout = 120;
+    public int $timeout = 300; // 5 minutes for large images (7000x4600)
 
     public function __construct(
         public string $uploadId,

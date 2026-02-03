@@ -262,8 +262,9 @@
         <!-- Gallery Photos Modal -->
         <Modal v-model="showPhotosModal" :title="selectedGallery?.title || 'Photos'" size="full">
             <div v-if="selectedGallery" class="space-y-4">
-                <!-- Upload Zone -->
+                <!-- Upload Zone (hidden during upload) -->
                 <div
+                    v-if="!isUploading"
                     @dragover.prevent="isDragging = true"
                     @dragleave="isDragging = false"
                     @drop.prevent="handleDrop"
@@ -290,15 +291,13 @@
                 </div>
 
                 <!-- Upload Progress -->
-                <div v-if="uploadProgress > 0 && uploadProgress < 100" class="space-y-2">
-                    <div class="flex justify-between text-sm text-gray-600">
-                        <span>Upload en cours...</span>
-                        <span>{{ uploadProgress }}%</span>
-                    </div>
-                    <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div class="h-full bg-gold transition-all duration-300" :style="{ width: `${uploadProgress}%` }" />
-                    </div>
-                </div>
+                <UploadProgress
+                    v-if="isUploading || (uploadProgress && !uploadProgress.isComplete)"
+                    :progress="uploadProgress"
+                    :show-file-list="true"
+                    :show-cancel-button="true"
+                    @cancel="cancelUpload"
+                />
 
                 <!-- Loading State for Photos -->
                 <div v-if="isLoadingPhotos" class="flex items-center justify-center py-16">
@@ -626,7 +625,9 @@ import AdminHeader from '@/components/admin/AdminHeader.vue'
 import Modal from '@/components/admin/ui/Modal.vue'
 import Button from '@/components/admin/ui/Button.vue'
 import FormField from '@/components/admin/ui/FormField.vue'
+import UploadProgress from '@/components/admin/ui/UploadProgress.vue'
 import {adminApi} from '@/services/adminApi'
+import {useChunkedUpload} from '@/composables/useChunkedUpload'
 import type {AdminGallery, AdminPhoto, Client, GalleryFormData} from '@/types/admin'
 
 const galleries = ref<AdminGallery[]>([])
@@ -641,8 +642,16 @@ const isEditing = ref(false)
 const isSaving = ref(false)
 const isDeleting = ref(false)
 const isDragging = ref(false)
-const uploadProgress = ref(0)
 const fileInput = ref<HTMLInputElement | null>(null)
+
+// Chunked upload
+const {
+    isUploading,
+    progress: uploadProgress,
+    upload: chunkedUpload,
+    cancel: cancelUpload,
+    reset: resetUpload
+} = useChunkedUpload()
 const editingId = ref<string | null>(null)
 const selectedGallery = ref<AdminGallery | null>(null)
 const galleryToDelete = ref<AdminGallery | null>(null)
@@ -904,18 +913,23 @@ function handleFileSelect(event: Event) {
 
 async function uploadPhotos(files: File[]) {
     if (!selectedGallery.value || files.length === 0) return
-    uploadProgress.value = 1
+
     try {
-        const response = await adminApi.uploadPhotos(selectedGallery.value.id, files)
-        if (response.success) {
-            galleryPhotos.value.push(...response.data)
+        await chunkedUpload(selectedGallery.value.id, files, { endpoint: 'galleries' })
+
+        // Reload gallery photos after upload completes
+        const response = await adminApi.getGallery(selectedGallery.value.id)
+        if (response.success && response.data) {
+            selectedGallery.value = response.data
+            galleryPhotos.value = response.data.photos || []
         }
-    } catch { /* ignore */
+    } catch (error) {
+        console.error('Upload failed:', error)
     } finally {
-        uploadProgress.value = 100
+        // Reset upload state after a short delay
         setTimeout(() => {
-            uploadProgress.value = 0
-        }, 1000)
+            resetUpload()
+        }, 2000)
     }
 }
 

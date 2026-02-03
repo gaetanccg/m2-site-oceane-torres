@@ -32,17 +32,29 @@
                 @click="openLightbox(index)"
                 @contextmenu.prevent
             >
-                <!-- Image with priority loading -->
+                <!-- Blur-up placeholder (thumbnail blurred) -->
+                <img
+                    v-if="item.type === 'image' && item.thumbnailUrl && !isLoaded(item.previewUrl || item.url)"
+                    :src="item.thumbnailUrl"
+                    :alt="item.alt"
+                    class="blur-placeholder"
+                    aria-hidden="true"
+                />
+
+                <!-- Image with priority loading and responsive srcset -->
                 <img
                     v-if="item.type === 'image'"
-                    :src="item.url"
+                    :src="item.previewUrl || item.url"
+                    :srcset="getImageSrcset(item)"
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                     :alt="item.alt"
                     draggable="false"
                     decoding="async"
                     loading="lazy"
                     :fetchpriority="index < priorityCount ? 'high' : 'auto'"
-                    :class="['gallery-image select-none', isLoaded(item.url) ? 'loaded' : '']"
-                    @load="handleImageLoad(item.url)"
+                    :class="['gallery-image select-none', isLoaded(item.previewUrl || item.url) ? 'loaded' : '']"
+                    @load="handleImageLoad(item.previewUrl || item.url)"
+                    @error="(e) => handleImageError(e, item)"
                 />
 
                 <!-- Video locale -->
@@ -88,7 +100,7 @@
 
                 <!-- Subtle skeleton (no pulse, just smooth bg) -->
                 <div
-                    v-if="!isLoaded(item.url)"
+                    v-if="!isLoaded(item.previewUrl || item.url)"
                     class="skeleton-loader"
                 />
             </div>
@@ -180,10 +192,10 @@ const filteredItems = computed(() => {
     return reorderForColumns(baseFilteredItems.value, columnCount.value)
 })
 
-// Preload a single image and mark as loaded when done
-const preloadImage = (url: string): Promise<void> => {
+// Preload a single image with retry support
+const preloadImage = (url: string, retries = 0): Promise<void> => {
     if (preloadedUrls.has(url)) return Promise.resolve()
-    preloadedUrls.add(url)
+    if (retries === 0) preloadedUrls.add(url)
 
     return new Promise((resolve) => {
         const img = new Image()
@@ -191,9 +203,24 @@ const preloadImage = (url: string): Promise<void> => {
             loadedImages.value.add(url)
             resolve()
         }
-        img.onerror = () => resolve()
+        img.onerror = () => {
+            if (retries < MAX_RETRIES) {
+                // Retry after delay
+                setTimeout(() => {
+                    preloadImage(url, retries + 1).then(resolve)
+                }, RETRY_DELAY)
+            } else {
+                resolve() // Give up, mark as done
+            }
+        }
         img.src = url
     })
+}
+
+// Preload image with its preview URL
+const preloadGalleryItem = (item: GalleryItem): Promise<void> => {
+    const url = item.previewUrl || item.url
+    return preloadImage(url)
 }
 
 // Preload images in batches for better performance
@@ -206,18 +233,23 @@ const preloadBatch = async (urls: string[], batchSize = 6) => {
 
 // Preload current filter's images
 const preloadCurrentImages = () => {
-    const urls = filteredItems.value
-        .filter(item => item.type === 'image')
-        .map(item => item.url)
+    const imageItems = filteredItems.value.filter(item => item.type === 'image')
 
     // First batch (visible) - load immediately with high priority
-    const firstBatch = urls.slice(0, priorityCount.value)
-    const restBatch = urls.slice(priorityCount.value)
+    const firstBatch = imageItems.slice(0, priorityCount.value)
+    const restBatch = imageItems.slice(priorityCount.value)
 
-    // Load first batch in parallel (fast)
-    Promise.all(firstBatch.map(preloadImage)).then(() => {
+    // Preload thumbnails first (they're small, load fast for blur-up effect)
+    const thumbnailUrls = firstBatch
+        .filter(item => item.thumbnailUrl)
+        .map(item => item.thumbnailUrl!)
+    thumbnailUrls.forEach(url => preloadImage(url))
+
+    // Load first batch preview images in parallel
+    Promise.all(firstBatch.map(preloadGalleryItem)).then(() => {
         // Then load rest in smaller batches to not overwhelm
-        preloadBatch(restBatch, 4)
+        const restUrls = restBatch.map(item => item.previewUrl || item.url)
+        preloadBatch(restUrls, 4)
     })
 }
 
@@ -236,9 +268,11 @@ const precacheFilter = (filter: string) => {
         items = props.items.filter(item => item.category === filter && !isVideoItem(item.type))
     }
 
-    // Preload first 6 images of this filter
-    const urls = items.slice(0, 6).map(item => item.url)
-    urls.forEach(preloadImage)
+    // Preload first 6 images of this filter (use preview URL if available)
+    items.slice(0, 6).forEach(item => {
+        const url = item.previewUrl || item.url
+        preloadImage(url)
+    })
 }
 
 // Check if images are already in browser cache
@@ -264,6 +298,56 @@ const handleImageLoad = (url: string) => {
 }
 
 const isLoaded = (url: string) => loadedImages.value.has(url)
+
+// Track retry attempts per image
+const retryAttempts = new Map<string, number>()
+const MAX_RETRIES = 3
+const RETRY_DELAY = 2000
+
+// Generate srcset for responsive images
+const getImageSrcset = (item: GalleryItem): string => {
+    const srcsetParts: string[] = []
+
+    // Thumbnail for small screens (600w)
+    if (item.thumbnailUrl) {
+        srcsetParts.push(`${item.thumbnailUrl} 600w`)
+    }
+
+    // Preview for medium screens (2560w)
+    if (item.previewUrl) {
+        srcsetParts.push(`${item.previewUrl} 2560w`)
+    }
+
+    // Original for large screens
+    if (item.url && item.url !== item.previewUrl) {
+        srcsetParts.push(`${item.url} 4000w`)
+    }
+
+    return srcsetParts.join(', ')
+}
+
+// Handle image load error with auto-retry
+const handleImageError = (e: Event, item: GalleryItem) => {
+    const img = e.target as HTMLImageElement
+    const url = item.previewUrl || item.url
+    const attempts = retryAttempts.get(url) || 0
+
+    if (attempts < MAX_RETRIES) {
+        retryAttempts.set(url, attempts + 1)
+        console.warn(`Image load failed, retrying (${attempts + 1}/${MAX_RETRIES}):`, url)
+
+        // Retry after delay
+        setTimeout(() => {
+            // Force reload by appending cache-buster
+            const separator = url.includes('?') ? '&' : '?'
+            img.src = `${url}${separator}_retry=${Date.now()}`
+        }, RETRY_DELAY)
+    } else {
+        console.error(`Image failed after ${MAX_RETRIES} retries:`, url)
+        // Mark as loaded to remove skeleton (show broken state)
+        loadedImages.value.add(url)
+    }
+}
 
 // Fallback pour les thumbnails YouTube qui ne chargent pas en maxresdefault
 const handleYoutubeError = (e: Event, item: GalleryItem) => {
@@ -339,12 +423,26 @@ watch(activeFilter, async () => {
     margin-bottom: 0;
 }
 
+/* Blur-up placeholder - shows blurred thumbnail while loading */
+.blur-placeholder{
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: blur(20px);
+    transform: scale(1.1); /* Prevent blur edges */
+    z-index: 1;
+}
+
 .gallery-image{
+    position: relative;
     display: block;
     width: 100%;
     height: auto;
     opacity: 0;
     transition: transform 0.5s ease, opacity 0.3s ease-out;
+    z-index: 2;
 }
 
 .gallery-image.loaded{

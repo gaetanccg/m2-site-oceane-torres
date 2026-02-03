@@ -21,6 +21,8 @@ export type MediaType = 'image' | 'video' | 'youtube'
 export interface GalleryItem {
     id?: number
     url: string
+    thumbnailUrl?: string  // Low-res version for mobile/grid
+    previewUrl?: string    // Medium-res version for desktop
     alt: string
     type: MediaType
     category?: string
