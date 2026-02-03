@@ -315,7 +315,7 @@ class GalleryController extends Controller
 
         $zip->close();
 
-        $downloadUrl = url('/api/galleries/'.$gallery->id.'/download-file?file='.$zipFilename);
+        $downloadUrl = secure_url('/api/galleries/'.$gallery->id.'/download-file?file='.$zipFilename);
 
         return response()->json([
             'download_url' => $downloadUrl,
