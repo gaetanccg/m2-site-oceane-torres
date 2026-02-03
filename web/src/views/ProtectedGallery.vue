@@ -50,9 +50,9 @@
                             <div class="w-10 h-10 bg-gold/10 rounded-full flex items-center justify-center mb-4">
                                 <span class="text-gold font-semibold">1</span>
                             </div>
-                            <h3 class="text-lg font-medium mb-3 text-gray-800">Parcourez et likez vos photos préférées</h3>
+                            <h3 class="text-lg font-medium mb-3 text-gray-800">Parcourez votre galerie</h3>
                             <p class="text-gray-600 text-sm leading-relaxed">
-                                Cliquez sur le cœur <span class="text-red-500">♥</span> pour mettre un j'aime sur les photos que vous souhaitez. Vous pouvez en sélectionner autant que vous voulez !
+                                Découvrez toutes vos photos et cliquez sur le cœur <span class="text-red-500">♥</span> pour marquer vos coups de cœur. Prenez votre temps, vous pouvez y revenir autant de fois que vous le souhaitez !
                             </p>
                         </div>
 
@@ -61,9 +61,9 @@
                             <div class="w-10 h-10 bg-gold/10 rounded-full flex items-center justify-center mb-4">
                                 <span class="text-gold font-semibold">2</span>
                             </div>
-                            <h3 class="text-lg font-medium mb-3 text-gray-800">Contactez-moi quand vous avez terminé</h3>
+                            <h3 class="text-lg font-medium mb-3 text-gray-800">Ajoutez vos photos au panier</h3>
                             <p class="text-gray-600 text-sm leading-relaxed">
-                                Une fois que vous avez fini de parcourir la galerie, faites-moi signe pour que je sache pour quelle offre vous souhaitez opter 😉
+                                Choisissez les photos que vous souhaitez commander : Ajoutez-les à votre panier en un clic. Vous pouvez choisir entre des fichiers numériques haute résolution ou des tirages papier de qualité professionnelle.
                             </p>
                         </div>
 
@@ -72,9 +72,9 @@
                             <div class="w-10 h-10 bg-gold/10 rounded-full flex items-center justify-center mb-4">
                                 <span class="text-gold font-semibold">3</span>
                             </div>
-                            <h3 class="text-lg font-medium mb-3 text-gray-800">J'identifie les photos que vous aimez ✨</h3>
+                            <h3 class="text-lg font-medium mb-3 text-gray-800">Recevez vos photos</h3>
                             <p class="text-gray-600 text-sm leading-relaxed">
-                                De mon côté, je verrai les photos que vous avez aimées. Je pourrai alors les retoucher, les imprimer, ou simplement les mettre à disposition en téléchargement.
+                                Après paiement, recevez immédiatement vos photos numériques par email. Pour les tirages papier, je vous contacterai pour organiser la livraison.
                             </p>
                         </div>
                     </div>
