@@ -57,6 +57,9 @@ logs: ## Show Docker logs
 logs-api: ## Show API logs only
 	docker-compose logs -f laravel
 
+logs-queue: ## Show queue worker logs
+	docker-compose logs -f queue
+
 ## ===========================================
 ## Laravel
 ## ===========================================
@@ -109,8 +112,12 @@ serve: ## Start Laravel development server
 	cd api && php artisan serve
 	@echo "📍 API: http://localhost:8000"
 
-queue: ## Start queue worker
+queue: ## Start queue worker (local, without Docker)
 	cd api && php artisan queue:work
+
+queue-restart: ## Restart Docker queue worker
+	docker-compose restart queue
+	@echo "✅ Queue worker restarted"
 
 ## ===========================================
 ## Cleanup
