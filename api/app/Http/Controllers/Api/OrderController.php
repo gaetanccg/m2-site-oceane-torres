@@ -359,19 +359,11 @@ class OrderController extends Controller
     }
 
     /**
-     * Admin: Delete a pending order
+     * Admin: Delete any order
      */
     public function adminDestroy(string $orderId): JsonResponse
     {
         $order = Order::findOrFail($orderId);
-
-        // Only allow deleting pending or failed orders
-        if (! in_array($order->status, ['pending', 'failed'])) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Seules les commandes en attente ou échouées peuvent être supprimées.',
-            ], 400);
-        }
 
         // Deactivate SumUp checkout if exists
         if ($order->sumup_checkout_id) {

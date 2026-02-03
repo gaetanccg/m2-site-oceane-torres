@@ -206,6 +206,37 @@ class ImageProcessingService
     }
 
     /**
+     * Generate clean preview version on-the-fly (no watermark, for downloadable galleries)
+     */
+    public function generateCleanPreviewOnTheFly(string $originalPath): ?string
+    {
+        try {
+            $content = $this->storageService->getFileContent($originalPath);
+            if (! $content) {
+                return null;
+            }
+
+            $extension = strtolower(pathinfo($originalPath, PATHINFO_EXTENSION)) ?: 'jpg';
+            $image = $this->manager->read($content);
+
+            // Resize without watermark
+            $width = $image->width();
+            if ($width > self::PREVIEW_MAX_WIDTH) {
+                $image->scaleDown(width: self::PREVIEW_MAX_WIDTH);
+            }
+
+            return $this->encodeImage($image, $extension, self::PREVIEW_QUALITY);
+        } catch (\Exception $e) {
+            Log::error('On-the-fly clean preview generation failed', [
+                'error' => $e->getMessage(),
+                'path' => $originalPath,
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
      * Create preview version (1200px max + watermark)
      */
     private function createPreviewVersion(ImageInterface $image, string $extension): ImageInterface
