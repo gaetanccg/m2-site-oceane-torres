@@ -310,6 +310,12 @@ class GalleryController extends Controller
                 $extension = pathinfo($photo->file_path, PATHINFO_EXTENSION);
                 $filename = ($photo->title ?? 'photo_'.($index + 1)).'.'.$extension;
                 $zip->addFromString($filename, $fileContent);
+
+                // Track the download
+                $photo->recordDownload(
+                    $request->ip(),
+                    $request->userAgent()
+                );
             }
         }
 
