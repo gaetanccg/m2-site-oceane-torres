@@ -18,6 +18,9 @@ RUN apk add --no-cache \
     icu-dev \
     libwebp-dev
 
+# Install fonts for watermarks (separate step, optional)
+RUN apk add --no-cache ttf-dejavu || echo "Font installation skipped"
+
 # Install PHP extensions
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
     && docker-php-ext-install pdo pdo_pgsql pgsql mbstring exif pcntl bcmath gd zip intl opcache
@@ -76,6 +79,9 @@ RUN apk add --no-cache \
     oniguruma-dev \
     icu-dev \
     libwebp-dev
+
+# Install fonts for watermarks (separate step, optional)
+RUN apk add --no-cache ttf-dejavu || echo "Font installation skipped"
 
 # Install PHP extensions
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
