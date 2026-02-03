@@ -28,8 +28,8 @@
                 <div class="max-w-7xl mx-auto">
                     <!-- Header -->
                     <div class="text-center mb-8">
-                        <h1 class="text-4xl font-light mb-4">{{ gallery.title }}</h1>
-                        <p v-if="gallery.description" class="text-gray-600 font-light max-w-2xl mx-auto mb-4">
+                        <h1 class="text-4xl font-light mb-4 text-center">{{ gallery.title }}</h1>
+                        <p v-if="gallery.description" class="text-gray-600 font-light max-w-2xl mx-auto mb-4 text-center">
                             {{ gallery.description }}
                         </p>
                         <p class="text-sm text-gray-400">
@@ -66,7 +66,7 @@
                         >
                             <div class="relative group bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow">
                                 <img
-                                    :src="photo.preview_url || photo.display_url || photo.file_path"
+                                    :src="getCleanUrl(photo)"
                                     :alt="photo.title || 'Photo'"
                                     class="w-full h-auto cursor-pointer"
                                     loading="lazy"
@@ -108,11 +108,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import {ref, computed, onMounted} from 'vue'
+import {useRoute} from 'vue-router'
 import Lightbox from '@/components/Lightbox.vue'
-import { API_CONFIG } from '@/config/constants'
-import type { LightboxImage } from '@/types'
+import {API_CONFIG} from '@/config/constants'
+import type {LightboxImage} from '@/types'
 
 interface Photo {
     id: string
@@ -141,10 +141,16 @@ const lightboxIndex = ref(0)
 const isDownloadingAll = ref(false)
 const downloadingPhotos = ref(new Set<string>())
 
+// Generate clean URL (no watermark) for downloadable photos
+const getCleanUrl = (photo: Photo) => {
+    if (!gallery.value) return photo.preview_url || photo.display_url || photo.file_path
+    return `${API_CONFIG.baseUrl}/images/clean/${photo.id}?token=${gallery.value.access_token}`
+}
+
 const lightboxImages = computed<LightboxImage[]>(() => {
     if (!gallery.value?.photos) return []
     return gallery.value.photos.map(photo => ({
-        url: photo.preview_url || photo.display_url || photo.file_path,
+        url: getCleanUrl(photo),
         alt: photo.title || 'Photo',
         type: 'image' as const
     }))
@@ -164,20 +170,26 @@ const downloadPhoto = async (photo: Photo) => {
         const response = await fetch(
             `${API_CONFIG.baseUrl}/photos/${photo.id}/download?token=${gallery.value.access_token}`,
             {
-                headers: { 'Accept': 'application/json' }
+                headers: {'Accept': 'application/json'}
             }
         )
 
         if (response.ok) {
             const data = await response.json()
-            // Open download URL in new tab/trigger download
+            const filename = data.filename || 'photo.jpg'
+
+            // Fetch the actual file and create blob for download
+            const fileResponse = await fetch(data.download_url)
+            const blob = await fileResponse.blob()
+            const blobUrl = URL.createObjectURL(blob)
+
             const link = document.createElement('a')
-            link.href = data.download_url
-            link.download = data.filename || 'photo.jpg'
-            link.target = '_blank'
+            link.href = blobUrl
+            link.download = filename
             document.body.appendChild(link)
             link.click()
             document.body.removeChild(link)
+            URL.revokeObjectURL(blobUrl)
         }
     } catch (err) {
         console.error('Download error:', err)
@@ -195,19 +207,26 @@ const downloadAll = async () => {
         const response = await fetch(
             `${API_CONFIG.baseUrl}/galleries/${gallery.value.id}/download-zip?token=${gallery.value.access_token}`,
             {
-                headers: { 'Accept': 'application/json' }
+                headers: {'Accept': 'application/json'}
             }
         )
 
         if (response.ok) {
             const data = await response.json()
-            // Trigger ZIP download
+            const filename = data.filename || 'gallery.zip'
+
+            // Fetch the actual ZIP file and create blob for download
+            const fileResponse = await fetch(data.download_url)
+            const blob = await fileResponse.blob()
+            const blobUrl = URL.createObjectURL(blob)
+
             const link = document.createElement('a')
-            link.href = data.download_url
-            link.download = data.filename || 'gallery.zip'
+            link.href = blobUrl
+            link.download = filename
             document.body.appendChild(link)
             link.click()
             document.body.removeChild(link)
+            URL.revokeObjectURL(blobUrl)
         }
     } catch (err) {
         console.error('Download error:', err)
