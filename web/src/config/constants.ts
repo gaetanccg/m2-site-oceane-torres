@@ -98,9 +98,10 @@ export const API_CONFIG = {
 // ============================================================================
 
 export const UPLOAD_CONFIG = {
-    chunkSize: 5,           // Number of files per chunk
-    timeout: 120000,        // 120 seconds timeout per request
-    pollInterval: 2000,     // Poll status every 2 seconds
+    chunkSize: 10,              // Number of files per chunk
+    concurrentChunks: 3,        // Number of parallel chunk uploads
+    timeout: 180000,            // 180 seconds timeout per request
+    pollInterval: 3000,         // Poll status every 3 seconds
     maxFileSize: 50 * 1024 * 1024, // 50MB max per file
 } as const
 

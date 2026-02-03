@@ -206,6 +206,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::get('/galleries/{gallery}', [GalleryController::class, 'adminShow']);
     Route::apiResource('galleries', GalleryController::class)->except(['index', 'show']);
     Route::post('/galleries/{gallery}/photos', [PhotoController::class, 'store']);
+    Route::post('/galleries/{gallery}/photos/async', [PhotoController::class, 'storeAsync']);
     Route::delete('/photos/{photo}', [PhotoController::class, 'destroy']);
     Route::put('/galleries/{gallery}/regenerate-token', [GalleryController::class, 'regenerateToken']);
     Route::post('/galleries/{gallery}/regenerate-code', [GalleryController::class, 'regenerateShareCode']);
