@@ -304,8 +304,8 @@ class GalleryController extends Controller
         }
 
         foreach ($photos as $index => $photo) {
-            $storagePath = $photo->metadata['storage_path'] ?? $photo->metadata['supabase_path'] ?? $photo->file_path;
-            $fileContent = $storageService->downloadPhoto($storagePath);
+            $storagePath = $photo->file_path_hd ?? $photo->metadata['storage_path'] ?? $photo->metadata['supabase_path'] ?? $photo->file_path;
+            $fileContent = $storageService->getFileContent($storagePath);
             if ($fileContent) {
                 $extension = pathinfo($photo->file_path, PATHINFO_EXTENSION);
                 $filename = ($photo->title ?? 'photo_'.($index + 1)).'.'.$extension;

@@ -39,7 +39,7 @@
                         <img :src="personaImage" alt="Océane Torres - Photographe professionnelle Saint-Étienne Loire" class="w-full h-auto rounded-lg" loading="lazy" />
                     </div>
                     <div class="text-justify">
-                        <h2 class="text-4xl md:text-5xl font-light mb-6 text-balance title-with-bar">
+                        <h2 class="text-4xl md:text-5xl font-light mb-6 mt-4 text-balance title-with-bar">
                             À propos de moi
                         </h2>
                         <p class="text-gray-600 font-light leading-relaxed mb-6 text-lg">
