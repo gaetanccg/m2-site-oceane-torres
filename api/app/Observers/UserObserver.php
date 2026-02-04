@@ -33,7 +33,7 @@ class UserObserver
                 'name' => trim($user->first_name.' '.$user->last_name),
                 'email' => $user->email,
                 'phone' => $user->phone,
-                'source' => 'registration',
+                'source' => 'reservation', // Source enum: reservation, manual, contact
                 'gdpr_consent' => true,
                 'gdpr_consent_at' => now(),
             ]);
