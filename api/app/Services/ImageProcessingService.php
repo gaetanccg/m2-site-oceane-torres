@@ -66,6 +66,10 @@ class ImageProcessingService
             // Read image for processing versions
             $image = $this->manager->read($file->getRealPath());
 
+            // Get original dimensions
+            $originalWidth = $image->width();
+            $originalHeight = $image->height();
+
             // 2. Create and upload preview (2560px + watermark)
             $previewImage = $this->createPreviewVersion($image, $extension);
             $previewContent = $this->encodeImage($previewImage, $extension, self::PREVIEW_QUALITY);
@@ -82,6 +86,8 @@ class ImageProcessingService
                 'preview_path' => $previewPath,
                 'thumbnail_path' => $thumbnailPath,
                 'filename' => $filename,
+                'width' => $originalWidth,
+                'height' => $originalHeight,
             ];
         } catch (\Exception $e) {
             Log::error('Image processing failed', [
