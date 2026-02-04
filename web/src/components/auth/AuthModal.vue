@@ -318,6 +318,7 @@ async function handleRegister() {
         phone: registerForm.phone || undefined,
         password: registerForm.password,
         password_confirmation: registerForm.password_confirmation,
+        gdpr_consent: registerForm.gdpr_consent,
     })
 
     if (success) {

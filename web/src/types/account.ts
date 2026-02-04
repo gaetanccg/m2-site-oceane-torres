@@ -15,6 +15,7 @@ export interface RegisterData {
     phone?: string
     password: string
     password_confirmation: string
+    gdpr_consent?: boolean  // RGPD: Consentement politique de confidentialité
 }
 
 // ============================================================================

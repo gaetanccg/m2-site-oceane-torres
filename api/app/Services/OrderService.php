@@ -23,7 +23,7 @@ class OrderService
     /**
      * Create an order from a cart (or return existing pending order)
      */
-    public function createFromCart(Cart $cart, ?User $user = null, ?string $guestEmail = null, ?string $guestName = null): Order
+    public function createFromCart(Cart $cart, ?User $user = null, ?string $guestEmail = null, ?string $guestName = null, ?string $consentIp = null): Order
     {
         // Check if there's already a pending order for this cart
         $existingOrder = Order::where('cart_id', $cart->id)
@@ -44,7 +44,7 @@ class OrderService
             throw new \Exception('Le panier est vide.');
         }
 
-        return DB::transaction(function () use ($cart, $user, $guestEmail, $guestName) {
+        return DB::transaction(function () use ($cart, $user, $guestEmail, $guestName, $consentIp) {
             $cart->load('items.photo.gallery');
 
             $subtotal = $cart->items->sum('price');
@@ -59,6 +59,11 @@ class OrderService
                 'total' => $total,
                 'currency' => 'EUR',
                 'status' => 'pending',
+                // RGPD: Enregistrement du consentement CGV
+                'cgv_accepted' => true,
+                'cgv_accepted_at' => now(),
+                'cgv_version' => '1.0',
+                'consent_ip' => $consentIp,
             ]);
 
             // Create order items
