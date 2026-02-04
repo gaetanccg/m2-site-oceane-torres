@@ -23,6 +23,16 @@ class AuthController extends Controller
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'phone' => ['nullable', 'string', 'max:20'],
             'password' => ['required', 'confirmed', PasswordRule::defaults()],
+            'gdpr_consent' => ['required', 'accepted'],
+        ], [
+            'gdpr_consent.required' => 'Vous devez accepter la politique de confidentialité.',
+            'gdpr_consent.accepted' => 'Vous devez accepter la politique de confidentialité.',
+        ]);
+
+        // RGPD: Stocker les infos de consentement pour le User Observer
+        $request->merge([
+            'gdpr_consent_verified' => true,
+            'consent_ip' => $request->ip(),
         ]);
 
         $user = User::create([

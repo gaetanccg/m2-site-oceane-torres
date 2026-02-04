@@ -33,9 +33,11 @@ class OrderController extends Controller
         $user = Auth::guard('sanctum')->user();
 
         // Email is required only for guests (non-authenticated users)
+        // CGV acceptance is always required (RGPD compliance)
         $rules = [
             'guest_name' => ['nullable', 'string', 'max:255'],
             'session_id' => ['nullable', 'string'],
+            'cgv_accepted' => ['required', 'accepted'],
         ];
 
         if (! $user) {
@@ -44,7 +46,10 @@ class OrderController extends Controller
             $rules['guest_email'] = ['nullable', 'email'];
         }
 
-        $validated = $request->validate($rules);
+        $validated = $request->validate($rules, [
+            'cgv_accepted.required' => 'Vous devez accepter les Conditions Générales de Vente.',
+            'cgv_accepted.accepted' => 'Vous devez accepter les Conditions Générales de Vente.',
+        ]);
         $sessionId = $request->header('X-Cart-Session') ?? $validated['session_id'] ?? null;
 
         try {
@@ -61,7 +66,8 @@ class OrderController extends Controller
                 $cart,
                 $user,
                 $validated['guest_email'] ?? null,
-                $validated['guest_name'] ?? null
+                $validated['guest_name'] ?? null,
+                $request->ip()
             );
 
             // Initiate payment

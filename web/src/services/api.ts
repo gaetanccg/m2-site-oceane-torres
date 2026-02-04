@@ -117,6 +117,7 @@ class ApiService {
         phone?: string
         subject: string
         message: string
+        gdpr_consent: boolean
     }): Promise<ApiResponse<{ message: string }>> {
         return this.request<ApiResponse<{ message: string }>>('/contact', {
             method: 'POST',
