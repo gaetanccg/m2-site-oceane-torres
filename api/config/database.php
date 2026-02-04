@@ -97,10 +97,12 @@ return [
             'search_path' => 'public',
             'sslmode' => 'prefer',
             'options' => [
-                // Emulate prepares to work with connection poolers (PgBouncer)
+                // Emulate prepares to work with connection poolers (PgBouncer/Supabase)
                 // in transaction/statement pooling mode
                 PDO::ATTR_EMULATE_PREPARES => true,
                 PDO::ATTR_PERSISTENT => false,
+                // Stringify fetches to help with boolean handling
+                PDO::ATTR_STRINGIFY_FETCHES => true,
             ],
         ],
 

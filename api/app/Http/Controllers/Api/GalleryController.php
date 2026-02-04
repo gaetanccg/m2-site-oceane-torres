@@ -347,15 +347,16 @@ class GalleryController extends Controller
     public function adminIndex(): JsonResponse
     {
         // Optimized query: use withCount instead of loading all photos
+        // Use 'true'/'false' strings for PostgreSQL boolean compatibility with EMULATE_PREPARES
         $galleries = Gallery::with(['user:id,first_name,last_name,email'])
             ->where('type', '!=', 'event')
             ->withCount([
                 'photos',
                 'photos as downloadable_count' => function ($query) {
-                    $query->where('is_downloadable', true);
+                    $query->whereRaw('is_downloadable = true');
                 },
                 'photos as liked_photos_count' => function ($query) {
-                    $query->where('is_liked', true);
+                    $query->whereRaw('is_liked = true');
                 },
                 'photos as downloaded_photos_count' => function ($query) {
                     $query->where('downloads_count', '>', 0);
