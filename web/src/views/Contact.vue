@@ -435,6 +435,7 @@ async function handleSubmit() {
             phone: form.phone.trim() || undefined,
             subject: form.subject,
             message: form.message.trim(),
+            gdpr_consent: form.gdprConsent,
         })
 
         isSuccess.value = true

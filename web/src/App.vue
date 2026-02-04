@@ -23,6 +23,9 @@
 
     <!-- Toast notifications (global) -->
     <ToastContainer />
+
+    <!-- Cookie consent banner (RGPD) -->
+    <CookieBanner v-if="!isAdminPath" />
 </template>
 
 <script setup lang="ts">
@@ -34,6 +37,7 @@ import Navbar from './components/Navbar.vue'
 import Footer from './components/Footer.vue'
 import ToastContainer from './components/ui/ToastContainer.vue'
 import CartDrawer from './components/cart/CartDrawer.vue'
+import CookieBanner from './components/CookieBanner.vue'
 
 const route = useRoute()
 const authStore = useAuthStore()
