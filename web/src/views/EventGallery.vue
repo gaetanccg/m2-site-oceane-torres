@@ -74,7 +74,7 @@
                 <div class="max-w-7xl mx-auto">
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                         <div
-                            v-for="(photo, index) in gallery.photos"
+                            v-for="(photo, index) in sortedPhotos"
                             :key="photo.id"
                         >
                             <PhotoCard
@@ -95,7 +95,7 @@
                     </div>
 
                     <!-- Empty state -->
-                    <div v-if="!gallery.photos?.length" class="text-center py-16">
+                    <div v-if="!sortedPhotos.length" class="text-center py-16">
                         <svg class="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
@@ -189,9 +189,19 @@ function formatDate(dateStr: string): string {
 }
 const lightboxIndex = ref(0)
 
-const lightboxImages = computed<LightboxImage[]>(() => {
+// Natural sort for photo titles (handles "shetland 1", "shetland 2", ..., "shetland 10" correctly)
+const sortedPhotos = computed<Photo[]>(() => {
     if (!gallery.value?.photos) return []
-    return gallery.value.photos.map(photo => ({
+    return [...gallery.value.photos].sort((a, b) => {
+        const titleA = a.title || ''
+        const titleB = b.title || ''
+        return titleA.localeCompare(titleB, 'fr', { numeric: true, sensitivity: 'base' })
+    })
+})
+
+const lightboxImages = computed<LightboxImage[]>(() => {
+    if (!sortedPhotos.value.length) return []
+    return sortedPhotos.value.map(photo => ({
         url: photo.preview_url || photo.display_url || photo.file_path,
         alt: photo.title || 'Photo',
         type: 'image' as const
