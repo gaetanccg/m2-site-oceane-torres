@@ -115,7 +115,7 @@ class Gallery extends Model
 
     public function getTotalLikesAttribute(): int
     {
-        return $this->photos()->where('is_liked', true)->count();
+        return $this->photos()->whereRaw('is_liked = true')->count();
     }
 
     /**
@@ -132,12 +132,12 @@ class Gallery extends Model
 
     public function getDownloadablePhotosCountAttribute(): int
     {
-        return $this->photos()->where('is_downloadable', true)->count();
+        return $this->photos()->whereRaw('is_downloadable = true')->count();
     }
 
     public function getLikedPhotosCountAttribute(): int
     {
-        return $this->photos()->where('is_liked', true)->count();
+        return $this->photos()->whereRaw('is_liked = true')->count();
     }
 
     public function recordView(): void
@@ -175,14 +175,14 @@ class Gallery extends Model
      */
     public function getDownloadStatusAttribute(): string
     {
-        $downloadableCount = $this->photos()->where('is_downloadable', true)->count();
+        $downloadableCount = $this->photos()->whereRaw('is_downloadable = true')->count();
 
         if ($downloadableCount === 0) {
             return 'none';
         }
 
         $downloadedCount = $this->photos()
-            ->where('is_downloadable', true)
+            ->whereRaw('is_downloadable = true')
             ->where('downloads_count', '>', 0)
             ->count();
 

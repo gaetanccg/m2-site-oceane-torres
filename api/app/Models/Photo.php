@@ -129,12 +129,12 @@ class Photo extends Model
 
     public function scopeImages($query)
     {
-        return $query->where('is_video', false);
+        return $query->whereRaw('is_video = false');
     }
 
     public function scopeVideos($query)
     {
-        return $query->where('is_video', true);
+        return $query->whereRaw('is_video = true');
     }
 
     public function scopeOrdered($query)
@@ -144,17 +144,17 @@ class Photo extends Model
 
     public function scopeDownloadable($query)
     {
-        return $query->where('is_downloadable', true);
+        return $query->whereRaw('is_downloadable = true');
     }
 
     public function scopeLiked($query)
     {
-        return $query->where('is_liked', true);
+        return $query->whereRaw('is_liked = true');
     }
 
     public function scopePurchasable($query)
     {
-        return $query->where('is_purchasable', true);
+        return $query->whereRaw('is_purchasable = true');
     }
 
     public function getEffectivePriceAttribute(): float
