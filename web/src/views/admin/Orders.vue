@@ -145,7 +145,6 @@
                             </svg>
                         </button>
                         <button
-                            v-if="row.status === 'pending' || row.status === 'failed'"
                             @click="confirmDelete(row)"
                             class="p-2 text-gray-500 hover:text-red-600 rounded-lg hover:bg-red-50"
                             title="Supprimer"
@@ -255,14 +254,22 @@
             </div>
 
             <template #footer>
-                <Button variant="secondary" @click="showDetailModal = false">Fermer</Button>
+                <div class="flex justify-between w-full">
+                    <Button
+                        variant="danger"
+                        @click="deleteFromModal"
+                    >
+                        Supprimer
+                    </Button>
+                    <Button variant="secondary" @click="showDetailModal = false">Fermer</Button>
+                </div>
             </template>
         </Modal>
     </AdminLayout>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import {ref, computed, watch, onMounted} from 'vue'
 import AdminLayout from '@/components/admin/AdminLayout.vue'
 import AdminHeader from '@/components/admin/AdminHeader.vue'
 import DataTable from '@/components/admin/ui/DataTable.vue'
@@ -270,8 +277,8 @@ import StatCard from '@/components/admin/ui/StatCard.vue'
 import StatusBadge from '@/components/admin/ui/StatusBadge.vue'
 import Modal from '@/components/admin/ui/Modal.vue'
 import Button from '@/components/admin/ui/Button.vue'
-import { adminApi } from '@/services/adminApi'
-import type { AdminOrder, TableColumn } from '@/types/admin'
+import {adminApi} from '@/services/adminApi'
+import type {AdminOrder, TableColumn} from '@/types/admin'
 
 const orders = ref<AdminOrder[]>([])
 const isLoading = ref(true)
@@ -297,12 +304,12 @@ const stats = computed(() => {
 })
 
 const columns: TableColumn<AdminOrder>[] = [
-    { key: 'order_number', label: 'Commande' },
-    { key: 'customer_email', label: 'Client' },
-    { key: 'items', label: 'Articles' },
-    { key: 'total', label: 'Total', align: 'right' },
-    { key: 'status', label: 'Statut' },
-    { key: 'created_at', label: 'Date', sortable: true },
+    {key: 'order_number', label: 'Commande'},
+    {key: 'customer_email', label: 'Client'},
+    {key: 'items', label: 'Articles'},
+    {key: 'total', label: 'Total', align: 'right'},
+    {key: 'status', label: 'Statut'},
+    {key: 'created_at', label: 'Date', sortable: true},
 ]
 
 function formatCurrency(amount: number): string {
@@ -335,9 +342,28 @@ function openDetailModal(order: AdminOrder) {
     showDetailModal.value = true
 }
 
+async function deleteFromModal() {
+    if (!selectedOrder.value) return
+    await confirmDelete(selectedOrder.value)
+    showDetailModal.value = false
+}
+
 async function confirmDelete(order: AdminOrder) {
-    if (!confirm(`Supprimer la commande ${order.order_number} ?`)) {
+    let message = `Supprimer la commande ${order.order_number} ?`
+
+    if (order.status === 'paid') {
+        message = `ATTENTION : La commande ${order.order_number} est PAYEE (${formatCurrency(order.total)}).\n\nEtes-vous sur de vouloir la supprimer definitivement ?\n\nCette action est irreversible.`
+    }
+
+    if (!confirm(message)) {
         return
+    }
+
+    // Double confirmation pour les commandes payées
+    if (order.status === 'paid') {
+        if (!confirm(`Confirmation finale : supprimer definitivement la commande payee ${order.order_number} ?`)) {
+            return
+        }
     }
 
     try {

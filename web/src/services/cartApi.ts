@@ -246,12 +246,13 @@ class CartApiService {
     // Checkout & Orders
     // ============================================================================
 
-    async createOrder(guestEmail?: string, guestName?: string): Promise<CheckoutResponse> {
+    async createOrder(guestEmail?: string, guestName?: string, cgvAccepted?: boolean): Promise<CheckoutResponse> {
         return this.request<CheckoutResponse>('/checkout', {
             method: 'POST',
             body: JSON.stringify({
                 guest_email: guestEmail,
                 guest_name: guestName,
+                cgv_accepted: cgvAccepted ?? true, // RGPD: Required for order creation
             }),
         })
     }
