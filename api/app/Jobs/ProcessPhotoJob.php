@@ -19,6 +19,8 @@ class ProcessPhotoJob implements ShouldQueue
 
     public int $timeout = 300; // 5 minutes for large images (7000x4600)
 
+    public array $backoff = [5, 15, 30]; // Wait 5s, 15s, 30s between retries
+
     public function __construct(
         public string $uploadId,
         public string $galleryId,
@@ -173,9 +175,16 @@ class ProcessPhotoJob implements ShouldQueue
             'error' => $exception->getMessage(),
         ]);
 
-        $upload = PhotoUpload::find($this->uploadId);
-        if ($upload) {
-            $upload->markAsFailed('Échec après plusieurs tentatives: '.$exception->getMessage());
+        try {
+            $upload = PhotoUpload::find($this->uploadId);
+            if ($upload) {
+                $upload->markAsFailed('Échec après plusieurs tentatives: '.$exception->getMessage());
+            }
+        } catch (\Exception $e) {
+            Log::error('ProcessPhotoJob: Failed to mark upload as failed', [
+                'upload_id' => $this->uploadId,
+                'error' => $e->getMessage(),
+            ]);
         }
 
         $this->cleanupTempFile();
