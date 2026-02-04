@@ -1,6 +1,5 @@
 <template>
-    <!-- Bannière principale -->
-    <Teleport to="body">
+    <Teleport to="body" v-if="isMounted">
         <Transition name="slide-up">
             <div
                 v-if="consentStore.showBanner"
@@ -225,6 +224,9 @@ import { useConsentStore } from '@/stores/consent'
 
 const consentStore = useConsentStore()
 
+// Flag to prevent prerender duplication - only render after client-side mount
+const isMounted = ref(false)
+
 // Local state for settings modal
 const localAnalytics = ref(false)
 const localMarketing = ref(false)
@@ -247,8 +249,9 @@ function rejectAllFromSettings() {
     consentStore.rejectAll()
 }
 
-// Initialize consent store on mount
+// Initialize consent store on mount and enable rendering
 onMounted(() => {
+    isMounted.value = true
     consentStore.initialize()
 })
 </script>
