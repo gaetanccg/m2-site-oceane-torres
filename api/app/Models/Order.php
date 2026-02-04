@@ -28,6 +28,10 @@ class Order extends Model
         'sumup_transaction_id',
         'metadata',
         'paid_at',
+        'cgv_accepted',
+        'cgv_accepted_at',
+        'cgv_version',
+        'consent_ip',
     ];
 
     protected function casts(): array
@@ -37,6 +41,8 @@ class Order extends Model
             'total' => 'decimal:2',
             'metadata' => 'array',
             'paid_at' => 'datetime',
+            'cgv_accepted' => 'boolean',
+            'cgv_accepted_at' => 'datetime',
         ];
     }
 
