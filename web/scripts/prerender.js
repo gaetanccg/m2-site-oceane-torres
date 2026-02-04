@@ -53,6 +53,11 @@ async function prerenderRoute(browser, route) {
 
     console.log(`  Prerendering: ${route}`)
 
+    // Set prerender flag before any scripts run
+    await page.evaluateOnNewDocument(() => {
+        window.__PRERENDERING__ = true
+    })
+
     await page.goto(url, { waitUntil: 'networkidle0' })
 
     // Attendre que le contenu soit chargé
