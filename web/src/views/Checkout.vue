@@ -68,6 +68,29 @@
                                     </div>
                                 </form>
 
+                                <!-- CGV Acceptance (RGPD) -->
+                                <div class="mt-6 bg-gray-50 border border-gray-200 rounded-lg p-4">
+                                    <label class="flex items-start gap-3 cursor-pointer">
+                                        <input
+                                            v-model="form.cgv_accepted"
+                                            type="checkbox"
+                                            required
+                                            class="mt-1 w-4 h-4 text-gold border-gray-300 rounded focus:ring-gold"
+                                        />
+                                        <span class="text-sm text-gray-600">
+                                            <span class="text-red-500">*</span>
+                                            J'ai lu et j'accepte les
+                                            <router-link to="/cgv" target="_blank" class="text-gold hover:underline font-medium">
+                                                Conditions Generales de Vente
+                                            </router-link>
+                                            et la
+                                            <router-link to="/politique-confidentialite" target="_blank" class="text-gold hover:underline font-medium">
+                                                Politique de confidentialite
+                                            </router-link>.
+                                        </span>
+                                    </label>
+                                </div>
+
                                 <!-- Error message -->
                                 <div v-if="error" class="mt-4 p-4 bg-red-50 text-red-600 rounded-lg text-sm">
                                     {{ error }}
@@ -77,7 +100,7 @@
                                 <div class="mt-8 pt-6 border-t border-gray-100">
                                     <button
                                         @click="createOrder"
-                                        :disabled="isProcessing || (!authStore.isAuthenticated && !form.email)"
+                                        :disabled="isProcessing || (!authStore.isAuthenticated && !form.email) || !form.cgv_accepted"
                                         class="w-full py-3 bg-gold text-white font-medium rounded-lg hover:bg-gold/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                                     >
                                         <svg
@@ -215,6 +238,7 @@ let sumupWidget: { unmount: () => void } | null = null
 const form = reactive({
     name: '',
     email: '',
+    cgv_accepted: false,
 })
 
 function formatPrice(price: number): string {
@@ -326,6 +350,10 @@ async function createOrder() {
         error.value = 'Veuillez renseigner votre email'
         return
     }
+    if (!form.cgv_accepted) {
+        error.value = 'Vous devez accepter les Conditions Generales de Vente'
+        return
+    }
 
     isProcessing.value = true
     error.value = ''
@@ -333,7 +361,8 @@ async function createOrder() {
     try {
         const orderResponse = await cartApi.createOrder(
             authStore.isAuthenticated ? undefined : form.email,
-            authStore.isAuthenticated ? undefined : form.name
+            authStore.isAuthenticated ? undefined : form.name,
+            form.cgv_accepted
         )
 
         if (!orderResponse.success) {

@@ -17,6 +17,7 @@ const About = () => import('@/views/About.vue')
 const Contact = () => import('@/views/Contact.vue')
 const MentionsLegales = () => import('@/views/MentionsLegales.vue')
 const CGV = () => import('@/views/CGV.vue')
+const PolitiqueConfidentialite = () => import('@/views/PolitiqueConfidentialite.vue')
 
 // Gallery access pages
 const GalleryAccess = () => import('@/views/GalleryAccess.vue')
@@ -117,6 +118,15 @@ export const routes: RouteRecordRaw[] = [
         meta: {
             title: 'Conditions Générales de Vente',
             description: 'Conditions Générales de Vente du site Océane Torres Photographie.'
+        }
+    },
+    {
+        path: '/politique-confidentialite',
+        name: 'politique-confidentialite',
+        component: PolitiqueConfidentialite,
+        meta: {
+            title: 'Politique de Confidentialité',
+            description: 'Politique de confidentialité et protection des données personnelles - Océane Torres Photographie.'
         }
     },
     // Gallery access routes (noindex pour éviter l'indexation de pages dynamiques)

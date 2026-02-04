@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\CastsBooleansForPostgres;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -12,7 +13,7 @@ use Illuminate\Support\Str;
 
 class Order extends Model
 {
-    use HasFactory, HasUuids;
+    use CastsBooleansForPostgres, HasFactory, HasUuids;
 
     protected $fillable = [
         'user_id',
@@ -28,6 +29,10 @@ class Order extends Model
         'sumup_transaction_id',
         'metadata',
         'paid_at',
+        'cgv_accepted',
+        'cgv_accepted_at',
+        'cgv_version',
+        'consent_ip',
     ];
 
     protected function casts(): array
@@ -37,6 +42,8 @@ class Order extends Model
             'total' => 'decimal:2',
             'metadata' => 'array',
             'paid_at' => 'datetime',
+            'cgv_accepted' => 'boolean',
+            'cgv_accepted_at' => 'datetime',
         ];
     }
 
