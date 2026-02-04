@@ -36,14 +36,14 @@ class AppServiceProvider extends ServiceProvider
      */
     protected function configureRateLimiting(): void
     {
-        // Rate limit for preview and thumbnail images (120 requests/minute)
+        // Rate limit for preview and thumbnail images (500 requests/minute for galleries with many photos)
         RateLimiter::for('images', function (Request $request) {
-            return Limit::perMinute(120)->by($request->ip());
+            return Limit::perMinute(500)->by($request->ip());
         });
 
-        // Rate limit for HD downloads (30 requests/minute)
+        // Rate limit for HD downloads (60 requests/minute)
         RateLimiter::for('downloads', function (Request $request) {
-            return Limit::perMinute(30)->by($request->ip());
+            return Limit::perMinute(60)->by($request->ip());
         });
     }
 }

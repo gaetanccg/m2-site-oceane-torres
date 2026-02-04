@@ -80,6 +80,8 @@ class PhotoController extends Controller
                                 'size' => $file->getSize(),
                                 'mime_type' => $mimeType,
                                 'storage_path' => $result['hd_path'],
+                                'width' => $result['width'] ?? null,
+                                'height' => $result['height'] ?? null,
                             ],
                         ]);
                         $uploadedPhotos[] = $photo;
