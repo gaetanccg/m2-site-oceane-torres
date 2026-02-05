@@ -26,7 +26,7 @@
         <template v-else-if="gallery">
             <!-- Header -->
             <section class="py-8 sm:py-12 px-4 sm:px-6 bg-white border-b border-gray-100">
-                <div class="max-w-5xl mx-auto">
+                <div class="max-w-5xl mx-auto text-center">
                     <router-link
                         to="/evenements"
                         class="inline-flex items-center gap-2 text-gray-500 hover:text-gold transition-colors mb-4 sm:mb-6 text-sm sm:text-base"
@@ -37,11 +37,11 @@
                         Retour aux événements
                     </router-link>
 
-                    <h1 class="text-2xl sm:text-3xl md:text-4xl font-light mb-4">{{ gallery.title }}</h1>
-                    <p v-if="gallery.description" class="text-gray-600 font-light max-w-2xl mb-4">
+                    <h1 class="text-2xl sm:text-3xl md:text-4xl font-light mb-4 text-center">{{ gallery.title }}</h1>
+                    <p v-if="gallery.description" class="text-gray-600 font-light max-w-2xl mx-auto mb-4">
                         {{ gallery.description }}
                     </p>
-                    <div class="flex flex-wrap items-center gap-4 text-sm text-gray-400">
+                    <div class="flex flex-wrap items-center justify-center gap-4 text-sm text-gray-400">
                         <span v-if="gallery.event_date" class="flex items-center gap-1">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -147,13 +147,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import {ref, computed, onMounted} from 'vue'
+import {useRoute} from 'vue-router'
 import Lightbox from '@/components/Lightbox.vue'
 import PhotoCard from '@/components/PhotoCard.vue'
 import AddToCartButton from '@/components/cart/AddToCartButton.vue'
-import { API_CONFIG } from '@/config/constants'
-import type { LightboxImage } from '@/types'
+import {API_CONFIG} from '@/config/constants'
+import type {LightboxImage} from '@/types'
 
 interface Photo {
     id: string
@@ -187,6 +187,7 @@ function formatDate(dateStr: string): string {
         year: 'numeric'
     })
 }
+
 const lightboxIndex = ref(0)
 
 // Natural sort for photo titles (handles "shetland 1", "shetland 2", ..., "shetland 10" correctly)
@@ -195,7 +196,7 @@ const sortedPhotos = computed<Photo[]>(() => {
     return [...gallery.value.photos].sort((a, b) => {
         const titleA = a.title || ''
         const titleB = b.title || ''
-        return titleA.localeCompare(titleB, 'fr', { numeric: true, sensitivity: 'base' })
+        return titleA.localeCompare(titleB, 'fr', {numeric: true, sensitivity: 'base'})
     })
 })
 
