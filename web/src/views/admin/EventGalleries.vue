@@ -1,5 +1,5 @@
 <template>
-    <AdminLayout>
+    <div>
         <AdminHeader title="Galeries d'événements" subtitle="Gerez les galeries publiques de vos événements">
             <template #actions>
                 <Button @click="openCreateModal">
@@ -413,12 +413,11 @@
                 </div>
             </div>
         </Teleport>
-    </AdminLayout>
+    </div>
 </template>
 
 <script setup lang="ts">
 import {ref, reactive, computed, onMounted} from 'vue'
-import AdminLayout from '@/components/admin/AdminLayout.vue'
 import AdminHeader from '@/components/admin/AdminHeader.vue'
 import Modal from '@/components/admin/ui/Modal.vue'
 import Button from '@/components/admin/ui/Button.vue'
