@@ -302,8 +302,28 @@
                             </div>
                         </div>
 
-                        <!-- Hover delete action (only in normal mode) -->
-                        <div v-if="!selectionMode" class="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                        <!-- Current thumbnail indicator -->
+                        <div
+                            v-if="selectedGallery?.thumbnail_photo_id === photo.id"
+                            class="absolute top-2 right-2 px-2 py-1 bg-gold text-white text-xs font-medium rounded-lg flex items-center gap-1 z-10"
+                        >
+                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                            </svg>
+                            Miniature
+                        </div>
+
+                        <!-- Hover actions (only in normal mode) -->
+                        <div v-if="!selectionMode" class="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
+                            <button
+                                @click.stop="setAsThumbnail(photo.id)"
+                                class="p-2 bg-gold rounded-lg text-white hover:bg-gold/80"
+                                :title="selectedGallery?.thumbnail_photo_id === photo.id ? 'Retirer comme miniature' : 'Definir comme miniature'"
+                            >
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                                </svg>
+                            </button>
                             <button
                                 @click.stop="deletePhoto(photo.id)"
                                 class="p-2 bg-red-500 rounded-lg text-white hover:bg-red-600"
@@ -410,6 +430,7 @@ import type {AdminGallery, AdminPhoto, EventGalleryFormData} from '@/types/admin
 
 interface EventGalleryWithCover extends AdminGallery {
     cover_photo?: AdminPhoto
+    thumbnail_photo_id?: string | null
 }
 
 const galleries = ref<EventGalleryWithCover[]>([])
@@ -607,8 +628,42 @@ async function deletePhoto(photoId: string) {
     try {
         await adminApi.deletePhoto(photoId)
         galleryPhotos.value = galleryPhotos.value.filter(p => p.id !== photoId)
+        // If deleted photo was the thumbnail, clear it
+        if (selectedGallery.value?.thumbnail_photo_id === photoId) {
+            selectedGallery.value.thumbnail_photo_id = null
+        }
     } catch (error) {
         console.error('Error deleting photo:', error)
+    }
+}
+
+async function setAsThumbnail(photoId: string) {
+    if (!selectedGallery.value) return
+
+    try {
+        // Toggle: if already thumbnail, remove it; otherwise set it
+        const newThumbnailId = selectedGallery.value.thumbnail_photo_id === photoId ? null : photoId
+        const response = await adminApi.setEventThumbnail(selectedGallery.value.id, newThumbnailId)
+
+        if (response.success) {
+            // Update local state
+            selectedGallery.value.thumbnail_photo_id = newThumbnailId
+
+            // Also update in galleries list
+            const galleryIndex = galleries.value.findIndex(g => g.id === selectedGallery.value?.id)
+            if (galleryIndex !== -1) {
+                galleries.value[galleryIndex].thumbnail_photo_id = newThumbnailId
+                // Update cover_photo to reflect the new thumbnail
+                const thumbnailPhoto = newThumbnailId
+                    ? galleryPhotos.value.find(p => p.id === newThumbnailId)
+                    : galleryPhotos.value[0]
+                if (thumbnailPhoto) {
+                    galleries.value[galleryIndex].cover_photo = thumbnailPhoto
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error setting thumbnail:', error)
     }
 }
 
