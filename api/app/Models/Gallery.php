@@ -20,6 +20,7 @@ class Gallery extends Model
         'description',
         'event_date',
         'event_link',
+        'thumbnail_photo_id',
         'type',
         'access_token',
         'share_code',
@@ -82,6 +83,22 @@ class Gallery extends Model
     public function photos(): HasMany
     {
         return $this->hasMany(Photo::class)->orderBy('title');
+    }
+
+    /**
+     * Get the selected thumbnail photo for this gallery
+     */
+    public function thumbnailPhoto(): BelongsTo
+    {
+        return $this->belongsTo(Photo::class, 'thumbnail_photo_id');
+    }
+
+    /**
+     * Get the cover photo (selected thumbnail or first photo)
+     */
+    public function getCoverPhotoAttribute(): ?Photo
+    {
+        return $this->thumbnailPhoto ?? $this->photos()->first();
     }
 
     public function isAccessible(?string $token = null): bool

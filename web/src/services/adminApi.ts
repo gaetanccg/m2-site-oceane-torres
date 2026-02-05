@@ -500,6 +500,19 @@ class AdminApiService {
         return response.json()
     }
 
+    async setEventThumbnail(
+        galleryId: string,
+        photoId: string | null
+    ): Promise<AdminApiResponse<AdminGallery>> {
+        return this.request<AdminApiResponse<AdminGallery>>(
+            `/admin/events/${galleryId}/thumbnail`,
+            {
+                method: 'PUT',
+                body: JSON.stringify({ photo_id: photoId }),
+            }
+        )
+    }
+
     // ========================================================================
     // Gift Cards
     // ========================================================================
