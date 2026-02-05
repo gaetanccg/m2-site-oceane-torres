@@ -168,6 +168,7 @@ interface Gallery {
     event_link?: string
     photos_count: number
     photos?: Photo[]
+    cover_photo?: Photo
     created_at: string
 }
 
