@@ -224,6 +224,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::post('/events', [GalleryController::class, 'storeEvent']);
     Route::put('/events/{gallery}', [GalleryController::class, 'updateEvent']);
     Route::delete('/events/{gallery}', [GalleryController::class, 'destroyEvent']);
+    Route::put('/events/{gallery}/thumbnail', [GalleryController::class, 'setEventThumbnail']);
     Route::post('/events/{gallery}/photos', [PhotoController::class, 'store']);
     Route::post('/events/{gallery}/photos/async', [PhotoController::class, 'storeAsync']);
 
