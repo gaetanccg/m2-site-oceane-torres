@@ -1,5 +1,5 @@
 <template>
-    <AdminLayout>
+    <div>
         <AdminHeader title="Commandes" subtitle="Consultez les commandes de photos" />
 
         <!-- Loading State -->
@@ -265,12 +265,11 @@
                 </div>
             </template>
         </Modal>
-    </AdminLayout>
+    </div>
 </template>
 
 <script setup lang="ts">
 import {ref, computed, watch, onMounted} from 'vue'
-import AdminLayout from '@/components/admin/AdminLayout.vue'
 import AdminHeader from '@/components/admin/AdminHeader.vue'
 import DataTable from '@/components/admin/ui/DataTable.vue'
 import StatCard from '@/components/admin/ui/StatCard.vue'

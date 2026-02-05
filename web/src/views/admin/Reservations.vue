@@ -1,5 +1,5 @@
 <template>
-  <AdminLayout>
+  <div>
     <AdminHeader title="Réservations" subtitle="Gérez vos rendez-vous clients">
       <template #actions>
         <div class="flex items-center gap-3">
@@ -316,12 +316,11 @@
         <Button :loading="isSaving" @click="saveReservation">Enregistrer</Button>
       </template>
     </Modal>
-  </AdminLayout>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, watch, onMounted } from 'vue'
-import AdminLayout from '@/components/admin/AdminLayout.vue'
 import AdminHeader from '@/components/admin/AdminHeader.vue'
 import Calendar from '@/components/admin/ui/Calendar.vue'
 import StatusBadge from '@/components/admin/ui/StatusBadge.vue'
