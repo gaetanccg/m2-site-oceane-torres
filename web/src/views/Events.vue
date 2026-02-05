@@ -60,8 +60,8 @@
                             <!-- Cover Image -->
                             <div class="aspect-[4/3] bg-gray-100 relative overflow-hidden">
                                 <img
-                                    v-if="gallery.photos && gallery.photos.length > 0"
-                                    :src="gallery.photos[0].thumbnail_url || gallery.photos[0].preview_url || gallery.photos[0].display_url || gallery.photos[0].file_path"
+                                    v-if="gallery.cover_photo"
+                                    :src="gallery.cover_photo.thumbnail_url || gallery.cover_photo.preview_url || gallery.cover_photo.display_url || gallery.cover_photo.file_path"
                                     :alt="gallery.title"
                                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                     loading="lazy"

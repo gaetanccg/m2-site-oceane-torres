@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Mail\GalleryAccessMail;
 use App\Models\Client;
 use App\Models\Gallery;
+use App\Models\Photo;
 use App\Services\MinioStorageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -405,13 +406,22 @@ class GalleryController extends Controller
 
         // Cache for 5 minutes per page
         $galleries = Cache::remember("event_galleries_page_{$page}", 300, function () {
-            return Gallery::where('type', 'event')
+            $result = Gallery::where('type', 'event')
                 ->with(['photos' => function ($query) {
                     $query->ordered()->limit(6);
-                }])
+                }, 'thumbnailPhoto'])
                 ->withCount('photos')
                 ->latest()
                 ->paginate(12);
+
+            // Add cover_photo to each gallery (thumbnail or first photo)
+            $result->getCollection()->transform(function ($gallery) {
+                $gallery->cover_photo = $gallery->thumbnailPhoto ?? $gallery->photos->first();
+
+                return $gallery;
+            });
+
+            return $result;
         });
 
         return response()->json($galleries);
@@ -443,13 +453,14 @@ class GalleryController extends Controller
     public function adminEventIndex(): JsonResponse
     {
         $galleries = Gallery::where('type', 'event')
-            ->with('photos')
+            ->with(['photos', 'thumbnailPhoto'])
             ->withCount('photos')
             ->latest()
             ->paginate(20);
 
         $galleries->getCollection()->transform(function ($gallery) {
-            $gallery->cover_photo = $gallery->photos->first();
+            // Use selected thumbnail or fall back to first photo
+            $gallery->cover_photo = $gallery->thumbnailPhoto ?? $gallery->photos->first();
 
             return $gallery;
         });
@@ -549,6 +560,46 @@ class GalleryController extends Controller
 
         return response()->json([
             'message' => 'Galerie événement supprimée avec succès.',
+        ]);
+    }
+
+    /**
+     * Set or remove thumbnail photo for an event gallery
+     */
+    public function setEventThumbnail(Request $request, Gallery $gallery): JsonResponse
+    {
+        if ($gallery->type !== 'event') {
+            return response()->json([
+                'message' => 'Galerie non trouvée.',
+            ], 404);
+        }
+
+        $validated = $request->validate([
+            'photo_id' => ['nullable', 'uuid', 'exists:photos,id'],
+        ]);
+
+        // If photo_id is provided, verify it belongs to this gallery
+        if (! empty($validated['photo_id'])) {
+            $photo = Photo::find($validated['photo_id']);
+            if (! $photo || $photo->gallery_id !== $gallery->id) {
+                return response()->json([
+                    'message' => 'Cette photo n\'appartient pas à cette galerie.',
+                ], 422);
+            }
+        }
+
+        $gallery->update([
+            'thumbnail_photo_id' => $validated['photo_id'] ?? null,
+        ]);
+
+        $this->clearEventGalleriesCache();
+
+        return response()->json([
+            'success' => true,
+            'data' => $gallery->fresh()->load('thumbnailPhoto'),
+            'message' => $validated['photo_id']
+                ? 'Photo définie comme miniature.'
+                : 'Miniature supprimée.',
         ]);
     }
 
