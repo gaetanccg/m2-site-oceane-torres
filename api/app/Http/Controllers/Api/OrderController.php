@@ -398,6 +398,36 @@ class OrderController extends Controller
     }
 
     /**
+     * Admin: Mark order prints as shipped
+     */
+    public function adminMarkShipped(string $orderId): JsonResponse
+    {
+        $order = Order::with('items')->findOrFail($orderId);
+
+        if ($order->status !== 'paid') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Seules les commandes payées peuvent être marquées comme expédiées.',
+            ], 400);
+        }
+
+        if (! $order->hasPrintItems()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cette commande ne contient pas de tirages.',
+            ], 400);
+        }
+
+        $order->markPrintsAsShipped();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Commande marquée comme expédiée.',
+            'order' => $this->formatOrder($order),
+        ]);
+    }
+
+    /**
      * Format order for API response
      */
     private function formatOrder(Order $order): array
@@ -406,6 +436,9 @@ class OrderController extends Controller
             'id' => $order->id,
             'order_number' => $order->order_number,
             'status' => $order->status,
+            'detailed_status' => $order->detailed_status,
+            'print_status' => $order->print_status,
+            'shipped_at' => $order->shipped_at?->toIso8601String(),
             'subtotal' => (float) $order->subtotal,
             'total' => (float) $order->total,
             'currency' => $order->currency,

@@ -573,6 +573,12 @@ class AdminApiService {
         })
     }
 
+    async markOrderShipped(id: string): Promise<{ success: boolean; message: string; order: AdminOrder }> {
+        return this.request(`/admin/orders/${id}/ship`, {
+            method: 'PUT',
+        })
+    }
+
     // ========================================================================
     // Notifications
     // ========================================================================
