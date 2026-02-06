@@ -281,10 +281,10 @@ async function initPaymentWidget() {
             showEmail: false,
             showInstallments: false,
             onLoad: () => {
-                console.log('SumUp widget loaded')
+                // Widget loaded
             },
             onResponse: async (type: string, body: unknown) => {
-                console.log('SumUp response:', type, body)
+                void body // unused
 
                 if (type === 'success') {
                     isPaymentProcessing.value = true

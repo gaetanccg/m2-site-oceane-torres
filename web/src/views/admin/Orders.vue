@@ -1,5 +1,5 @@
 <template>
-    <AdminLayout>
+    <div>
         <AdminHeader title="Commandes" subtitle="Consultez les commandes de photos" />
 
         <!-- Loading State -->
@@ -38,8 +38,8 @@
                     </template>
                 </StatCard>
                 <StatCard
-                    label="Avec tirages"
-                    :value="stats.withPrints"
+                    label="À expédier"
+                    :value="stats.toShip"
                     icon-bg-class="bg-amber-100"
                 >
                     <template #icon>
@@ -125,7 +125,7 @@
                 </template>
 
                 <template #cell-status="{ row }">
-                    <StatusBadge :status="row.status" />
+                    <StatusBadge :status="row.detailed_status" />
                 </template>
 
                 <template #cell-created_at="{ value }">
@@ -164,9 +164,12 @@
                 <!-- Status & Total -->
                 <div class="flex items-center justify-between bg-gray-50 rounded-xl p-4">
                     <div>
-                        <StatusBadge :status="selectedOrder.status" />
+                        <StatusBadge :status="selectedOrder.detailed_status" />
                         <p v-if="selectedOrder.paid_at" class="text-sm text-gray-500 mt-1">
                             Payée le {{ formatDate(selectedOrder.paid_at) }}
+                        </p>
+                        <p v-if="selectedOrder.shipped_at" class="text-sm text-gray-500 mt-1">
+                            Expédiée le {{ formatDate(selectedOrder.shipped_at) }}
                         </p>
                     </div>
                     <div class="text-right">
@@ -174,16 +177,53 @@
                     </div>
                 </div>
 
-                <!-- Print Notice -->
-                <div v-if="selectedOrder.has_prints" class="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                <!-- Print Notice / Shipping Section -->
+                <div v-if="selectedOrder.has_prints && selectedOrder.status === 'paid'" class="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="flex items-start gap-3">
+                            <svg class="w-5 h-5 text-amber-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                            </svg>
+                            <div>
+                                <p class="font-medium text-amber-800">
+                                    {{ selectedOrder.print_status === 'shipped' ? 'Tirages expédiés' : 'Tirages à expédier' }}
+                                </p>
+                                <p class="text-sm text-amber-700 mt-1">
+                                    {{ countPrints(selectedOrder) }} tirage(s) papier dans cette commande.
+                                </p>
+                            </div>
+                        </div>
+                        <Button
+                            v-if="selectedOrder.print_status !== 'shipped'"
+                            variant="primary"
+                            size="sm"
+                            :loading="isMarkingShipped"
+                            @click="markAsShipped"
+                        >
+                            Marquer expédié
+                        </Button>
+                        <span
+                            v-else
+                            class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800"
+                        >
+                            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                            Expédié
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Print Notice for unpaid orders -->
+                <div v-else-if="selectedOrder.has_prints" class="p-4 bg-gray-50 border border-gray-200 rounded-lg">
                     <div class="flex items-start gap-3">
-                        <svg class="w-5 h-5 text-amber-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-5 h-5 text-gray-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                         </svg>
                         <div>
-                            <p class="font-medium text-amber-800">Commande avec tirages papier</p>
-                            <p class="text-sm text-amber-700 mt-1">
-                                Cette commande contient des tirages à imprimer et expédier.
+                            <p class="font-medium text-gray-700">Commande avec tirages papier</p>
+                            <p class="text-sm text-gray-500 mt-1">
+                                {{ countPrints(selectedOrder) }} tirage(s) - En attente de paiement.
                             </p>
                         </div>
                     </div>
@@ -265,12 +305,11 @@
                 </div>
             </template>
         </Modal>
-    </AdminLayout>
+    </div>
 </template>
 
 <script setup lang="ts">
 import {ref, computed, watch, onMounted} from 'vue'
-import AdminLayout from '@/components/admin/AdminLayout.vue'
 import AdminHeader from '@/components/admin/AdminHeader.vue'
 import DataTable from '@/components/admin/ui/DataTable.vue'
 import StatCard from '@/components/admin/ui/StatCard.vue'
@@ -292,13 +331,14 @@ const to = ref(0)
 
 const showDetailModal = ref(false)
 const selectedOrder = ref<AdminOrder | null>(null)
+const isMarkingShipped = ref(false)
 
 const stats = computed(() => {
     const paid = orders.value.filter(o => o.status === 'paid')
     return {
         total: total.value,
         paid: paid.length,
-        withPrints: orders.value.filter(o => o.has_prints && o.status === 'paid').length,
+        toShip: orders.value.filter(o => o.detailed_status === 'to_ship').length,
         revenue: paid.reduce((sum, o) => sum + o.total, 0),
     }
 })
@@ -340,6 +380,25 @@ function countPrints(order: AdminOrder): number {
 function openDetailModal(order: AdminOrder) {
     selectedOrder.value = order
     showDetailModal.value = true
+}
+
+async function markAsShipped() {
+    if (!selectedOrder.value) return
+
+    isMarkingShipped.value = true
+    try {
+        const response = await adminApi.markOrderShipped(selectedOrder.value.id)
+        // Update the order in the list and in the modal
+        const index = orders.value.findIndex(o => o.id === selectedOrder.value?.id)
+        if (index !== -1) {
+            orders.value[index] = response.order
+        }
+        selectedOrder.value = response.order
+    } catch {
+        alert('Erreur lors du marquage comme expédié')
+    } finally {
+        isMarkingShipped.value = false
+    }
 }
 
 async function deleteFromModal() {

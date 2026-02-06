@@ -27,6 +27,14 @@ const statusClasses: Record<string, string> = {
   failed: 'bg-red-100 text-red-800',
   refunded: 'bg-gray-100 text-gray-800',
 
+  // Detailed order statuses
+  checkout_initiated: 'bg-gray-100 text-gray-800',
+  payment_in_progress: 'bg-blue-100 text-blue-800',
+  payment_abandoned: 'bg-orange-100 text-orange-800',
+  payment_failed: 'bg-red-100 text-red-800',
+  to_ship: 'bg-amber-100 text-amber-800',
+  shipped: 'bg-green-100 text-green-800',
+
   // Gallery types
   public: 'bg-blue-100 text-blue-800',
   private: 'bg-purple-100 text-purple-800',
@@ -52,6 +60,14 @@ const statusLabels: Record<string, string> = {
   paid: 'Payé',
   failed: 'Échoué',
   refunded: 'Remboursé',
+  // Detailed order statuses
+  checkout_initiated: 'Panier validé',
+  payment_in_progress: 'Paiement en cours',
+  payment_abandoned: 'Paiement abandonné',
+  payment_failed: 'Paiement échoué',
+  to_ship: 'À expédier',
+  shipped: 'Expédié',
+  // Gallery types
   public: 'Publique',
   private: 'Privée',
   active: 'Actif',

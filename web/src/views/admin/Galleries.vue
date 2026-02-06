@@ -1,5 +1,5 @@
 <template>
-    <AdminLayout>
+    <div>
         <AdminHeader title="Galeries" subtitle="Gérez les galeries photos de vos clients">
             <template #actions>
                 <Button @click="openCreateModal">
@@ -615,12 +615,11 @@
                 </div>
             </div>
         </Teleport>
-    </AdminLayout>
+    </div>
 </template>
 
 <script setup lang="ts">
 import {ref, reactive, computed, onMounted} from 'vue'
-import AdminLayout from '@/components/admin/AdminLayout.vue'
 import AdminHeader from '@/components/admin/AdminHeader.vue'
 import Modal from '@/components/admin/ui/Modal.vue'
 import Button from '@/components/admin/ui/Button.vue'
@@ -628,7 +627,10 @@ import FormField from '@/components/admin/ui/FormField.vue'
 import UploadProgress from '@/components/admin/ui/UploadProgress.vue'
 import {adminApi} from '@/services/adminApi'
 import {useChunkedUpload} from '@/composables/useChunkedUpload'
+import {useToast} from '@/composables/useToast'
 import type {AdminGallery, AdminPhoto, Client, GalleryFormData} from '@/types/admin'
+
+const toast = useToast()
 
 const galleries = ref<AdminGallery[]>([])
 const clients = ref<Client[]>([])
@@ -725,32 +727,34 @@ function getDownloadUrl(token: string): string {
     return `${window.location.origin}/gallery/download/${token}`
 }
 
-async function copyToClipboard(text: string, id: string) {
+async function copyToClipboard(text: string, id: string, message = 'Copié !') {
     try {
         await navigator.clipboard.writeText(text)
         copiedId.value = id
+        toast.success(message)
         setTimeout(() => {
             copiedId.value = null
         }, 2000)
-    } catch { /* ignore */
+    } catch {
+        toast.error('Erreur lors de la copie')
     }
 }
 
 function copyCode(gallery: AdminGallery) {
     if (gallery.share_code) {
-        copyToClipboard(gallery.share_code, `code-${gallery.id}`)
+        copyToClipboard(gallery.share_code, `code-${gallery.id}`, 'Code copié')
     }
 }
 
 function copyShareLink(gallery: AdminGallery) {
     if (gallery.share_code) {
-        copyToClipboard(getShareUrl(gallery.share_code), `share-${gallery.id}`)
+        copyToClipboard(getShareUrl(gallery.share_code), `share-${gallery.id}`, 'Lien de consultation copié')
     }
 }
 
 function copyDownloadLink(gallery: AdminGallery) {
     if (gallery.access_token) {
-        copyToClipboard(getDownloadUrl(gallery.access_token), `dl-${gallery.id}`)
+        copyToClipboard(getDownloadUrl(gallery.access_token), `dl-${gallery.id}`, 'Lien de téléchargement copié')
     }
 }
 
@@ -791,8 +795,8 @@ async function openGallery(gallery: AdminGallery) {
             selectedGallery.value = response.data
             galleryPhotos.value = response.data.photos || []
         }
-    } catch (error) {
-        console.error('Error fetching gallery:', error)
+    } catch {
+        // Failed to fetch gallery
     } finally {
         isLoadingPhotos.value = false
     }
@@ -825,10 +829,9 @@ async function sendGalleryEmail() {
         galleryForEmail.value = null
         emailForm.email = ''
         emailForm.recipientName = ''
-        alert('Email envoye avec succes !')
-    } catch (error) {
-        console.error('Error sending email:', error)
-        alert('Erreur lors de l\'envoi de l\'email')
+        toast.success('Email envoyé', 'Le client a reçu le lien de la galerie')
+    } catch {
+        toast.error('Erreur', 'Impossible d\'envoyer l\'email')
     } finally {
         isSendingEmail.value = false
     }
@@ -862,13 +865,15 @@ async function saveGallery() {
     try {
         if (isEditing.value && editingId.value) {
             await adminApi.updateGallery(editingId.value, form)
+            toast.success('Galerie modifiée')
         } else {
             await adminApi.createGallery(form)
+            toast.success('Galerie créée')
         }
         showFormModal.value = false
         await fetchGalleries()
-    } catch (error) {
-        console.error('Error saving gallery:', error)
+    } catch {
+        toast.error('Erreur', 'Impossible de sauvegarder la galerie')
     } finally {
         isSaving.value = false
     }
@@ -880,10 +885,11 @@ async function deleteGallery() {
     try {
         await adminApi.deleteGallery(galleryToDelete.value.id)
         showDeleteModal.value = false
+        toast.success('Galerie supprimée')
         galleryToDelete.value = null
         await fetchGalleries()
-    } catch (error) {
-        console.error('Error deleting gallery:', error)
+    } catch {
+        toast.error('Erreur', 'Impossible de supprimer la galerie')
     } finally {
         isDeleting.value = false
     }
@@ -923,8 +929,9 @@ async function uploadPhotos(files: File[]) {
             selectedGallery.value = response.data
             galleryPhotos.value = response.data.photos || []
         }
-    } catch (error) {
-        console.error('Upload failed:', error)
+        toast.success('Photos ajoutées', `${files.length} photo(s) uploadée(s)`)
+    } catch {
+        toast.error('Erreur', 'Échec de l\'upload')
     } finally {
         // Reset upload state after a short delay
         setTimeout(() => {
@@ -937,21 +944,30 @@ async function deletePhoto(photoId: string) {
     try {
         await adminApi.deletePhoto(photoId)
         galleryPhotos.value = galleryPhotos.value.filter(p => p.id !== photoId)
-    } catch { /* ignore */
+        toast.success('Photo supprimée')
+    } catch {
+        toast.error('Erreur', 'Impossible de supprimer la photo')
     }
 }
 
 async function makeAllLikedDownloadable() {
     const likedNotDownloadable = likedPhotos.value.filter(p => !p.is_downloadable)
+    if (likedNotDownloadable.length === 0) {
+        toast.info('Toutes les photos likées sont déjà téléchargeables')
+        return
+    }
+    let count = 0
     for (const photo of likedNotDownloadable) {
         try {
             const response = await adminApi.togglePhotoDownloadable(photo.id)
             if (response.success) {
                 photo.is_downloadable = response.data.is_downloadable
+                count++
             }
         } catch { /* continue */
         }
     }
+    toast.success(`${count} photo(s) rendues téléchargeables`)
 }
 
 function openLightbox(index: number) {
@@ -989,20 +1005,25 @@ async function bulkSetDownloadable(downloadable: boolean) {
     isBulkProcessing.value = true
 
     try {
+        let count = 0
         for (const photoId of selectedPhotos.value) {
             const photo = galleryPhotos.value.find(p => p.id === photoId)
             if (photo && photo.is_downloadable !== downloadable) {
                 const response = await adminApi.togglePhotoDownloadable(photoId)
                 if (response.success) {
                     photo.is_downloadable = response.data.is_downloadable
+                    count++
                 }
             }
         }
         // Clear selection after bulk action
         selectedPhotos.value = []
         selectionMode.value = false
-    } catch (error) {
-        console.error('Error bulk updating photos:', error)
+        toast.success(downloadable
+            ? `${count} photo(s) rendues téléchargeables`
+            : `${count} photo(s) retirées du téléchargement`)
+    } catch {
+        toast.error('Erreur', 'Impossible de modifier les photos')
     } finally {
         isBulkProcessing.value = false
     }
@@ -1018,6 +1039,7 @@ async function bulkDeletePhotos() {
     isBulkProcessing.value = true
 
     try {
+        const count = selectedPhotos.value.length
         for (const photoId of selectedPhotos.value) {
             await adminApi.deletePhoto(photoId)
         }
@@ -1027,8 +1049,9 @@ async function bulkDeletePhotos() {
         selectedPhotos.value = []
         selectionMode.value = false
         showBulkDeleteModal.value = false
-    } catch (error) {
-        console.error('Error bulk deleting photos:', error)
+        toast.success(`${count} photo(s) supprimée(s)`)
+    } catch {
+        toast.error('Erreur', 'Impossible de supprimer les photos')
     } finally {
         isBulkProcessing.value = false
     }

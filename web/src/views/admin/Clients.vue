@@ -1,5 +1,5 @@
 <template>
-  <AdminLayout>
+  <div>
     <AdminHeader title="Clients" subtitle="Gerez votre base clients">
       <template #actions>
         <Button @click="openCreateModal">
@@ -363,12 +363,11 @@
         <Button variant="danger" :loading="isDeleting" @click="deleteClient">Supprimer definitivement</Button>
       </template>
     </Modal>
-  </AdminLayout>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, watch, onMounted, onUnmounted } from 'vue'
-import AdminLayout from '@/components/admin/AdminLayout.vue'
 import AdminHeader from '@/components/admin/AdminHeader.vue'
 import DataTable from '@/components/admin/ui/DataTable.vue'
 import Modal from '@/components/admin/ui/Modal.vue'

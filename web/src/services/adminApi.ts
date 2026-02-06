@@ -4,6 +4,7 @@
  */
 
 import { API_CONFIG } from '@/config/constants'
+import { emitSessionExpired } from '@/utils/authEvents'
 import type {
     AdminApiResponse,
     AdminPaginatedResponse,
@@ -116,7 +117,9 @@ class AdminApiService {
             clearTimeout(timeoutId)
 
             if (response.status === 401) {
-                localStorage.removeItem('auth_token')
+                // Émettre un event pour notifier l'app de la session expirée
+                // L'app se chargera de nettoyer et rediriger
+                emitSessionExpired()
                 const apiError: ApiError = {
                     status: 401,
                     message: ERROR_MESSAGES.auth.sessionExpired,
@@ -125,7 +128,6 @@ class AdminApiService {
                     isAuthError: true,
                     isServerError: false,
                 }
-                window.location.href = '/?login=true'
                 throw new AdminApiError(apiError)
             }
 
@@ -568,6 +570,12 @@ class AdminApiService {
     async deleteOrder(id: string): Promise<{ success: boolean; message: string }> {
         return this.request(`/admin/orders/${id}`, {
             method: 'DELETE',
+        })
+    }
+
+    async markOrderShipped(id: string): Promise<{ success: boolean; message: string; order: AdminOrder }> {
+        return this.request(`/admin/orders/${id}/ship`, {
+            method: 'PUT',
         })
     }
 

@@ -1,5 +1,5 @@
 <template>
-    <AdminLayout>
+    <div>
         <AdminHeader title="Galeries d'événements" subtitle="Gerez les galeries publiques de vos événements">
             <template #actions>
                 <Button @click="openCreateModal">
@@ -413,12 +413,11 @@
                 </div>
             </div>
         </Teleport>
-    </AdminLayout>
+    </div>
 </template>
 
 <script setup lang="ts">
 import {ref, reactive, computed, onMounted} from 'vue'
-import AdminLayout from '@/components/admin/AdminLayout.vue'
 import AdminHeader from '@/components/admin/AdminHeader.vue'
 import Modal from '@/components/admin/ui/Modal.vue'
 import Button from '@/components/admin/ui/Button.vue'
@@ -517,8 +516,8 @@ async function openGallery(gallery: EventGalleryWithCover) {
             selectedGallery.value = response.data as EventGalleryWithCover
             galleryPhotos.value = response.data.photos || []
         }
-    } catch (error) {
-        console.error('Error fetching gallery:', error)
+    } catch {
+        // Failed to fetch gallery
     } finally {
         isLoadingPhotos.value = false
     }
@@ -534,8 +533,8 @@ async function fetchGalleries() {
     try {
         const response = await adminApi.getEventGalleries()
         galleries.value = response.data as EventGalleryWithCover[]
-    } catch (error) {
-        console.error('Error fetching galleries:', error)
+    } catch {
+        // Failed to fetch galleries
     } finally {
         isLoading.value = false
     }
@@ -555,8 +554,8 @@ async function saveGallery() {
         }
         showFormModal.value = false
         await fetchGalleries()
-    } catch (error) {
-        console.error('Error saving gallery:', error)
+    } catch {
+        // Failed to save gallery
     } finally {
         isSaving.value = false
     }
@@ -570,8 +569,8 @@ async function deleteGallery() {
         showDeleteModal.value = false
         galleryToDelete.value = null
         await fetchGalleries()
-    } catch (error) {
-        console.error('Error deleting gallery:', error)
+    } catch {
+        // Failed to delete gallery
     } finally {
         isDeleting.value = false
     }
@@ -599,10 +598,8 @@ async function uploadPhotos(files: File[]) {
         if (result.completed > 0) {
             await refreshGalleryPhotos()
         }
-    } catch (error) {
-        if ((error as Error).message !== 'Upload cancelled') {
-            console.error('Error uploading photos:', error)
-        }
+    } catch {
+        // Upload failed or cancelled
     }
 }
 
@@ -614,8 +611,8 @@ async function refreshGalleryPhotos() {
         if (response.success && response.data) {
             galleryPhotos.value = response.data.photos || []
         }
-    } catch (error) {
-        console.error('Error refreshing gallery photos:', error)
+    } catch {
+        // Failed to refresh gallery photos
     }
 }
 
@@ -632,8 +629,8 @@ async function deletePhoto(photoId: string) {
         if (selectedGallery.value?.thumbnail_photo_id === photoId) {
             selectedGallery.value.thumbnail_photo_id = null
         }
-    } catch (error) {
-        console.error('Error deleting photo:', error)
+    } catch {
+        // Failed to delete photo
     }
 }
 
@@ -662,8 +659,8 @@ async function setAsThumbnail(photoId: string) {
                 }
             }
         }
-    } catch (error) {
-        console.error('Error setting thumbnail:', error)
+    } catch {
+        // Failed to set thumbnail
     }
 }
 
@@ -714,8 +711,8 @@ async function bulkDeletePhotos() {
         selectedPhotos.value = []
         selectionMode.value = false
         showBulkDeleteModal.value = false
-    } catch (error) {
-        console.error('Error bulk deleting photos:', error)
+    } catch {
+        // Failed to bulk delete photos
     } finally {
         isBulkProcessing.value = false
     }

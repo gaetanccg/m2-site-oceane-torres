@@ -191,8 +191,8 @@ const downloadPhoto = async (photo: Photo) => {
             document.body.removeChild(link)
             URL.revokeObjectURL(blobUrl)
         }
-    } catch (err) {
-        console.error('Download error:', err)
+    } catch {
+        // Download failed
     } finally {
         downloadingPhotos.value.delete(photo.id)
     }
@@ -228,8 +228,8 @@ const downloadAll = async () => {
             document.body.removeChild(link)
             URL.revokeObjectURL(blobUrl)
         }
-    } catch (err) {
-        console.error('Download error:', err)
+    } catch {
+        // Download failed
     } finally {
         isDownloadingAll.value = false
     }

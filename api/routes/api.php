@@ -241,6 +241,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     // Orders management
     Route::get('/orders', [OrderController::class, 'adminIndex']);
     Route::get('/orders/{order}', [OrderController::class, 'adminShow']);
+    Route::put('/orders/{order}/ship', [OrderController::class, 'adminMarkShipped']);
     Route::delete('/orders/{order}', [OrderController::class, 'adminDestroy']);
 });
 

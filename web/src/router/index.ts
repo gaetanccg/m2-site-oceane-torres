@@ -38,6 +38,7 @@ const OrderConfirmation = () => import('@/views/OrderConfirmation.vue')
 const AccountDashboard = () => import('@/views/account/Dashboard.vue')
 
 // Admin pages
+const AdminRoot = () => import('@/views/admin/AdminRoot.vue')
 const AdminDashboard = () => import('@/views/admin/Dashboard.vue')
 const AdminGalleries = () => import('@/views/admin/Galleries.vue')
 const AdminClients = () => import('@/views/admin/Clients.vue')
@@ -218,54 +219,61 @@ export const routes: RouteRecordRaw[] = [
             robots: 'noindex, nofollow'
         }
     },
-    // Admin routes
+    // Admin routes - section isolée avec layout dédié
     {
         path: '/admin',
-        name: 'admin-dashboard',
-        component: AdminDashboard,
-        meta: {title: 'Dashboard', layout: 'admin', requiresAdmin: true}
-    },
-    {
-        path: '/admin/galleries',
-        name: 'admin-galleries',
-        component: AdminGalleries,
-        meta: {title: 'Galeries', layout: 'admin', requiresAdmin: true}
-    },
-    {
-        path: '/admin/clients',
-        name: 'admin-clients',
-        component: AdminClients,
-        meta: {title: 'Clients', layout: 'admin', requiresAdmin: true}
-    },
-    {
-        path: '/admin/prestations',
-        name: 'admin-prestations',
-        component: AdminPrestations,
-        meta: {title: 'Prestations', layout: 'admin', requiresAdmin: true}
-    },
-    {
-        path: '/admin/reservations',
-        name: 'admin-reservations',
-        component: AdminReservations,
-        meta: {title: 'Réservations', layout: 'admin', requiresAdmin: true}
-    },
-    {
-        path: '/admin/gift-cards',
-        name: 'admin-gift-cards',
-        component: AdminGiftCards,
-        meta: {title: 'Bons Cadeaux', layout: 'admin', requiresAdmin: true}
-    },
-    {
-        path: '/admin/events',
-        name: 'admin-events',
-        component: AdminEventGalleries,
-        meta: {title: 'Galeries Événements', layout: 'admin', requiresAdmin: true}
-    },
-    {
-        path: '/admin/orders',
-        name: 'admin-orders',
-        component: AdminOrders,
-        meta: {title: 'Commandes', layout: 'admin', requiresAdmin: true}
+        component: AdminRoot,
+        meta: {requiresAdmin: true},
+        children: [
+            {
+                path: '',
+                name: 'admin-dashboard',
+                component: AdminDashboard,
+                meta: {title: 'Dashboard'}
+            },
+            {
+                path: 'galleries',
+                name: 'admin-galleries',
+                component: AdminGalleries,
+                meta: {title: 'Galeries'}
+            },
+            {
+                path: 'clients',
+                name: 'admin-clients',
+                component: AdminClients,
+                meta: {title: 'Clients'}
+            },
+            {
+                path: 'prestations',
+                name: 'admin-prestations',
+                component: AdminPrestations,
+                meta: {title: 'Prestations'}
+            },
+            {
+                path: 'reservations',
+                name: 'admin-reservations',
+                component: AdminReservations,
+                meta: {title: 'Réservations'}
+            },
+            {
+                path: 'gift-cards',
+                name: 'admin-gift-cards',
+                component: AdminGiftCards,
+                meta: {title: 'Bons Cadeaux'}
+            },
+            {
+                path: 'events',
+                name: 'admin-events',
+                component: AdminEventGalleries,
+                meta: {title: 'Galeries Événements'}
+            },
+            {
+                path: 'orders',
+                name: 'admin-orders',
+                component: AdminOrders,
+                meta: {title: 'Commandes'}
+            },
+        ]
     },
     // Catch-all redirect to home
     {
@@ -287,8 +295,9 @@ const router = createRouter({
 
 // Auth guard for protected routes only
 router.beforeEach(async (to, _from, next) => {
-    const requiresAdmin = to.meta.requiresAdmin
-    const requiresClientAuth = to.meta.requiresClientAuth
+    // Check meta on matched routes (handles nested routes inheritance)
+    const requiresAdmin = to.matched.some(record => record.meta.requiresAdmin)
+    const requiresClientAuth = to.matched.some(record => record.meta.requiresClientAuth)
 
     // Public routes - no auth check needed, proceed immediately
     if (!requiresAdmin && !requiresClientAuth) {
