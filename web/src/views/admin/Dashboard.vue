@@ -481,8 +481,8 @@ async function fetchDashboardData() {
         stats.giftCards.total = giftCardsResponse.meta?.total || giftCards.length
         stats.giftCards.active = giftCards.filter((g: { status: string }) => g.status === 'active').length
 
-    } catch (error) {
-        console.error('Error fetching dashboard data:', error)
+    } catch {
+        // Failed to fetch dashboard data
     } finally {
         isLoading.value = false
     }

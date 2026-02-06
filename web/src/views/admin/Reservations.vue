@@ -432,8 +432,8 @@ async function openReservationDetail(item: Reservation | CalendarEvent) {
       selectedReservation.value = response.data
       showDetailModal.value = true
     }
-  } catch (err) {
-    console.error('Failed to load reservation:', err)
+  } catch {
+    // Failed to load reservation
   } finally {
     isLoadingReservation.value = false
   }
@@ -479,8 +479,8 @@ async function saveReservation() {
 
     showEditModal.value = false
     fetchCalendarEvents()
-  } catch (err) {
-    console.error('Failed to save reservation:', err)
+  } catch {
+    // Failed to save reservation
   } finally {
     isSaving.value = false
   }
@@ -577,8 +577,8 @@ async function deleteReservationFromModal() {
   }
 }
 
-function handleDayClick(date: string) {
-  console.log('Day clicked:', date)
+function handleDayClick(_date: string) {
+  // Day click handler - could open day detail view
 }
 
 watch([currentPage, statusFilter], () => {

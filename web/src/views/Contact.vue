@@ -439,9 +439,8 @@ async function handleSubmit() {
         })
 
         isSuccess.value = true
-    } catch (error) {
+    } catch {
         submitError.value = 'Une erreur est survenue lors de l\'envoi. Veuillez réessayer.'
-        console.error('Contact form error:', error)
     } finally {
         isLoading.value = false
     }

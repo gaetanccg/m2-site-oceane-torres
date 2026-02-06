@@ -144,8 +144,8 @@ async function fetchDashboard() {
             galleries.value = response.data.galleries
             reservations.value = response.data.reservations
         }
-    } catch (error) {
-        console.error('Error fetching dashboard:', error)
+    } catch {
+        // Failed to fetch dashboard
     } finally {
         isLoading.value = false
     }
