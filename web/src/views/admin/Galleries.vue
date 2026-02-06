@@ -795,8 +795,8 @@ async function openGallery(gallery: AdminGallery) {
             selectedGallery.value = response.data
             galleryPhotos.value = response.data.photos || []
         }
-    } catch (error) {
-        console.error('Error fetching gallery:', error)
+    } catch {
+        // Failed to fetch gallery
     } finally {
         isLoadingPhotos.value = false
     }
@@ -830,8 +830,7 @@ async function sendGalleryEmail() {
         emailForm.email = ''
         emailForm.recipientName = ''
         toast.success('Email envoyé', 'Le client a reçu le lien de la galerie')
-    } catch (error) {
-        console.error('Error sending email:', error)
+    } catch {
         toast.error('Erreur', 'Impossible d\'envoyer l\'email')
     } finally {
         isSendingEmail.value = false
@@ -873,8 +872,7 @@ async function saveGallery() {
         }
         showFormModal.value = false
         await fetchGalleries()
-    } catch (error) {
-        console.error('Error saving gallery:', error)
+    } catch {
         toast.error('Erreur', 'Impossible de sauvegarder la galerie')
     } finally {
         isSaving.value = false
@@ -890,8 +888,7 @@ async function deleteGallery() {
         toast.success('Galerie supprimée')
         galleryToDelete.value = null
         await fetchGalleries()
-    } catch (error) {
-        console.error('Error deleting gallery:', error)
+    } catch {
         toast.error('Erreur', 'Impossible de supprimer la galerie')
     } finally {
         isDeleting.value = false
@@ -933,8 +930,7 @@ async function uploadPhotos(files: File[]) {
             galleryPhotos.value = response.data.photos || []
         }
         toast.success('Photos ajoutées', `${files.length} photo(s) uploadée(s)`)
-    } catch (error) {
-        console.error('Upload failed:', error)
+    } catch {
         toast.error('Erreur', 'Échec de l\'upload')
     } finally {
         // Reset upload state after a short delay
@@ -1026,8 +1022,7 @@ async function bulkSetDownloadable(downloadable: boolean) {
         toast.success(downloadable
             ? `${count} photo(s) rendues téléchargeables`
             : `${count} photo(s) retirées du téléchargement`)
-    } catch (error) {
-        console.error('Error bulk updating photos:', error)
+    } catch {
         toast.error('Erreur', 'Impossible de modifier les photos')
     } finally {
         isBulkProcessing.value = false
@@ -1055,8 +1050,7 @@ async function bulkDeletePhotos() {
         selectionMode.value = false
         showBulkDeleteModal.value = false
         toast.success(`${count} photo(s) supprimée(s)`)
-    } catch (error) {
-        console.error('Error bulk deleting photos:', error)
+    } catch {
         toast.error('Erreur', 'Impossible de supprimer les photos')
     } finally {
         isBulkProcessing.value = false

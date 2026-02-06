@@ -342,8 +342,8 @@ async function checkPayment() {
             // Reload order to get updated status
             await loadOrder()
         }
-    } catch (e) {
-        console.error('Payment verification error:', e)
+    } catch {
+        // Payment verification failed
     }
 }
 
@@ -388,8 +388,7 @@ async function downloadPhoto(itemId: string, photoTitle?: string | null) {
             document.body.removeChild(link)
             window.URL.revokeObjectURL(url)
         }
-    } catch (e) {
-        console.error('Download error:', e)
+    } catch {
         alert('Erreur lors du téléchargement')
     } finally {
         downloadingItem.value = null
@@ -429,8 +428,7 @@ async function downloadAllPhotos() {
         link.click()
         document.body.removeChild(link)
         window.URL.revokeObjectURL(url)
-    } catch (e) {
-        console.error('Download all error:', e)
+    } catch {
         alert('Erreur lors du téléchargement')
     } finally {
         isDownloadingAll.value = false

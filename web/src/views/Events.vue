@@ -205,9 +205,8 @@ async function fetchGalleries(page = 1) {
         } else {
             error.value = 'Impossible de charger les galeries'
         }
-    } catch (err) {
+    } catch {
         error.value = 'Erreur de connexion'
-        console.error('Error fetching events:', err)
     } finally {
         isLoading.value = false
         isLoadingMore.value = false
