@@ -1,5 +1,5 @@
 <template>
-  <AdminLayout>
+  <div>
     <AdminHeader title="Prestations" subtitle="Gérez vos offres de services">
       <template #actions>
         <Button @click="openCreateModal">
@@ -323,12 +323,11 @@
         <Button variant="danger" :loading="isDeleting" @click="deletePrestation">Supprimer</Button>
       </template>
     </Modal>
-  </AdminLayout>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
-import AdminLayout from '@/components/admin/AdminLayout.vue'
 import AdminHeader from '@/components/admin/AdminHeader.vue'
 import Modal from '@/components/admin/ui/Modal.vue'
 import Button from '@/components/admin/ui/Button.vue'

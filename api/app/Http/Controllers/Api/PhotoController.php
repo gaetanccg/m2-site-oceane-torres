@@ -112,11 +112,25 @@ class PhotoController extends Controller
         // Check if this is an event gallery photo before deleting
         $isEventGallery = $photo->gallery?->type === 'event';
 
-        // Delete from MinIO storage
-        $storagePath = $photo->metadata['storage_path'] ?? $photo->metadata['supabase_path'] ?? $photo->file_path;
-        if ($storagePath) {
-            $storageService = new MinioStorageService;
-            $storageService->deletePhoto($storagePath);
+        // Delete all versions from MinIO storage (original, preview, thumbnail)
+        $storageService = new MinioStorageService;
+
+        // Collect all file paths to delete
+        $pathsToDelete = array_filter([
+            // Original/HD path from metadata or file_path
+            $photo->metadata['storage_path'] ?? $photo->metadata['supabase_path'] ?? $photo->file_path,
+            // Preview path
+            $photo->file_path_preview,
+            // Thumbnail path
+            $photo->file_path_thumbnail,
+            // HD path if different
+            $photo->file_path_hd,
+        ]);
+
+        foreach ($pathsToDelete as $path) {
+            if ($path && ! str_starts_with($path, 'http')) {
+                $storageService->deletePhoto($path);
+            }
         }
 
         $photo->delete();
