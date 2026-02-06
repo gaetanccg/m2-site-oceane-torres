@@ -1,6 +1,9 @@
 /**
  * Store de gestion du consentement cookies (RGPD)
- * Gère le stockage local et le chargement conditionnel des scripts tiers
+ * Utilise Google Consent Mode v2 pour la conformité RGPD
+ *
+ * Le script GA4 se charge immédiatement mais en mode "denied"
+ * jusqu'à ce que l'utilisateur donne son consentement explicite.
  */
 
 import { defineStore } from 'pinia'
@@ -8,7 +11,7 @@ import { ref, computed } from 'vue'
 
 export interface ConsentPreferences {
     essential: boolean      // Toujours true, non modifiable
-    analytics: boolean      // Google Analytics / GTM analytics
+    analytics: boolean      // Google Analytics
     marketing: boolean      // Pixels publicitaires, remarketing
     consentedAt: string | null
     consentVersion: string
@@ -17,6 +20,9 @@ export interface ConsentPreferences {
 const CONSENT_STORAGE_KEY = 'cookie_consent'
 const CONSENT_VERSION = '1.0'
 const GA4_ID = 'G-9BK5CTP2YR'
+
+// Flag pour éviter de charger GA4 plusieurs fois
+let ga4Loaded = false
 
 export const useConsentStore = defineStore('consent', () => {
     // State
@@ -36,15 +42,13 @@ export const useConsentStore = defineStore('consent', () => {
     const marketingEnabled = computed(() => preferences.value.marketing)
 
     // Actions
-    function loadFromStorage() {
+    function loadFromStorage(): boolean {
         try {
             const stored = localStorage.getItem(CONSENT_STORAGE_KEY)
             if (stored) {
                 const parsed = JSON.parse(stored) as ConsentPreferences
-                // Vérifier si la version du consentement est à jour
                 if (parsed.consentVersion === CONSENT_VERSION && parsed.consentedAt) {
                     preferences.value = { ...parsed, essential: true }
-                    applyConsent()
                     return true
                 }
             }
@@ -62,9 +66,72 @@ export const useConsentStore = defineStore('consent', () => {
         }
     }
 
+    /**
+     * Initialise GA4 avec Consent Mode v2
+     * Charge le script immédiatement mais en mode "denied" par défaut
+     */
+    function initializeGA4() {
+        if (ga4Loaded || typeof window === 'undefined') return
+        ga4Loaded = true
+
+        // Initialiser dataLayer
+        window.dataLayer = window.dataLayer || []
+
+        // Définir gtag function
+        window.gtag = function(...args: unknown[]) {
+            window.dataLayer.push(args)
+        }
+
+        // IMPORTANT: Configurer le consent mode par défaut AVANT de charger le script
+        // Par défaut tout est "denied" jusqu'au consentement explicite
+        window.gtag('consent', 'default', {
+            'analytics_storage': 'denied',
+            'ad_storage': 'denied',
+            'ad_user_data': 'denied',
+            'ad_personalization': 'denied',
+            'wait_for_update': 500  // Attendre 500ms pour le consentement
+        })
+
+        // Initialiser gtag
+        window.gtag('js', new Date())
+        window.gtag('config', GA4_ID, {
+            'anonymize_ip': true,
+            'send_page_view': true
+        })
+
+        // Charger le script gtag.js
+        const script = document.createElement('script')
+        script.async = true
+        script.src = `https://www.googletagmanager.com/gtag/js?id=${GA4_ID}`
+        document.head.appendChild(script)
+    }
+
+    /**
+     * Met à jour le consentement dans GA4
+     */
+    function updateGA4Consent() {
+        if (!window.gtag) return
+
+        window.gtag('consent', 'update', {
+            'analytics_storage': preferences.value.analytics ? 'granted' : 'denied',
+            'ad_storage': preferences.value.marketing ? 'granted' : 'denied',
+            'ad_user_data': preferences.value.marketing ? 'granted' : 'denied',
+            'ad_personalization': preferences.value.marketing ? 'granted' : 'denied'
+        })
+    }
+
     function initialize() {
+        // Charger GA4 immédiatement (en mode denied par défaut)
+        initializeGA4()
+
+        // Charger les préférences stockées
         const hasStoredConsent = loadFromStorage()
-        if (!hasStoredConsent) {
+
+        if (hasStoredConsent) {
+            // Appliquer le consentement stocké
+            updateGA4Consent()
+        } else {
+            // Afficher le bandeau si pas de consentement
             showBanner.value = true
         }
     }
@@ -78,7 +145,7 @@ export const useConsentStore = defineStore('consent', () => {
             consentVersion: CONSENT_VERSION
         }
         saveToStorage()
-        applyConsent()
+        updateGA4Consent()
         showBanner.value = false
         showSettings.value = false
     }
@@ -92,7 +159,8 @@ export const useConsentStore = defineStore('consent', () => {
             consentVersion: CONSENT_VERSION
         }
         saveToStorage()
-        applyConsent()
+        updateGA4Consent()
+        removeTrackingCookies()
         showBanner.value = false
         showSettings.value = false
     }
@@ -106,7 +174,13 @@ export const useConsentStore = defineStore('consent', () => {
             consentVersion: CONSENT_VERSION
         }
         saveToStorage()
-        applyConsent()
+        updateGA4Consent()
+
+        // Supprimer les cookies si refusé
+        if (!analytics) {
+            removeTrackingCookies()
+        }
+
         showBanner.value = false
         showSettings.value = false
     }
@@ -132,89 +206,37 @@ export const useConsentStore = defineStore('consent', () => {
             consentedAt: null,
             consentVersion: CONSENT_VERSION
         }
-        // Supprimer les cookies GTM/Analytics
+        updateGA4Consent()
         removeTrackingCookies()
         showBanner.value = true
     }
 
-    function applyConsent() {
-        if (preferences.value.analytics) {
-            loadGA4()
-        } else {
-            // S'assurer que GA4 n'envoie pas de données
-            disableGA4()
-        }
-    }
-
-    function loadGA4() {
-        // Vérifier si gtag.js est déjà chargé
-        if (document.querySelector(`script[src*="googletagmanager.com/gtag/js"]`)) {
-            // GA4 déjà chargé, mettre à jour le consentement
-            if (window.gtag) {
-                window.gtag('consent', 'update', {
-                    'analytics_storage': 'granted',
-                    'ad_storage': preferences.value.marketing ? 'granted' : 'denied'
-                })
-            }
-            return
-        }
-
-        // Initialiser dataLayer
-        window.dataLayer = window.dataLayer || []
-
-        // Définir gtag function
-        window.gtag = function(...args: unknown[]) {
-            window.dataLayer.push(args)
-        }
-
-        // Configurer le consent mode par défaut AVANT de charger le script
-        window.gtag('consent', 'default', {
-            'analytics_storage': 'granted',
-            'ad_storage': preferences.value.marketing ? 'granted' : 'denied'
-        })
-
-        // Initialiser gtag
-        window.gtag('js', new Date())
-        window.gtag('config', GA4_ID, {
-            'anonymize_ip': true,
-            'send_page_view': true
-        })
-
-        // Charger le script gtag.js
-        const script = document.createElement('script')
-        script.async = true
-        script.src = `https://www.googletagmanager.com/gtag/js?id=${GA4_ID}`
-        document.head.appendChild(script)
-    }
-
-    function disableGA4() {
-        if (window.gtag) {
-            window.gtag('consent', 'update', {
-                'analytics_storage': 'denied',
-                'ad_storage': 'denied'
-            })
-        }
-    }
-
     function removeTrackingCookies() {
-        // Liste des cookies Google à supprimer
         const cookiesToRemove = [
             '_ga', '_gid', '_gat', '_gtag',
             '__utma', '__utmb', '__utmc', '__utmz',
             '_gcl_au', '_fbp', '_fbc'
         ]
 
-        cookiesToRemove.forEach(cookieName => {
-            // Supprimer pour le domaine actuel et ses sous-domaines
-            const domains = [
-                window.location.hostname,
-                '.' + window.location.hostname,
-                '.oceanetorresphotographie.fr'
-            ]
+        // Patterns pour matcher les cookies GA4 avec l'ID
+        const ga4Pattern = new RegExp(`^_ga_`)
 
-            domains.forEach(domain => {
-                document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${domain}`
-            })
+        // Récupérer tous les cookies
+        const allCookies = document.cookie.split(';')
+
+        allCookies.forEach(cookie => {
+            const cookieName = cookie.split('=')[0].trim()
+            if (cookiesToRemove.includes(cookieName) || ga4Pattern.test(cookieName)) {
+                const domains = [
+                    window.location.hostname,
+                    '.' + window.location.hostname,
+                    '.oceanetorresphotographie.fr'
+                ]
+
+                domains.forEach(domain => {
+                    document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${domain}`
+                })
+            }
         })
     }
 
