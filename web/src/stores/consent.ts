@@ -16,7 +16,7 @@ export interface ConsentPreferences {
 
 const CONSENT_STORAGE_KEY = 'cookie_consent'
 const CONSENT_VERSION = '1.0'
-const GTM_ID = 'GTM-MWGLPVQW'
+const GA4_ID = 'G-9BK5CTP2YR'
 
 export const useConsentStore = defineStore('consent', () => {
     // State
@@ -139,20 +139,19 @@ export const useConsentStore = defineStore('consent', () => {
 
     function applyConsent() {
         if (preferences.value.analytics) {
-            loadGTM()
+            loadGA4()
         } else {
-            // S'assurer que GTM n'envoie pas de données
-            disableGTM()
+            // S'assurer que GA4 n'envoie pas de données
+            disableGA4()
         }
     }
 
-    function loadGTM() {
-        // Vérifier si GTM est déjà chargé
-        if (document.querySelector(`script[src*="googletagmanager.com/gtm.js"]`)) {
-            // GTM déjà chargé, activer le tracking
-            if (window.dataLayer) {
-                window.dataLayer.push({
-                    'event': 'consent_update',
+    function loadGA4() {
+        // Vérifier si gtag.js est déjà chargé
+        if (document.querySelector(`script[src*="googletagmanager.com/gtag/js"]`)) {
+            // GA4 déjà chargé, mettre à jour le consentement
+            if (window.gtag) {
+                window.gtag('consent', 'update', {
                     'analytics_storage': 'granted',
                     'ad_storage': preferences.value.marketing ? 'granted' : 'denied'
                 })
@@ -160,31 +159,37 @@ export const useConsentStore = defineStore('consent', () => {
             return
         }
 
-        // Initialiser dataLayer avec le consent mode
+        // Initialiser dataLayer
         window.dataLayer = window.dataLayer || []
-        window.dataLayer.push({
-            'gtm.start': new Date().getTime(),
-            'event': 'gtm.js'
-        })
 
-        // Configurer le consent mode par défaut
-        window.dataLayer.push({
-            'event': 'consent_default',
+        // Définir gtag function
+        window.gtag = function(...args: unknown[]) {
+            window.dataLayer.push(args)
+        }
+
+        // Configurer le consent mode par défaut AVANT de charger le script
+        window.gtag('consent', 'default', {
             'analytics_storage': 'granted',
             'ad_storage': preferences.value.marketing ? 'granted' : 'denied'
         })
 
-        // Charger le script GTM
+        // Initialiser gtag
+        window.gtag('js', new Date())
+        window.gtag('config', GA4_ID, {
+            'anonymize_ip': true,
+            'send_page_view': true
+        })
+
+        // Charger le script gtag.js
         const script = document.createElement('script')
         script.async = true
-        script.src = `https://www.googletagmanager.com/gtm.js?id=${GTM_ID}`
+        script.src = `https://www.googletagmanager.com/gtag/js?id=${GA4_ID}`
         document.head.appendChild(script)
     }
 
-    function disableGTM() {
-        if (window.dataLayer) {
-            window.dataLayer.push({
-                'event': 'consent_update',
+    function disableGA4() {
+        if (window.gtag) {
+            window.gtag('consent', 'update', {
                 'analytics_storage': 'denied',
                 'ad_storage': 'denied'
             })
@@ -236,6 +241,7 @@ export const useConsentStore = defineStore('consent', () => {
 // Types pour window
 declare global {
     interface Window {
-        dataLayer: Record<string, unknown>[]
+        dataLayer: unknown[]
+        gtag: (...args: unknown[]) => void
     }
 }
