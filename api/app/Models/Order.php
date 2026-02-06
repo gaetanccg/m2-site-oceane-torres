@@ -25,6 +25,8 @@ class Order extends Model
         'total',
         'currency',
         'status',
+        'print_status',
+        'shipped_at',
         'sumup_checkout_id',
         'sumup_transaction_id',
         'metadata',
@@ -42,6 +44,7 @@ class Order extends Model
             'total' => 'decimal:2',
             'metadata' => 'array',
             'paid_at' => 'datetime',
+            'shipped_at' => 'datetime',
             'cgv_accepted' => 'boolean',
             'cgv_accepted_at' => 'datetime',
         ];
@@ -218,5 +221,69 @@ class Order extends Model
     public function digitalItems()
     {
         return $this->items->filter(fn ($item) => ! $item->isPrint());
+    }
+
+    /**
+     * Get detailed status for admin display
+     * Returns a more precise status based on order state
+     */
+    public function getDetailedStatusAttribute(): string
+    {
+        // Failed payment
+        if ($this->status === 'failed') {
+            return 'payment_failed';
+        }
+
+        // Paid order - check print shipping status
+        if ($this->status === 'paid') {
+            if ($this->hasPrintItems()) {
+                if ($this->print_status === 'shipped') {
+                    return 'shipped';
+                }
+
+                return 'to_ship';
+            }
+
+            return 'paid';
+        }
+
+        // Pending order - determine where customer stopped
+        if ($this->status === 'pending') {
+            // No checkout created yet = cart validated but payment not started
+            if (is_null($this->sumup_checkout_id)) {
+                return 'checkout_initiated';
+            }
+
+            // Checkout created - check if still in progress or abandoned
+            $hoursSinceCreation = $this->created_at->diffInHours(now());
+
+            if ($hoursSinceCreation < 1) {
+                return 'payment_in_progress';
+            }
+
+            return 'payment_abandoned';
+        }
+
+        // Fallback to original status
+        return $this->status;
+    }
+
+    /**
+     * Mark prints as shipped
+     */
+    public function markPrintsAsShipped(): void
+    {
+        $this->update([
+            'print_status' => 'shipped',
+            'shipped_at' => now(),
+        ]);
+    }
+
+    /**
+     * Check if prints are shipped
+     */
+    public function arePrintsShipped(): bool
+    {
+        return $this->print_status === 'shipped';
     }
 }
