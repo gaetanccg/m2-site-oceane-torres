@@ -175,9 +175,8 @@ async function loadPrestations() {
         } else if (response && response.data) {
             prestations.value = response.data
         }
-    } catch (err) {
+    } catch {
         error.value = 'Impossible de charger les prestations. Veuillez réessayer.'
-        console.error('Failed to load prestations:', err)
     } finally {
         isLoading.value = false
     }

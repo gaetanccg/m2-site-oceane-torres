@@ -318,6 +318,15 @@ export interface AdminGiftCard {
 // ============================================================================
 
 export type OrderStatus = 'pending' | 'paid' | 'failed' | 'refunded' | 'expired'
+export type DetailedOrderStatus =
+    | 'checkout_initiated'
+    | 'payment_in_progress'
+    | 'payment_abandoned'
+    | 'payment_failed'
+    | 'paid'
+    | 'to_ship'
+    | 'shipped'
+export type PrintStatus = 'pending' | 'shipped' | null
 export type ProductType = 'digital' | 'print_10x15' | 'print_15x20'
 
 export interface AdminOrderItem {
@@ -339,6 +348,9 @@ export interface AdminOrder {
     id: string
     order_number: string
     status: OrderStatus
+    detailed_status: DetailedOrderStatus
+    print_status: PrintStatus
+    shipped_at: string | null
     subtotal: number
     total: number
     currency: string

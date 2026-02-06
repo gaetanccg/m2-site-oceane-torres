@@ -80,8 +80,8 @@ const handleLike = async () => {
             isLiked.value = data.is_liked
             emit('like', props.photoId, data.is_liked)
         }
-    } catch (error) {
-        console.error('Error toggling like:', error)
+    } catch {
+        // Silently fail
     } finally {
         isLoading.value = false
         setTimeout(() => {

@@ -54,15 +54,46 @@ class MinioStorageService
     public function deleteGalleryFolder(string $galleryId): bool
     {
         try {
-            $files = Storage::disk($this->disk)->files($galleryId);
+            // Use allFiles to get files recursively (includes subfolders like original/, preview/, thumbnail/)
+            $files = Storage::disk($this->disk)->allFiles($galleryId);
 
             if (empty($files)) {
+                \Log::info('MinIO gallery folder empty or not found', ['gallery_id' => $galleryId]);
+
                 return true;
             }
 
-            return Storage::disk($this->disk)->delete($files);
+            \Log::info('MinIO deleting gallery files', [
+                'gallery_id' => $galleryId,
+                'files_count' => count($files),
+            ]);
+
+            // Delete all files
+            $result = Storage::disk($this->disk)->delete($files);
+
+            // Also try to delete the empty directories
+            // Note: S3/MinIO doesn't have real directories, but this cleans up any markers
+            foreach (['original', 'preview', 'thumbnail'] as $subdir) {
+                try {
+                    Storage::disk($this->disk)->deleteDirectory("{$galleryId}/{$subdir}");
+                } catch (\Exception $e) {
+                    // Ignore errors for subdirectory cleanup
+                }
+            }
+
+            // Delete the main gallery directory
+            try {
+                Storage::disk($this->disk)->deleteDirectory($galleryId);
+            } catch (\Exception $e) {
+                // Ignore errors for main directory cleanup
+            }
+
+            return $result;
         } catch (\Exception $e) {
-            \Log::error('MinIO folder delete failed', ['error' => $e->getMessage()]);
+            \Log::error('MinIO folder delete failed', [
+                'gallery_id' => $galleryId,
+                'error' => $e->getMessage(),
+            ]);
 
             return false;
         }

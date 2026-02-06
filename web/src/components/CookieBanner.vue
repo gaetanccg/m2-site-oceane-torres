@@ -226,7 +226,7 @@ const consentStore = useConsentStore()
 
 // Flag to prevent prerender duplication - only render after client-side mount
 // Check if we're in prerendering mode (Puppeteer sets window.__PRERENDERING__)
-const isPrerendering = typeof window !== 'undefined' && (window as Window & { __PRERENDERING__?: boolean }).__PRERENDERING__ === true
+const isPrerendering = typeof window !== 'undefined' && (window as typeof globalThis & { __PRERENDERING__?: boolean }).__PRERENDERING__ === true
 const isMounted = ref(false)
 
 // Local state for settings modal

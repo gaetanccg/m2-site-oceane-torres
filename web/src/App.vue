@@ -1,37 +1,27 @@
 <template>
-    <!-- Admin: show loader while auth initializes -->
-    <div v-if="isAdminPath && !authStore.isInitialized" class="min-h-screen flex items-center justify-center bg-gray-100">
-        <div class="text-center">
-            <div class="w-12 h-12 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin mx-auto mb-3"></div>
-            <p class="text-gray-500 text-sm">Chargement...</p>
-        </div>
-    </div>
+    <!-- Admin routes: rendu direct (layout gere par AdminRoot) -->
+    <router-view v-if="isAdminPath" />
 
-    <!-- Admin layout (handled by AdminLayout component) -->
-    <router-view v-else-if="isAdminPath" />
-
-    <!-- Public layout - renders immediately -->
+    <!-- Public layout -->
     <div v-else class="min-h-screen flex flex-col">
         <Navbar />
         <main class="flex-grow">
             <router-view />
         </main>
         <Footer />
-        <!-- Cart drawer -->
         <CartDrawer />
     </div>
 
     <!-- Toast notifications (global) -->
     <ToastContainer />
 
-    <!-- Cookie consent banner (RGPD) -->
+    <!-- Cookie consent banner (RGPD) - uniquement sur le site public -->
     <CookieBanner v-if="!isAdminPath" />
 </template>
 
 <script setup lang="ts">
 import {computed, onMounted} from 'vue'
 import {useRoute} from 'vue-router'
-import {useAuthStore} from '@/stores/auth'
 import {useCartStore} from '@/stores/cart'
 import Navbar from './components/Navbar.vue'
 import Footer from './components/Footer.vue'
@@ -40,13 +30,12 @@ import CartDrawer from './components/cart/CartDrawer.vue'
 import CookieBanner from './components/CookieBanner.vue'
 
 const route = useRoute()
-const authStore = useAuthStore()
 const cartStore = useCartStore()
 
-// Check path directly - more reliable than route.meta on initial load
+// Detection du path admin pour le routing de layout
 const isAdminPath = computed(() => route.path.startsWith('/admin'))
 
-// Initialize cart store on app mount
+// Initialize cart store on app mount (uniquement cote public)
 onMounted(() => {
     if (!isAdminPath.value) {
         cartStore.initialize()
