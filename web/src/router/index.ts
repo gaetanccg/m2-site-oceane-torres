@@ -345,6 +345,15 @@ router.afterEach((to) => {
     // Update title
     document.title = pageTitle ? `${pageTitle} | ${baseTitle}` : baseTitle
 
+    // Track page view in Google Analytics (si consentement donné)
+    if (typeof window !== 'undefined' && window.gtag) {
+        window.gtag('event', 'page_view', {
+            page_title: document.title,
+            page_location: window.location.href,
+            page_path: to.path
+        })
+    }
+
     // Update meta description
     if (pageDescription) {
         const metaDescription = document.querySelector('meta[name="description"]')
