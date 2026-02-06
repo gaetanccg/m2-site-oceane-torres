@@ -52,7 +52,6 @@ export const useCartStore = defineStore('cart', () => {
             }
         } catch (e) {
             error.value = e instanceof CartApiError ? e.apiError.message : 'Erreur lors du chargement du panier'
-            console.error('Cart initialization error:', e)
         } finally {
             isLoading.value = false
             isInitialized.value = true
@@ -162,8 +161,8 @@ export const useCartStore = defineStore('cart', () => {
             if (response.success && response.cart) {
                 cart.value = response.cart
             }
-        } catch (e) {
-            console.error('Cart merge error:', e)
+        } catch {
+            // Silently fail merge
         }
     }
 

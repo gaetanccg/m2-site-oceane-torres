@@ -87,15 +87,15 @@ export function useChunkedUpload(): UseChunkedUploadReturn {
                             completedPhotos.value.push(file.photoId)
                         }
                     },
-                    onFileError: (file, error) => {
-                        console.error(`Upload failed for ${file.originalFilename}:`, error)
+                    onFileError: () => {
+                        // Error handled by progress state
                     },
                     onBatchComplete: (p) => {
                         progress.value = p
                         files.value = [...p.files]
                     },
-                    onError: (error) => {
-                        console.error('Upload error:', error)
+                    onError: () => {
+                        // Error handled by progress state
                     },
                 },
                 options

@@ -158,11 +158,9 @@ export const useAuthStore = defineStore('auth', () => {
         try {
             await authApi.logout()
         } catch {
-            // Ignorer les erreurs de logout
+            // Ignorer les erreurs de logout API
         } finally {
-            token.value = null
-            user.value = null
-            localStorage.removeItem('auth_token')
+            clearSession()
         }
     }
 
@@ -175,14 +173,29 @@ export const useAuthStore = defineStore('auth', () => {
             if (response.success && response.data) {
                 user.value = response.data
             } else {
-                // Token invalide
-                await logout()
+                // Token invalide - nettoyer la session
+                clearSession()
             }
-        } catch {
-            await logout()
+        } catch (e) {
+            // Distinguer erreur d'auth (401) vs erreur réseau
+            // Sur erreur réseau, on garde la session pour permettre une retry
+            if (e instanceof AuthApiError && e.apiError.isAuthError) {
+                clearSession()
+            }
+            // Sur erreur réseau, on ne fait rien - l'user reste connecté
+            // et pourra réessayer plus tard
         } finally {
             isLoading.value = false
         }
+    }
+
+    /**
+     * Nettoie la session locale sans appeler l'API logout
+     */
+    function clearSession(): void {
+        token.value = null
+        user.value = null
+        localStorage.removeItem('auth_token')
     }
 
     async function checkAuth(): Promise<boolean> {
@@ -201,17 +214,31 @@ export const useAuthStore = defineStore('auth', () => {
         return isAuthenticated.value
     }
 
+    // Promise pour éviter les appels concurrents à initialize()
+    let initPromise: Promise<void> | null = null
+
     /**
      * Initialise l'auth au démarrage de l'app
-     * À appeler une seule fois dans main.ts
+     * Peut être appelé plusieurs fois - seul le premier appel effectue l'init
      */
     async function initialize(): Promise<void> {
+        // Déjà initialisé
         if (isInitialized.value) return
 
-        if (token.value) {
-            await fetchUser()
+        // Init en cours - attendre qu'elle se termine
+        if (initPromise) {
+            return initPromise
         }
-        isInitialized.value = true
+
+        // Démarrer l'init
+        initPromise = (async () => {
+            if (token.value) {
+                await fetchUser()
+            }
+            isInitialized.value = true
+        })()
+
+        return initPromise
     }
 
     function clearError(): void {
