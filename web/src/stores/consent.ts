@@ -96,7 +96,7 @@ export const useConsentStore = defineStore('consent', () => {
         window.gtag('js', new Date())
         window.gtag('config', GA4_ID, {
             'anonymize_ip': true,
-            'send_page_view': true
+            'send_page_view': false  // Géré manuellement par le router afterEach et après consentement
         })
 
         // Charger le script gtag.js
@@ -120,6 +120,21 @@ export const useConsentStore = defineStore('consent', () => {
         })
     }
 
+    /**
+     * Envoie un page_view immédiat après activation du consentement analytics.
+     * Sans cela, GA4 ne crée jamais de session car le premier page_view
+     * (envoyé avant consentement) est ignoré.
+     */
+    function sendPageViewAfterConsent() {
+        if (!window.gtag || !preferences.value.analytics) return
+
+        window.gtag('event', 'page_view', {
+            page_title: document.title,
+            page_location: window.location.href,
+            page_path: window.location.pathname
+        })
+    }
+
     function initialize() {
         // Charger GA4 immédiatement (en mode denied par défaut)
         initializeGA4()
@@ -128,8 +143,9 @@ export const useConsentStore = defineStore('consent', () => {
         const hasStoredConsent = loadFromStorage()
 
         if (hasStoredConsent) {
-            // Appliquer le consentement stocké
+            // Appliquer le consentement stocké et envoyer le premier page_view
             updateGA4Consent()
+            sendPageViewAfterConsent()
         } else {
             // Afficher le bandeau si pas de consentement
             showBanner.value = true
@@ -146,6 +162,7 @@ export const useConsentStore = defineStore('consent', () => {
         }
         saveToStorage()
         updateGA4Consent()
+        sendPageViewAfterConsent()
         showBanner.value = false
         showSettings.value = false
     }
@@ -175,6 +192,7 @@ export const useConsentStore = defineStore('consent', () => {
         }
         saveToStorage()
         updateGA4Consent()
+        sendPageViewAfterConsent()
 
         // Supprimer les cookies si refusé
         if (!analytics) {

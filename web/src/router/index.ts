@@ -5,6 +5,7 @@
 
 import {createRouter, createWebHistory, type RouteRecordRaw} from 'vue-router'
 import {useAuthStore} from '@/stores/auth'
+import {useConsentStore} from '@/stores/consent'
 
 // Home est chargé immédiatement car c'est la page d'accueil
 import Home from '@/views/Home.vue'
@@ -345,8 +346,9 @@ router.afterEach((to) => {
     // Update title
     document.title = pageTitle ? `${pageTitle} | ${baseTitle}` : baseTitle
 
-    // Track page view in Google Analytics (si consentement donné)
-    if (typeof window !== 'undefined' && window.gtag) {
+    // Track page view in Google Analytics (uniquement si consentement analytics donné)
+    const consentStore = useConsentStore()
+    if (typeof window !== 'undefined' && window.gtag && consentStore.analyticsEnabled) {
         window.gtag('event', 'page_view', {
             page_title: document.title,
             page_location: window.location.href,
