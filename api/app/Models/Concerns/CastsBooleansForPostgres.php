@@ -44,4 +44,20 @@ trait CastsBooleansForPostgres
 
         return parent::setAttribute($key, $value);
     }
+
+    /**
+     * Cast an attribute to a native PHP type.
+     * Override to correctly handle string 'true'/'false' stored for PostgreSQL.
+     *
+     * PHP's (bool) 'false' returns true since 'false' is a non-empty string.
+     * This override ensures string boolean values are correctly interpreted.
+     */
+    protected function castAttribute($key, $value)
+    {
+        if (in_array($key, $this->getBooleanAttributes()) && is_string($value)) {
+            return in_array(strtolower($value), ['true', 't', '1', 'yes']);
+        }
+
+        return parent::castAttribute($key, $value);
+    }
 }
