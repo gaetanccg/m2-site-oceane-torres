@@ -7,6 +7,12 @@ import {createRouter, createWebHistory, type RouteRecordRaw} from 'vue-router'
 import {useAuthStore} from '@/stores/auth'
 import {useConsentStore} from '@/stores/consent'
 
+// Fonction gtag standard — DOIT utiliser `arguments` pour la compatibilité gtag.js
+function gtag(..._args: unknown[]) {
+    // eslint-disable-next-line prefer-rest-params
+    window.dataLayer?.push(arguments)
+}
+
 // Home est chargé immédiatement car c'est la page d'accueil
 import Home from '@/views/Home.vue'
 
@@ -348,8 +354,8 @@ router.afterEach((to) => {
 
     // Track page view in Google Analytics (uniquement si consentement analytics donné)
     const consentStore = useConsentStore()
-    if (typeof window !== 'undefined' && window.gtag && consentStore.analyticsEnabled) {
-        window.gtag('event', 'page_view', {
+    if (typeof window !== 'undefined' && window.dataLayer && consentStore.analyticsEnabled) {
+        gtag('event', 'page_view', {
             page_title: document.title,
             page_location: window.location.href,
             page_path: to.path
