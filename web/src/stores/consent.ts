@@ -24,6 +24,16 @@ const GA4_ID = 'G-9BK5CTP2YR'
 // Flag pour éviter de charger GA4 plusieurs fois
 let ga4Loaded = false
 
+/**
+ * Fonction gtag standard — DOIT utiliser `arguments` (pas de rest params)
+ * car gtag.js distingue les objets Arguments des Arrays lors du traitement
+ * du dataLayer. Avec des rest params (...args), les commandes sont ignorées.
+ */
+function gtag(..._args: unknown[]) {
+    // eslint-disable-next-line prefer-rest-params
+    window.dataLayer.push(arguments)
+}
+
 export const useConsentStore = defineStore('consent', () => {
     // State
     const preferences = ref<ConsentPreferences>({
@@ -77,26 +87,20 @@ export const useConsentStore = defineStore('consent', () => {
         // Initialiser dataLayer
         window.dataLayer = window.dataLayer || []
 
-        // Définir gtag function
-        window.gtag = function(...args: unknown[]) {
-            window.dataLayer.push(args)
-        }
-
-        // IMPORTANT: Configurer le consent mode par défaut AVANT de charger le script
-        // Par défaut tout est "denied" jusqu'au consentement explicite
-        window.gtag('consent', 'default', {
+        // Configurer le consent mode par défaut AVANT de charger le script
+        gtag('consent', 'default', {
             'analytics_storage': 'denied',
             'ad_storage': 'denied',
             'ad_user_data': 'denied',
             'ad_personalization': 'denied',
-            'wait_for_update': 500  // Attendre 500ms pour le consentement
+            'wait_for_update': 500
         })
 
         // Initialiser gtag
-        window.gtag('js', new Date())
-        window.gtag('config', GA4_ID, {
+        gtag('js', new Date())
+        gtag('config', GA4_ID, {
             'anonymize_ip': true,
-            'send_page_view': false  // Géré manuellement par le router afterEach et après consentement
+            'send_page_view': false  // Géré manuellement après consentement et par le router
         })
 
         // Charger le script gtag.js
@@ -110,9 +114,9 @@ export const useConsentStore = defineStore('consent', () => {
      * Met à jour le consentement dans GA4
      */
     function updateGA4Consent() {
-        if (!window.gtag) return
+        if (typeof window === 'undefined') return
 
-        window.gtag('consent', 'update', {
+        gtag('consent', 'update', {
             'analytics_storage': preferences.value.analytics ? 'granted' : 'denied',
             'ad_storage': preferences.value.marketing ? 'granted' : 'denied',
             'ad_user_data': preferences.value.marketing ? 'granted' : 'denied',
@@ -122,13 +126,13 @@ export const useConsentStore = defineStore('consent', () => {
 
     /**
      * Envoie un page_view immédiat après activation du consentement analytics.
-     * Sans cela, GA4 ne crée jamais de session car le premier page_view
-     * (envoyé avant consentement) est ignoré.
+     * Sans cela, GA4 ne crée jamais de session car le page_view initial
+     * est envoyé avant consentement et donc ignoré.
      */
     function sendPageViewAfterConsent() {
-        if (!window.gtag || !preferences.value.analytics) return
+        if (typeof window === 'undefined' || !preferences.value.analytics) return
 
-        window.gtag('event', 'page_view', {
+        gtag('event', 'page_view', {
             page_title: document.title,
             page_location: window.location.href,
             page_path: window.location.pathname
@@ -236,10 +240,7 @@ export const useConsentStore = defineStore('consent', () => {
             '_gcl_au', '_fbp', '_fbc'
         ]
 
-        // Patterns pour matcher les cookies GA4 avec l'ID
         const ga4Pattern = new RegExp(`^_ga_`)
-
-        // Récupérer tous les cookies
         const allCookies = document.cookie.split(';')
 
         allCookies.forEach(cookie => {
@@ -281,7 +282,6 @@ export const useConsentStore = defineStore('consent', () => {
 // Types pour window
 declare global {
     interface Window {
-        dataLayer: unknown[]
-        gtag: (...args: unknown[]) => void
+        dataLayer: IArguments[]
     }
 }
