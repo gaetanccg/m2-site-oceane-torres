@@ -127,11 +127,11 @@
         </section>
 
         <!-- Contact CTA -->
-        <section class="py-16 px-6 bg-gray-900 text-white">
+        <section class="py-16 px-6 text-gray-600">
             <div class="max-w-4xl mx-auto text-center">
                 <h2 class="text-3xl font-light mb-4">Vous vous reconnaissez sur une photo ?</h2>
                 <p class="text-gray-300 font-light mb-8 max-w-2xl mx-auto">
-                    Si vous avez participe a l'un de ces événements et souhaitez obtenir vos photos,
+                    Si vous avez participé à l'un de ces événements et souhaitez obtenir vos photos,
                     n'hesitez pas a me contacter. Je serai ravie de vous les partager !
                 </p>
                 <router-link
