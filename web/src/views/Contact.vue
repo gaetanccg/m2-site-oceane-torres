@@ -99,7 +99,7 @@
                                     <option value="" disabled>Selectionnez un sujet</option>
                                     <option value="Demande d'information">Demande d'information</option>
                                     <option value="Devis">Devis</option>
-                                    <option value="Je souhaite reserver une seance photo">Je souhaite reserver une seance photo</option>
+                                    <option value="Je souhaite reserver une seance photo">Je souhaite reserver une séance photo</option>
                                     <option value="Je me reconnais sur une photo">Je me reconnais sur une photo</option>
                                     <option value="Commander une carte cadeau">Commander une carte cadeau</option>
                                     <option value="Question sur une prestation">Question sur une prestation</option>
@@ -371,7 +371,7 @@ const steps = [
         description: 'Assurez-vous que mon style correspond à vos attentes'
     },
     {
-        title: 'Verifiez les tarifs',
+        title: 'Vérifiez les tarifs',
         description: 'Consultez mes formules pour avoir une idée des prix'
     },
     {

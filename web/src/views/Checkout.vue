@@ -321,7 +321,7 @@ async function initPaymentWidget() {
 // Poll payment status for pending payments
 async function pollPaymentStatus(attempts = 0) {
     if (attempts >= 10) {
-        paymentError.value = 'Impossible de confirmer le paiement. Verifiez votre email pour le statut.'
+        paymentError.value = 'Impossible de confirmer le paiement. Vérifiez votre email pour le statut.'
         isPaymentProcessing.value = false
         return
     }
