@@ -305,8 +305,10 @@ import AdminHeader from '@/components/admin/AdminHeader.vue'
 import StatCard from '@/components/admin/ui/StatCard.vue'
 import StatusBadge from '@/components/admin/ui/StatusBadge.vue'
 import {adminApi} from '@/services/adminApi'
+import {useToast} from '@/composables/useToast'
 import type {Reservation, AdminGallery, AdminOrder} from '@/types/admin'
 
+const toast = useToast()
 const isLoading = ref(true)
 
 // Stats calculées à partir des vraies données
@@ -482,7 +484,7 @@ async function fetchDashboardData() {
         stats.giftCards.active = giftCards.filter((g: { status: string }) => g.status === 'active').length
 
     } catch {
-        // Failed to fetch dashboard data
+        toast.error('Erreur', 'Impossible de charger le tableau de bord')
     } finally {
         isLoading.value = false
     }

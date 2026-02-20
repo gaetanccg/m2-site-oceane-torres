@@ -374,8 +374,10 @@ import Modal from '@/components/admin/ui/Modal.vue'
 import Button from '@/components/admin/ui/Button.vue'
 import FormField from '@/components/admin/ui/FormField.vue'
 import { adminApi } from '@/services/adminApi'
+import { useToast } from '@/composables/useToast'
 import type { Client, Reservation, TableColumn, ReservationStatus } from '@/types/admin'
 
+const toast = useToast()
 const isLoading = ref(true)
 const clients = ref<Client[]>([])
 const searchQuery = ref('')
@@ -499,7 +501,7 @@ async function fetchClients() {
     from.value = response.meta.from
     to.value = response.meta.to
   } catch {
-    // Silently fail
+    toast.error('Erreur', 'Impossible de charger les clients')
   } finally {
     isLoading.value = false
   }
@@ -525,9 +527,10 @@ async function createClient() {
       gdpr_consent: createForm.gdpr_consent,
     })
     showCreateModal.value = false
+    toast.success('Client créé')
     fetchClients()
   } catch {
-    // Handle error
+    toast.error('Erreur', 'Impossible de créer le client')
   } finally {
     isCreating.value = false
   }
@@ -564,9 +567,10 @@ async function saveClient() {
       gdpr_consent: editForm.gdpr_consent,
     })
     showEditModal.value = false
+    toast.success('Client modifié')
     fetchClients()
   } catch {
-    // Handle error
+    toast.error('Erreur', 'Impossible de modifier le client')
   } finally {
     isSaving.value = false
   }
@@ -580,9 +584,10 @@ async function deleteClient() {
     await adminApi.deleteClient(clientToDelete.value.id)
     showDeleteModal.value = false
     clientToDelete.value = null
+    toast.success('Client supprimé')
     fetchClients()
   } catch {
-    // Handle error
+    toast.error('Erreur', 'Impossible de supprimer le client')
   } finally {
     isDeleting.value = false
   }
@@ -599,6 +604,7 @@ async function viewReservations() {
     clientReservations.value = response.data
   } catch {
     clientReservations.value = []
+    toast.error('Erreur', 'Impossible de charger les réservations')
   } finally {
     isLoadingReservations.value = false
   }
@@ -621,8 +627,9 @@ async function exportGdpr() {
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
+    toast.success('Export RGPD téléchargé')
   } catch {
-    // Handle error
+    toast.error('Erreur', 'Impossible d\'exporter les données RGPD')
   } finally {
     isExporting.value = false
   }

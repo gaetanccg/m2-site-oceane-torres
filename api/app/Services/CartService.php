@@ -88,6 +88,15 @@ class CartService
             throw new \Exception('Cette photo n\'est pas disponible à l\'achat.');
         }
 
+        // Resolve price from gallery product config (with fallback to defaults)
+        $gallery = $photo->gallery;
+        $gallery->load('galleryProductTypes');
+        $price = $gallery->getPriceForProductType($productType);
+
+        if ($price === null) {
+            throw new \Exception('Ce type de produit n\'est pas disponible pour cette galerie.');
+        }
+
         // Check if same photo with same product type already in cart
         $existingItem = $cart->items()
             ->where('photo_id', $photoId)
@@ -97,9 +106,6 @@ class CartService
         if ($existingItem) {
             return $existingItem;
         }
-
-        // Get price for product type
-        $price = CartItem::getPriceForType($productType);
 
         return CartItem::create([
             'cart_id' => $cart->id,
@@ -119,7 +125,15 @@ class CartService
             throw new \Exception('Type de produit invalide.');
         }
 
-        $item = $cart->items()->where('id', $itemId)->firstOrFail();
+        $item = $cart->items()->with('photo.gallery.galleryProductTypes')->where('id', $itemId)->firstOrFail();
+
+        // Resolve price from gallery product config
+        $gallery = $item->photo->gallery;
+        $price = $gallery->getPriceForProductType($productType);
+
+        if ($price === null) {
+            throw new \Exception('Ce type de produit n\'est pas disponible pour cette galerie.');
+        }
 
         // Check if another item with same photo and product type exists
         $existingItem = $cart->items()
@@ -138,7 +152,7 @@ class CartService
         // Update product type and price
         $item->update([
             'product_type' => $productType,
-            'price' => CartItem::getPriceForType($productType),
+            'price' => $price,
         ]);
 
         return $item->fresh();
@@ -214,9 +228,12 @@ class CartService
      */
     public function getCartSummary(Cart $cart): array
     {
-        $cart->load('items.photo.gallery');
+        $cart->load('items.photo.gallery.galleryProductTypes');
 
         $items = $cart->items->map(function ($item) {
+            $gallery = $item->photo->gallery;
+            $availableTypes = $gallery ? $gallery->getAvailableProductTypes() : CartItem::PRODUCT_TYPES;
+
             return [
                 'id' => $item->id,
                 'photo_id' => $item->photo_id,
@@ -224,12 +241,14 @@ class CartService
                     'id' => $item->photo->id,
                     'title' => $item->photo->title,
                     'display_url' => $item->photo->display_url,
-                    'gallery_title' => $item->photo->gallery?->title,
+                    'gallery_title' => $gallery?->title,
+                    'gallery_id' => $gallery?->id,
                 ],
                 'product_type' => $item->product_type ?? 'digital',
                 'product_type_label' => CartItem::getLabelForType($item->product_type ?? 'digital'),
                 'is_print' => $item->isPrint(),
                 'price' => (float) $item->price,
+                'available_product_types' => $availableTypes,
             ];
         });
 
