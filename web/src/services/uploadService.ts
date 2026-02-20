@@ -43,8 +43,10 @@ export class ChunkedUploadService {
     ): Promise<UploadProgress> {
         const {
             chunkSize = UPLOAD_CONFIG.chunkSize,
+            maxChunkBytes = UPLOAD_CONFIG.maxChunkBytes,
             timeout = UPLOAD_CONFIG.timeout,
             pollInterval = UPLOAD_CONFIG.pollInterval,
+            maxRetries = UPLOAD_CONFIG.maxRetries,
             endpoint = 'events',
         } = options
         const concurrentChunks = UPLOAD_CONFIG.concurrentChunks || 3
@@ -71,11 +73,8 @@ export class ChunkedUploadService {
             })
         })
 
-        // Split files into chunks
-        const chunks: File[][] = []
-        for (let i = 0; i < files.length; i += chunkSize) {
-            chunks.push(files.slice(i, i + chunkSize))
-        }
+        // Split files into chunks (respecting both file count and byte size limits)
+        const chunks = this.buildChunks(files, chunkSize, maxChunkBytes)
 
         const uploadedIds: Set<string> = new Set()
 
@@ -102,14 +101,15 @@ export class ChunkedUploadService {
 
                 this.notifyProgress(fileStates, callbacks)
 
-                // Upload all chunks in parallel with progress tracking
+                // Upload all chunks in parallel with progress tracking and retry
                 const uploadPromises = parallelChunks.map((chunk, _chunkIndexInBatch) =>
-                    this.uploadChunkWithProgress(
+                    this.uploadChunkWithRetry(
                         galleryId,
                         chunk,
                         batchId,
                         timeout,
                         endpointPath,
+                        maxRetries,
                         (chunkProgress) => {
                             // Update individual file progress based on chunk upload progress
                             chunk.forEach((file) => {
@@ -123,7 +123,7 @@ export class ChunkedUploadService {
                             this.notifyProgress(fileStates, callbacks)
                         }
                     ).catch((error) => {
-                        // Mark files as failed on chunk error
+                        // Mark files as failed on chunk error (after all retries exhausted)
                         chunk.forEach((file) => {
                             const state = this.findFileState(fileStates, file.name)
                             if (state) {
@@ -189,6 +189,72 @@ export class ChunkedUploadService {
             }
         })
         this.cleanup()
+    }
+
+    /**
+     * Build chunks respecting both file count and byte size limits.
+     * A single file that exceeds maxChunkBytes gets its own chunk.
+     */
+    private buildChunks(files: File[], maxFiles: number, maxBytes: number): File[][] {
+        const chunks: File[][] = []
+        let currentChunk: File[] = []
+        let currentBytes = 0
+
+        for (const file of files) {
+            const wouldExceedBytes = currentBytes + file.size > maxBytes
+            const wouldExceedCount = currentChunk.length >= maxFiles
+
+            if (currentChunk.length > 0 && (wouldExceedBytes || wouldExceedCount)) {
+                chunks.push(currentChunk)
+                currentChunk = []
+                currentBytes = 0
+            }
+
+            currentChunk.push(file)
+            currentBytes += file.size
+        }
+
+        if (currentChunk.length > 0) {
+            chunks.push(currentChunk)
+        }
+
+        return chunks
+    }
+
+    /**
+     * Upload a chunk with retry on timeout/network errors
+     */
+    private async uploadChunkWithRetry(
+        galleryId: string,
+        files: File[],
+        batchId: string,
+        timeout: number,
+        endpointPath: string,
+        maxRetries: number,
+        onProgress: (percent: number) => void
+    ): Promise<ChunkUploadResponse> {
+        let lastError: Error | null = null
+
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+            try {
+                return await this.uploadChunkWithProgress(
+                    galleryId, files, batchId, timeout, endpointPath, onProgress
+                )
+            } catch (error) {
+                lastError = error as Error
+                const isRetryable = lastError.message === 'Upload timeout'
+                    || lastError.message === 'Network error'
+
+                if (!isRetryable || attempt >= maxRetries || this.isCancelled) {
+                    throw lastError
+                }
+
+                // Reset progress before retry
+                onProgress(0)
+            }
+        }
+
+        throw lastError!
     }
 
     /**
