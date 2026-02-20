@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Mail\GalleryAccessMail;
-use App\Models\CartItem;
 use App\Models\Client;
 use App\Models\Gallery;
 use App\Models\GalleryProductType;
@@ -203,12 +202,14 @@ class GalleryController extends Controller
         $galleryUrl = config('app.frontend_url', 'https://oceanetorresphotographie.fr').'/gallery';
 
         try {
-            Mail::to($validated['email'])->send(new GalleryAccessMail(
-                gallery: $gallery,
-                recipientName: $validated['recipient_name'],
-                galleryUrl: $galleryUrl,
-                shareCode: $gallery->share_code,
-            ));
+            Mail::to($validated['email'])->send(
+                new GalleryAccessMail(
+                    gallery: $gallery,
+                    recipientName: $validated['recipient_name'],
+                    galleryUrl: $galleryUrl,
+                    shareCode: $gallery->share_code,
+                )
+            );
 
             return response()->json([
                 'success' => true,
@@ -252,9 +253,12 @@ class GalleryController extends Controller
 
         $gallery->recordView();
 
-        $gallery->load(['photos' => function ($query) {
-            $query->ordered();
-        }, 'galleryProductTypes']);
+        $gallery->load([
+            'photos' => function ($query) {
+                $query->ordered();
+            },
+            'galleryProductTypes',
+        ]);
 
         return response()->json([
             'gallery' => $gallery,
@@ -275,9 +279,11 @@ class GalleryController extends Controller
 
         $gallery->recordView();
 
-        $gallery->load(['photos' => function ($query) {
-            $query->downloadable()->ordered();
-        }]);
+        $gallery->load([
+            'photos' => function ($query) {
+                $query->downloadable()->ordered();
+            },
+        ]);
 
         return response()->json([
             'gallery' => $gallery,
@@ -405,9 +411,13 @@ class GalleryController extends Controller
 
     public function adminShow(Gallery $gallery): JsonResponse
     {
-        $gallery->load(['photos' => function ($query) {
-            $query->ordered();
-        }, 'user', 'galleryProductTypes']);
+        $gallery->load([
+            'photos' => function ($query) {
+                $query->ordered();
+            },
+            'user',
+            'galleryProductTypes',
+        ]);
 
         $gallery->downloadable_count = $gallery->photos->where('is_downloadable', true)->count();
         $gallery->liked_photos_count = $gallery->photos->where('is_liked', true)->count();
@@ -432,9 +442,12 @@ class GalleryController extends Controller
         // Cache for 5 minutes per page
         $galleries = Cache::remember("event_galleries_page_{$page}", 300, function () {
             $result = Gallery::where('type', 'event')
-                ->with(['photos' => function ($query) {
-                    $query->ordered()->limit(6);
-                }, 'thumbnailPhoto'])
+                ->with([
+                    'photos' => function ($query) {
+                        $query->ordered()->limit(6);
+                    },
+                    'thumbnailPhoto',
+                ])
                 ->withCount('photos')
                 ->latest()
                 ->paginate(12);
@@ -462,9 +475,12 @@ class GalleryController extends Controller
 
         $gallery->recordView();
 
-        $gallery->load(['photos' => function ($query) {
-            $query->ordered();
-        }, 'galleryProductTypes']);
+        $gallery->load([
+            'photos' => function ($query) {
+                $query->ordered();
+            },
+            'galleryProductTypes',
+        ]);
 
         return response()->json([
             'gallery' => $gallery,
@@ -502,9 +518,12 @@ class GalleryController extends Controller
             ], 404);
         }
 
-        $gallery->load(['photos' => function ($query) {
-            $query->ordered();
-        }, 'galleryProductTypes']);
+        $gallery->load([
+            'photos' => function ($query) {
+                $query->ordered();
+            },
+            'galleryProductTypes',
+        ]);
 
         return response()->json([
             'success' => true,
