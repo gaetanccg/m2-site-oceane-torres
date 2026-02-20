@@ -99,7 +99,7 @@
                                     <option value="" disabled>Selectionnez un sujet</option>
                                     <option value="Demande d'information">Demande d'information</option>
                                     <option value="Devis">Devis</option>
-                                    <option value="Je souhaite reserver une seance photo">Je souhaite reserver une seance photo</option>
+                                    <option value="Je souhaite reserver une seance photo">Je souhaite reserver une séance photo</option>
                                     <option value="Je me reconnais sur une photo">Je me reconnais sur une photo</option>
                                     <option value="Commander une carte cadeau">Commander une carte cadeau</option>
                                     <option value="Question sur une prestation">Question sur une prestation</option>
@@ -289,7 +289,7 @@
             <div class="max-w-5xl mx-auto">
                 <div class="text-center mb-6 sm:mb-8">
                     <h2 class="text-2xl sm:text-3xl md:text-4xl font-light mb-3 sm:mb-4">Avant de me contacter</h2>
-                    <p class="text-gray-600 font-light text-sm sm:text-base">Quelques etapes pour preparer notre echange</p>
+                    <p class="text-gray-600 font-light text-sm sm:text-base">Quelques étapes pour préparer notre échange</p>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8">
@@ -368,15 +368,15 @@ const submitError = ref('')
 const steps = [
     {
         title: 'Consultez le portfolio',
-        description: 'Assurez-vous que mon style correspond a vos attentes'
+        description: 'Assurez-vous que mon style correspond à vos attentes'
     },
     {
-        title: 'Verifiez les tarifs',
+        title: 'Vérifiez les tarifs',
         description: 'Consultez mes formules pour avoir une idée des prix'
     },
     {
-        title: 'Preparez votre projet',
-        description: 'Date souhaitee, type de seance, nombre de personnes, etc.'
+        title: 'Préparez votre projet',
+        description: 'Date souhaitée, type de séance, nombre de personnes, etc.'
     }
 ]
 
