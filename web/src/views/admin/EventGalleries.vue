@@ -161,6 +161,45 @@
                     label="Lien du site (optionnel)"
                     placeholder="https://www.exemple.com"
                 />
+
+                <!-- Product Types Configuration -->
+                <div class="border-t border-gray-200 pt-4 mt-4">
+                    <h4 class="text-sm font-semibold text-gray-700 mb-3">Produits disponibles</h4>
+                    <div class="space-y-3">
+                        <div
+                            v-for="pt in productTypesList"
+                            :key="pt.key"
+                            class="flex items-center gap-3 p-3 rounded-lg border transition-colors"
+                            :class="pt.is_enabled ? 'border-gold/30 bg-gold/5' : 'border-gray-200 bg-gray-50'"
+                        >
+                            <label class="flex items-center gap-2 cursor-pointer flex-shrink-0">
+                                <input
+                                    type="checkbox"
+                                    :checked="pt.is_enabled"
+                                    @change="toggleProductType(pt.key)"
+                                    class="w-4 h-4 text-gold border-gray-300 rounded focus:ring-gold"
+                                />
+                                <span class="text-sm font-medium" :class="pt.is_enabled ? 'text-gray-900' : 'text-gray-400'">
+                                    {{ pt.label }}
+                                </span>
+                            </label>
+                            <div class="flex items-center gap-1 ml-auto">
+                                <input
+                                    type="number"
+                                    :value="pt.price"
+                                    @input="updateProductPrice(pt.key, ($event.target as HTMLInputElement).value)"
+                                    :disabled="!pt.is_enabled"
+                                    step="0.01"
+                                    min="0.01"
+                                    class="w-20 px-2 py-1 text-sm text-right border rounded-md focus:ring-gold focus:border-gold disabled:opacity-40 disabled:bg-gray-100"
+                                    :class="pt.is_enabled ? 'border-gray-300' : 'border-gray-200'"
+                                />
+                                <span class="text-sm text-gray-500">&euro;</span>
+                            </div>
+                        </div>
+                    </div>
+                    <p v-if="productTypesError" class="text-xs text-red-500 mt-2">{{ productTypesError }}</p>
+                </div>
             </form>
 
             <template #footer>
@@ -425,7 +464,8 @@ import FormField from '@/components/admin/ui/FormField.vue'
 import UploadProgress from '@/components/admin/ui/UploadProgress.vue'
 import {adminApi} from '@/services/adminApi'
 import {useChunkedUpload} from '@/composables/useChunkedUpload'
-import type {AdminGallery, AdminPhoto, EventGalleryFormData} from '@/types/admin'
+import {useToast} from '@/composables/useToast'
+import type {AdminGallery, AdminPhoto, EventGalleryFormData, ProductType} from '@/types/admin'
 
 interface EventGalleryWithCover extends AdminGallery {
     cover_photo?: AdminPhoto
@@ -465,12 +505,92 @@ const {
     reset: resetUpload
 } = useChunkedUpload()
 
+const toast = useToast()
+
 const form = reactive<EventGalleryFormData>({
     title: '',
     description: '',
     event_date: '',
     event_link: '',
 })
+
+// Product types configuration
+const DEFAULT_PRODUCT_TYPES: Record<ProductType, {label: string; price: number}> = {
+    digital: {label: 'Photo numerique', price: 13},
+    print_10x15: {label: 'Impression 10x15', price: 10},
+    print_15x20: {label: 'Impression 15x20', price: 15},
+}
+
+const productTypesState = ref<Record<ProductType, {is_enabled: boolean; price: number}>>({
+    digital: {is_enabled: true, price: 13},
+    print_10x15: {is_enabled: true, price: 10},
+    print_15x20: {is_enabled: true, price: 15},
+})
+
+const productTypesError = ref('')
+
+const productTypesList = computed(() => {
+    return (Object.keys(DEFAULT_PRODUCT_TYPES) as ProductType[]).map(key => ({
+        key,
+        label: DEFAULT_PRODUCT_TYPES[key].label,
+        is_enabled: productTypesState.value[key].is_enabled,
+        price: productTypesState.value[key].price,
+    }))
+})
+
+function toggleProductType(key: ProductType) {
+    productTypesState.value[key].is_enabled = !productTypesState.value[key].is_enabled
+    productTypesError.value = ''
+}
+
+function updateProductPrice(key: ProductType, value: string) {
+    const num = parseFloat(value)
+    if (!isNaN(num) && num > 0) {
+        productTypesState.value[key].price = num
+    }
+}
+
+function resetProductTypes() {
+    productTypesState.value = {
+        digital: {is_enabled: true, price: DEFAULT_PRODUCT_TYPES.digital.price},
+        print_10x15: {is_enabled: true, price: DEFAULT_PRODUCT_TYPES.print_10x15.price},
+        print_15x20: {is_enabled: true, price: DEFAULT_PRODUCT_TYPES.print_15x20.price},
+    }
+    productTypesError.value = ''
+}
+
+function loadProductTypesFromGallery(gallery: EventGalleryWithCover) {
+    const configs = gallery.gallery_product_types
+    if (!configs || configs.length === 0) {
+        // No config = all enabled at defaults
+        resetProductTypes()
+        return
+    }
+
+    // Start with all disabled (configured gallery overrides everything)
+    const state: Record<string, {is_enabled: boolean; price: number}> = {}
+    for (const key of Object.keys(DEFAULT_PRODUCT_TYPES) as ProductType[]) {
+        const config = configs.find(c => c.product_type === key)
+        state[key] = {
+            is_enabled: config ? config.is_enabled : false,
+            price: config?.price !== null && config?.price !== undefined
+                ? Number(config.price)
+                : DEFAULT_PRODUCT_TYPES[key].price,
+        }
+    }
+    productTypesState.value = state as Record<ProductType, {is_enabled: boolean; price: number}>
+    productTypesError.value = ''
+}
+
+function buildProductTypesPayload() {
+    return (Object.keys(productTypesState.value) as ProductType[]).map(key => ({
+        product_type: key,
+        is_enabled: productTypesState.value[key].is_enabled,
+        price: productTypesState.value[key].price !== DEFAULT_PRODUCT_TYPES[key].price
+            ? productTypesState.value[key].price
+            : null,
+    }))
+}
 
 const currentLightboxPhoto = computed(() => galleryPhotos.value[lightboxIndex.value] || null)
 
@@ -483,6 +603,7 @@ function resetForm() {
     form.description = ''
     form.event_date = ''
     form.event_link = ''
+    resetProductTypes()
 }
 
 function openCreateModal() {
@@ -497,6 +618,7 @@ function openEditModal(gallery: EventGalleryWithCover) {
     form.description = gallery.description || ''
     form.event_date = gallery.event_date || ''
     form.event_link = gallery.event_link || ''
+    loadProductTypesFromGallery(gallery)
     isEditing.value = true
     editingId.value = gallery.id
     showFormModal.value = true
@@ -517,7 +639,7 @@ async function openGallery(gallery: EventGalleryWithCover) {
             galleryPhotos.value = response.data.photos || []
         }
     } catch {
-        // Failed to fetch gallery
+        toast.error('Erreur', 'Impossible de charger la galerie')
     } finally {
         isLoadingPhotos.value = false
     }
@@ -534,7 +656,7 @@ async function fetchGalleries() {
         const response = await adminApi.getEventGalleries()
         galleries.value = response.data as EventGalleryWithCover[]
     } catch {
-        // Failed to fetch galleries
+        toast.error('Erreur', 'Impossible de charger les galeries')
     } finally {
         isLoading.value = false
     }
@@ -545,17 +667,29 @@ function triggerFileInput() {
 }
 
 async function saveGallery() {
+    // Validate at least one product type is enabled
+    const hasEnabled = Object.values(productTypesState.value).some(pt => pt.is_enabled)
+    if (!hasEnabled) {
+        productTypesError.value = 'Au moins un type de produit doit etre actif.'
+        return
+    }
+
     isSaving.value = true
     try {
+        const payload = {
+            ...form,
+            product_types: buildProductTypesPayload(),
+        }
         if (isEditing.value && editingId.value) {
-            await adminApi.updateEventGallery(editingId.value, form)
+            await adminApi.updateEventGallery(editingId.value, payload)
         } else {
-            await adminApi.createEventGallery(form)
+            await adminApi.createEventGallery(payload)
         }
         showFormModal.value = false
+        toast.success(isEditing.value ? 'Événement modifié' : 'Événement créé')
         await fetchGalleries()
     } catch {
-        // Failed to save gallery
+        toast.error('Erreur', 'Impossible de sauvegarder l\'événement')
     } finally {
         isSaving.value = false
     }
@@ -568,9 +702,10 @@ async function deleteGallery() {
         await adminApi.deleteEventGallery(galleryToDelete.value.id)
         showDeleteModal.value = false
         galleryToDelete.value = null
+        toast.success('Galerie supprimée')
         await fetchGalleries()
     } catch {
-        // Failed to delete gallery
+        toast.error('Erreur', 'Impossible de supprimer la galerie')
     } finally {
         isDeleting.value = false
     }
@@ -599,7 +734,7 @@ async function uploadPhotos(files: File[]) {
             await refreshGalleryPhotos()
         }
     } catch {
-        // Upload failed or cancelled
+        toast.error('Erreur', 'Erreur lors de l\'upload des photos')
     }
 }
 
@@ -612,7 +747,7 @@ async function refreshGalleryPhotos() {
             galleryPhotos.value = response.data.photos || []
         }
     } catch {
-        // Failed to refresh gallery photos
+        toast.error('Erreur', 'Impossible de rafraîchir les photos')
     }
 }
 
@@ -629,8 +764,9 @@ async function deletePhoto(photoId: string) {
         if (selectedGallery.value?.thumbnail_photo_id === photoId) {
             selectedGallery.value.thumbnail_photo_id = null
         }
+        toast.success('Photo supprimée')
     } catch {
-        // Failed to delete photo
+        toast.error('Erreur', 'Impossible de supprimer la photo')
     }
 }
 
@@ -660,7 +796,7 @@ async function setAsThumbnail(photoId: string) {
             }
         }
     } catch {
-        // Failed to set thumbnail
+        toast.error('Erreur', 'Impossible de modifier la miniature')
     }
 }
 
@@ -708,11 +844,12 @@ async function bulkDeletePhotos() {
             await adminApi.deletePhoto(photoId)
         }
         galleryPhotos.value = galleryPhotos.value.filter(p => !selectedPhotos.value.includes(p.id))
+        toast.success('Photos supprimées')
         selectedPhotos.value = []
         selectionMode.value = false
         showBulkDeleteModal.value = false
     } catch {
-        // Failed to bulk delete photos
+        toast.error('Erreur', 'Impossible de supprimer les photos')
     } finally {
         isBulkProcessing.value = false
     }

@@ -168,6 +168,71 @@ class Gallery extends Model
         return $this->hasMany(DownloadLog::class);
     }
 
+    public function galleryProductTypes(): HasMany
+    {
+        return $this->hasMany(GalleryProductType::class);
+    }
+
+    /**
+     * Get available product types for this gallery with resolved prices.
+     * If no configuration exists, all product types are available at default prices.
+     */
+    public function getAvailableProductTypes(): array
+    {
+        $configured = $this->galleryProductTypes;
+
+        // No configuration → all types at default prices
+        if ($configured->isEmpty()) {
+            $result = [];
+            foreach (CartItem::PRODUCT_TYPES as $type => $info) {
+                $result[$type] = [
+                    'label' => $info['label'],
+                    'price' => $info['price'],
+                    'is_print' => $info['is_print'],
+                    'is_enabled' => true,
+                ];
+            }
+
+            return $result;
+        }
+
+        // Build from configuration
+        $result = [];
+        foreach (CartItem::PRODUCT_TYPES as $type => $info) {
+            $config = $configured->firstWhere('product_type', $type);
+
+            $result[$type] = [
+                'label' => $info['label'],
+                'price' => $config ? $config->effective_price : $info['price'],
+                'is_print' => $info['is_print'],
+                'is_enabled' => $config ? $config->is_enabled : false,
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * Get the price for a specific product type on this gallery.
+     * Returns null if the product type is disabled.
+     */
+    public function getPriceForProductType(string $productType): ?float
+    {
+        $configured = $this->galleryProductTypes->firstWhere('product_type', $productType);
+
+        // No configuration for this gallery → default price
+        if ($this->galleryProductTypes->isEmpty()) {
+            return CartItem::getPriceForType($productType);
+        }
+
+        // Product type not configured or disabled
+        if (! $configured || ! $configured->is_enabled) {
+            return null;
+        }
+
+        return $configured->effective_price;
+    }
+
     /**
      * Get total downloads count across all photos
      */

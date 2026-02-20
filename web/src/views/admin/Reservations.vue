@@ -327,8 +327,10 @@ import StatusBadge from '@/components/admin/ui/StatusBadge.vue'
 import Modal from '@/components/admin/ui/Modal.vue'
 import Button from '@/components/admin/ui/Button.vue'
 import { adminApi } from '@/services/adminApi'
+import { useToast } from '@/composables/useToast'
 import type { Reservation, CalendarEvent, ReservationStatus } from '@/types/admin'
 
+const toast = useToast()
 const viewMode = ref<'list' | 'calendar'>('list')
 const isLoading = ref(true)
 const reservations = ref<Reservation[]>([])
@@ -391,7 +393,7 @@ async function fetchReservations() {
     from.value = response.meta.from || 0
     to.value = response.meta.to || 0
   } catch {
-    // Silently fail
+    toast.error('Erreur', 'Impossible de charger les réservations')
   } finally {
     isLoading.value = false
   }
@@ -408,7 +410,7 @@ async function fetchCalendarEvents() {
       calendarEvents.value = response.data
     }
   } catch {
-    // Silently fail
+    toast.error('Erreur', 'Impossible de charger le calendrier')
   }
 }
 
@@ -433,7 +435,7 @@ async function openReservationDetail(item: Reservation | CalendarEvent) {
       showDetailModal.value = true
     }
   } catch {
-    // Failed to load reservation
+    toast.error('Erreur', 'Impossible de charger la réservation')
   } finally {
     isLoadingReservation.value = false
   }
@@ -478,9 +480,10 @@ async function saveReservation() {
     }
 
     showEditModal.value = false
+    toast.success('Réservation mise à jour')
     fetchCalendarEvents()
   } catch {
-    // Failed to save reservation
+    toast.error('Erreur', 'Impossible de sauvegarder la réservation')
   } finally {
     isSaving.value = false
   }
@@ -497,9 +500,10 @@ async function confirmReservation(reservation: Reservation) {
   try {
     await adminApi.updateReservationStatus(reservation.id, 'confirmed')
     reservation.status = 'confirmed'
+    toast.success('Réservation confirmée')
     fetchCalendarEvents()
   } catch {
-    // Handle error
+    toast.error('Erreur', 'Impossible de confirmer la réservation')
   }
 }
 
@@ -509,9 +513,10 @@ async function cancelReservation(reservation: Reservation) {
   try {
     await adminApi.updateReservationStatus(reservation.id, 'cancelled')
     reservation.status = 'cancelled'
+    toast.success('Réservation annulée')
     fetchCalendarEvents()
   } catch {
-    // Handle error
+    toast.error('Erreur', 'Impossible d\'annuler la réservation')
   }
 }
 
@@ -529,10 +534,11 @@ async function confirmReservationFromModal() {
   try {
     await adminApi.updateReservationStatus(selectedReservation.value.id, 'confirmed')
     selectedReservation.value.status = 'confirmed'
+    toast.success('Réservation confirmée')
     fetchReservations()
     fetchCalendarEvents()
   } catch {
-    // Handle error
+    toast.error('Erreur', 'Impossible de confirmer la réservation')
   }
 }
 
@@ -544,10 +550,11 @@ async function cancelReservationFromModal() {
     await adminApi.updateReservationStatus(selectedReservation.value.id, 'cancelled')
     selectedReservation.value.status = 'cancelled'
     showDetailModal.value = false
+    toast.success('Réservation annulée')
     fetchReservations()
     fetchCalendarEvents()
   } catch {
-    // Handle error
+    toast.error('Erreur', 'Impossible d\'annuler la réservation')
   }
 }
 
@@ -557,9 +564,10 @@ async function deleteReservation(reservation: Reservation) {
   try {
     await adminApi.deleteReservation(reservation.id)
     reservations.value = reservations.value.filter(r => r.id !== reservation.id)
+    toast.success('Réservation supprimée')
     fetchCalendarEvents()
   } catch {
-    // Handle error
+    toast.error('Erreur', 'Impossible de supprimer la réservation')
   }
 }
 
@@ -570,10 +578,11 @@ async function deleteReservationFromModal() {
   try {
     await adminApi.deleteReservation(selectedReservation.value.id)
     showDetailModal.value = false
+    toast.success('Réservation supprimée')
     fetchReservations()
     fetchCalendarEvents()
   } catch {
-    // Handle error
+    toast.error('Erreur', 'Impossible de supprimer la réservation')
   }
 }
 
