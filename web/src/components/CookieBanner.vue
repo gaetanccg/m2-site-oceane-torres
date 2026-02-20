@@ -13,7 +13,7 @@
                                 Gestion des cookies
                             </h3>
                             <p class="text-sm text-gray-600 leading-relaxed">
-                                Nous utilisons des cookies pour ameliorer votre experience sur notre site et analyser notre trafic.
+                                Nous utilisons des cookies pour ameliorer votre expérience sur notre site et analyser notre trafic.
                                 Les cookies essentiels sont necessaires au fonctionnement du site.
                                 <button
                                     @click="consentStore.openSettings"

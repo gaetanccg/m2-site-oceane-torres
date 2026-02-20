@@ -82,8 +82,8 @@
 
                         <div>
                             <p class="text-gold text-3xl sm:text-4xl mb-3">&#128247;</p>
-                            <h4 class="font-normal text-base sm:text-lg mb-2">Experience personnalisee</h4>
-                            <p class="text-gray-600 font-light text-sm sm:text-base">Chaque seance est concue pour refleter votre personnalite, nous discutons, nous nous comprenons, nous choisissons ensemble afin d'avoir le resultat que vous souhaitez.</p>
+                            <h4 class="font-normal text-base sm:text-lg mb-2">Experience personnalisée</h4>
+                            <p class="text-gray-600 font-light text-sm sm:text-base">Chaque séance est conçue pour refléter votre personnalité, nous discutons, nous nous comprenons, nous choisissons ensemble afin d'avoir le résultat que vous souhaitez.</p>
                         </div>
                     </div>
                 </div>
