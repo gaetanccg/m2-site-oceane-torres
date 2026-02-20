@@ -24,6 +24,13 @@ export interface ProductTypeInfo {
     is_print: boolean
 }
 
+export interface AvailableProductType {
+    label: string
+    price: number
+    is_print: boolean
+    is_enabled: boolean
+}
+
 export interface CartItem {
     id: string
     photo_id: string
@@ -34,11 +41,13 @@ export interface CartItem {
         preview_url?: string
         thumbnail_url?: string
         gallery_title: string | null
+        gallery_id?: string
     }
     product_type: ProductType
     product_type_label: string
     is_print: boolean
     price: number
+    available_product_types?: Record<ProductType, AvailableProductType>
 }
 
 export interface Cart {

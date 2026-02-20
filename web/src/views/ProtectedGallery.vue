@@ -109,6 +109,7 @@
                                         :photo-id="photo.id"
                                         size="md"
                                         show-label
+                                        :available-product-types="availableProductTypes"
                                     />
                                 </template>
                             </PhotoCard>
@@ -149,6 +150,15 @@ interface Photo {
     is_liked: boolean
 }
 
+interface AvailableProductType {
+    label: string
+    price: number
+    is_print: boolean
+    is_enabled: boolean
+}
+
+type ProductTypeKey = 'digital' | 'print_10x15' | 'print_15x20'
+
 interface Gallery {
     id: string
     title: string
@@ -159,6 +169,7 @@ interface Gallery {
 const route = useRoute()
 
 const gallery = ref<Gallery | null>(null)
+const availableProductTypes = ref<Record<ProductTypeKey, AvailableProductType> | null>(null)
 const isLoading = ref(true)
 const error = ref('')
 const lightboxOpen = ref(false)
@@ -205,6 +216,9 @@ const fetchGallery = async () => {
         if (response.ok) {
             const data = await response.json()
             gallery.value = data.gallery
+            if (data.available_product_types) {
+                availableProductTypes.value = data.available_product_types
+            }
         } else {
             const data = await response.json()
             error.value = data.message || 'Galerie non trouvee'

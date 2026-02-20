@@ -215,11 +215,18 @@ export interface PrestationFormData {
 
 export type GalleryType = 'public' | 'private' | 'event'
 
+export interface GalleryProductTypeConfig {
+    product_type: ProductType
+    is_enabled: boolean
+    price: number | null
+}
+
 export interface EventGalleryFormData {
     title: string
     description: string
     event_date: string
     event_link: string
+    product_types?: GalleryProductTypeConfig[]
 }
 
 export type DownloadStatus = 'none' | 'partial' | 'complete'
@@ -248,6 +255,7 @@ export interface AdminGallery {
     downloaded_photos_count: number
     download_status: DownloadStatus
     photos?: AdminPhoto[]
+    gallery_product_types?: GalleryProductTypeConfig[]
     created_at: string
     updated_at: string
 }
@@ -279,6 +287,7 @@ export interface GalleryFormData {
     description: string
     client_id: string
     assigned_email: string
+    product_types?: GalleryProductTypeConfig[]
 }
 
 // ============================================================================

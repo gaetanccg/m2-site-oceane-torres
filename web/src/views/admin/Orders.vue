@@ -317,8 +317,10 @@ import StatusBadge from '@/components/admin/ui/StatusBadge.vue'
 import Modal from '@/components/admin/ui/Modal.vue'
 import Button from '@/components/admin/ui/Button.vue'
 import {adminApi} from '@/services/adminApi'
+import {useToast} from '@/composables/useToast'
 import type {AdminOrder, TableColumn} from '@/types/admin'
 
+const toast = useToast()
 const orders = ref<AdminOrder[]>([])
 const isLoading = ref(true)
 const searchQuery = ref('')
@@ -394,8 +396,9 @@ async function markAsShipped() {
             orders.value[index] = response.order
         }
         selectedOrder.value = response.order
+        toast.success('Commande marquée comme expédiée')
     } catch {
-        alert('Erreur lors du marquage comme expédié')
+        toast.error('Erreur', 'Impossible de marquer comme expédié')
     } finally {
         isMarkingShipped.value = false
     }
@@ -427,9 +430,10 @@ async function confirmDelete(order: AdminOrder) {
 
     try {
         await adminApi.deleteOrder(order.id)
+        toast.success('Commande supprimée')
         fetchOrders()
     } catch {
-        alert('Erreur lors de la suppression')
+        toast.error('Erreur', 'Impossible de supprimer la commande')
     }
 }
 
@@ -448,7 +452,7 @@ async function fetchOrders() {
         from.value = (response.pagination.current_page - 1) * response.pagination.per_page + 1
         to.value = Math.min(from.value + response.pagination.per_page - 1, total.value)
     } catch {
-        // Silently fail
+        toast.error('Erreur', 'Impossible de charger les commandes')
     } finally {
         isLoading.value = false
     }

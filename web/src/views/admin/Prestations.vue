@@ -333,8 +333,10 @@ import Modal from '@/components/admin/ui/Modal.vue'
 import Button from '@/components/admin/ui/Button.vue'
 import FormField from '@/components/admin/ui/FormField.vue'
 import { adminApi } from '@/services/adminApi'
+import { useToast } from '@/composables/useToast'
 import type { AdminPrestation, PrestationFormData } from '@/types/admin'
 
+const toast = useToast()
 const prestations = ref<AdminPrestation[]>([])
 const isLoading = ref(true)
 const showFormModal = ref(false)
@@ -471,7 +473,7 @@ async function fetchPrestations() {
       prestations.value = response.data
     }
   } catch {
-    // Silently fail
+    toast.error('Erreur', 'Impossible de charger les prestations')
   } finally {
     isLoading.value = false
   }
@@ -481,8 +483,9 @@ async function toggleActive(prestation: AdminPrestation) {
   try {
     await adminApi.togglePrestation(prestation.id)
     prestation.is_active = !prestation.is_active
+    toast.success(prestation.is_active ? 'Prestation activée' : 'Prestation désactivée')
   } catch {
-    // Handle error
+    toast.error('Erreur', 'Impossible de modifier le statut')
   }
 }
 
@@ -531,9 +534,10 @@ async function savePrestation() {
       await adminApi.createPrestation(dataToSend)
     }
     showFormModal.value = false
+    toast.success(isEditing.value ? 'Prestation modifiée' : 'Prestation créée')
     fetchPrestations()
   } catch {
-    // Handle error
+    toast.error('Erreur', 'Impossible de sauvegarder la prestation')
   } finally {
     isSaving.value = false
   }
@@ -547,9 +551,10 @@ async function deletePrestation() {
     await adminApi.deletePrestation(prestationToDelete.value.id)
     showDeleteModal.value = false
     prestationToDelete.value = null
+    toast.success('Prestation supprimée')
     fetchPrestations()
   } catch {
-    // Handle error
+    toast.error('Erreur', 'Impossible de supprimer la prestation')
   } finally {
     isDeleting.value = false
   }
