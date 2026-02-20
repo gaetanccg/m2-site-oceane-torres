@@ -66,6 +66,7 @@ export interface UploadCallbacks {
 
 export interface ChunkUploadOptions {
     chunkSize?: number
+    maxChunkBytes?: number
     timeout?: number
     pollInterval?: number
     maxRetries?: number
