@@ -249,6 +249,45 @@
                 <p class="text-xs text-gray-500 -mt-2">
                     La galerie sera automatiquement liée au client lorsqu'il s'inscrira avec cet email.
                 </p>
+
+                <!-- Product Types Configuration -->
+                <div class="border-t border-gray-200 pt-4 mt-4">
+                    <h4 class="text-sm font-semibold text-gray-700 mb-3">Produits disponibles</h4>
+                    <div class="space-y-3">
+                        <div
+                            v-for="pt in productTypesList"
+                            :key="pt.key"
+                            class="flex items-center gap-3 p-3 rounded-lg border transition-colors"
+                            :class="pt.is_enabled ? 'border-gold/30 bg-gold/5' : 'border-gray-200 bg-gray-50'"
+                        >
+                            <label class="flex items-center gap-2 cursor-pointer flex-shrink-0">
+                                <input
+                                    type="checkbox"
+                                    :checked="pt.is_enabled"
+                                    @change="toggleProductType(pt.key)"
+                                    class="w-4 h-4 text-gold border-gray-300 rounded focus:ring-gold"
+                                />
+                                <span class="text-sm font-medium" :class="pt.is_enabled ? 'text-gray-900' : 'text-gray-400'">
+                                    {{ pt.label }}
+                                </span>
+                            </label>
+                            <div class="flex items-center gap-1 ml-auto">
+                                <input
+                                    type="number"
+                                    :value="pt.price"
+                                    @input="updateProductPrice(pt.key, ($event.target as HTMLInputElement).value)"
+                                    :disabled="!pt.is_enabled"
+                                    step="0.01"
+                                    min="0.01"
+                                    class="w-20 px-2 py-1 text-sm text-right border rounded-md focus:ring-gold focus:border-gold disabled:opacity-40 disabled:bg-gray-100"
+                                    :class="pt.is_enabled ? 'border-gray-300' : 'border-gray-200'"
+                                />
+                                <span class="text-sm text-gray-500">&euro;</span>
+                            </div>
+                        </div>
+                    </div>
+                    <p v-if="productTypesError" class="text-xs text-red-500 mt-2">{{ productTypesError }}</p>
+                </div>
             </form>
 
             <template #footer>
@@ -628,7 +667,7 @@ import UploadProgress from '@/components/admin/ui/UploadProgress.vue'
 import {adminApi} from '@/services/adminApi'
 import {useChunkedUpload} from '@/composables/useChunkedUpload'
 import {useToast} from '@/composables/useToast'
-import type {AdminGallery, AdminPhoto, Client, GalleryFormData} from '@/types/admin'
+import type {AdminGallery, AdminPhoto, Client, GalleryFormData, ProductType} from '@/types/admin'
 
 const toast = useToast()
 
@@ -679,6 +718,82 @@ const form = reactive<GalleryFormData>({
     client_id: '',
     assigned_email: '',
 })
+
+// Product types configuration
+const DEFAULT_PRODUCT_TYPES: Record<ProductType, {label: string; price: number}> = {
+    digital: {label: 'Photo numerique', price: 13},
+    print_10x15: {label: 'Impression 10x15', price: 10},
+    print_15x20: {label: 'Impression 15x20', price: 15},
+}
+
+const productTypesState = ref<Record<ProductType, {is_enabled: boolean; price: number}>>({
+    digital: {is_enabled: true, price: 13},
+    print_10x15: {is_enabled: true, price: 10},
+    print_15x20: {is_enabled: true, price: 15},
+})
+
+const productTypesError = ref('')
+
+const productTypesList = computed(() => {
+    return (Object.keys(DEFAULT_PRODUCT_TYPES) as ProductType[]).map(key => ({
+        key,
+        label: DEFAULT_PRODUCT_TYPES[key].label,
+        is_enabled: productTypesState.value[key].is_enabled,
+        price: productTypesState.value[key].price,
+    }))
+})
+
+function toggleProductType(key: ProductType) {
+    productTypesState.value[key].is_enabled = !productTypesState.value[key].is_enabled
+    productTypesError.value = ''
+}
+
+function updateProductPrice(key: ProductType, value: string) {
+    const num = parseFloat(value)
+    if (!isNaN(num) && num > 0) {
+        productTypesState.value[key].price = num
+    }
+}
+
+function resetProductTypes() {
+    productTypesState.value = {
+        digital: {is_enabled: true, price: DEFAULT_PRODUCT_TYPES.digital.price},
+        print_10x15: {is_enabled: true, price: DEFAULT_PRODUCT_TYPES.print_10x15.price},
+        print_15x20: {is_enabled: true, price: DEFAULT_PRODUCT_TYPES.print_15x20.price},
+    }
+    productTypesError.value = ''
+}
+
+function loadProductTypesFromGallery(gallery: AdminGallery) {
+    const configs = gallery.gallery_product_types
+    if (!configs || configs.length === 0) {
+        resetProductTypes()
+        return
+    }
+
+    const state: Record<string, {is_enabled: boolean; price: number}> = {}
+    for (const key of Object.keys(DEFAULT_PRODUCT_TYPES) as ProductType[]) {
+        const config = configs.find(c => c.product_type === key)
+        state[key] = {
+            is_enabled: config ? config.is_enabled : false,
+            price: config?.price !== null && config?.price !== undefined
+                ? Number(config.price)
+                : DEFAULT_PRODUCT_TYPES[key].price,
+        }
+    }
+    productTypesState.value = state as Record<ProductType, {is_enabled: boolean; price: number}>
+    productTypesError.value = ''
+}
+
+function buildProductTypesPayload() {
+    return (Object.keys(productTypesState.value) as ProductType[]).map(key => ({
+        product_type: key,
+        is_enabled: productTypesState.value[key].is_enabled,
+        price: productTypesState.value[key].price !== DEFAULT_PRODUCT_TYPES[key].price
+            ? productTypesState.value[key].price
+            : null,
+    }))
+}
 
 const clientOptions = computed(() =>
     clients.value.map(c => ({value: c.id, label: c.name || c.email}))
@@ -763,6 +878,7 @@ function resetForm() {
     form.description = ''
     form.client_id = ''
     form.assigned_email = ''
+    resetProductTypes()
 }
 
 function openCreateModal() {
@@ -777,6 +893,7 @@ function openEditModal(gallery: AdminGallery) {
     form.description = gallery.description || ''
     form.client_id = gallery.client_id || ''
     form.assigned_email = gallery.assigned_email || ''
+    loadProductTypesFromGallery(gallery)
     isEditing.value = true
     editingId.value = gallery.id
     showFormModal.value = true
@@ -861,13 +978,24 @@ function triggerFileInput() {
 }
 
 async function saveGallery() {
+    // Validate at least one product type is enabled
+    const hasEnabled = Object.values(productTypesState.value).some(pt => pt.is_enabled)
+    if (!hasEnabled) {
+        productTypesError.value = 'Au moins un type de produit doit etre actif.'
+        return
+    }
+
     isSaving.value = true
     try {
+        const payload = {
+            ...form,
+            product_types: buildProductTypesPayload(),
+        }
         if (isEditing.value && editingId.value) {
-            await adminApi.updateGallery(editingId.value, form)
+            await adminApi.updateGallery(editingId.value, payload)
             toast.success('Galerie modifiée')
         } else {
-            await adminApi.createGallery(form)
+            await adminApi.createGallery(payload)
             toast.success('Galerie créée')
         }
         showFormModal.value = false

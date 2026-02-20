@@ -77,15 +77,11 @@
                                                 class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold"
                                                 :disabled="cartStore.isLoading"
                                             >
-                                                <option value="digital">
-                                                    Fichier numérique - {{ formatPrice(cartStore.productTypes.digital?.price || 13) }}
-                                                </option>
-                                                <option value="print_10x15">
-                                                    Tirage 10x15 cm - {{ formatPrice(cartStore.productTypes.print_10x15?.price || 10) }}
-                                                </option>
-                                                <option value="print_15x20">
-                                                    Tirage 15x20 cm - {{ formatPrice(cartStore.productTypes.print_15x20?.price || 15) }}
-                                                </option>
+                                                <template v-for="(info, typeKey) in getAvailableTypes(item)" :key="typeKey">
+                                                    <option v-if="info.is_enabled" :value="typeKey">
+                                                        {{ info.label }} - {{ formatPrice(info.price) }}
+                                                    </option>
+                                                </template>
                                             </select>
                                         </div>
 
@@ -163,9 +159,19 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import { useCartStore } from '@/stores/cart'
-import type { ProductType } from '@/services/cartApi'
+import type { ProductType, CartItem, AvailableProductType } from '@/services/cartApi'
 
 const cartStore = useCartStore()
+
+const DEFAULT_TYPES: Record<ProductType, AvailableProductType> = {
+    digital: { label: 'Fichier numerique', price: 13, is_print: false, is_enabled: true },
+    print_10x15: { label: 'Tirage 10x15 cm', price: 10, is_print: true, is_enabled: true },
+    print_15x20: { label: 'Tirage 15x20 cm', price: 15, is_print: true, is_enabled: true },
+}
+
+function getAvailableTypes(item: CartItem): Record<ProductType, AvailableProductType> {
+    return item.available_product_types ?? DEFAULT_TYPES
+}
 
 onMounted(() => {
     if (!cartStore.isInitialized) {
