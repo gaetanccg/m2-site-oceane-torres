@@ -248,8 +248,10 @@ import Modal from '@/components/admin/ui/Modal.vue'
 import Button from '@/components/admin/ui/Button.vue'
 import FormField from '@/components/admin/ui/FormField.vue'
 import {adminApi} from '@/services/adminApi'
+import {useToast} from '@/composables/useToast'
 import type {AdminGiftCard, TableColumn} from '@/types/admin'
 
+const toast = useToast()
 const giftCards = ref<AdminGiftCard[]>([])
 const isLoading = ref(true)
 const searchQuery = ref('')
@@ -342,7 +344,7 @@ async function fetchGiftCards() {
         from.value = response.meta.from
         to.value = response.meta.to
     } catch {
-        // Silently fail
+        toast.error('Erreur', 'Impossible de charger les bons cadeaux')
     } finally {
         isLoading.value = false
     }
@@ -356,9 +358,10 @@ async function saveGiftCard() {
             expires_at: editForm.expires_at,
         })
         showEditModal.value = false
+        toast.success('Bon cadeau modifié')
         fetchGiftCards()
     } catch {
-        // Handle error
+        toast.error('Erreur', 'Impossible de modifier le bon cadeau')
     } finally {
         isSaving.value = false
     }
