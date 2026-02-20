@@ -71,13 +71,24 @@
 import { computed, ref } from 'vue'
 import { useCartStore } from '@/stores/cart'
 
+interface AvailableProductType {
+    label: string
+    price: number
+    is_print: boolean
+    is_enabled: boolean
+}
+
+type ProductTypeKey = 'digital' | 'print_10x15' | 'print_15x20'
+
 const props = withDefaults(defineProps<{
     photoId: string
     size?: 'sm' | 'md' | 'lg'
     showLabel?: boolean
+    availableProductTypes?: Record<ProductTypeKey, AvailableProductType> | null
 }>(), {
     size: 'md',
     showLabel: false,
+    availableProductTypes: null,
 })
 
 const emit = defineEmits<{
@@ -112,12 +123,21 @@ const iconSizeClasses = computed(() => {
     }
 })
 
+function getDefaultProductType(): ProductTypeKey {
+    if (!props.availableProductTypes) return 'digital'
+    for (const key of ['digital', 'print_10x15', 'print_15x20'] as ProductTypeKey[]) {
+        if (props.availableProductTypes[key]?.is_enabled) return key
+    }
+    return 'digital'
+}
+
 async function handleClick() {
     if (isInCart.value || isLoading.value) return
 
     isLoading.value = true
     try {
-        const success = await cartStore.addItem(props.photoId)
+        const productType = getDefaultProductType()
+        const success = await cartStore.addItem(props.photoId, productType)
         if (success) {
             emit('added')
         } else {
