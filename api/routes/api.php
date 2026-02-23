@@ -101,6 +101,7 @@ Route::post('/checkout', [OrderController::class, 'createFromCart']);
 Route::get('/orders/{order}', [OrderController::class, 'show']);
 Route::get('/orders/{order}/download/{item}', [OrderController::class, 'downloadPhoto']);
 Route::get('/orders/{order}/download-all', [OrderController::class, 'downloadAll']);
+Route::get('/orders/{order}/invoice', [OrderController::class, 'downloadInvoice']);
 Route::post('/orders/by-email', [OrderController::class, 'getByEmail']);
 
 // SumUp Payment (public)
@@ -109,6 +110,7 @@ Route::prefix('payments/sumup')->group(function () {
     Route::post('/create-checkout', [SumUpPaymentController::class, 'createCheckout']);
     Route::get('/callback', [SumUpPaymentController::class, 'callback']);
     Route::post('/verify', [SumUpPaymentController::class, 'verifyPayment']);
+    Route::post('/cancel-checkout', [SumUpPaymentController::class, 'cancelCheckout']);
 });
 
 /*
@@ -249,6 +251,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     // Orders management
     Route::get('/orders', [OrderController::class, 'adminIndex']);
     Route::get('/orders/{order}', [OrderController::class, 'adminShow']);
+    Route::get('/orders/{order}/invoice', [OrderController::class, 'adminDownloadInvoice']);
     Route::put('/orders/{order}/ship', [OrderController::class, 'adminMarkShipped']);
     Route::delete('/orders/{order}', [OrderController::class, 'adminDestroy']);
 });

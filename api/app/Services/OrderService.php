@@ -2,7 +2,10 @@
 
 namespace App\Services;
 
+use App\Mail\OrderConfirmationMail;
+use App\Mail\PrintOrderNotificationMail;
 use App\Models\Cart;
+use App\Models\CartItem;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
@@ -15,9 +18,12 @@ class OrderService
 {
     private SumUpService $sumUpService;
 
-    public function __construct(SumUpService $sumUpService)
+    private InvoiceService $invoiceService;
+
+    public function __construct(SumUpService $sumUpService, InvoiceService $invoiceService)
     {
         $this->sumUpService = $sumUpService;
+        $this->invoiceService = $invoiceService;
     }
 
     /**
@@ -47,7 +53,47 @@ class OrderService
         return DB::transaction(function () use ($cart, $user, $guestEmail, $guestName, $consentIp) {
             $cart->load('items.photo.gallery');
 
-            $subtotal = $cart->items->sum('price');
+            // Re-validate cart items before creating order
+            $validItems = [];
+            foreach ($cart->items as $item) {
+                // Photo must still exist
+                if (! $item->photo) {
+                    Log::warning('Cart item photo no longer exists, skipping', ['cart_item_id' => $item->id]);
+
+                    continue;
+                }
+
+                // Photo must still be purchasable
+                if (! $item->photo->is_purchasable) {
+                    Log::warning('Cart item photo no longer purchasable, skipping', [
+                        'cart_item_id' => $item->id,
+                        'photo_id' => $item->photo_id,
+                    ]);
+
+                    continue;
+                }
+
+                // Verify product type is still available for this gallery
+                $productType = $item->product_type ?? 'digital';
+                if (! array_key_exists($productType, CartItem::PRODUCT_TYPES)) {
+                    $productType = 'digital';
+                }
+
+                // Update price if it has changed
+                $currentPrice = CartItem::getPriceForType($productType);
+                if ((float) $item->price !== $currentPrice) {
+                    $item->update(['price' => $currentPrice]);
+                    $item->price = $currentPrice;
+                }
+
+                $validItems[] = $item;
+            }
+
+            if (empty($validItems)) {
+                throw new \Exception('Le panier ne contient aucun article valide.');
+            }
+
+            $subtotal = collect($validItems)->sum('price');
             $total = $subtotal; // No tax for now
 
             $order = Order::create([
@@ -66,8 +112,8 @@ class OrderService
                 'consent_ip' => $consentIp,
             ]);
 
-            // Create order items
-            foreach ($cart->items as $item) {
+            // Create order items from validated items
+            foreach ($validItems as $item) {
                 OrderItem::create([
                     'order_id' => $order->id,
                     'photo_id' => $item->photo_id,
@@ -176,11 +222,24 @@ class OrderService
      */
     public function completeOrder(Order $order, string $transactionId): Order
     {
-        return DB::transaction(function () use ($order, $transactionId) {
+        // DB transaction: atomic state changes only
+        $order = DB::transaction(function () use ($order, $transactionId) {
+            // Lock order to prevent concurrent completion (webhook + polling race)
+            $order = Order::lockForUpdate()->find($order->id);
+
+            if ($order->isPaid()) {
+                return $order->load('items.photo'); // Idempotent: already completed
+            }
+
+            if (! $order->isPending()) {
+                throw new \Exception('Commande dans un état inattendu.');
+            }
+
             $order->markAsPaid($transactionId);
 
-            // Update payment record
-            $order->payment?->update([
+            // Lock and update payment record
+            $payment = Payment::where('order_id', $order->id)->lockForUpdate()->first();
+            $payment?->update([
                 'status' => 'completed',
                 'provider_payment_id' => $transactionId,
             ]);
@@ -194,19 +253,32 @@ class OrderService
             // Generate download token
             $order->generateDownloadToken();
 
-            // Load items to check for prints
+            return $order->fresh(['items.photo']);
+        });
+
+        // Side-effects outside transaction: invoice generation + emails
+        if ($order->isPaid()) {
             $order->load('items');
 
-            // Send confirmation email
-            $this->sendOrderConfirmationEmail($order);
+            // Generate invoice PDF (idempotent)
+            $invoice = null;
+            try {
+                $invoice = $this->invoiceService->generateForOrder($order);
+            } catch (\Exception $e) {
+                Log::error('Failed to generate invoice', [
+                    'order_id' => $order->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
 
-            // Send admin notification if order contains prints
+            $this->sendOrderConfirmationEmail($order, $invoice);
+
             if ($order->hasPrintItems()) {
                 $this->sendPrintOrderNotification($order);
             }
+        }
 
-            return $order->fresh(['items.photo']);
-        });
+        return $order;
     }
 
     /**
@@ -270,9 +342,9 @@ class OrderService
     }
 
     /**
-     * Send order confirmation email
+     * Send order confirmation email (queued with retries)
      */
-    private function sendOrderConfirmationEmail(Order $order): void
+    private function sendOrderConfirmationEmail(Order $order, $invoice = null): void
     {
         try {
             $email = $order->customer_email;
@@ -283,15 +355,9 @@ class OrderService
             $downloadToken = $order->metadata['download_token'] ?? null;
             $downloadUrl = config('app.frontend_url').'/commande/'.$order->id.'?token='.$downloadToken;
 
-            Mail::send('emails.order-confirmation', [
-                'order' => $order,
-                'downloadUrl' => $downloadUrl,
-            ], function ($message) use ($email, $order) {
-                $message->to($email)
-                    ->subject('Confirmation de commande - '.$order->order_number);
-            });
+            Mail::to($email)->queue(new OrderConfirmationMail($order, $downloadUrl, $invoice));
         } catch (\Exception $e) {
-            Log::error('Failed to send order confirmation email', [
+            Log::error('Failed to queue order confirmation email', [
                 'order_id' => $order->id,
                 'error' => $e->getMessage(),
             ]);
@@ -299,7 +365,7 @@ class OrderService
     }
 
     /**
-     * Send notification to admin for print orders
+     * Send notification to admin for print orders (queued with retries)
      */
     private function sendPrintOrderNotification(Order $order): void
     {
@@ -309,14 +375,9 @@ class OrderService
                 return;
             }
 
-            Mail::send('emails.print-order-notification', [
-                'order' => $order,
-            ], function ($message) use ($adminEmail, $order) {
-                $message->to($adminEmail)
-                    ->subject('Nouvelle commande avec tirage - '.$order->order_number);
-            });
+            Mail::to($adminEmail)->queue(new PrintOrderNotificationMail($order));
         } catch (\Exception $e) {
-            Log::error('Failed to send print order notification', [
+            Log::error('Failed to queue print order notification', [
                 'order_id' => $order->id,
                 'error' => $e->getMessage(),
             ]);

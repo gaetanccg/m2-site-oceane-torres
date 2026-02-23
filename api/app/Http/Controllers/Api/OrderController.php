@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Services\CartService;
+use App\Services\InvoiceService;
 use App\Services\MinioStorageService;
 use App\Services\OrderService;
 use Illuminate\Http\JsonResponse;
@@ -18,10 +19,13 @@ class OrderController extends Controller
 
     private CartService $cartService;
 
-    public function __construct(OrderService $orderService, CartService $cartService)
+    private InvoiceService $invoiceService;
+
+    public function __construct(OrderService $orderService, CartService $cartService, InvoiceService $invoiceService)
     {
         $this->orderService = $orderService;
         $this->cartService = $cartService;
+        $this->invoiceService = $invoiceService;
     }
 
     /**
@@ -221,6 +225,15 @@ class OrderController extends Controller
 
         try {
             $order = $this->orderService->getOrderForDownload($orderId, $token, $user);
+
+            // Guard: limit ZIP to 50 photos
+            $digitalItems = $order->items->filter(fn ($item) => $item->photo && ! $item->isPrint());
+            if ($digitalItems->count() > 50) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Le téléchargement ZIP est limité à 50 photos. Veuillez télécharger les photos individuellement.',
+                ], 400);
+            }
 
             $storageService = new MinioStorageService;
             $zipFile = tempnam(sys_get_temp_dir(), 'order_photos_').'.zip';
@@ -424,6 +437,81 @@ class OrderController extends Controller
             'success' => true,
             'message' => 'Commande marquée comme expédiée.',
             'order' => $this->formatOrder($order),
+        ]);
+    }
+
+    /**
+     * Download invoice for a paid order (public with token)
+     */
+    public function downloadInvoice(Request $request, string $orderId): JsonResponse
+    {
+        $user = Auth::guard('sanctum')->user();
+        $token = $request->input('token');
+
+        try {
+            $order = $this->orderService->getOrderForDownload($orderId, $token, $user);
+
+            $invoice = $order->invoice;
+            if (! $invoice || ! $invoice->file_path) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Facture non disponible.',
+                ], 404);
+            }
+
+            $downloadUrl = $this->invoiceService->getDownloadUrl($invoice);
+            if (! $downloadUrl) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Impossible de générer le lien de téléchargement.',
+                ], 500);
+            }
+
+            return response()->json([
+                'success' => true,
+                'download_url' => $downloadUrl,
+                'filename' => 'facture_'.$invoice->invoice_number.'.pdf',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 403);
+        }
+    }
+
+    /**
+     * Admin: Download invoice for any order
+     */
+    public function adminDownloadInvoice(string $orderId): JsonResponse
+    {
+        $order = Order::with('invoice')->findOrFail($orderId);
+
+        $invoice = $order->invoice;
+        if (! $invoice || ! $invoice->file_path) {
+            // Try to generate if missing
+            try {
+                $invoice = $this->invoiceService->generateForOrder($order);
+            } catch (\Exception $e) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Facture non disponible.',
+                ], 404);
+            }
+        }
+
+        $downloadUrl = $this->invoiceService->getDownloadUrl($invoice);
+        if (! $downloadUrl) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Impossible de générer le lien de téléchargement.',
+            ], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'download_url' => $downloadUrl,
+            'filename' => 'facture_'.$invoice->invoice_number.'.pdf',
         ]);
     }
 
