@@ -127,16 +127,6 @@ class SumUpService
     }
 
     /**
-     * Verify webhook signature (if SumUp provides one)
-     */
-    public function verifyWebhookSignature(string $payload, string $signature): bool
-    {
-        // SumUp webhook verification logic
-        // For now, return true - implement proper verification based on SumUp docs
-        return true;
-    }
-
-    /**
      * Deactivate/cancel a checkout
      */
     public function deactivateCheckout(string $checkoutId): bool
