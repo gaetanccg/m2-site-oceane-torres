@@ -26,6 +26,8 @@ class Gallery extends Model
         'share_code',
         'last_viewed_at',
         'views_count',
+        'event_category_id',
+        'sort_order',
     ];
 
     protected $appends = [
@@ -38,6 +40,7 @@ class Gallery extends Model
             'event_date' => 'date',
             'last_viewed_at' => 'datetime',
             'views_count' => 'integer',
+            'sort_order' => 'integer',
         ];
     }
 
@@ -78,6 +81,11 @@ class Gallery extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function eventCategory(): BelongsTo
+    {
+        return $this->belongsTo(EventCategory::class);
     }
 
     public function photos(): HasMany

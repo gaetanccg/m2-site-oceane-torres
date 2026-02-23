@@ -496,10 +496,10 @@ async function fetchClients() {
       searchQuery.value || undefined
     )
     clients.value = response.data
-    totalPages.value = response.meta.last_page
-    total.value = response.meta.total
-    from.value = response.meta.from
-    to.value = response.meta.to
+    totalPages.value = response.last_page
+    total.value = response.total
+    from.value = response.from
+    to.value = response.to
   } catch {
     toast.error('Erreur', 'Impossible de charger les clients')
   } finally {

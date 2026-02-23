@@ -2,6 +2,12 @@
     <div>
         <AdminHeader title="Galeries d'événements" subtitle="Gerez les galeries publiques de vos événements">
             <template #actions>
+                <Button variant="secondary" @click="showCategoryModal = true">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                    </svg>
+                    Categories
+                </Button>
                 <Button @click="openCreateModal">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -33,97 +39,133 @@
                     <Button @click="openCreateModal">Creer une galerie</Button>
                 </div>
 
-                <!-- Galleries Grid -->
-                <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <div
-                        v-for="gallery in galleries"
-                        :key="gallery.id"
-                        class="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow"
-                    >
-                        <!-- Cover Image -->
-                        <div
-                            class="aspect-video bg-gray-100 relative cursor-pointer"
-                            @click="openGallery(gallery)"
-                        >
-                            <img
-                                v-if="gallery.cover_photo"
-                                :src="gallery.cover_photo.thumbnail_url || gallery.cover_photo.preview_url || gallery.cover_photo.display_url || gallery.cover_photo.file_path"
-                                :alt="gallery.title"
-                                class="w-full h-full object-cover"
-                            />
-                            <div v-else class="w-full h-full flex items-center justify-center">
-                                <svg class="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                </svg>
-                            </div>
-                            <!-- Photos count badge -->
-                            <div class="absolute bottom-2 right-2 px-2 py-1 bg-black/70 text-white text-xs rounded-lg">
-                                {{ gallery.photos_count }} photo(s)
-                            </div>
+                <!-- Galleries grouped by category -->
+                <div v-else class="space-y-8">
+                    <div v-for="section in galleriesByCategory" :key="section.categoryId || 'uncategorized'">
+                        <!-- Section header -->
+                        <div v-if="galleriesByCategory.length > 1 || section.categoryId" class="flex items-center gap-3 mb-4">
+                            <h2 class="text-lg font-semibold text-gray-800">{{ section.categoryName }}</h2>
+                            <span class="text-sm text-gray-400">({{ section.galleries.length }})</span>
                         </div>
 
-                        <!-- Card Content -->
-                        <div class="p-4">
-                            <h3 class="font-semibold text-gray-900 mb-1">{{ gallery.title }}</h3>
-                            <p v-if="gallery.description" class="text-sm text-gray-500 line-clamp-2 mb-2">
-                                {{ gallery.description }}
-                            </p>
-
-                            <div class="flex items-center gap-3 text-sm text-gray-400 mb-1">
-                                <span v-if="gallery.event_date" class="flex items-center gap-1">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                    </svg>
-                                    {{ formatDate(gallery.event_date) }}
-                                </span>
-                                <a v-if="gallery.event_link" :href="gallery.event_link" target="_blank" @click.stop class="flex items-center gap-1 text-gold hover:text-gold/80">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                                    </svg>
-                                    Site
-                                </a>
-                            </div>
-
-                            <div class="flex items-center justify-between text-xs text-gray-400">
-                                <span>Crée le {{ formatDate(gallery.created_at) }}</span>
-                                <span v-if="gallery.views_count" class="flex items-center gap-1">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                    </svg>
-                                    {{ gallery.views_count }}
-                                </span>
-                            </div>
-
-                            <!-- Actions -->
-                            <div class="flex gap-2 mt-4 pt-4 border-t border-gray-100">
-                                <button
+                        <!-- Galleries grid for this section -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div
+                                v-for="(gallery, galleryIndex) in section.galleries"
+                                :key="gallery.id"
+                                class="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow"
+                            >
+                                <!-- Cover Image -->
+                                <div
+                                    class="aspect-video bg-gray-100 relative cursor-pointer"
                                     @click="openGallery(gallery)"
-                                    class="flex-1 px-3 py-2 text-sm font-medium text-gold bg-gold/10 rounded-lg hover:bg-gold/20 transition-colors flex items-center justify-center gap-1"
                                 >
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                    </svg>
-                                    Photos
-                                </button>
-                                <button
-                                    @click="openEditModal(gallery)"
-                                    class="px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-                                    title="Modifier"
-                                >
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                    </svg>
-                                </button>
-                                <button
-                                    @click="confirmDelete(gallery)"
-                                    class="px-3 py-2 text-sm text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
-                                    title="Supprimer"
-                                >
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
-                                </button>
+                                    <img
+                                        v-if="gallery.cover_photo"
+                                        :src="gallery.cover_photo.thumbnail_url || gallery.cover_photo.preview_url || gallery.cover_photo.display_url || gallery.cover_photo.file_path"
+                                        :alt="gallery.title"
+                                        class="w-full h-full object-cover"
+                                    />
+                                    <div v-else class="w-full h-full flex items-center justify-center">
+                                        <svg class="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                    </div>
+                                    <!-- Photos count badge -->
+                                    <div class="absolute bottom-2 right-2 px-2 py-1 bg-black/70 text-white text-xs rounded-lg">
+                                        {{ gallery.photos_count }} photo(s)
+                                    </div>
+                                    <!-- Sort order arrows -->
+                                    <div class="absolute top-2 left-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button
+                                            v-if="galleryIndex > 0"
+                                            @click.stop="moveGallery(section, galleryIndex, -1)"
+                                            class="p-1 bg-black/60 text-white rounded hover:bg-black/80"
+                                            title="Monter"
+                                        >
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" /></svg>
+                                        </button>
+                                        <button
+                                            v-if="galleryIndex < section.galleries.length - 1"
+                                            @click.stop="moveGallery(section, galleryIndex, 1)"
+                                            class="p-1 bg-black/60 text-white rounded hover:bg-black/80"
+                                            title="Descendre"
+                                        >
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Card Content -->
+                                <div class="p-4">
+                                    <h3 class="font-semibold text-gray-900 mb-1">{{ gallery.title }}</h3>
+                                    <p v-if="gallery.description" class="text-sm text-gray-500 line-clamp-2 mb-2">
+                                        {{ gallery.description }}
+                                    </p>
+
+                                    <div class="flex items-center gap-3 text-sm text-gray-400 mb-1">
+                                        <span v-if="gallery.event_category" class="flex items-center gap-1 text-gold">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                                            </svg>
+                                            {{ gallery.event_category.name }}
+                                        </span>
+                                        <span v-if="gallery.event_date" class="flex items-center gap-1">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                            {{ formatDate(gallery.event_date) }}
+                                        </span>
+                                        <a v-if="gallery.event_link" :href="gallery.event_link" target="_blank" @click.stop class="flex items-center gap-1 text-gold hover:text-gold/80">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                            </svg>
+                                            Site
+                                        </a>
+                                    </div>
+
+                                    <div class="flex items-center justify-between text-xs text-gray-400">
+                                        <span>Crée le {{ formatDate(gallery.created_at) }}</span>
+                                        <span v-if="gallery.views_count" class="flex items-center gap-1">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                            {{ gallery.views_count }}
+                                        </span>
+                                    </div>
+
+                                    <!-- Actions -->
+                                    <div class="flex gap-2 mt-4 pt-4 border-t border-gray-100">
+                                        <button
+                                            @click="openGallery(gallery)"
+                                            class="flex-1 px-3 py-2 text-sm font-medium text-gold bg-gold/10 rounded-lg hover:bg-gold/20 transition-colors flex items-center justify-center gap-1"
+                                        >
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                            Photos
+                                        </button>
+                                        <button
+                                            @click="openEditModal(gallery)"
+                                            class="px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                                            title="Modifier"
+                                        >
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                            </svg>
+                                        </button>
+                                        <button
+                                            @click="confirmDelete(gallery)"
+                                            class="px-3 py-2 text-sm text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                                            title="Supprimer"
+                                        >
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -131,7 +173,7 @@
             </template>
         </div>
 
-        <!-- Create/Edit Modal -->
+        <!-- Create/Edit Gallery Modal -->
         <Modal v-model="showFormModal" :title="isEditing ? 'Modifier l\'événement' : 'Nouvel événement'" size="md">
             <form @submit.prevent="saveGallery" class="space-y-4">
                 <FormField
@@ -140,6 +182,17 @@
                     required
                     placeholder="Ex: Mariage Julie & Thomas"
                 />
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Catégorie</label>
+                    <select
+                        v-model="form.event_category_id"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-gold focus:border-gold text-sm"
+                    >
+                        <option value="">Aucune catégorie</option>
+                        <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
+                    </select>
+                </div>
 
                 <FormField
                     v-model="form.event_date"
@@ -207,6 +260,83 @@
                 <Button :loading="isSaving" @click="saveGallery">
                     {{ isEditing ? 'Enregistrer' : 'Creer' }}
                 </Button>
+            </template>
+        </Modal>
+
+        <!-- Category Management Modal -->
+        <Modal v-model="showCategoryModal" title="Gérer les catégories" size="md">
+            <div class="space-y-4">
+                <!-- Add category form -->
+                <div class="flex gap-2">
+                    <input
+                        v-model="categoryForm.name"
+                        type="text"
+                        placeholder="Nom de la catégorie"
+                        class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-gold focus:border-gold text-sm"
+                        @keyup.enter="saveCategory"
+                    />
+                    <Button size="sm" :loading="isSavingCategory" @click="saveCategory">
+                        {{ editingCategoryId ? 'Modifier' : 'Ajouter' }}
+                    </Button>
+                    <Button v-if="editingCategoryId" variant="secondary" size="sm" @click="cancelEditCategory">
+                        Annuler
+                    </Button>
+                </div>
+                <input
+                    v-model="categoryForm.description"
+                    type="text"
+                    placeholder="Description (optionnel)"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-gold focus:border-gold text-sm"
+                />
+
+                <!-- Categories list -->
+                <div v-if="categories.length === 0" class="text-center py-6 text-gray-400 text-sm">
+                    Aucune catégorie
+                </div>
+                <div v-else class="space-y-2">
+                    <div
+                        v-for="(cat, catIndex) in categories"
+                        :key="cat.id"
+                        class="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200"
+                    >
+                        <!-- Sort arrows -->
+                        <div class="flex flex-col gap-0.5">
+                            <button
+                                :disabled="catIndex === 0"
+                                @click="moveCategoryUp(catIndex)"
+                                class="p-0.5 text-gray-400 hover:text-gray-700 disabled:opacity-30"
+                            >
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" /></svg>
+                            </button>
+                            <button
+                                :disabled="catIndex === categories.length - 1"
+                                @click="moveCategoryDown(catIndex)"
+                                class="p-0.5 text-gray-400 hover:text-gray-700 disabled:opacity-30"
+                            >
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                            </button>
+                        </div>
+
+                        <!-- Category info -->
+                        <div class="flex-1 min-w-0">
+                            <span class="font-medium text-sm text-gray-900">{{ cat.name }}</span>
+                            <span v-if="cat.galleries_count" class="text-xs text-gray-400 ml-2">({{ cat.galleries_count }} galerie(s))</span>
+                            <p v-if="cat.description" class="text-xs text-gray-500 truncate">{{ cat.description }}</p>
+                        </div>
+
+                        <!-- Actions -->
+                        <button @click="startEditCategory(cat)" class="p-1.5 text-gray-400 hover:text-gray-700 rounded">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                        </button>
+                        <button @click="deleteCategoryConfirm(cat)" class="p-1.5 text-red-400 hover:text-red-600 rounded">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <template #footer>
+                <Button variant="secondary" @click="showCategoryModal = false">Fermer</Button>
             </template>
         </Modal>
 
@@ -389,7 +519,7 @@
             </template>
         </Modal>
 
-        <!-- Delete Confirmation Modal -->
+        <!-- Delete Gallery Confirmation Modal -->
         <Modal v-model="showDeleteModal" title="Confirmer la suppression" size="sm">
             <p class="text-gray-600">
                 Etes-vous sur de vouloir supprimer la galerie <strong>{{ galleryToDelete?.title }}</strong> ?
@@ -399,6 +529,19 @@
             <template #footer>
                 <Button variant="secondary" @click="showDeleteModal = false">Annuler</Button>
                 <Button variant="danger" :loading="isDeleting" @click="deleteGallery">Supprimer</Button>
+            </template>
+        </Modal>
+
+        <!-- Delete Category Confirmation Modal -->
+        <Modal v-model="showDeleteCategoryModal" title="Supprimer la catégorie" size="sm">
+            <p class="text-gray-600">
+                Etes-vous sur de vouloir supprimer la catégorie <strong>{{ categoryToDelete?.name }}</strong> ?
+                Les galeries associées ne seront pas supprimées, elles perdront simplement leur catégorie.
+            </p>
+
+            <template #footer>
+                <Button variant="secondary" @click="showDeleteCategoryModal = false">Annuler</Button>
+                <Button variant="danger" :loading="isDeletingCategory" @click="deleteCategory">Supprimer</Button>
             </template>
         </Modal>
 
@@ -465,14 +608,21 @@ import UploadProgress from '@/components/admin/ui/UploadProgress.vue'
 import {adminApi} from '@/services/adminApi'
 import {useChunkedUpload} from '@/composables/useChunkedUpload'
 import {useToast} from '@/composables/useToast'
-import type {AdminGallery, AdminPhoto, EventGalleryFormData, ProductType} from '@/types/admin'
+import type {AdminGallery, AdminPhoto, EventGalleryFormData, EventCategory, ProductType} from '@/types/admin'
 
 interface EventGalleryWithCover extends AdminGallery {
     cover_photo?: AdminPhoto
     thumbnail_photo_id?: string | null
 }
 
+interface GallerySection {
+    categoryId: string | null
+    categoryName: string
+    galleries: EventGalleryWithCover[]
+}
+
 const galleries = ref<EventGalleryWithCover[]>([])
+const categories = ref<EventCategory[]>([])
 const isLoading = ref(true)
 const isLoadingPhotos = ref(false)
 const galleryPhotos = ref<AdminPhoto[]>([])
@@ -480,6 +630,8 @@ const showFormModal = ref(false)
 const showPhotosModal = ref(false)
 const showDeleteModal = ref(false)
 const showBulkDeleteModal = ref(false)
+const showCategoryModal = ref(false)
+const showDeleteCategoryModal = ref(false)
 const isEditing = ref(false)
 const isSaving = ref(false)
 const isDeleting = ref(false)
@@ -493,6 +645,16 @@ const lightboxIndex = ref(0)
 const selectionMode = ref(false)
 const selectedPhotos = ref<string[]>([])
 const isBulkProcessing = ref(false)
+
+// Category management
+const isSavingCategory = ref(false)
+const isDeletingCategory = ref(false)
+const editingCategoryId = ref<string | null>(null)
+const categoryToDelete = ref<EventCategory | null>(null)
+const categoryForm = reactive({
+    name: '',
+    description: '',
+})
 
 // Chunked upload
 const {
@@ -512,6 +674,53 @@ const form = reactive<EventGalleryFormData>({
     description: '',
     event_date: '',
     event_link: '',
+    event_category_id: '',
+})
+
+// Galleries grouped by category
+const galleriesByCategory = computed<GallerySection[]>(() => {
+    const sections: GallerySection[] = []
+    const categorized = new Map<string, EventGalleryWithCover[]>()
+    const uncategorized: EventGalleryWithCover[] = []
+
+    for (const gallery of galleries.value) {
+        if (gallery.event_category_id) {
+            const existing = categorized.get(gallery.event_category_id)
+            if (existing) {
+                existing.push(gallery)
+            } else {
+                categorized.set(gallery.event_category_id, [gallery])
+            }
+        } else {
+            uncategorized.push(gallery)
+        }
+    }
+
+    // Add categorized sections in category sort order
+    for (const cat of categories.value) {
+        const catGalleries = categorized.get(cat.id)
+        if (catGalleries && catGalleries.length > 0) {
+            // Sort galleries within category by sort_order
+            catGalleries.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+            sections.push({
+                categoryId: cat.id,
+                categoryName: cat.name,
+                galleries: catGalleries,
+            })
+        }
+    }
+
+    // Add uncategorized at the end
+    if (uncategorized.length > 0) {
+        uncategorized.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+        sections.push({
+            categoryId: null,
+            categoryName: sections.length > 0 ? 'Autres' : '',
+            galleries: uncategorized,
+        })
+    }
+
+    return sections
 })
 
 // Product types configuration
@@ -562,12 +771,10 @@ function resetProductTypes() {
 function loadProductTypesFromGallery(gallery: EventGalleryWithCover) {
     const configs = gallery.gallery_product_types
     if (!configs || configs.length === 0) {
-        // No config = all enabled at defaults
         resetProductTypes()
         return
     }
 
-    // Start with all disabled (configured gallery overrides everything)
     const state: Record<string, {is_enabled: boolean; price: number}> = {}
     for (const key of Object.keys(DEFAULT_PRODUCT_TYPES) as ProductType[]) {
         const config = configs.find(c => c.product_type === key)
@@ -603,6 +810,7 @@ function resetForm() {
     form.description = ''
     form.event_date = ''
     form.event_link = ''
+    form.event_category_id = ''
     resetProductTypes()
 }
 
@@ -618,6 +826,7 @@ function openEditModal(gallery: EventGalleryWithCover) {
     form.description = gallery.description || ''
     form.event_date = gallery.event_date || ''
     form.event_link = gallery.event_link || ''
+    form.event_category_id = gallery.event_category_id || ''
     loadProductTypesFromGallery(gallery)
     isEditing.value = true
     editingId.value = gallery.id
@@ -662,12 +871,22 @@ async function fetchGalleries() {
     }
 }
 
+async function fetchCategories() {
+    try {
+        const response = await adminApi.getEventCategories()
+        if (response.success) {
+            categories.value = response.data
+        }
+    } catch {
+        toast.error('Erreur', 'Impossible de charger les catégories')
+    }
+}
+
 function triggerFileInput() {
     fileInput.value?.click()
 }
 
 async function saveGallery() {
-    // Validate at least one product type is enabled
     const hasEnabled = Object.values(productTypesState.value).some(pt => pt.is_enabled)
     if (!hasEnabled) {
         productTypesError.value = 'Au moins un type de produit doit etre actif.'
@@ -678,6 +897,7 @@ async function saveGallery() {
     try {
         const payload = {
             ...form,
+            event_category_id: form.event_category_id || undefined,
             product_types: buildProductTypesPayload(),
         }
         if (isEditing.value && editingId.value) {
@@ -711,6 +931,126 @@ async function deleteGallery() {
     }
 }
 
+// Gallery sort order
+async function moveGallery(section: GallerySection, index: number, direction: number) {
+    const newIndex = index + direction
+    if (newIndex < 0 || newIndex >= section.galleries.length) return
+
+    const galleryList = [...section.galleries]
+    const [moved] = galleryList.splice(index, 1)
+    galleryList.splice(newIndex, 0, moved)
+
+    // Update sort_order for both galleries
+    const updates = galleryList.map((g, i) => ({id: g.id, sort_order: i}))
+    for (const u of updates) {
+        const g = galleries.value.find(g => g.id === u.id)
+        if (g) g.sort_order = u.sort_order
+    }
+
+    // Persist the two swapped galleries
+    try {
+        const a = updates[index]
+        const b = updates[newIndex]
+        await Promise.all([
+            adminApi.updateEventGallery(a.id, {sort_order: a.sort_order} as EventGalleryFormData),
+            adminApi.updateEventGallery(b.id, {sort_order: b.sort_order} as EventGalleryFormData),
+        ])
+    } catch {
+        toast.error('Erreur', 'Impossible de modifier l\'ordre')
+        await fetchGalleries()
+    }
+}
+
+// Category management
+async function saveCategory() {
+    if (!categoryForm.name.trim()) return
+    isSavingCategory.value = true
+    try {
+        if (editingCategoryId.value) {
+            await adminApi.updateEventCategory(editingCategoryId.value, {
+                name: categoryForm.name,
+                description: categoryForm.description || undefined,
+            })
+            toast.success('Catégorie modifiée')
+        } else {
+            await adminApi.createEventCategory({
+                name: categoryForm.name,
+                description: categoryForm.description || undefined,
+            })
+            toast.success('Catégorie créée')
+        }
+        categoryForm.name = ''
+        categoryForm.description = ''
+        editingCategoryId.value = null
+        await fetchCategories()
+    } catch {
+        toast.error('Erreur', 'Impossible de sauvegarder la catégorie')
+    } finally {
+        isSavingCategory.value = false
+    }
+}
+
+function startEditCategory(cat: EventCategory) {
+    editingCategoryId.value = cat.id
+    categoryForm.name = cat.name
+    categoryForm.description = cat.description || ''
+}
+
+function cancelEditCategory() {
+    editingCategoryId.value = null
+    categoryForm.name = ''
+    categoryForm.description = ''
+}
+
+function deleteCategoryConfirm(cat: EventCategory) {
+    categoryToDelete.value = cat
+    showDeleteCategoryModal.value = true
+}
+
+async function deleteCategory() {
+    if (!categoryToDelete.value) return
+    isDeletingCategory.value = true
+    try {
+        await adminApi.deleteEventCategory(categoryToDelete.value.id)
+        showDeleteCategoryModal.value = false
+        categoryToDelete.value = null
+        toast.success('Catégorie supprimée')
+        await Promise.all([fetchCategories(), fetchGalleries()])
+    } catch {
+        toast.error('Erreur', 'Impossible de supprimer la catégorie')
+    } finally {
+        isDeletingCategory.value = false
+    }
+}
+
+async function moveCategoryUp(index: number) {
+    if (index <= 0) return
+    await swapCategoryOrder(index, index - 1)
+}
+
+async function moveCategoryDown(index: number) {
+    if (index >= categories.value.length - 1) return
+    await swapCategoryOrder(index, index + 1)
+}
+
+async function swapCategoryOrder(fromIndex: number, toIndex: number) {
+    const list = [...categories.value]
+    const [moved] = list.splice(fromIndex, 1)
+    list.splice(toIndex, 0, moved)
+
+    // Update local state immediately for responsive UI
+    categories.value = list
+
+    // Persist
+    try {
+        const reorderPayload = list.map((cat, i) => ({id: cat.id, sort_order: i}))
+        await adminApi.reorderEventCategories(reorderPayload)
+    } catch {
+        toast.error('Erreur', 'Impossible de modifier l\'ordre')
+        await fetchCategories()
+    }
+}
+
 function handleDrop(event: DragEvent) {
     isDragging.value = false
     const files = Array.from(event.dataTransfer?.files || [])
@@ -729,7 +1069,6 @@ async function uploadPhotos(files: File[]) {
     try {
         const result = await chunkedUpload(selectedGallery.value.id, files)
 
-        // Refresh gallery photos after upload completes
         if (result.completed > 0) {
             await refreshGalleryPhotos()
         }
@@ -760,7 +1099,6 @@ async function deletePhoto(photoId: string) {
     try {
         await adminApi.deletePhoto(photoId)
         galleryPhotos.value = galleryPhotos.value.filter(p => p.id !== photoId)
-        // If deleted photo was the thumbnail, clear it
         if (selectedGallery.value?.thumbnail_photo_id === photoId) {
             selectedGallery.value.thumbnail_photo_id = null
         }
@@ -774,19 +1112,15 @@ async function setAsThumbnail(photoId: string) {
     if (!selectedGallery.value) return
 
     try {
-        // Toggle: if already thumbnail, remove it; otherwise set it
         const newThumbnailId = selectedGallery.value.thumbnail_photo_id === photoId ? null : photoId
         const response = await adminApi.setEventThumbnail(selectedGallery.value.id, newThumbnailId)
 
         if (response.success) {
-            // Update local state
             selectedGallery.value.thumbnail_photo_id = newThumbnailId
 
-            // Also update in galleries list
             const galleryIndex = galleries.value.findIndex(g => g.id === selectedGallery.value?.id)
             if (galleryIndex !== -1) {
                 galleries.value[galleryIndex].thumbnail_photo_id = newThumbnailId
-                // Update cover_photo to reflect the new thumbnail
                 const thumbnailPhoto = newThumbnailId
                     ? galleryPhotos.value.find(p => p.id === newThumbnailId)
                     : galleryPhotos.value[0]
@@ -855,8 +1189,9 @@ async function bulkDeletePhotos() {
     }
 }
 
-onMounted(() => {
-    fetchGalleries()
+onMounted(async () => {
+    await fetchCategories()
+    await fetchGalleries()
 })
 </script>
 
