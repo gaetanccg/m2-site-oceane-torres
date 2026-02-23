@@ -175,6 +175,41 @@ class PhotoController extends Controller
 
         $storageService = new MinioStorageService;
         $storagePath = $photo->metadata['storage_path'] ?? $photo->metadata['supabase_path'] ?? $photo->file_path;
+
+        // Track the download
+        $photo->recordDownload(
+            $request->ip(),
+            $request->userAgent()
+        );
+
+        // Direct file streaming for WebView compatibility
+        if ($request->query('direct')) {
+            $content = $storageService->getFileContent($storagePath);
+            if (! $content) {
+                return response()->json([
+                    'message' => 'Erreur lors du téléchargement.',
+                ], 500);
+            }
+            $extension = pathinfo($photo->file_path, PATHINFO_EXTENSION) ?: 'jpg';
+            $filename = ($photo->title ?? 'photo').'.'.$extension;
+            $filename = preg_replace('/[^a-zA-Z0-9_.-]/', '_', $filename);
+            $mimeType = match (strtolower($extension)) {
+                'png' => 'image/png',
+                'gif' => 'image/gif',
+                'webp' => 'image/webp',
+                default => 'image/jpeg',
+            };
+
+            return response($content, 200, [
+                'Content-Type' => $mimeType,
+                'Content-Length' => strlen($content),
+                'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+                'X-Content-Type-Options' => 'nosniff',
+                'Cache-Control' => 'private, no-cache',
+            ]);
+        }
+
+        // Existing JSON response with signed URL
         $signedUrl = $storageService->getSignedUrl($storagePath, 300);
 
         if (! $signedUrl) {
@@ -182,12 +217,6 @@ class PhotoController extends Controller
                 'message' => 'Erreur lors de la génération du lien.',
             ], 500);
         }
-
-        // Track the download
-        $photo->recordDownload(
-            $request->ip(),
-            $request->userAgent()
-        );
 
         return response()->json([
             'download_url' => $signedUrl,

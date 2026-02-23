@@ -210,6 +210,27 @@ export interface PrestationFormData {
 }
 
 // ============================================================================
+// Event Categories
+// ============================================================================
+
+export interface EventCategory {
+    id: string
+    name: string
+    slug: string
+    description?: string
+    sort_order: number
+    galleries_count?: number
+    created_at: string
+    updated_at: string
+}
+
+export interface EventCategoryFormData {
+    name: string
+    description?: string
+    sort_order?: number
+}
+
+// ============================================================================
 // Galleries
 // ============================================================================
 
@@ -226,6 +247,8 @@ export interface EventGalleryFormData {
     description: string
     event_date: string
     event_link: string
+    event_category_id?: string
+    sort_order?: number
     product_types?: GalleryProductTypeConfig[]
 }
 
@@ -244,6 +267,9 @@ export interface AdminGallery {
     assigned_email?: string
     access_token?: string
     share_code?: string
+    event_category_id?: string
+    event_category?: EventCategory
+    sort_order?: number
     photos_count: number
     total_likes: number
     downloadable_count: number
@@ -408,14 +434,12 @@ export interface AdminApiResponse<T> {
 
 export interface AdminPaginatedResponse<T> {
     data: T[]
-    meta: {
-        current_page: number
-        last_page: number
-        per_page: number
-        total: number
-        from: number
-        to: number
-    }
+    current_page: number
+    last_page: number
+    per_page: number
+    total: number
+    from: number
+    to: number
 }
 
 // ============================================================================
