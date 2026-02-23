@@ -112,6 +112,7 @@ import {ref, computed, onMounted} from 'vue'
 import {useRoute} from 'vue-router'
 import Lightbox from '@/components/Lightbox.vue'
 import {API_CONFIG} from '@/config/constants'
+import {isInAppBrowser} from '@/utils/download'
 import type {LightboxImage} from '@/types'
 
 interface Photo {
@@ -167,6 +168,12 @@ const downloadPhoto = async (photo: Photo) => {
     downloadingPhotos.value.add(photo.id)
 
     try {
+        if (isInAppBrowser()) {
+            window.location.href = `${API_CONFIG.baseUrl}/photos/${photo.id}/download?token=${gallery.value.access_token}&direct=1`
+            setTimeout(() => downloadingPhotos.value.delete(photo.id), 2000)
+            return
+        }
+
         const response = await fetch(
             `${API_CONFIG.baseUrl}/photos/${photo.id}/download?token=${gallery.value.access_token}`,
             {
@@ -204,6 +211,7 @@ const downloadAll = async () => {
     isDownloadingAll.value = true
 
     try {
+        // First step: ask backend to create the ZIP and get the download URL
         const response = await fetch(
             `${API_CONFIG.baseUrl}/galleries/${gallery.value.id}/download-zip?token=${gallery.value.access_token}`,
             {
@@ -213,6 +221,14 @@ const downloadAll = async () => {
 
         if (response.ok) {
             const data = await response.json()
+
+            if (isInAppBrowser()) {
+                // WebView: redirect to the download URL directly (served with Content-Disposition)
+                window.location.href = data.download_url
+                setTimeout(() => { isDownloadingAll.value = false }, 3000)
+                return
+            }
+
             const filename = data.filename || 'gallery.zip'
 
             // Fetch the actual ZIP file and create blob for download

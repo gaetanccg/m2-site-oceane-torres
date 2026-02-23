@@ -353,7 +353,7 @@ class GalleryController extends Controller
 
         $zip->close();
 
-        $downloadUrl = secure_url('/api/galleries/'.$gallery->id.'/download-file?file='.$zipFilename);
+        $downloadUrl = url('/api/galleries/'.$gallery->id.'/download-file?file='.$zipFilename);
 
         return response()->json([
             'download_url' => $downloadUrl,
@@ -447,8 +447,10 @@ class GalleryController extends Controller
                         $query->ordered()->limit(6);
                     },
                     'thumbnailPhoto',
+                    'eventCategory',
                 ])
                 ->withCount('photos')
+                ->orderBy('sort_order')
                 ->latest()
                 ->paginate(12);
 
@@ -495,8 +497,9 @@ class GalleryController extends Controller
     public function adminEventIndex(): JsonResponse
     {
         $galleries = Gallery::where('type', 'event')
-            ->with(['photos', 'thumbnailPhoto', 'galleryProductTypes'])
+            ->with(['photos', 'thumbnailPhoto', 'galleryProductTypes', 'eventCategory'])
             ->withCount('photos')
+            ->orderBy('sort_order')
             ->latest()
             ->paginate(20);
 
@@ -538,6 +541,8 @@ class GalleryController extends Controller
             'description' => ['nullable', 'string'],
             'event_date' => ['nullable', 'date'],
             'event_link' => ['nullable', 'url', 'max:500'],
+            'event_category_id' => ['nullable', 'exists:event_categories,id'],
+            'sort_order' => ['nullable', 'integer', 'min:0'],
             'product_types' => ['nullable', 'array'],
             'product_types.*.product_type' => ['required_with:product_types', 'string', 'in:digital,print_10x15,print_15x20'],
             'product_types.*.is_enabled' => ['required_with:product_types', 'boolean'],
@@ -577,6 +582,8 @@ class GalleryController extends Controller
             'description' => ['nullable', 'string'],
             'event_date' => ['nullable', 'date'],
             'event_link' => ['nullable', 'url', 'max:500'],
+            'event_category_id' => ['nullable', 'exists:event_categories,id'],
+            'sort_order' => ['nullable', 'integer', 'min:0'],
             'product_types' => ['nullable', 'array'],
             'product_types.*.product_type' => ['required_with:product_types', 'string', 'in:digital,print_10x15,print_15x20'],
             'product_types.*.is_enabled' => ['required_with:product_types', 'boolean'],
@@ -596,7 +603,7 @@ class GalleryController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $gallery->fresh()->load('galleryProductTypes'),
+            'data' => $gallery->fresh()->load(['galleryProductTypes', 'eventCategory']),
             'message' => 'Galerie événement mise à jour avec succès.',
         ]);
     }

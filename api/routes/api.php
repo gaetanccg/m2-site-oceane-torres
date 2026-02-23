@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\Admin\ClientController;
 use App\Http\Controllers\Api\Admin\DashboardController;
+use App\Http\Controllers\Api\Admin\EventCategoryController;
 use App\Http\Controllers\Api\Admin\NotificationController;
 use App\Http\Controllers\Api\Admin\UserController;
 use App\Http\Controllers\Api\AuthController;
@@ -217,6 +218,13 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::put('/photos/{photo}/toggle-downloadable', [PhotoController::class, 'toggleDownloadable']);
     Route::put('/photos/bulk-downloadable', [PhotoController::class, 'bulkToggleDownloadable']);
     Route::put('/photos/sort-order', [PhotoController::class, 'updateSortOrder']);
+
+    // Event Categories management
+    Route::get('/event-categories', [EventCategoryController::class, 'index']);
+    Route::post('/event-categories', [EventCategoryController::class, 'store']);
+    Route::put('/event-categories/reorder', [EventCategoryController::class, 'reorder']);
+    Route::put('/event-categories/{category}', [EventCategoryController::class, 'update']);
+    Route::delete('/event-categories/{category}', [EventCategoryController::class, 'destroy']);
 
     // Event Galleries management
     Route::get('/events', [GalleryController::class, 'adminEventIndex']);

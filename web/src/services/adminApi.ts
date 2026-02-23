@@ -24,6 +24,8 @@ import type {
     AdminPhoto,
     GalleryFormData,
     EventGalleryFormData,
+    EventCategory,
+    EventCategoryFormData,
     AdminGiftCard,
     AdminOrder,
     Notification,
@@ -513,6 +515,41 @@ class AdminApiService {
                 body: JSON.stringify({ photo_id: photoId }),
             }
         )
+    }
+
+    // ========================================================================
+    // Event Categories
+    // ========================================================================
+
+    async getEventCategories(): Promise<AdminApiResponse<EventCategory[]>> {
+        return this.request<AdminApiResponse<EventCategory[]>>('/admin/event-categories')
+    }
+
+    async createEventCategory(data: EventCategoryFormData): Promise<AdminApiResponse<EventCategory>> {
+        return this.request<AdminApiResponse<EventCategory>>('/admin/event-categories', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        })
+    }
+
+    async updateEventCategory(id: string, data: EventCategoryFormData): Promise<AdminApiResponse<EventCategory>> {
+        return this.request<AdminApiResponse<EventCategory>>(`/admin/event-categories/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+        })
+    }
+
+    async deleteEventCategory(id: string): Promise<AdminApiResponse<null>> {
+        return this.request<AdminApiResponse<null>>(`/admin/event-categories/${id}`, {
+            method: 'DELETE',
+        })
+    }
+
+    async reorderEventCategories(categories: Array<{ id: string; sort_order: number }>): Promise<AdminApiResponse<null>> {
+        return this.request<AdminApiResponse<null>>('/admin/event-categories/reorder', {
+            method: 'PUT',
+            body: JSON.stringify({ categories }),
+        })
     }
 
     // ========================================================================

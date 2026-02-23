@@ -84,12 +84,10 @@
             <!-- Photos Gallery -->
             <section class="py-8 sm:py-12 px-4 sm:px-6 lg:px-12">
                 <div class="max-w-7xl mx-auto">
-                    <!-- Masonry-style grid -->
-                    <div class="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4 sm:gap-6 space-y-4 sm:space-y-6">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                         <div
-                            v-for="(photo, index) in gallery.photos"
+                            v-for="(photo, index) in sortedPhotos"
                             :key="photo.id"
-                            class="break-inside-avoid"
                         >
                             <PhotoCard
                                 :src="photo.preview_url || photo.display_url || photo.file_path"
@@ -175,9 +173,19 @@ const error = ref('')
 const lightboxOpen = ref(false)
 const lightboxIndex = ref(0)
 
-const lightboxImages = computed<LightboxImage[]>(() => {
+// Natural sort for photo titles (handles "photo 1", "photo 2", ..., "photo 10" correctly)
+const sortedPhotos = computed<Photo[]>(() => {
     if (!gallery.value?.photos) return []
-    return gallery.value.photos.map(photo => ({
+    return [...gallery.value.photos].sort((a, b) => {
+        const titleA = a.title || ''
+        const titleB = b.title || ''
+        return titleA.localeCompare(titleB, 'fr', {numeric: true, sensitivity: 'base'})
+    })
+})
+
+const lightboxImages = computed<LightboxImage[]>(() => {
+    if (!sortedPhotos.value.length) return []
+    return sortedPhotos.value.map(photo => ({
         url: photo.preview_url || photo.display_url || photo.file_path,
         alt: photo.title || 'Photo',
         type: 'image' as const

@@ -388,10 +388,10 @@ async function fetchReservations() {
       statusFilter.value as ReservationStatus || undefined
     )
     reservations.value = response.data
-    totalPages.value = response.meta.last_page
-    total.value = response.meta.total
-    from.value = response.meta.from || 0
-    to.value = response.meta.to || 0
+    totalPages.value = response.last_page
+    total.value = response.total
+    from.value = response.from || 0
+    to.value = response.to || 0
   } catch {
     toast.error('Erreur', 'Impossible de charger les réservations')
   } finally {
