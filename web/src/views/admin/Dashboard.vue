@@ -306,7 +306,7 @@ import StatCard from '@/components/admin/ui/StatCard.vue'
 import StatusBadge from '@/components/admin/ui/StatusBadge.vue'
 import {adminApi} from '@/services/adminApi'
 import {useToast} from '@/composables/useToast'
-import type {Reservation, AdminGallery, AdminOrder} from '@/types/admin'
+import type {Reservation, Client, AdminGallery, AdminGiftCard, AdminOrder} from '@/types/admin'
 
 const toast = useToast()
 const isLoading = ref(true)
@@ -431,17 +431,17 @@ async function fetchDashboardData() {
             ordersResponse,
             giftCardsResponse,
         ] = await Promise.all([
-            adminApi.getReservations(1, 100).catch(() => ({ data: [], meta: { total: 0 } })),
-            adminApi.getClients(1, 100).catch(() => ({ data: [], meta: { total: 0 } })),
-            adminApi.getGalleries(1, 100).catch(() => ({ data: [], meta: { total: 0 } })),
-            adminApi.getEventGalleries(1, 100).catch(() => ({ data: [], meta: { total: 0 } })),
+            adminApi.getReservations(1, 100).catch(() => ({ data: [] as Reservation[], current_page: 1, last_page: 1, per_page: 100, total: 0 })),
+            adminApi.getClients(1, 100).catch(() => ({ data: [] as Client[], current_page: 1, last_page: 1, per_page: 100, total: 0 })),
+            adminApi.getGalleries(1, 100).catch(() => ({ data: [] as AdminGallery[], current_page: 1, last_page: 1, per_page: 100, total: 0 })),
+            adminApi.getEventGalleries(1, 100).catch(() => ({ data: [] as AdminGallery[], current_page: 1, last_page: 1, per_page: 100, total: 0 })),
             adminApi.getOrders(1, 100).catch(() => ({ orders: [], pagination: { total: 0 } })),
-            adminApi.getGiftCards(1, 100).catch(() => ({ data: [], meta: { total: 0 } })),
+            adminApi.getGiftCards(1, 100).catch(() => ({ data: [] as AdminGiftCard[], current_page: 1, last_page: 1, per_page: 100, total: 0 })),
         ])
 
         // Process reservations
         const reservations = reservationsResponse.data || []
-        stats.reservations.total = reservationsResponse.meta?.total || reservations.length
+        stats.reservations.total = reservationsResponse.total || reservations.length
         stats.reservations.pending = reservations.filter(r => r.status === 'pending').length
         stats.reservations.confirmed = reservations.filter(r => r.status === 'confirmed').length
         stats.reservations.thisMonth = reservations.filter(r => isThisMonth(r.created_at)).length
@@ -450,16 +450,16 @@ async function fetchDashboardData() {
 
         // Process clients
         const clients = clientsResponse.data || []
-        stats.clients.total = clientsResponse.meta?.total || clients.length
+        stats.clients.total = clientsResponse.total || clients.length
 
         // Process galleries
         const galleries = galleriesResponse.data || []
-        stats.galleries.clients = galleriesResponse.meta?.total || galleries.length
+        stats.galleries.clients = galleriesResponse.total || galleries.length
         recentGalleries.value = galleries.slice(0, 5)
 
         // Process event galleries
         const events = eventsResponse.data || []
-        stats.galleries.events = eventsResponse.meta?.total || events.length
+        stats.galleries.events = eventsResponse.total || events.length
 
         // Process orders
         const orders = ordersResponse.orders || []
@@ -480,7 +480,7 @@ async function fetchDashboardData() {
 
         // Process gift cards
         const giftCards = giftCardsResponse.data || []
-        stats.giftCards.total = giftCardsResponse.meta?.total || giftCards.length
+        stats.giftCards.total = giftCardsResponse.total || giftCards.length
         stats.giftCards.active = giftCards.filter((g: { status: string }) => g.status === 'active').length
 
     } catch {
