@@ -135,7 +135,7 @@
                             <button
                                 v-for="item in digitalItems"
                                 :key="item.id"
-                                @click="downloadPhoto(item.id, item.photo_title)"
+                                @click="downloadPhoto(item.id, item.photo_id, item.photo_title)"
                                 :disabled="downloadingItem === item.id"
                                 class="w-full flex items-center justify-between px-4 py-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
                             >
@@ -243,6 +243,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { cartApi, type Order } from '@/services/cartApi'
 import { API_CONFIG } from '@/config/constants'
+import { isInAppBrowser } from '@/utils/download'
 
 const route = useRoute()
 
@@ -366,12 +367,20 @@ function stopPolling() {
     }
 }
 
-async function downloadPhoto(itemId: string, photoTitle?: string | null) {
+async function downloadPhoto(itemId: string, photoId: string, photoTitle?: string | null) {
     if (!order.value) return
 
     downloadingItem.value = itemId
     try {
         const token = route.query.token as string
+
+        if (isInAppBrowser()) {
+            // WebView: direct URL to endpoint that streams with Content-Disposition
+            window.location.href = `${API_CONFIG.baseUrl}/images/download/${photoId}?token=${token}&order=${order.value.id}`
+            setTimeout(() => { downloadingItem.value = null }, 2000)
+            return
+        }
+
         const response = await cartApi.downloadPhoto(order.value.id, itemId, token)
         if (response.success && response.download_url) {
             // Fetch the file as blob to force download
@@ -402,6 +411,13 @@ async function downloadAllPhotos() {
     try {
         const token = route.query.token as string
         const params = token ? `?token=${encodeURIComponent(token)}` : ''
+
+        if (isInAppBrowser()) {
+            // WebView: redirect directly (endpoint serves ZIP with Content-Disposition)
+            window.location.href = `${API_CONFIG.baseUrl}/orders/${order.value.id}/download-all${params}`
+            setTimeout(() => { isDownloadingAll.value = false }, 3000)
+            return
+        }
 
         // Get auth token if available
         const authToken = localStorage.getItem('auth_token')
