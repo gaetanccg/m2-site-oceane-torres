@@ -157,11 +157,20 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, watch } from 'vue'
 import { useCartStore } from '@/stores/cart'
+import { useToast } from '@/composables/useToast'
 import type { ProductType, CartItem, AvailableProductType } from '@/services/cartApi'
 
 const cartStore = useCartStore()
+const toast = useToast()
+
+// Watch for cart errors and show as toast
+watch(() => cartStore.error, (newError) => {
+    if (newError) {
+        toast.error('Erreur panier', newError)
+    }
+})
 
 const DEFAULT_TYPES: Record<ProductType, AvailableProductType> = {
     digital: { label: 'Fichier numerique', price: 13, is_print: false, is_enabled: true },
