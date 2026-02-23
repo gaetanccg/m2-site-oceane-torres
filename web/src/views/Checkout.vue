@@ -202,6 +202,7 @@ import { useRouter } from 'vue-router'
 import { useCartStore } from '@/stores/cart'
 import { useAuthStore } from '@/stores/auth'
 import { cartApi } from '@/services/cartApi'
+import { useToast } from '@/composables/useToast'
 
 declare global {
     interface Window {
@@ -224,6 +225,7 @@ declare global {
 const router = useRouter()
 const cartStore = useCartStore()
 const authStore = useAuthStore()
+const toast = useToast()
 
 const isProcessing = ref(false)
 const isPaymentProcessing = ref(false)
@@ -321,8 +323,11 @@ async function initPaymentWidget() {
 // Poll payment status for pending payments
 async function pollPaymentStatus(attempts = 0) {
     if (attempts >= 10) {
-        paymentError.value = 'Impossible de confirmer le paiement. Vérifiez votre email pour le statut.'
+        // Redirect to order page instead of blocking here
         isPaymentProcessing.value = false
+        toast.info('Vérification en cours', 'Redirection vers votre commande...')
+        await cartStore.clearCart()
+        router.push(`/commande/${currentOrder.value!.id}`)
         return
     }
 
@@ -333,6 +338,7 @@ async function pollPaymentStatus(attempts = 0) {
             router.push(`/commande/${currentOrder.value!.id}`)
         } else if (result.status === 'failed' || result.status === 'FAILED') {
             paymentError.value = 'Le paiement a echoue. Veuillez reessayer.'
+            toast.error('Paiement echoue', 'Veuillez reessayer.')
             isPaymentProcessing.value = false
         } else {
             // Continue polling
@@ -385,18 +391,30 @@ async function createOrder() {
         }, 100)
 
     } catch (e) {
-        error.value = e instanceof Error ? e.message : 'Une erreur est survenue'
+        const msg = e instanceof Error ? e.message : 'Une erreur est survenue'
+        error.value = msg
+        toast.error('Erreur', msg)
     } finally {
         isProcessing.value = false
     }
 }
 
-// Reset to info form
-function resetPayment() {
+// Reset to info form and cancel existing checkout
+async function resetPayment() {
     if (sumupWidget) {
         sumupWidget.unmount()
         sumupWidget = null
     }
+
+    // Cancel the SumUp checkout on the backend
+    if (currentOrder.value) {
+        try {
+            await cartApi.cancelCheckout(currentOrder.value.id)
+        } catch {
+            // Best-effort: don't block the UI
+        }
+    }
+
     showPaymentWidget.value = false
     currentOrder.value = null
     checkoutId.value = ''

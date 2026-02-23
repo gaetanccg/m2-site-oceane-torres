@@ -241,11 +241,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { cartApi, type Order } from '@/services/cartApi'
+import { cartApi, CartApiError, type Order } from '@/services/cartApi'
 import { API_CONFIG } from '@/config/constants'
 import { isInAppBrowser } from '@/utils/download'
+import { useToast } from '@/composables/useToast'
 
 const route = useRoute()
+const toast = useToast()
 
 const order = ref<Order | null>(null)
 const isLoading = ref(true)
@@ -253,6 +255,8 @@ const error = ref('')
 const downloadingItem = ref<string | null>(null)
 const isDownloadingAll = ref(false)
 let pollInterval: number | null = null
+let pollCount = 0
+const MAX_POLLS = 60 // 5 minutes at 5s interval
 
 const digitalItems = computed(() => {
     if (!order.value) return []
@@ -350,12 +354,25 @@ async function checkPayment() {
 
 function startPolling() {
     if (pollInterval) return
+    pollCount = 0
 
     pollInterval = window.setInterval(async () => {
         if (order.value?.status !== 'pending') {
             stopPolling()
             return
         }
+
+        pollCount++
+        if (pollCount >= MAX_POLLS) {
+            stopPolling()
+            toast.info(
+                'Verification en cours',
+                'Le paiement prend plus de temps que prevu. Vous recevrez un email de confirmation des que le paiement sera traite.',
+                10000
+            )
+            return
+        }
+
         await checkPayment()
     }, 5000)
 }
@@ -397,8 +414,12 @@ async function downloadPhoto(itemId: string, photoId: string, photoTitle?: strin
             document.body.removeChild(link)
             window.URL.revokeObjectURL(url)
         }
-    } catch {
-        alert('Erreur lors du téléchargement')
+    } catch (e) {
+        if (e instanceof CartApiError && e.apiError.status === 403) {
+            toast.error('Lien expire', 'Votre lien de telechargement a expire. Consultez votre email de confirmation pour un nouveau lien.')
+        } else {
+            toast.error('Erreur', 'Erreur lors du telechargement')
+        }
     } finally {
         downloadingItem.value = null
     }
@@ -432,6 +453,10 @@ async function downloadAllPhotos() {
         )
 
         if (!response.ok) {
+            if (response.status === 403) {
+                toast.error('Lien expire', 'Votre lien de telechargement a expire. Consultez votre email de confirmation pour un nouveau lien.')
+                return
+            }
             throw new Error('Erreur lors du téléchargement')
         }
 
@@ -445,7 +470,7 @@ async function downloadAllPhotos() {
         document.body.removeChild(link)
         window.URL.revokeObjectURL(url)
     } catch {
-        alert('Erreur lors du téléchargement')
+        toast.error('Erreur', 'Erreur lors du telechargement')
     } finally {
         isDownloadingAll.value = false
     }

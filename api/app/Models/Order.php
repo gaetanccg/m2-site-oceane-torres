@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class Order extends Model
@@ -63,9 +64,12 @@ class Order extends Model
 
     public static function generateOrderNumber(): string
     {
+        // Advisory lock prevents concurrent order number generation race condition
+        DB::statement('SELECT pg_advisory_xact_lock(42)');
+
         $year = date('Y');
         $lastOrder = self::whereYear('created_at', $year)
-            ->orderBy('created_at', 'desc')
+            ->orderByRaw("CAST(SUBSTRING(order_number FROM 'OT-\\d{4}-(\\d+)') AS INTEGER) DESC NULLS LAST")
             ->first();
 
         $sequence = 1;
@@ -94,6 +98,11 @@ class Order extends Model
     public function payment(): HasOne
     {
         return $this->hasOne(Payment::class);
+    }
+
+    public function invoice(): HasOne
+    {
+        return $this->hasOne(Invoice::class);
     }
 
     public function getCustomerEmailAttribute(): string

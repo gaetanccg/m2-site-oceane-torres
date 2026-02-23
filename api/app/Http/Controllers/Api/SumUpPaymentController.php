@@ -204,6 +204,9 @@ class SumUpPaymentController extends Controller
 
     /**
      * Handle SumUp webhook notifications
+     *
+     * Security: Never trust the webhook payload. Always verify the actual
+     * checkout status by calling the SumUp API directly.
      */
     public function webhook(Request $request): JsonResponse
     {
@@ -212,7 +215,6 @@ class SumUpPaymentController extends Controller
         ]);
 
         $payload = $request->all();
-        $eventType = $payload['event_type'] ?? null;
         $checkoutId = $payload['id'] ?? $payload['checkout_id'] ?? null;
 
         if (! $checkoutId) {
@@ -228,13 +230,19 @@ class SumUpPaymentController extends Controller
                 return response()->json(['received' => true]);
             }
 
-            // Process based on event type or checkout status
-            $status = $payload['status'] ?? null;
-            $transactionId = $payload['transaction_id'] ?? null;
+            // Already processed — idempotent
+            if ($order->isPaid() || $order->isFailed()) {
+                return response()->json(['received' => true]);
+            }
 
-            if ($status === 'PAID' || $eventType === 'CHECKOUT_COMPLETED') {
+            // Verify actual status with SumUp API (never trust the payload)
+            $checkout = $this->sumUpService->getCheckout($checkoutId);
+            $verifiedStatus = $checkout['status'] ?? null;
+            $transactionId = $checkout['transaction_id'] ?? null;
+
+            if ($verifiedStatus === 'PAID') {
                 $this->orderService->completeOrder($order, $transactionId ?? $checkoutId);
-            } elseif ($status === 'FAILED' || $eventType === 'CHECKOUT_FAILED') {
+            } elseif ($verifiedStatus === 'FAILED') {
                 $this->orderService->handleFailedPayment($order);
             }
 
@@ -246,6 +254,42 @@ class SumUpPaymentController extends Controller
             ]);
 
             return response()->json(['received' => true]);
+        }
+    }
+
+    /**
+     * Cancel/deactivate a SumUp checkout for an order
+     */
+    public function cancelCheckout(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'order_id' => ['required', 'uuid', 'exists:orders,id'],
+        ]);
+
+        try {
+            $order = Order::findOrFail($validated['order_id']);
+
+            if (! $order->isPending() || ! $order->sumup_checkout_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Pas de checkout actif pour cette commande.',
+                ], 400);
+            }
+
+            $this->sumUpService->deactivateCheckout($order->sumup_checkout_id);
+            $order->update(['sumup_checkout_id' => null]);
+
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            Log::error('SumUp cancel checkout failed', [
+                'order_id' => $validated['order_id'],
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de l\'annulation du checkout.',
+            ], 500);
         }
     }
 }
