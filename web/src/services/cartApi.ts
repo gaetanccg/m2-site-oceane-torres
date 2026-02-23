@@ -315,6 +315,13 @@ class CartApiService {
         if (orderId) params.append('order', orderId)
         return this.request(`/payments/sumup/callback?${params.toString()}`)
     }
+
+    async cancelCheckout(orderId: string): Promise<{ success: boolean }> {
+        return this.request('/payments/sumup/cancel-checkout', {
+            method: 'POST',
+            body: JSON.stringify({ order_id: orderId }),
+        })
+    }
 }
 
 // Export singleton instance
