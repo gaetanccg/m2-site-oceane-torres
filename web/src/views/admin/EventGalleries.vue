@@ -1353,12 +1353,6 @@ async function fetchChildren(parentId: string) {
     }
 }
 
-function handleGalleryMainAction(gallery: EventGalleryWithCover) {
-    // For galleries with no children: open photos
-    // For galleries that are empty (no photos, no children): also allow drill-down entry to create sub-galleries
-    openGallery(gallery)
-}
-
 // Thumbnail picker for parent galleries
 async function openThumbnailPicker() {
     if (!currentParent.value) return
