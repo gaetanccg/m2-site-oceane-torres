@@ -25,6 +25,14 @@ class PhotoController extends Controller
 
     public function store(Request $request, Gallery $gallery): JsonResponse
     {
+        // Block upload on parent galleries (galleries with children)
+        if ($gallery->children()->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Impossible d\'ajouter des photos à une galerie parent. Ajoutez-les dans une sous-galerie.',
+            ], 422);
+        }
+
         $validated = $request->validate([
             'photos' => ['required', 'array', 'min:1'],
             'photos.*' => ['required', 'file', 'mimes:jpeg,png,jpg,gif,webp,mp4,mov,avi', 'max:51200'], // 50MB max per file
@@ -282,6 +290,14 @@ class PhotoController extends Controller
      */
     public function storeAsync(Request $request, Gallery $gallery): JsonResponse
     {
+        // Block upload on parent galleries (galleries with children)
+        if ($gallery->children()->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Impossible d\'ajouter des photos à une galerie parent. Ajoutez-les dans une sous-galerie.',
+            ], 422);
+        }
+
         $validated = $request->validate([
             'photos' => ['required', 'array', 'min:1', 'max:15'],
             'photos.*' => ['required', 'file', 'mimes:jpeg,png,jpg,gif,webp,mp4,mov,avi', 'max:51200'],
