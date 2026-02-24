@@ -499,7 +499,7 @@
                                 </svg>
                             </button>
                             <button
-                                @click.stop="deletePhoto(photo.id)"
+                                @click.stop="confirmDeletePhoto(photo.id)"
                                 class="p-2 bg-red-500 rounded-lg text-white hover:bg-red-600"
                                 title="Supprimer"
                             >
@@ -547,29 +547,112 @@
             </template>
         </Modal>
 
-        <!-- Delete Confirmation Modal -->
+        <!-- Delete Gallery Confirmation Modal -->
         <Modal v-model="showDeleteModal" title="Confirmer la suppression" size="sm">
-            <p class="text-gray-600">
-                Êtes-vous sûr de vouloir supprimer la galerie <strong>{{ galleryToDelete?.title }}</strong> ?
-                Toutes les photos seront également supprimées.
-            </p>
+            <div class="space-y-4">
+                <p class="text-gray-600">
+                    Êtes-vous sûr de vouloir supprimer la galerie <strong>{{ galleryToDelete?.title }}</strong> ?
+                </p>
+
+                <div
+                    v-if="galleryToDelete && galleryToDelete.photos_count > 0"
+                    class="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 space-y-1"
+                >
+                    <p class="font-medium flex items-center gap-1.5">
+                        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        Cette action est irréversible
+                    </p>
+                    <p class="ml-5">{{ galleryToDelete.photos_count }} photo(s) seront définitivement supprimées.</p>
+                </div>
+
+                <div v-if="galleryToDelete && galleryToDelete.photos_count > 0">
+                    <label class="block text-sm text-gray-600 mb-1.5">
+                        Tapez <strong class="text-gray-900 select-all">{{ galleryToDelete?.title }}</strong> pour confirmer :
+                    </label>
+                    <input
+                        v-model="deleteConfirmInput"
+                        type="text"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-red-500 focus:border-red-500"
+                        placeholder="Nom de la galerie"
+                        @keyup.enter="deleteGalleryConfirmMatches && deleteGallery()"
+                    />
+                </div>
+            </div>
 
             <template #footer>
                 <Button variant="secondary" @click="showDeleteModal = false">Annuler</Button>
-                <Button variant="danger" :loading="isDeleting" @click="deleteGallery">Supprimer</Button>
+                <Button
+                    variant="danger"
+                    :loading="isDeleting"
+                    :disabled="galleryToDelete && galleryToDelete.photos_count > 0 && !deleteGalleryConfirmMatches"
+                    @click="deleteGallery"
+                >
+                    Supprimer
+                </Button>
+            </template>
+        </Modal>
+
+        <!-- Single Photo Delete Confirmation Modal -->
+        <Modal v-model="showDeletePhotoModal" title="Supprimer la photo" size="sm">
+            <div class="space-y-4">
+                <div v-if="photoToDelete" class="flex justify-center">
+                    <img
+                        :src="photoToDelete.thumbnail_url || photoToDelete.preview_url || photoToDelete.display_url || photoToDelete.file_path"
+                        :alt="photoToDelete.title || 'Photo'"
+                        class="h-32 rounded-lg object-cover"
+                    />
+                </div>
+                <p class="text-gray-600 text-center">
+                    Êtes-vous sûr de vouloir supprimer cette photo ?
+                    Cette action est irréversible.
+                </p>
+            </div>
+
+            <template #footer>
+                <Button variant="secondary" @click="showDeletePhotoModal = false">Annuler</Button>
+                <Button variant="danger" :loading="isDeletingPhoto" @click="deletePhoto">Supprimer</Button>
             </template>
         </Modal>
 
         <!-- Bulk Delete Confirmation Modal -->
         <Modal v-model="showBulkDeleteModal" title="Supprimer les photos sélectionnées" size="sm">
-            <p class="text-gray-600">
-                Êtes-vous sûr de vouloir supprimer <strong>{{ selectedPhotos.length }} photo(s)</strong> ?
-                Cette action est irréversible.
-            </p>
+            <div class="space-y-4">
+                <div class="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 space-y-1">
+                    <p class="font-medium flex items-center gap-1.5">
+                        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        Cette action est irréversible
+                    </p>
+                    <p class="ml-5">{{ selectedPhotos.length }} photo(s) seront définitivement supprimées.</p>
+                </div>
+
+                <div v-if="selectedPhotos.length >= 5">
+                    <label class="block text-sm text-gray-600 mb-1.5">
+                        Tapez <strong class="text-gray-900">{{ selectedPhotos.length }}</strong> pour confirmer :
+                    </label>
+                    <input
+                        v-model="bulkDeleteConfirmInput"
+                        type="text"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-red-500 focus:border-red-500"
+                        placeholder="Nombre de photos"
+                        @keyup.enter="bulkDeleteConfirmMatches && bulkDeletePhotos()"
+                    />
+                </div>
+            </div>
 
             <template #footer>
                 <Button variant="secondary" @click="showBulkDeleteModal = false">Annuler</Button>
-                <Button variant="danger" :loading="isBulkProcessing" @click="bulkDeletePhotos">Supprimer</Button>
+                <Button
+                    variant="danger"
+                    :loading="isBulkProcessing"
+                    :disabled="selectedPhotos.length >= 5 && !bulkDeleteConfirmMatches"
+                    @click="bulkDeletePhotos"
+                >
+                    Supprimer ({{ selectedPhotos.length }})
+                </Button>
             </template>
         </Modal>
 
@@ -704,6 +787,11 @@ const selectionMode = ref(false)
 const selectedPhotos = ref<string[]>([])
 const isBulkProcessing = ref(false)
 const showBulkDeleteModal = ref(false)
+const bulkDeleteConfirmInput = ref('')
+const showDeletePhotoModal = ref(false)
+const photoToDelete = ref<AdminPhoto | null>(null)
+const isDeletingPhoto = ref(false)
+const deleteConfirmInput = ref('')
 const showEmailModal = ref(false)
 const galleryForEmail = ref<AdminGallery | null>(null)
 const isSendingEmail = ref(false)
@@ -815,6 +903,15 @@ const filteredPhotos = computed(() => {
 
 const currentLightboxPhoto = computed(() => filteredPhotos.value[lightboxIndex.value] || null)
 
+const deleteGalleryConfirmMatches = computed(() => {
+    if (!galleryToDelete.value) return false
+    return deleteConfirmInput.value.trim() === galleryToDelete.value.title.trim()
+})
+
+const bulkDeleteConfirmMatches = computed(() => {
+    return bulkDeleteConfirmInput.value.trim() === String(selectedPhotos.value.length)
+})
+
 function formatDate(dateStr: string): string {
     return new Date(dateStr).toLocaleDateString('fr-FR', {day: 'numeric', month: 'short', year: 'numeric'})
 }
@@ -921,6 +1018,7 @@ async function openGallery(gallery: AdminGallery) {
 
 function confirmDelete(gallery: AdminGallery) {
     galleryToDelete.value = gallery
+    deleteConfirmInput.value = ''
     showDeleteModal.value = true
 }
 
@@ -1068,13 +1166,25 @@ async function uploadPhotos(files: File[]) {
     }
 }
 
-async function deletePhoto(photoId: string) {
+function confirmDeletePhoto(photoId: string) {
+    photoToDelete.value = galleryPhotos.value.find(p => p.id === photoId) || null
+    showDeletePhotoModal.value = true
+}
+
+async function deletePhoto() {
+    if (!photoToDelete.value) return
+    isDeletingPhoto.value = true
+    const photoId = photoToDelete.value.id
     try {
         await adminApi.deletePhoto(photoId)
         galleryPhotos.value = galleryPhotos.value.filter(p => p.id !== photoId)
+        showDeletePhotoModal.value = false
+        photoToDelete.value = null
         toast.success('Photo supprimée')
     } catch {
         toast.error('Erreur', 'Impossible de supprimer la photo')
+    } finally {
+        isDeletingPhoto.value = false
     }
 }
 
@@ -1159,6 +1269,7 @@ async function bulkSetDownloadable(downloadable: boolean) {
 
 function confirmBulkDelete() {
     if (selectedPhotos.value.length === 0) return
+    bulkDeleteConfirmInput.value = ''
     showBulkDeleteModal.value = true
 }
 

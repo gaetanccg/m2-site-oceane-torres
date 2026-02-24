@@ -248,6 +248,7 @@ export interface EventGalleryFormData {
     event_date: string
     event_link: string
     event_category_id?: string
+    parent_id?: string | null
     sort_order?: number
     product_types?: GalleryProductTypeConfig[]
 }
@@ -269,6 +270,10 @@ export interface AdminGallery {
     share_code?: string
     event_category_id?: string
     event_category?: EventCategory
+    parent_id?: string | null
+    parent?: AdminGallery | null
+    children?: AdminGallery[]
+    children_count?: number
     sort_order?: number
     photos_count: number
     total_likes: number

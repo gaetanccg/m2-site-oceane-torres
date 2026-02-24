@@ -504,6 +504,10 @@ class AdminApiService {
         return response.json()
     }
 
+    async getEventGalleryChildren(parentId: string): Promise<AdminApiResponse<AdminGallery[]>> {
+        return this.request<AdminApiResponse<AdminGallery[]>>(`/admin/events/${parentId}/children`)
+    }
+
     async setEventThumbnail(
         galleryId: string,
         photoId: string | null
