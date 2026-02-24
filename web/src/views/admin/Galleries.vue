@@ -586,7 +586,7 @@
                 <Button
                     variant="danger"
                     :loading="isDeleting"
-                    :disabled="galleryToDelete && galleryToDelete.photos_count > 0 && !deleteGalleryConfirmMatches"
+                    :disabled="!!(galleryToDelete && galleryToDelete.photos_count > 0 && !deleteGalleryConfirmMatches)"
                     @click="deleteGallery"
                 >
                     Supprimer
