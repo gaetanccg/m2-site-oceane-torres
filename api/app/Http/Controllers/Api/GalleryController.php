@@ -442,6 +442,7 @@ class GalleryController extends Controller
         // Cache for 5 minutes per page
         $galleries = Cache::remember("event_galleries_page_{$page}", 300, function () {
             $result = Gallery::where('type', 'event')
+                ->topLevel()
                 ->with([
                     'photos' => function ($query) {
                         $query->ordered()->limit(6);
@@ -449,7 +450,7 @@ class GalleryController extends Controller
                     'thumbnailPhoto',
                     'eventCategory',
                 ])
-                ->withCount('photos')
+                ->withCount(['photos', 'children'])
                 ->orderBy('sort_order')
                 ->latest()
                 ->paginate(12);
@@ -477,15 +478,41 @@ class GalleryController extends Controller
 
         $gallery->recordView();
 
+        $isParent = $gallery->children()->exists();
+
+        if ($isParent) {
+            $gallery->load([
+                'thumbnailPhoto',
+                'children' => function ($query) {
+                    $query->withCount('photos')
+                        ->with(['thumbnailPhoto', 'photos' => function ($q) {
+                            $q->ordered()->limit(1);
+                        }]);
+                },
+            ]);
+
+            // Add cover_photo to each child
+            $gallery->children->each(function ($child) {
+                $child->cover_photo = $child->thumbnailPhoto ?? $child->photos->first();
+            });
+
+            return response()->json([
+                'gallery' => $gallery,
+                'is_parent' => true,
+            ]);
+        }
+
         $gallery->load([
             'photos' => function ($query) {
                 $query->ordered();
             },
             'galleryProductTypes',
+            'parent',
         ]);
 
         return response()->json([
             'gallery' => $gallery,
+            'is_parent' => false,
             'available_product_types' => $gallery->getAvailableProductTypes(),
         ]);
     }
@@ -497,8 +524,9 @@ class GalleryController extends Controller
     public function adminEventIndex(): JsonResponse
     {
         $galleries = Gallery::where('type', 'event')
+            ->topLevel()
             ->with(['photos', 'thumbnailPhoto', 'galleryProductTypes', 'eventCategory'])
-            ->withCount('photos')
+            ->withCount(['photos', 'children'])
             ->orderBy('sort_order')
             ->latest()
             ->paginate(20);
@@ -521,16 +549,44 @@ class GalleryController extends Controller
             ], 404);
         }
 
+        $isParent = $gallery->children()->exists();
+
+        if ($isParent) {
+            $gallery->load([
+                'thumbnailPhoto',
+                'children' => function ($query) {
+                    $query->withCount('photos')
+                        ->with(['thumbnailPhoto', 'photos' => function ($q) {
+                            $q->ordered()->limit(1);
+                        }, 'galleryProductTypes', 'eventCategory']);
+                },
+                'galleryProductTypes',
+            ]);
+
+            // Add cover_photo to each child
+            $gallery->children->each(function ($child) {
+                $child->cover_photo = $child->thumbnailPhoto ?? $child->photos->first();
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => $gallery,
+                'is_parent' => true,
+            ]);
+        }
+
         $gallery->load([
             'photos' => function ($query) {
                 $query->ordered();
             },
             'galleryProductTypes',
+            'parent',
         ]);
 
         return response()->json([
             'success' => true,
             'data' => $gallery,
+            'is_parent' => false,
         ]);
     }
 
@@ -542,12 +598,44 @@ class GalleryController extends Controller
             'event_date' => ['nullable', 'date'],
             'event_link' => ['nullable', 'url', 'max:500'],
             'event_category_id' => ['nullable', 'exists:event_categories,id'],
+            'parent_id' => ['nullable', 'uuid', 'exists:galleries,id'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
             'product_types' => ['nullable', 'array'],
             'product_types.*.product_type' => ['required_with:product_types', 'string', 'in:digital,print_10x15,print_15x20'],
             'product_types.*.is_enabled' => ['required_with:product_types', 'boolean'],
             'product_types.*.price' => ['nullable', 'numeric', 'min:0.01'],
         ]);
+
+        // Validate parent gallery constraints
+        if (! empty($validated['parent_id'])) {
+            $parent = Gallery::find($validated['parent_id']);
+
+            if (! $parent || $parent->type !== 'event') {
+                return response()->json([
+                    'message' => 'Le parent doit être une galerie événement.',
+                ], 422);
+            }
+
+            if ($parent->parent_id !== null) {
+                return response()->json([
+                    'message' => 'Un seul niveau de hiérarchie est autorisé.',
+                ], 422);
+            }
+
+            if ($parent->photos()->exists()) {
+                return response()->json([
+                    'message' => 'Une galerie parent ne peut pas contenir de photos directement.',
+                ], 422);
+            }
+
+            // Inherit parent defaults if not provided
+            if (empty($validated['event_category_id'])) {
+                $validated['event_category_id'] = $parent->event_category_id;
+            }
+            if (empty($validated['event_date'])) {
+                $validated['event_date'] = $parent->event_date;
+            }
+        }
 
         $productTypes = $validated['product_types'] ?? null;
         unset($validated['product_types']);
@@ -620,6 +708,19 @@ class GalleryController extends Controller
 
         try {
             $storageService = new MinioStorageService;
+
+            // Clean up children storage before cascade delete removes them
+            foreach ($gallery->children as $child) {
+                try {
+                    $storageService->deleteGalleryFolder($child->id);
+                } catch (\Exception $e) {
+                    \Log::warning('Failed to cleanup child gallery files from storage', [
+                        'child_gallery_id' => $child->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
             $storageService->deleteGalleryFolder($galleryId);
         } catch (\Exception $e) {
             \Log::warning('Failed to cleanup event gallery files from storage', [
@@ -652,10 +753,25 @@ class GalleryController extends Controller
             'photo_id' => ['nullable', 'uuid', 'exists:photos,id'],
         ]);
 
-        // If photo_id is provided, verify it belongs to this gallery
+        // If photo_id is provided, verify it belongs to this gallery or one of its children
         if (! empty($validated['photo_id'])) {
             $photo = Photo::find($validated['photo_id']);
-            if (! $photo || $photo->gallery_id !== $gallery->id) {
+            if (! $photo) {
+                return response()->json([
+                    'message' => 'Photo non trouvée.',
+                ], 422);
+            }
+
+            $allowedGalleryIds = [$gallery->id];
+            // For parent galleries, also allow photos from children
+            if ($gallery->children()->exists()) {
+                $allowedGalleryIds = array_merge(
+                    $allowedGalleryIds,
+                    $gallery->children()->pluck('id')->toArray()
+                );
+            }
+
+            if (! in_array($photo->gallery_id, $allowedGalleryIds)) {
                 return response()->json([
                     'message' => 'Cette photo n\'appartient pas à cette galerie.',
                 ], 422);
@@ -674,6 +790,32 @@ class GalleryController extends Controller
             'message' => $validated['photo_id']
                 ? 'Photo définie comme miniature.'
                 : 'Miniature supprimée.',
+        ]);
+    }
+
+    /**
+     * Get children of a parent event gallery (admin)
+     */
+    public function adminEventChildren(Gallery $gallery): JsonResponse
+    {
+        if ($gallery->type !== 'event') {
+            return response()->json([
+                'message' => 'Galerie non trouvée.',
+            ], 404);
+        }
+
+        $children = $gallery->children()
+            ->with(['photos', 'thumbnailPhoto', 'galleryProductTypes', 'eventCategory'])
+            ->withCount('photos')
+            ->get();
+
+        $children->each(function ($child) {
+            $child->cover_photo = $child->thumbnailPhoto ?? $child->photos->first();
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $children,
         ]);
     }
 

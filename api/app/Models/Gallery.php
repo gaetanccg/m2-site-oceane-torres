@@ -27,6 +27,7 @@ class Gallery extends Model
         'last_viewed_at',
         'views_count',
         'event_category_id',
+        'parent_id',
         'sort_order',
     ];
 
@@ -86,6 +87,21 @@ class Gallery extends Model
     public function eventCategory(): BelongsTo
     {
         return $this->belongsTo(EventCategory::class);
+    }
+
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(Gallery::class, 'parent_id');
+    }
+
+    public function children(): HasMany
+    {
+        return $this->hasMany(Gallery::class, 'parent_id')->orderBy('sort_order')->orderBy('title');
+    }
+
+    public function scopeTopLevel($query)
+    {
+        return $query->whereNull('parent_id');
     }
 
     public function photos(): HasMany
