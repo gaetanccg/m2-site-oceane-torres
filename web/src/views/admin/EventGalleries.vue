@@ -356,32 +356,73 @@
                         <div
                             v-for="pt in productTypesList"
                             :key="pt.key"
-                            class="flex items-center gap-3 p-3 rounded-lg border transition-colors"
+                            class="p-3 rounded-lg border transition-colors"
                             :class="pt.is_enabled ? 'border-gold/30 bg-gold/5' : 'border-gray-200 bg-gray-50'"
                         >
-                            <label class="flex items-center gap-2 cursor-pointer flex-shrink-0">
-                                <input
-                                    type="checkbox"
-                                    :checked="pt.is_enabled"
-                                    @change="toggleProductType(pt.key)"
-                                    class="w-4 h-4 text-gold border-gray-300 rounded focus:ring-gold"
-                                />
-                                <span class="text-sm font-medium" :class="pt.is_enabled ? 'text-gray-900' : 'text-gray-400'">
-                                    {{ pt.label }}
-                                </span>
-                            </label>
-                            <div class="flex items-center gap-1 ml-auto">
-                                <input
-                                    type="number"
-                                    :value="pt.price"
-                                    @input="updateProductPrice(pt.key, ($event.target as HTMLInputElement).value)"
-                                    :disabled="!pt.is_enabled"
-                                    step="0.01"
-                                    min="0.01"
-                                    class="w-20 px-2 py-1 text-sm text-right border rounded-md focus:ring-gold focus:border-gold disabled:opacity-40 disabled:bg-gray-100"
-                                    :class="pt.is_enabled ? 'border-gray-300' : 'border-gray-200'"
-                                />
-                                <span class="text-sm text-gray-500">&euro;</span>
+                            <div class="flex items-center gap-3">
+                                <label class="flex items-center gap-2 cursor-pointer flex-shrink-0">
+                                    <input
+                                        type="checkbox"
+                                        :checked="pt.is_enabled"
+                                        @change="toggleProductType(pt.key)"
+                                        class="w-4 h-4 text-gold border-gray-300 rounded focus:ring-gold"
+                                    />
+                                    <span class="text-sm font-medium" :class="pt.is_enabled ? 'text-gray-900' : 'text-gray-400'">
+                                        {{ pt.label }}
+                                    </span>
+                                </label>
+                                <div class="flex items-center gap-1 ml-auto">
+                                    <input
+                                        type="number"
+                                        :value="pt.price"
+                                        @input="updateProductPrice(pt.key, ($event.target as HTMLInputElement).value)"
+                                        :disabled="!pt.is_enabled"
+                                        step="0.01"
+                                        min="0.01"
+                                        class="w-20 px-2 py-1 text-sm text-right border rounded-md focus:ring-gold focus:border-gold disabled:opacity-40 disabled:bg-gray-100"
+                                        :class="pt.is_enabled ? 'border-gray-300' : 'border-gray-200'"
+                                    />
+                                    <span class="text-sm text-gray-500">&euro;</span>
+                                </div>
+                            </div>
+                            <!-- Pack Tiers -->
+                            <div v-if="pt.is_enabled" class="mt-3 ml-6 space-y-2">
+                                <div v-for="(tier, ti) in pt.tiers" :key="ti" class="flex items-center gap-2 text-sm">
+                                    <span class="text-gray-500 whitespace-nowrap">À partir de</span>
+                                    <input
+                                        type="number"
+                                        :value="tier.min_quantity"
+                                        @input="updateTierQuantity(pt.key, ti, ($event.target as HTMLInputElement).value)"
+                                        min="2"
+                                        class="w-16 px-2 py-1 text-sm text-center border border-gray-300 rounded-md focus:ring-gold focus:border-gold"
+                                    />
+                                    <span class="text-gray-500">photos &rarr;</span>
+                                    <input
+                                        type="number"
+                                        :value="tier.unit_price"
+                                        @input="updateTierPrice(pt.key, ti, ($event.target as HTMLInputElement).value)"
+                                        step="0.01"
+                                        min="0.01"
+                                        class="w-20 px-2 py-1 text-sm text-right border border-gray-300 rounded-md focus:ring-gold focus:border-gold"
+                                    />
+                                    <span class="text-gray-500">&euro;/photo</span>
+                                    <button type="button" @click="removeTier(pt.key, ti)" class="text-red-400 hover:text-red-600 ml-1">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+                                <button
+                                    v-if="pt.tiers.length < 3"
+                                    type="button"
+                                    @click="addTier(pt.key)"
+                                    class="text-xs text-gold hover:text-gold/80 font-medium flex items-center gap-1"
+                                >
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                    </svg>
+                                    Ajouter un palier pack
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -1065,10 +1106,15 @@ const DEFAULT_PRODUCT_TYPES: Record<ProductType, {label: string; price: number}>
     print_15x20: {label: 'Impression 15x20', price: 15},
 }
 
-const productTypesState = ref<Record<ProductType, {is_enabled: boolean; price: number}>>({
-    digital: {is_enabled: true, price: 13},
-    print_10x15: {is_enabled: true, price: 10},
-    print_15x20: {is_enabled: true, price: 15},
+interface TierState {
+    min_quantity: number
+    unit_price: number
+}
+
+const productTypesState = ref<Record<ProductType, {is_enabled: boolean; price: number; tiers: TierState[]}>>({
+    digital: {is_enabled: true, price: 13, tiers: []},
+    print_10x15: {is_enabled: true, price: 10, tiers: []},
+    print_15x20: {is_enabled: true, price: 15, tiers: []},
 })
 
 const productTypesError = ref('')
@@ -1079,6 +1125,7 @@ const productTypesList = computed(() => {
         label: DEFAULT_PRODUCT_TYPES[key].label,
         is_enabled: productTypesState.value[key].is_enabled,
         price: productTypesState.value[key].price,
+        tiers: productTypesState.value[key].tiers,
     }))
 })
 
@@ -1096,9 +1143,9 @@ function updateProductPrice(key: ProductType, value: string) {
 
 function resetProductTypes() {
     productTypesState.value = {
-        digital: {is_enabled: true, price: DEFAULT_PRODUCT_TYPES.digital.price},
-        print_10x15: {is_enabled: true, price: DEFAULT_PRODUCT_TYPES.print_10x15.price},
-        print_15x20: {is_enabled: true, price: DEFAULT_PRODUCT_TYPES.print_15x20.price},
+        digital: {is_enabled: true, price: DEFAULT_PRODUCT_TYPES.digital.price, tiers: []},
+        print_10x15: {is_enabled: true, price: DEFAULT_PRODUCT_TYPES.print_10x15.price, tiers: []},
+        print_15x20: {is_enabled: true, price: DEFAULT_PRODUCT_TYPES.print_15x20.price, tiers: []},
     }
     productTypesError.value = ''
 }
@@ -1110,17 +1157,22 @@ function loadProductTypesFromGallery(gallery: EventGalleryWithCover) {
         return
     }
 
-    const state: Record<string, {is_enabled: boolean; price: number}> = {}
+    const state: Record<string, {is_enabled: boolean; price: number; tiers: TierState[]}> = {}
     for (const key of Object.keys(DEFAULT_PRODUCT_TYPES) as ProductType[]) {
         const config = configs.find(c => c.product_type === key)
+        const tiers: TierState[] = (config?.pack_tiers ?? []).map(t => ({
+            min_quantity: t.min_quantity,
+            unit_price: Number(t.unit_price),
+        }))
         state[key] = {
             is_enabled: config ? config.is_enabled : false,
             price: config?.price !== null && config?.price !== undefined
                 ? Number(config.price)
                 : DEFAULT_PRODUCT_TYPES[key].price,
+            tiers,
         }
     }
-    productTypesState.value = state as Record<ProductType, {is_enabled: boolean; price: number}>
+    productTypesState.value = state as Record<ProductType, {is_enabled: boolean; price: number; tiers: TierState[]}>
     productTypesError.value = ''
 }
 
@@ -1131,7 +1183,33 @@ function buildProductTypesPayload() {
         price: productTypesState.value[key].price !== DEFAULT_PRODUCT_TYPES[key].price
             ? productTypesState.value[key].price
             : null,
+        tiers: productTypesState.value[key].tiers
+            .filter(t => t.min_quantity >= 2 && t.unit_price > 0)
+            .map(t => ({min_quantity: t.min_quantity, unit_price: t.unit_price})),
     }))
+}
+
+function addTier(key: ProductType) {
+    if (productTypesState.value[key].tiers.length >= 3) return
+    productTypesState.value[key].tiers.push({min_quantity: 2, unit_price: 0})
+}
+
+function removeTier(key: ProductType, index: number) {
+    productTypesState.value[key].tiers.splice(index, 1)
+}
+
+function updateTierQuantity(key: ProductType, index: number, value: string) {
+    const num = parseInt(value)
+    if (!isNaN(num) && num >= 2) {
+        productTypesState.value[key].tiers[index].min_quantity = num
+    }
+}
+
+function updateTierPrice(key: ProductType, index: number, value: string) {
+    const num = parseFloat(value)
+    if (!isNaN(num) && num > 0) {
+        productTypesState.value[key].tiers[index].unit_price = num
+    }
 }
 
 const currentLightboxPhoto = computed(() => galleryPhotos.value[lightboxIndex.value] || null)

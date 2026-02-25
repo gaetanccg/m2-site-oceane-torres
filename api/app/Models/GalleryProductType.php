@@ -6,6 +6,7 @@ use App\Models\Concerns\CastsBooleansForPostgres;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class GalleryProductType extends Model
 {
@@ -29,6 +30,11 @@ class GalleryProductType extends Model
     public function gallery(): BelongsTo
     {
         return $this->belongsTo(Gallery::class);
+    }
+
+    public function packTiers(): HasMany
+    {
+        return $this->hasMany(PackTier::class)->orderBy('min_quantity');
     }
 
     /**

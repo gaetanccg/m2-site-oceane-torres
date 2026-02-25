@@ -107,12 +107,17 @@ class CartService
             return $existingItem;
         }
 
-        return CartItem::create([
+        $item = CartItem::create([
             'cart_id' => $cart->id,
             'photo_id' => $photoId,
             'product_type' => $productType,
             'price' => $price,
         ]);
+
+        $cart->unsetRelation('items');
+        $this->recalculatePackPrices($cart);
+
+        return $item->fresh();
     }
 
     /**
@@ -155,6 +160,9 @@ class CartService
             'price' => $price,
         ]);
 
+        $cart->unsetRelation('items');
+        $this->recalculatePackPrices($cart);
+
         return $item->fresh();
     }
 
@@ -163,7 +171,13 @@ class CartService
      */
     public function removeItem(Cart $cart, string $itemId): bool
     {
-        return $cart->items()->where('id', $itemId)->delete() > 0;
+        $deleted = $cart->items()->where('id', $itemId)->delete() > 0;
+        if ($deleted) {
+            $cart->unsetRelation('items');
+            $this->recalculatePackPrices($cart);
+        }
+
+        return $deleted;
     }
 
     /**
@@ -171,7 +185,13 @@ class CartService
      */
     public function removePhoto(Cart $cart, string $photoId): bool
     {
-        return $cart->items()->where('photo_id', $photoId)->delete() > 0;
+        $deleted = $cart->items()->where('photo_id', $photoId)->delete() > 0;
+        if ($deleted) {
+            $cart->unsetRelation('items');
+            $this->recalculatePackPrices($cart);
+        }
+
+        return $deleted;
     }
 
     /**
@@ -228,11 +248,54 @@ class CartService
      */
     public function getCartSummary(Cart $cart): array
     {
-        $cart->load('items.photo.gallery.galleryProductTypes');
+        $this->recalculatePackPrices($cart);
+        $cart->load('items.photo.gallery.galleryProductTypes.packTiers');
 
-        $items = $cart->items->map(function ($item) {
+        // Build pack info: group items by gallery+type to compute savings
+        $groups = $cart->items->groupBy(fn ($item) => $item->photo->gallery_id.'|'.$item->product_type
+        );
+
+        $packInfo = [];
+        $totalSavings = 0;
+        foreach ($groups as $key => $groupItems) {
+            $first = $groupItems->first();
+            $gallery = $first->photo->gallery;
+            $productType = $first->product_type;
+            $quantity = $groupItems->count();
+
+            $gpt = $gallery->galleryProductTypes->firstWhere('product_type', $productType);
+            if (! $gpt || $gpt->packTiers->isEmpty()) {
+                continue;
+            }
+
+            $basePrice = $gpt->effective_price;
+            $currentPrice = (float) $first->price;
+            if ($currentPrice < $basePrice) {
+                $savings = ($basePrice - $currentPrice) * $quantity;
+                $totalSavings += $savings;
+                $packInfo[$key] = [
+                    'gallery_id' => $gallery->id,
+                    'product_type' => $productType,
+                    'quantity' => $quantity,
+                    'base_price' => $basePrice,
+                    'unit_price' => $currentPrice,
+                    'savings' => $savings,
+                ];
+            }
+        }
+
+        $items = $cart->items->map(function ($item) use ($groups) {
             $gallery = $item->photo->gallery;
             $availableTypes = $gallery ? $gallery->getAvailableProductTypes() : CartItem::PRODUCT_TYPES;
+
+            $groupKey = $item->photo->gallery_id.'|'.$item->product_type;
+            $groupItems = $groups[$groupKey] ?? collect();
+            $quantity = $groupItems->count();
+
+            // Determine base price for this product type
+            $gpt = $gallery?->galleryProductTypes->firstWhere('product_type', $item->product_type);
+            $basePrice = $gpt ? $gpt->effective_price : (float) $item->price;
+            $hasPackDiscount = (float) $item->price < $basePrice;
 
             return [
                 'id' => $item->id,
@@ -241,6 +304,7 @@ class CartService
                     'id' => $item->photo->id,
                     'title' => $item->photo->title,
                     'display_url' => $item->photo->display_url,
+                    'thumbnail_url' => $item->photo->thumbnail_url,
                     'gallery_title' => $gallery?->title,
                     'gallery_id' => $gallery?->id,
                 ],
@@ -248,6 +312,9 @@ class CartService
                 'product_type_label' => CartItem::getLabelForType($item->product_type ?? 'digital'),
                 'is_print' => $item->isPrint(),
                 'price' => (float) $item->price,
+                'base_price' => $basePrice,
+                'has_pack_discount' => $hasPackDiscount,
+                'pack_quantity' => $hasPackDiscount ? $quantity : null,
                 'available_product_types' => $availableTypes,
             ];
         });
@@ -258,9 +325,41 @@ class CartService
             'items_count' => $items->count(),
             'total' => $items->sum('price'),
             'has_prints' => $items->contains('is_print', true),
+            'has_pack_pricing' => $totalSavings > 0,
+            'pack_savings' => $totalSavings,
             'currency' => 'EUR',
             'product_types' => CartItem::PRODUCT_TYPES,
         ];
+    }
+
+    /**
+     * Recalculate pack prices for all items in the cart.
+     * Groups items by gallery+product_type and resolves pack tier pricing.
+     */
+    public function recalculatePackPrices(Cart $cart): void
+    {
+        $cart->load('items.photo.gallery.galleryProductTypes.packTiers');
+
+        $groups = $cart->items->groupBy(fn ($item) => $item->photo->gallery_id.'|'.$item->product_type
+        );
+
+        foreach ($groups as $items) {
+            $first = $items->first();
+            $gallery = $first->photo->gallery;
+            $productType = $first->product_type;
+            $quantity = $items->count();
+
+            $unitPrice = $gallery->resolvePackPrice($productType, $quantity);
+            if ($unitPrice === null) {
+                continue;
+            }
+
+            foreach ($items as $item) {
+                if ((float) $item->price !== $unitPrice) {
+                    $item->update(['price' => $unitPrice]);
+                }
+            }
+        }
     }
 
     /**

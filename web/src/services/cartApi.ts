@@ -47,6 +47,9 @@ export interface CartItem {
     product_type_label: string
     is_print: boolean
     price: number
+    base_price?: number
+    has_pack_discount?: boolean
+    pack_quantity?: number | null
     available_product_types?: Record<ProductType, AvailableProductType>
 }
 
@@ -56,6 +59,8 @@ export interface Cart {
     items_count: number
     total: number
     has_prints: boolean
+    has_pack_pricing?: boolean
+    pack_savings?: number
     currency: string
     product_types: Record<ProductType, ProductTypeInfo>
 }
