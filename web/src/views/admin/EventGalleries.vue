@@ -870,7 +870,7 @@
                             <span class="px-3 py-1.5 bg-white/90 text-gray-800 text-xs font-medium rounded-lg">Choisir</span>
                         </div>
                         <button
-                            @click.stop="thumbnailPreviewUrl = photo.preview_url || photo.display_url || photo.file_path"
+                            @click.stop="thumbnailPreviewUrl = photo.preview_url || photo.display_url || photo.file_path || null"
                             class="absolute bottom-1 right-1 p-1 bg-black/60 text-white rounded hover:bg-black/80 transition-colors opacity-0 group-hover:opacity-100"
                             title="Voir en grand"
                         >
