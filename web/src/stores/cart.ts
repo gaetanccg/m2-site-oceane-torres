@@ -22,6 +22,8 @@ export const useCartStore = defineStore('cart', () => {
     const currency = computed(() => cart.value?.currency ?? 'EUR')
     const isEmpty = computed(() => itemsCount.value === 0)
     const hasPrints = computed(() => cart.value?.has_prints ?? false)
+    const hasPackPricing = computed(() => cart.value?.has_pack_pricing ?? false)
+    const packSavings = computed(() => cart.value?.pack_savings ?? 0)
     const productTypes = computed(() => cart.value?.product_types ?? {
         digital: { label: 'Fichier numérique', price: 13, is_print: false },
         print_10x15: { label: 'Tirage 10x15 cm', price: 10, is_print: true },
@@ -237,6 +239,8 @@ export const useCartStore = defineStore('cart', () => {
         currency,
         isEmpty,
         hasPrints,
+        hasPackPricing,
+        packSavings,
         productTypes,
         isPhotoInCart,
         // Actions
