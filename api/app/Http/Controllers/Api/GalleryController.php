@@ -7,6 +7,7 @@ use App\Mail\GalleryAccessMail;
 use App\Models\Client;
 use App\Models\Gallery;
 use App\Models\GalleryProductType;
+use App\Models\PackTier;
 use App\Models\Photo;
 use App\Services\MinioStorageService;
 use Illuminate\Http\JsonResponse;
@@ -53,10 +54,12 @@ class GalleryController extends Controller
             ], 404);
         }
 
-        $gallery->load('photos');
+        $gallery->load(['photos', 'galleryProductTypes.packTiers']);
 
         return response()->json([
             'gallery' => $gallery,
+            'available_product_types' => $gallery->getAvailableProductTypes(),
+            'pack_pricing' => $gallery->getPackPricing(),
         ]);
     }
 
@@ -86,6 +89,9 @@ class GalleryController extends Controller
             'product_types.*.product_type' => ['required_with:product_types', 'string', 'in:digital,print_10x15,print_15x20'],
             'product_types.*.is_enabled' => ['required_with:product_types', 'boolean'],
             'product_types.*.price' => ['nullable', 'numeric', 'min:0.01'],
+            'product_types.*.tiers' => ['nullable', 'array', 'max:3'],
+            'product_types.*.tiers.*.min_quantity' => ['required', 'integer', 'min:2'],
+            'product_types.*.tiers.*.unit_price' => ['required', 'numeric', 'min:0.01'],
         ]);
 
         $productTypes = $validated['product_types'] ?? null;
@@ -112,7 +118,7 @@ class GalleryController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $gallery->load('galleryProductTypes'),
+            'data' => $gallery->load('galleryProductTypes.packTiers'),
             'message' => 'Galerie créée avec succès.',
         ], 201);
     }
@@ -128,6 +134,9 @@ class GalleryController extends Controller
             'product_types.*.product_type' => ['required_with:product_types', 'string', 'in:digital,print_10x15,print_15x20'],
             'product_types.*.is_enabled' => ['required_with:product_types', 'boolean'],
             'product_types.*.price' => ['nullable', 'numeric', 'min:0.01'],
+            'product_types.*.tiers' => ['nullable', 'array', 'max:3'],
+            'product_types.*.tiers.*.min_quantity' => ['required', 'integer', 'min:2'],
+            'product_types.*.tiers.*.unit_price' => ['required', 'numeric', 'min:0.01'],
         ]);
 
         $productTypes = $validated['product_types'] ?? null;
@@ -159,7 +168,7 @@ class GalleryController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $gallery->fresh()->load('galleryProductTypes'),
+            'data' => $gallery->fresh()->load('galleryProductTypes.packTiers'),
             'message' => 'Galerie mise à jour avec succès.',
         ]);
     }
@@ -264,6 +273,7 @@ class GalleryController extends Controller
             'gallery' => $gallery,
             'mode' => 'protected',
             'available_product_types' => $gallery->getAvailableProductTypes(),
+            'pack_pricing' => $gallery->getPackPricing(),
         ]);
     }
 
@@ -380,7 +390,7 @@ class GalleryController extends Controller
     {
         // Optimized query: use withCount instead of loading all photos
         // Use 'true'/'false' strings for PostgreSQL boolean compatibility with EMULATE_PREPARES
-        $galleries = Gallery::with(['user:id,first_name,last_name,email', 'galleryProductTypes'])
+        $galleries = Gallery::with(['user:id,first_name,last_name,email', 'galleryProductTypes.packTiers'])
             ->where('type', '!=', 'event')
             ->withCount([
                 'photos',
@@ -416,7 +426,7 @@ class GalleryController extends Controller
                 $query->ordered();
             },
             'user',
-            'galleryProductTypes',
+            'galleryProductTypes.packTiers',
         ]);
 
         $gallery->downloadable_count = $gallery->photos->where('is_downloadable', true)->count();
@@ -514,6 +524,7 @@ class GalleryController extends Controller
             'gallery' => $gallery,
             'is_parent' => false,
             'available_product_types' => $gallery->getAvailableProductTypes(),
+            'pack_pricing' => $gallery->getPackPricing(),
         ]);
     }
 
@@ -525,7 +536,7 @@ class GalleryController extends Controller
     {
         $galleries = Gallery::where('type', 'event')
             ->topLevel()
-            ->with(['photos', 'thumbnailPhoto', 'galleryProductTypes', 'eventCategory'])
+            ->with(['photos', 'thumbnailPhoto', 'galleryProductTypes.packTiers', 'eventCategory'])
             ->withCount(['photos', 'children'])
             ->orderBy('sort_order')
             ->latest()
@@ -558,9 +569,9 @@ class GalleryController extends Controller
                     $query->withCount('photos')
                         ->with(['thumbnailPhoto', 'photos' => function ($q) {
                             $q->ordered()->limit(1);
-                        }, 'galleryProductTypes', 'eventCategory']);
+                        }, 'galleryProductTypes.packTiers', 'eventCategory']);
                 },
-                'galleryProductTypes',
+                'galleryProductTypes.packTiers',
             ]);
 
             // Add cover_photo to each child
@@ -579,7 +590,7 @@ class GalleryController extends Controller
             'photos' => function ($query) {
                 $query->ordered();
             },
-            'galleryProductTypes',
+            'galleryProductTypes.packTiers',
             'parent',
         ]);
 
@@ -604,6 +615,9 @@ class GalleryController extends Controller
             'product_types.*.product_type' => ['required_with:product_types', 'string', 'in:digital,print_10x15,print_15x20'],
             'product_types.*.is_enabled' => ['required_with:product_types', 'boolean'],
             'product_types.*.price' => ['nullable', 'numeric', 'min:0.01'],
+            'product_types.*.tiers' => ['nullable', 'array', 'max:3'],
+            'product_types.*.tiers.*.min_quantity' => ['required', 'integer', 'min:2'],
+            'product_types.*.tiers.*.unit_price' => ['required', 'numeric', 'min:0.01'],
         ]);
 
         // Validate parent gallery constraints
@@ -652,7 +666,7 @@ class GalleryController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $gallery->load('galleryProductTypes'),
+            'data' => $gallery->load('galleryProductTypes.packTiers'),
             'message' => 'Galerie événement créée avec succès.',
         ], 201);
     }
@@ -676,6 +690,9 @@ class GalleryController extends Controller
             'product_types.*.product_type' => ['required_with:product_types', 'string', 'in:digital,print_10x15,print_15x20'],
             'product_types.*.is_enabled' => ['required_with:product_types', 'boolean'],
             'product_types.*.price' => ['nullable', 'numeric', 'min:0.01'],
+            'product_types.*.tiers' => ['nullable', 'array', 'max:3'],
+            'product_types.*.tiers.*.min_quantity' => ['required', 'integer', 'min:2'],
+            'product_types.*.tiers.*.unit_price' => ['required', 'numeric', 'min:0.01'],
         ]);
 
         $productTypes = $validated['product_types'] ?? null;
@@ -691,7 +708,7 @@ class GalleryController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $gallery->fresh()->load(['galleryProductTypes', 'eventCategory']),
+            'data' => $gallery->fresh()->load(['galleryProductTypes.packTiers', 'eventCategory']),
             'message' => 'Galerie événement mise à jour avec succès.',
         ]);
     }
@@ -805,7 +822,7 @@ class GalleryController extends Controller
         }
 
         $children = $gallery->children()
-            ->with(['photos', 'thumbnailPhoto', 'galleryProductTypes', 'eventCategory'])
+            ->with(['photos', 'thumbnailPhoto', 'galleryProductTypes.packTiers', 'eventCategory'])
             ->withCount('photos')
             ->get();
 
@@ -824,16 +841,26 @@ class GalleryController extends Controller
      */
     private function syncProductTypes(Gallery $gallery, array $productTypes): void
     {
-        // Delete existing config and replace
+        // Delete existing config and replace (cascade deletes pack_tiers)
         $gallery->galleryProductTypes()->delete();
 
         foreach ($productTypes as $config) {
-            GalleryProductType::create([
+            $gpt = GalleryProductType::create([
                 'gallery_id' => $gallery->id,
                 'product_type' => $config['product_type'],
                 'is_enabled' => $config['is_enabled'],
                 'price' => $config['price'] ?? null,
             ]);
+
+            if (! empty($config['tiers'])) {
+                foreach ($config['tiers'] as $tier) {
+                    PackTier::create([
+                        'gallery_product_type_id' => $gpt->id,
+                        'min_quantity' => $tier['min_quantity'],
+                        'unit_price' => $tier['unit_price'],
+                    ]);
+                }
+            }
         }
     }
 

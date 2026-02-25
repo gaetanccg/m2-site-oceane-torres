@@ -85,9 +85,17 @@
                                             </select>
                                         </div>
 
-                                        <p class="text-gold font-semibold mt-2">
-                                            {{ formatPrice(item.price) }}
-                                        </p>
+                                        <div class="flex items-center gap-2 mt-2">
+                                            <p class="text-gold font-semibold">
+                                                {{ formatPrice(item.price) }}
+                                            </p>
+                                            <template v-if="item.has_pack_discount && item.base_price">
+                                                <span class="text-gray-400 line-through text-sm">{{ formatPrice(item.base_price) }}</span>
+                                                <span class="text-xs bg-gold/10 text-gold font-medium px-1.5 py-0.5 rounded">
+                                                    Pack {{ item.pack_quantity }} photos
+                                                </span>
+                                            </template>
+                                        </div>
                                     </div>
 
                                     <!-- Remove -->
@@ -121,6 +129,14 @@
                                 <div class="flex justify-between">
                                     <span class="text-gray-600">{{ cartStore.itemsCount }} article(s)</span>
                                     <span>{{ formatPrice(cartStore.total) }}</span>
+                                </div>
+                            </div>
+
+                            <!-- Pack savings -->
+                            <div v-if="cartStore.hasPackPricing && cartStore.packSavings > 0" class="mt-3 p-2.5 bg-green-50 border border-green-200 rounded-lg">
+                                <div class="flex justify-between text-sm text-green-700 font-medium">
+                                    <span>Economie pack</span>
+                                    <span>-{{ formatPrice(cartStore.packSavings) }}</span>
                                 </div>
                             </div>
 
