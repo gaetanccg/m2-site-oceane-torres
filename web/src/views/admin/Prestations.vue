@@ -214,7 +214,7 @@
             <FormField
               v-model="form.price_unit"
               label="Unite de prix"
-              placeholder="Ex: A partir de"
+              placeholder="Ex: À partir de"
             />
           </div>
           <div class="mt-4">

@@ -236,10 +236,16 @@ export interface EventCategoryFormData {
 
 export type GalleryType = 'public' | 'private' | 'event'
 
+export interface PackTier {
+    min_quantity: number
+    unit_price: number
+}
+
 export interface GalleryProductTypeConfig {
     product_type: ProductType
     is_enabled: boolean
     price: number | null
+    pack_tiers?: PackTier[]
 }
 
 export interface EventGalleryFormData {
