@@ -81,6 +81,27 @@
                 </div>
             </section>
 
+            <!-- Pack Pricing Banner -->
+            <section v-if="packPricing && Object.keys(packPricing).length > 0" class="px-4 sm:px-6 lg:px-12">
+                <div class="max-w-5xl mx-auto">
+                    <div class="bg-gold/10 border border-gold/30 rounded-xl p-4 sm:p-5">
+                        <h3 class="text-sm font-semibold text-gold mb-2 flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                            </svg>
+                            Pack disponibles !
+                        </h3>
+                        <div v-for="(info, typeKey) in packPricing" :key="typeKey" class="text-sm text-gray-700 mt-1">
+                            <span class="font-medium">{{ info.label }}</span> :
+                            <span v-for="(tier, i) in info.tiers" :key="i">
+                                {{ i > 0 ? ' · ' : '' }}
+                                À partir de {{ tier.min_quantity }} photos &rarr; {{ tier.unit_price.toFixed(2) }}&euro;/photo
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <!-- Photos Gallery -->
             <section class="py-8 sm:py-12 px-4 sm:px-6 lg:px-12">
                 <div class="max-w-7xl mx-auto">
@@ -157,6 +178,17 @@ interface AvailableProductType {
 
 type ProductTypeKey = 'digital' | 'print_10x15' | 'print_15x20'
 
+interface PackTierInfo {
+    min_quantity: number
+    unit_price: number
+}
+
+interface PackPricingEntry {
+    label: string
+    base_price: number
+    tiers: PackTierInfo[]
+}
+
 interface Gallery {
     id: string
     title: string
@@ -168,6 +200,7 @@ const route = useRoute()
 
 const gallery = ref<Gallery | null>(null)
 const availableProductTypes = ref<Record<ProductTypeKey, AvailableProductType> | null>(null)
+const packPricing = ref<Record<ProductTypeKey, PackPricingEntry> | null>(null)
 const isLoading = ref(true)
 const error = ref('')
 const lightboxOpen = ref(false)
@@ -226,6 +259,9 @@ const fetchGallery = async () => {
             gallery.value = data.gallery
             if (data.available_product_types) {
                 availableProductTypes.value = data.available_product_types
+            }
+            if (data.pack_pricing && Object.keys(data.pack_pricing).length > 0) {
+                packPricing.value = data.pack_pricing
             }
         } else {
             const data = await response.json()

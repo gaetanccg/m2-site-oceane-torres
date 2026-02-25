@@ -51,10 +51,15 @@ class OrderService
         }
 
         return DB::transaction(function () use ($cart, $user, $guestEmail, $guestName, $consentIp) {
-            $cart->load('items.photo.gallery');
+            $cart->load('items.photo.gallery.galleryProductTypes.packTiers');
 
             // Re-validate cart items before creating order
             $validItems = [];
+
+            // Count items per gallery+type for pack pricing
+            $groupCounts = $cart->items->groupBy(fn ($item) => ($item->photo->gallery_id ?? '').'|'.($item->product_type ?? 'digital')
+            )->map->count();
+
             foreach ($cart->items as $item) {
                 // Photo must still exist
                 if (! $item->photo) {
@@ -79,8 +84,14 @@ class OrderService
                     $productType = 'digital';
                 }
 
-                // Update price if it has changed
-                $currentPrice = CartItem::getPriceForType($productType);
+                // Resolve price using pack pricing
+                $gallery = $item->photo->gallery;
+                $groupKey = ($gallery?->id ?? '').'|'.$productType;
+                $quantity = $groupCounts[$groupKey] ?? 1;
+                $currentPrice = $gallery?->resolvePackPrice($productType, $quantity)
+                    ?? $gallery?->getPriceForProductType($productType)
+                    ?? CartItem::getPriceForType($productType);
+
                 if ((float) $item->price !== $currentPrice) {
                     $item->update(['price' => $currentPrice]);
                     $item->price = $currentPrice;

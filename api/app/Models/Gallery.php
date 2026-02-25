@@ -237,6 +237,54 @@ class Gallery extends Model
     }
 
     /**
+     * Get pack pricing info for all product types on this gallery.
+     * Returns array keyed by product_type with tiers.
+     */
+    public function getPackPricing(): array
+    {
+        $this->loadMissing('galleryProductTypes.packTiers');
+        $result = [];
+
+        foreach ($this->galleryProductTypes as $gpt) {
+            if (! $gpt->is_enabled || $gpt->packTiers->isEmpty()) {
+                continue;
+            }
+
+            $result[$gpt->product_type] = [
+                'label' => CartItem::PRODUCT_TYPES[$gpt->product_type]['label'] ?? $gpt->product_type,
+                'base_price' => $gpt->effective_price,
+                'tiers' => $gpt->packTiers->map(fn ($t) => [
+                    'min_quantity' => $t->min_quantity,
+                    'unit_price' => (float) $t->unit_price,
+                ])->values()->toArray(),
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * Resolve the unit price for a product type given a quantity.
+     * Falls back to normal price if no pack tiers match.
+     */
+    public function resolvePackPrice(string $productType, int $quantity): ?float
+    {
+        $this->loadMissing('galleryProductTypes.packTiers');
+        $gpt = $this->galleryProductTypes->firstWhere('product_type', $productType);
+
+        if (! $gpt || ! $gpt->is_enabled) {
+            return null;
+        }
+
+        $matchingTier = $gpt->packTiers
+            ->where('min_quantity', '<=', $quantity)
+            ->sortByDesc('min_quantity')
+            ->first();
+
+        return $matchingTier ? (float) $matchingTier->unit_price : $gpt->effective_price;
+    }
+
+    /**
      * Get the price for a specific product type on this gallery.
      * Returns null if the product type is disabled.
      */
