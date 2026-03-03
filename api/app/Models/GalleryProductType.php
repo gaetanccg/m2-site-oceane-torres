@@ -46,4 +46,25 @@ class GalleryProductType extends Model
             ? (float) $this->price
             : CartItem::getPriceForType($this->product_type);
     }
+
+    /**
+     * Deterministic signature for cross-gallery pack grouping.
+     * Two GPTs with the same signature represent the same offer and can cumulate quantities.
+     * Returns null if disabled or has no pack tiers (no cumulation possible).
+     */
+    public function offerSignature(): ?string
+    {
+        $this->loadMissing('packTiers');
+
+        if (! $this->is_enabled || $this->packTiers->isEmpty()) {
+            return null;
+        }
+
+        $tiers = $this->packTiers
+            ->sortBy('min_quantity')
+            ->map(fn ($t) => $t->min_quantity.':'.$t->unit_price)
+            ->implode('|');
+
+        return md5($this->product_type.'/'.$this->effective_price.'/'.$tiers);
+    }
 }

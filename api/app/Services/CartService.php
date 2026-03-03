@@ -6,6 +6,7 @@ use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Photo;
 use App\Models\User;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 class CartService
@@ -251,17 +252,23 @@ class CartService
         $this->recalculatePackPrices($cart);
         $cart->load('items.photo.gallery.galleryProductTypes.packTiers');
 
-        // Build pack info: group items by gallery+type to compute savings
-        $groups = $cart->items->groupBy(fn ($item) => $item->photo->gallery_id.'|'.$item->product_type
-        );
+        $groups = $this->buildPackGroups($cart);
 
-        $packInfo = [];
+        // Build a map: item_id → group count (cumulative quantity)
+        $itemGroupCount = [];
+        foreach ($groups as $group) {
+            foreach ($group['items'] as $item) {
+                $itemGroupCount[$item->id] = $group['count'];
+            }
+        }
+
+        // Compute total savings across cumulative groups
         $totalSavings = 0;
-        foreach ($groups as $key => $groupItems) {
-            $first = $groupItems->first();
+        foreach ($groups as $group) {
+            $first = $group['items']->first();
             $gallery = $first->photo->gallery;
             $productType = $first->product_type;
-            $quantity = $groupItems->count();
+            $quantity = $group['count'];
 
             $gpt = $gallery->galleryProductTypes->firstWhere('product_type', $productType);
             if (! $gpt || $gpt->packTiers->isEmpty()) {
@@ -271,26 +278,15 @@ class CartService
             $basePrice = $gpt->effective_price;
             $currentPrice = (float) $first->price;
             if ($currentPrice < $basePrice) {
-                $savings = ($basePrice - $currentPrice) * $quantity;
-                $totalSavings += $savings;
-                $packInfo[$key] = [
-                    'gallery_id' => $gallery->id,
-                    'product_type' => $productType,
-                    'quantity' => $quantity,
-                    'base_price' => $basePrice,
-                    'unit_price' => $currentPrice,
-                    'savings' => $savings,
-                ];
+                $totalSavings += ($basePrice - $currentPrice) * $quantity;
             }
         }
 
-        $items = $cart->items->map(function ($item) use ($groups) {
+        $items = $cart->items->map(function ($item) use ($itemGroupCount) {
             $gallery = $item->photo->gallery;
             $availableTypes = $gallery ? $gallery->getAvailableProductTypes() : CartItem::PRODUCT_TYPES;
 
-            $groupKey = $item->photo->gallery_id.'|'.$item->product_type;
-            $groupItems = $groups[$groupKey] ?? collect();
-            $quantity = $groupItems->count();
+            $quantity = $itemGroupCount[$item->id] ?? 1;
 
             // Determine base price for this product type
             $gpt = $gallery?->galleryProductTypes->firstWhere('product_type', $item->product_type);
@@ -333,28 +329,66 @@ class CartService
     }
 
     /**
-     * Recalculate pack prices for all items in the cart.
-     * Groups items by gallery+product_type and resolves pack tier pricing.
+     * Build pack groups for cumulative cross-gallery pricing.
+     *
+     * Items with the same offer signature (same product_type, base price, and pack tiers)
+     * are grouped together even if they belong to different galleries.
+     * Items without a signature fall back to per-gallery grouping.
+     *
+     * @return Collection<string, array{items: Collection, count: int, gpt: \App\Models\GalleryProductType|null}>
      */
-    public function recalculatePackPrices(Cart $cart): void
+    public function buildPackGroups(Cart $cart): Collection
     {
         $cart->load('items.photo.gallery.galleryProductTypes.packTiers');
 
-        $groups = $cart->items->groupBy(fn ($item) => $item->photo->gallery_id.'|'.$item->product_type
-        );
+        $groups = [];
 
-        foreach ($groups as $items) {
-            $first = $items->first();
+        foreach ($cart->items as $item) {
+            $gallery = $item->photo->gallery;
+            $productType = $item->product_type;
+
+            $gpt = $gallery?->galleryProductTypes->firstWhere('product_type', $productType);
+            $signature = $gpt?->offerSignature();
+
+            $key = $signature !== null
+                ? 'sig:'.$signature
+                : 'gal:'.($gallery?->id ?? '').'|'.$productType;
+
+            if (! isset($groups[$key])) {
+                $groups[$key] = [
+                    'items' => collect(),
+                    'count' => 0,
+                    'gpt' => $gpt,
+                ];
+            }
+
+            $groups[$key]['items']->push($item);
+            $groups[$key]['count']++;
+        }
+
+        return collect($groups);
+    }
+
+    /**
+     * Recalculate pack prices for all items in the cart.
+     * Uses cumulative cross-gallery grouping when offers are identical.
+     */
+    public function recalculatePackPrices(Cart $cart): void
+    {
+        $groups = $this->buildPackGroups($cart);
+
+        foreach ($groups as $group) {
+            $first = $group['items']->first();
             $gallery = $first->photo->gallery;
             $productType = $first->product_type;
-            $quantity = $items->count();
+            $quantity = $group['count'];
 
             $unitPrice = $gallery->resolvePackPrice($productType, $quantity);
             if ($unitPrice === null) {
                 continue;
             }
 
-            foreach ($items as $item) {
+            foreach ($group['items'] as $item) {
                 if ((float) $item->price !== $unitPrice) {
                     $item->update(['price' => $unitPrice]);
                 }
