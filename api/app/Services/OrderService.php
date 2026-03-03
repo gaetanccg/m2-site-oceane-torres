@@ -53,12 +53,29 @@ class OrderService
         return DB::transaction(function () use ($cart, $user, $guestEmail, $guestName, $consentIp) {
             $cart->load('items.photo.gallery.galleryProductTypes.packTiers');
 
+            // Build cumulative pack groups for cross-gallery pricing
+            $cartService = app(CartService::class);
+            $packGroups = $cartService->buildPackGroups($cart);
+
+            // Build a map: item_id → resolved price using cumulative quantities
+            $resolvedPrices = [];
+            foreach ($packGroups as $group) {
+                $first = $group['items']->first();
+                $gallery = $first->photo->gallery;
+                $productType = $first->product_type;
+                $quantity = $group['count'];
+
+                $unitPrice = $gallery?->resolvePackPrice($productType, $quantity)
+                    ?? $gallery?->getPriceForProductType($productType)
+                    ?? CartItem::getPriceForType($productType);
+
+                foreach ($group['items'] as $item) {
+                    $resolvedPrices[$item->id] = $unitPrice;
+                }
+            }
+
             // Re-validate cart items before creating order
             $validItems = [];
-
-            // Count items per gallery+type for pack pricing
-            $groupCounts = $cart->items->groupBy(fn ($item) => ($item->photo->gallery_id ?? '').'|'.($item->product_type ?? 'digital')
-            )->map->count();
 
             foreach ($cart->items as $item) {
                 // Photo must still exist
@@ -84,12 +101,9 @@ class OrderService
                     $productType = 'digital';
                 }
 
-                // Resolve price using pack pricing
-                $gallery = $item->photo->gallery;
-                $groupKey = ($gallery?->id ?? '').'|'.$productType;
-                $quantity = $groupCounts[$groupKey] ?? 1;
-                $currentPrice = $gallery?->resolvePackPrice($productType, $quantity)
-                    ?? $gallery?->getPriceForProductType($productType)
+                // Resolve price using cumulative pack groups
+                $currentPrice = $resolvedPrices[$item->id]
+                    ?? $item->photo->gallery?->getPriceForProductType($productType)
                     ?? CartItem::getPriceForType($productType);
 
                 if ((float) $item->price !== $currentPrice) {
