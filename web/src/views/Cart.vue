@@ -173,13 +173,15 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, watch } from 'vue'
+import { watch } from 'vue'
 import { useCartStore } from '@/stores/cart'
 import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
 import type { ProductType, CartItem, AvailableProductType } from '@/services/cartApi'
 
 const cartStore = useCartStore()
 const toast = useToast()
+const { confirm } = useConfirm()
 
 // Watch for cart errors and show as toast
 watch(() => cartStore.error, (newError) => {
@@ -198,11 +200,7 @@ function getAvailableTypes(item: CartItem): Record<ProductType, AvailableProduct
     return item.available_product_types ?? DEFAULT_TYPES
 }
 
-onMounted(() => {
-    if (!cartStore.isInitialized) {
-        cartStore.initialize()
-    }
-})
+// Cart init is handled by App.vue + waitForInit() in store actions
 
 function formatPrice(price: number): string {
     return new Intl.NumberFormat('fr-FR', {
@@ -220,7 +218,7 @@ async function removeItem(itemId: string) {
 }
 
 async function handleClear() {
-    if (confirm('Voulez-vous vraiment vider votre panier ?')) {
+    if (await confirm('Voulez-vous vraiment vider votre panier ?')) {
         await cartStore.clearCart()
     }
 }
