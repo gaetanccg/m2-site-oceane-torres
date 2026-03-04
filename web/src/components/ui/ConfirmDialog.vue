@@ -87,7 +87,7 @@ import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useConfirm } from '@/composables/useConfirm'
 
 const { state, resolve } = useConfirm()
-const confirmBtnRef = ref<HTMLButtonElement | null>(null)
+const confirmBtnRef = ref<HTMLElement | null>(null)
 
 function cancel() {
     resolve(false)
