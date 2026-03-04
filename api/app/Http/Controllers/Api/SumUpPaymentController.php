@@ -230,8 +230,8 @@ class SumUpPaymentController extends Controller
                 return response()->json(['received' => true]);
             }
 
-            // Already processed — idempotent
-            if ($order->isPaid() || $order->isFailed()) {
+            // Already paid — idempotent
+            if ($order->isPaid()) {
                 return response()->json(['received' => true]);
             }
 

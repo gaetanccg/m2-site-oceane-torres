@@ -336,12 +336,9 @@ async function pollPaymentStatus(attempts = 0) {
         if (result.status === 'paid' || result.status === 'PAID') {
             await cartStore.clearCart()
             router.push(`/commande/${currentOrder.value!.id}`)
-        } else if (result.status === 'failed' || result.status === 'FAILED') {
-            paymentError.value = 'Le paiement a echoue. Veuillez reessayer.'
-            toast.error('Paiement echoue', 'Veuillez reessayer.')
-            isPaymentProcessing.value = false
         } else {
-            // Continue polling
+            // Continue polling — status may be 'failed' temporarily
+            // if a previous attempt failed but a retry is in progress
             setTimeout(() => pollPaymentStatus(attempts + 1), 2000)
         }
     } catch {
