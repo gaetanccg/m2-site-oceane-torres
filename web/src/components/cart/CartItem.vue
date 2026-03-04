@@ -31,9 +31,17 @@
             <p v-if="item.photo.gallery_title" class="text-xs text-gray-500 mt-0.5 truncate">
                 {{ item.photo.gallery_title }}
             </p>
-            <p class="text-sm font-semibold text-gold mt-2">
-                {{ formatPrice(item.price) }}
-            </p>
+            <div class="flex items-center gap-2 mt-2">
+                <p class="text-sm font-semibold text-gold">
+                    {{ formatPrice(item.price) }}
+                </p>
+                <template v-if="item.has_pack_discount && item.base_price">
+                    <span class="text-gray-400 line-through text-xs">{{ formatPrice(item.base_price) }}</span>
+                    <span class="text-[10px] bg-gold/10 text-gold font-medium px-1.5 py-0.5 rounded">
+                        Pack {{ item.pack_quantity }} photos
+                    </span>
+                </template>
+            </div>
         </div>
 
         <!-- Remove button -->

@@ -15,6 +15,9 @@ export const useCartStore = defineStore('cart', () => {
     const error = ref<string | null>(null)
     const isDrawerOpen = ref(false)
 
+    // Shared promise so concurrent callers and actions wait for init to finish
+    let initPromise: Promise<void> | null = null
+
     // Getters
     const items = computed(() => cart.value?.items ?? [])
     const itemsCount = computed(() => cart.value?.items_count ?? 0)
@@ -39,31 +42,46 @@ export const useCartStore = defineStore('cart', () => {
     // Actions
 
     /**
-     * Initialize cart from server
+     * Initialize cart from server.
+     * Returns a shared promise so concurrent calls and dependent actions
+     * all wait for the same in-flight request.
      */
-    async function initialize(): Promise<void> {
-        if (isInitialized.value) return
+    function initialize(): Promise<void> {
+        if (isInitialized.value) return Promise.resolve()
+        if (initPromise) return initPromise
 
         isLoading.value = true
         error.value = null
 
-        try {
-            const response = await cartApi.getCart()
-            if (response.success) {
-                cart.value = response.cart
-            }
-        } catch (e) {
-            error.value = e instanceof CartApiError ? e.apiError.message : 'Erreur lors du chargement du panier'
-        } finally {
-            isLoading.value = false
-            isInitialized.value = true
-        }
+        initPromise = cartApi.getCart()
+            .then(response => {
+                if (response.success) {
+                    cart.value = response.cart
+                }
+            })
+            .catch(e => {
+                error.value = e instanceof CartApiError ? e.apiError.message : 'Erreur lors du chargement du panier'
+            })
+            .finally(() => {
+                isLoading.value = false
+                isInitialized.value = true
+            })
+
+        return initPromise
+    }
+
+    /**
+     * Wait for initialize() to complete (no-op if already done).
+     */
+    function waitForInit(): Promise<void> {
+        return initPromise ?? Promise.resolve()
     }
 
     /**
      * Add a photo to cart
      */
     async function addItem(photoId: string, productType: ProductType = 'digital'): Promise<boolean> {
+        await waitForInit()
         isLoading.value = true
         error.value = null
 
@@ -87,6 +105,7 @@ export const useCartStore = defineStore('cart', () => {
      * Update item product type
      */
     async function updateItemType(itemId: string, productType: ProductType): Promise<boolean> {
+        await waitForInit()
         isLoading.value = true
         error.value = null
 
@@ -110,6 +129,7 @@ export const useCartStore = defineStore('cart', () => {
      * Remove an item from cart
      */
     async function removeItem(itemId: string): Promise<boolean> {
+        await waitForInit()
         isLoading.value = true
         error.value = null
 
@@ -133,6 +153,7 @@ export const useCartStore = defineStore('cart', () => {
      * Clear entire cart
      */
     async function clearCart(): Promise<boolean> {
+        await waitForInit()
         isLoading.value = true
         error.value = null
 
@@ -221,6 +242,7 @@ export const useCartStore = defineStore('cart', () => {
     function reset(): void {
         cart.value = null
         isInitialized.value = false
+        initPromise = null
         error.value = null
         localStorage.removeItem('cart_session_id')
     }
