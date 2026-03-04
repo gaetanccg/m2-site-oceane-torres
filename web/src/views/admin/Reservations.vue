@@ -328,9 +328,11 @@ import Modal from '@/components/admin/ui/Modal.vue'
 import Button from '@/components/admin/ui/Button.vue'
 import { adminApi } from '@/services/adminApi'
 import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
 import type { Reservation, CalendarEvent, ReservationStatus } from '@/types/admin'
 
 const toast = useToast()
+const { confirm } = useConfirm()
 const viewMode = ref<'list' | 'calendar'>('list')
 const isLoading = ref(true)
 const reservations = ref<Reservation[]>([])
@@ -508,7 +510,12 @@ async function confirmReservation(reservation: Reservation) {
 }
 
 async function cancelReservation(reservation: Reservation) {
-  if (!confirm('Annuler cette reservation ?')) return
+  if (!await confirm({
+    title: 'Annuler la réservation',
+    message: 'Annuler cette reservation ?',
+    confirmLabel: 'Annuler la réservation',
+    variant: 'danger',
+  })) return
 
   try {
     await adminApi.updateReservationStatus(reservation.id, 'cancelled')
@@ -544,7 +551,12 @@ async function confirmReservationFromModal() {
 
 async function cancelReservationFromModal() {
   if (!selectedReservation.value) return
-  if (!confirm('Annuler cette reservation ?')) return
+  if (!await confirm({
+    title: 'Annuler la réservation',
+    message: 'Annuler cette reservation ?',
+    confirmLabel: 'Annuler la réservation',
+    variant: 'danger',
+  })) return
 
   try {
     await adminApi.updateReservationStatus(selectedReservation.value.id, 'cancelled')
@@ -559,7 +571,12 @@ async function cancelReservationFromModal() {
 }
 
 async function deleteReservation(reservation: Reservation) {
-  if (!confirm('Supprimer definitivement cette reservation ? Cette action est irreversible.')) return
+  if (!await confirm({
+    title: 'Supprimer la réservation',
+    message: 'Supprimer definitivement cette reservation ? Cette action est irreversible.',
+    confirmLabel: 'Supprimer',
+    variant: 'danger',
+  })) return
 
   try {
     await adminApi.deleteReservation(reservation.id)
@@ -573,7 +590,12 @@ async function deleteReservation(reservation: Reservation) {
 
 async function deleteReservationFromModal() {
   if (!selectedReservation.value) return
-  if (!confirm('Supprimer definitivement cette reservation ? Cette action est irreversible.')) return
+  if (!await confirm({
+    title: 'Supprimer la réservation',
+    message: 'Supprimer definitivement cette reservation ? Cette action est irreversible.',
+    confirmLabel: 'Supprimer',
+    variant: 'danger',
+  })) return
 
   try {
     await adminApi.deleteReservation(selectedReservation.value.id)
