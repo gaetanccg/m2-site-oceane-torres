@@ -32,15 +32,9 @@
             />
         </div>
 
-        <!-- Actions - show skeleton buttons until image loaded -->
+        <!-- Actions -->
         <div class="photo-actions p-3 flex items-center justify-center gap-3 border-t border-gold">
-            <template v-if="isLoaded && !hasFailed">
-                <slot name="actions" />
-            </template>
-            <template v-else>
-                <div class="skeleton-button" />
-                <div class="skeleton-button" />
-            </template>
+            <slot name="actions" />
         </div>
     </div>
 </template>
@@ -195,17 +189,4 @@ onMounted(() => {
     background: linear-gradient(135deg, #f0f0f0 0%, #e0e0e0 100%);
 }
 
-/* Skeleton buttons */
-.skeleton-button {
-    width: 100px;
-    height: 36px;
-    border-radius: 9999px;
-    background: #e5e5e5;
-    animation: pulse 1.5s ease-in-out infinite;
-}
-
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.6; }
-}
 </style>
