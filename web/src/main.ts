@@ -16,17 +16,19 @@ app.use(router)
 // Mount app immediately for fast public page loading
 app.mount('#app')
 
-// Initialize auth in background (admin pages will show loader until ready)
-const authStore = useAuthStore()
-authStore.initialize()
+// Skip runtime initialization during prerendering (no auth/cart session needed for static HTML)
+const isPrerendering = (window as typeof globalThis & { __PRERENDERING__?: boolean }).__PRERENDERING__ === true
+if (!isPrerendering) {
+    // Initialize auth in background (admin pages will show loader until ready)
+    const authStore = useAuthStore()
+    authStore.initialize()
 
-// Écouter les events de session expirée pour gérer la déconnexion proprement
-onSessionExpired(() => {
-    // Vérifier qu'on n'est pas déjà sur la page d'accueil avec le login ouvert
-    if (router.currentRoute.value.path !== '/' || !router.currentRoute.value.query.login) {
-        // Nettoyer la session et rediriger vers login
-        authStore.logout().then(() => {
-            router.push({ name: 'home', query: { login: 'true' } })
-        })
-    }
-})
+    // Écouter les events de session expirée pour gérer la déconnexion proprement
+    onSessionExpired(() => {
+        if (router.currentRoute.value.path !== '/' || !router.currentRoute.value.query.login) {
+            authStore.logout().then(() => {
+                router.push({ name: 'home', query: { login: 'true' } })
+            })
+        }
+    })
+}

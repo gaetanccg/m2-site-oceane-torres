@@ -21,7 +21,10 @@ const staticRoutes = [
     '/a-propos',
     '/contact',
     '/mentions-legales',
-    '/evenements'
+    '/cgv',
+    '/politique-confidentialite',
+    '/evenements',
+    '/gallery'
 ]
 
 const PORT = 4567
