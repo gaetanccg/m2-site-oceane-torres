@@ -129,9 +129,11 @@
 
 <script setup lang="ts">
 import { useCartStore } from '@/stores/cart'
+import { useConfirm } from '@/composables/useConfirm'
 import CartItem from './CartItem.vue'
 
 const cartStore = useCartStore()
+const { confirm } = useConfirm()
 
 function formatPrice(price: number): string {
     return new Intl.NumberFormat('fr-FR', {
@@ -141,7 +143,7 @@ function formatPrice(price: number): string {
 }
 
 async function handleClear() {
-    if (confirm('Voulez-vous vraiment vider votre panier ?')) {
+    if (await confirm('Voulez-vous vraiment vider votre panier ?')) {
         await cartStore.clearCart()
     }
 }

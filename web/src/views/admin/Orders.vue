@@ -318,9 +318,11 @@ import Modal from '@/components/admin/ui/Modal.vue'
 import Button from '@/components/admin/ui/Button.vue'
 import {adminApi} from '@/services/adminApi'
 import {useToast} from '@/composables/useToast'
+import {useConfirm} from '@/composables/useConfirm'
 import type {AdminOrder, TableColumn} from '@/types/admin'
 
 const toast = useToast()
+const { confirm } = useConfirm()
 const orders = ref<AdminOrder[]>([])
 const isLoading = ref(true)
 const searchQuery = ref('')
@@ -411,19 +413,29 @@ async function deleteFromModal() {
 }
 
 async function confirmDelete(order: AdminOrder) {
-    let message = `Supprimer la commande ${order.order_number} ?`
+    const isPaid = order.status === 'paid'
 
-    if (order.status === 'paid') {
-        message = `ATTENTION : La commande ${order.order_number} est PAYEE (${formatCurrency(order.total)}).\n\nEtes-vous sur de vouloir la supprimer definitivement ?\n\nCette action est irreversible.`
-    }
+    const firstMessage = isPaid
+        ? `ATTENTION : La commande ${order.order_number} est PAYEE (${formatCurrency(order.total)}).\n\nEtes-vous sur de vouloir la supprimer definitivement ?\n\nCette action est irreversible.`
+        : `Supprimer la commande ${order.order_number} ?`
 
-    if (!confirm(message)) {
+    if (!await confirm({
+        title: 'Supprimer la commande',
+        message: firstMessage,
+        confirmLabel: 'Supprimer',
+        variant: 'danger',
+    })) {
         return
     }
 
     // Double confirmation pour les commandes payées
-    if (order.status === 'paid') {
-        if (!confirm(`Confirmation finale : supprimer definitivement la commande payee ${order.order_number} ?`)) {
+    if (isPaid) {
+        if (!await confirm({
+            title: 'Confirmation finale',
+            message: `Supprimer definitivement la commande payee ${order.order_number} ?`,
+            confirmLabel: 'Supprimer definitivement',
+            variant: 'danger',
+        })) {
             return
         }
     }
