@@ -92,7 +92,8 @@
                             Packs disponibles !
                         </h3>
                         <div v-for="(info, typeKey) in packPricing" :key="typeKey" class="text-sm text-gray-700 mt-1">
-                            <span class="font-medium">{{ info.label }}</span> :
+                            <span class="font-medium">{{ info.label }}</span>
+                            <span v-if="info.base_price"> ({{ info.base_price.toFixed(2) }}&euro;/photo)</span> :
                             <span v-for="(tier, i) in info.tiers" :key="i">
                                 {{ i > 0 ? ' · ' : '' }}
                                 À partir de {{ tier.min_quantity }} photos &rarr; {{ tier.unit_price.toFixed(2) }}&euro;/photo
