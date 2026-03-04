@@ -335,11 +335,9 @@ class OrderService
             case 'PAID':
                 return $this->completeOrder($order, $checkout['transaction_id'] ?? $checkoutId);
 
-            case 'FAILED':
-                return $this->handleFailedPayment($order);
-
             default:
-                // Still pending
+                // Don't mark as failed here — the widget may still allow retries.
+                // Only the webhook should mark orders as definitively failed.
                 return $order;
         }
     }
