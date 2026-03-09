@@ -58,7 +58,7 @@ class SumUpPaymentController extends Controller
                 ], 400);
             }
 
-            // If checkout already exists, return it
+            // If checkout already exists, try to reuse it
             if ($order->sumup_checkout_id) {
                 try {
                     $checkout = $this->sumUpService->getCheckout($order->sumup_checkout_id);
@@ -69,11 +69,22 @@ class SumUpPaymentController extends Controller
                             'order_id' => $order->id,
                         ]);
                     }
+                    // PAID checkout found — complete the order
+                    if ($checkout['status'] === 'PAID') {
+                        $this->orderService->completeOrder($order, $checkout['transaction_id'] ?? $order->sumup_checkout_id);
+
+                        return response()->json([
+                            'success' => true,
+                            'already_paid' => true,
+                            'order_id' => $order->id,
+                        ]);
+                    }
                 } catch (\Exception $e) {
                     // Checkout expired or invalid, create new one
                 }
             }
 
+            // Previous checkout failed/expired — create new one with unique reference
             $checkout = $this->sumUpService->createCheckout($order);
 
             return response()->json([

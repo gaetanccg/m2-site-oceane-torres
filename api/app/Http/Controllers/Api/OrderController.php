@@ -11,6 +11,7 @@ use App\Services\OrderService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Response;
 
 class OrderController extends Controller
@@ -90,9 +91,13 @@ class OrderController extends Controller
                 'payment' => $paymentData,
             ]);
         } catch (\Exception $e) {
+            Log::error('Checkout creation failed', [
+                'error' => $e->getMessage(),
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => 'Une erreur est survenue lors de la creation de votre commande. Veuillez reessayer.',
             ], 400);
         }
     }
