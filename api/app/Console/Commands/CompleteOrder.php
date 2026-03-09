@@ -3,7 +3,6 @@
 namespace App\Console\Commands;
 
 use App\Models\Order;
-use App\Models\Payment;
 use App\Services\OrderService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;

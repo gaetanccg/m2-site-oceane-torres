@@ -38,12 +38,27 @@ class OrderService
             ->first();
 
         if ($existingOrder) {
-            Log::info('Returning existing pending order', [
-                'order_id' => $existingOrder->id,
-                'cart_id' => $cart->id,
-            ]);
+            // Verify order still matches current cart (items count and total)
+            $cart->load('items');
+            $cartItemCount = $cart->items->count();
+            $orderItemCount = $existingOrder->items->count();
 
-            return $existingOrder;
+            if ($cartItemCount !== $orderItemCount) {
+                // Cart changed — cancel old order and create new one
+                Log::info('Cart changed since order creation, cancelling stale order', [
+                    'order_id' => $existingOrder->id,
+                    'cart_items' => $cartItemCount,
+                    'order_items' => $orderItemCount,
+                ]);
+                $existingOrder->update(['status' => 'cancelled']);
+            } else {
+                Log::info('Returning existing pending order', [
+                    'order_id' => $existingOrder->id,
+                    'cart_id' => $cart->id,
+                ]);
+
+                return $existingOrder;
+            }
         }
 
         if ($cart->items->isEmpty()) {
@@ -169,6 +184,8 @@ class OrderService
         try {
             // If order already has a checkout, verify it's still valid and reuse it
             if ($order->sumup_checkout_id) {
+                $shouldCreateNew = false;
+
                 try {
                     $existingCheckout = $this->sumUpService->getCheckout($order->sumup_checkout_id);
 
@@ -186,23 +203,40 @@ class OrderService
                         ];
                     }
 
-                    // If checkout is paid, complete the order
+                    // If checkout is paid, complete the order and stop
                     if ($existingCheckout['status'] === 'PAID') {
                         $this->completeOrder($order, $existingCheckout['transaction_id'] ?? $order->sumup_checkout_id);
                         throw new \Exception('Cette commande a déjà été payée.');
                     }
 
-                    // If checkout failed or expired, deactivate it and create new one
-                    $this->sumUpService->deactivateCheckout($order->sumup_checkout_id);
+                    // If checkout failed or expired, create new one
+                    $shouldCreateNew = true;
+                    try {
+                        $this->sumUpService->deactivateCheckout($order->sumup_checkout_id);
+                    } catch (\Exception) {
+                        // Deactivation may fail on FAILED checkouts, that's fine
+                    }
                     $order->update(['sumup_checkout_id' => null]);
                 } catch (\Exception $e) {
-                    // If we can't get the checkout, it might be expired - create a new one
+                    // Re-throw "already paid" — don't swallow it
+                    if (str_contains($e->getMessage(), 'déjà été payée')) {
+                        throw $e;
+                    }
+
+                    // For other errors (API timeout, etc.), create a new checkout
                     Log::warning('Could not reuse existing checkout, creating new one', [
                         'order_id' => $order->id,
                         'checkout_id' => $order->sumup_checkout_id,
                         'error' => $e->getMessage(),
                     ]);
+                    $shouldCreateNew = true;
                     $order->update(['sumup_checkout_id' => null]);
+                }
+
+                // Guard: if order was just completed, don't create a new checkout
+                $order->refresh();
+                if ($order->isPaid()) {
+                    throw new \Exception('Cette commande a déjà été payée.');
                 }
             }
 
@@ -248,7 +282,9 @@ class OrderService
     public function completeOrder(Order $order, string $transactionId): Order
     {
         // DB transaction: atomic state changes only
-        $order = DB::transaction(function () use ($order, $transactionId) {
+        $justCompleted = false;
+
+        $order = DB::transaction(function () use ($order, $transactionId, &$justCompleted) {
             // Lock order to prevent concurrent completion (webhook + polling race)
             $order = Order::lockForUpdate()->find($order->id);
 
@@ -256,7 +292,7 @@ class OrderService
                 return $order->load('items.photo'); // Idempotent: already completed
             }
 
-            if (! $order->isPending()) {
+            if (! $order->isPending() && ! $order->isFailed()) {
                 throw new \Exception('Commande dans un état inattendu.');
             }
 
@@ -278,11 +314,14 @@ class OrderService
             // Generate download token
             $order->generateDownloadToken();
 
+            $justCompleted = true;
+
             return $order->fresh(['items.photo']);
         });
 
-        // Side-effects outside transaction: invoice generation + emails
-        if ($order->isPaid()) {
+        // Side-effects outside transaction — only if THIS request completed the order
+        // Prevents duplicate emails when webhook + polling race
+        if ($justCompleted && $order->isPaid()) {
             $order->load('items');
 
             // Generate invoice PDF (idempotent)
@@ -327,6 +366,12 @@ class OrderService
 
         if ($order->isPaid()) {
             return $order;
+        }
+
+        // Sandbox: auto-complete since SumUp sandbox never transitions to PAID
+        // Double-check app environment to prevent accidental free orders in production
+        if (config('sumup.environment') === 'sandbox' && app()->environment('local', 'testing')) {
+            return $this->completeOrder($order, 'sandbox_'.time());
         }
 
         $checkout = $this->sumUpService->getCheckout($checkoutId);
