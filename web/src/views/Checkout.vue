@@ -197,7 +197,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onUnmounted } from 'vue'
+import { ref, reactive, nextTick, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCartStore } from '@/stores/cart'
 import { useAuthStore } from '@/stores/auth'
@@ -236,6 +236,8 @@ const currentOrder = ref<{ id: string; order_number: string; total: number } | n
 const checkoutId = ref('')
 
 let sumupWidget: { unmount: () => void } | null = null
+let pollTimeoutId: ReturnType<typeof setTimeout> | null = null
+let isUnmounted = false
 
 const form = reactive({
     name: '',
@@ -322,27 +324,31 @@ async function initPaymentWidget() {
 
 // Poll payment status for pending payments
 async function pollPaymentStatus(attempts = 0) {
+    if (isUnmounted || !currentOrder.value) return
+
     if (attempts >= 10) {
-        // Redirect to order page instead of blocking here
+        // Redirect to order page — do NOT clear cart (payment may have failed)
         isPaymentProcessing.value = false
         toast.info('Vérification en cours', 'Redirection vers votre commande...')
-        await cartStore.clearCart()
-        router.push(`/commande/${currentOrder.value!.id}`)
+        router.push(`/commande/${currentOrder.value.id}`)
         return
     }
 
     try {
-        const result = await cartApi.verifySumUpPayment(currentOrder.value!.id)
+        const result = await cartApi.verifySumUpPayment(currentOrder.value.id)
+        if (isUnmounted || !currentOrder.value) return
+
         if (result.status === 'paid' || result.status === 'PAID') {
             await cartStore.clearCart()
-            router.push(`/commande/${currentOrder.value!.id}`)
+            router.push(`/commande/${currentOrder.value.id}`)
         } else {
             // Continue polling — status may be 'failed' temporarily
             // if a previous attempt failed but a retry is in progress
-            setTimeout(() => pollPaymentStatus(attempts + 1), 2000)
+            pollTimeoutId = setTimeout(() => pollPaymentStatus(attempts + 1), 2000)
         }
     } catch {
-        setTimeout(() => pollPaymentStatus(attempts + 1), 2000)
+        if (isUnmounted || !currentOrder.value) return
+        pollTimeoutId = setTimeout(() => pollPaymentStatus(attempts + 1), 2000)
     }
 }
 
@@ -379,13 +385,10 @@ async function createOrder() {
         }
         checkoutId.value = orderResponse.payment.checkout_id
 
-        // Show payment widget
+        // Show payment widget and wait for DOM update
         showPaymentWidget.value = true
-
-        // Wait for DOM update then init widget
-        setTimeout(() => {
-            initPaymentWidget()
-        }, 100)
+        await nextTick()
+        initPaymentWidget()
 
     } catch (e) {
         const msg = e instanceof Error ? e.message : 'Une erreur est survenue'
@@ -419,8 +422,14 @@ async function resetPayment() {
 }
 
 onUnmounted(() => {
+    isUnmounted = true
+    if (pollTimeoutId) {
+        clearTimeout(pollTimeoutId)
+        pollTimeoutId = null
+    }
     if (sumupWidget) {
         sumupWidget.unmount()
+        sumupWidget = null
     }
 })
 </script>
