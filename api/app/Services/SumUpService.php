@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Order;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class SumUpService
 {
@@ -29,11 +30,11 @@ class SumUpService
      */
     public function createCheckout(Order $order): array
     {
-        // Use order ID + timestamp to ensure unique reference per attempt
+        // Use order ID + random suffix to ensure unique reference per attempt
         // (SumUp rejects duplicate references even for FAILED checkouts)
-        $reference = $order->id.'_'.time();
+        $reference = $order->id.'_'.Str::random(8);
 
-        $response = Http::withHeaders([
+        $response = Http::timeout(15)->withHeaders([
             'Authorization' => 'Bearer '.$this->apiKey,
             'Content-Type' => 'application/json',
         ])->post($this->apiUrl.'/v0.1/checkouts', [
@@ -70,7 +71,7 @@ class SumUpService
      */
     public function getCheckout(string $checkoutId): array
     {
-        $response = Http::withHeaders([
+        $response = Http::timeout(10)->withHeaders([
             'Authorization' => 'Bearer '.$this->apiKey,
         ])->get($this->apiUrl.'/v0.1/checkouts/'.$checkoutId);
 
