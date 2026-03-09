@@ -23,7 +23,7 @@ return [
     |
     */
 
-    'environment' => env('SUMUP_ENV', 'sandbox'),
+    'environment' => env('SUMUP_ENV', 'production'),
 
     /*
     |--------------------------------------------------------------------------
