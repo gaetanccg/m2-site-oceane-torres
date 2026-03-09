@@ -29,13 +29,15 @@ class SumUpService
      */
     public function createCheckout(Order $order): array
     {
-        // Use order ID (UUID) as checkout_reference to ensure uniqueness
-        // even if order_number gets reused after deletion
+        // Use order ID + timestamp to ensure unique reference per attempt
+        // (SumUp rejects duplicate references even for FAILED checkouts)
+        $reference = $order->id.'_'.time();
+
         $response = Http::withHeaders([
             'Authorization' => 'Bearer '.$this->apiKey,
             'Content-Type' => 'application/json',
         ])->post($this->apiUrl.'/v0.1/checkouts', [
-            'checkout_reference' => $order->id,
+            'checkout_reference' => $reference,
             'amount' => (float) $order->total,
             'currency' => $order->currency,
             'merchant_code' => $this->merchantCode,

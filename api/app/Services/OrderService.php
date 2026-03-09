@@ -329,6 +329,11 @@ class OrderService
             return $order;
         }
 
+        // Sandbox: auto-complete since SumUp sandbox never transitions to PAID
+        if (config('sumup.environment') === 'sandbox') {
+            return $this->completeOrder($order, 'sandbox_'.time());
+        }
+
         $checkout = $this->sumUpService->getCheckout($checkoutId);
 
         switch ($checkout['status']) {
