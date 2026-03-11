@@ -60,7 +60,7 @@ class CleanOrphanFiles extends Command
             $files = $disk->allFiles();
         }
 
-        $this->info('Found ' . count($files) . ' files on MinIO.');
+        $this->info('Found '.count($files).' files on MinIO.');
         $this->newLine();
 
         // 4. Categorize orphans: deleted galleries vs orphan files in existing galleries
@@ -119,7 +119,7 @@ class CleanOrphanFiles extends Command
                 $rows[] = [$id, $count];
             }
             $this->table(['Gallery ID', 'Files'], $rows);
-            $this->info('Subtotal: ' . count($orphanGalleryFiles) . ' files in ' . count($orphanGalleries) . ' deleted galleries');
+            $this->info('Subtotal: '.count($orphanGalleryFiles).' files in '.count($orphanGalleries).' deleted galleries');
             $this->newLine();
         }
 
@@ -131,9 +131,9 @@ class CleanOrphanFiles extends Command
                 $this->line("  - {$path}");
             }
             if (count($orphanFiles) > 20) {
-                $this->line('  ... and ' . (count($orphanFiles) - 20) . ' more');
+                $this->line('  ... and '.(count($orphanFiles) - 20).' more');
             }
-            $this->info('Subtotal: ' . count($orphanFiles) . ' orphan files');
+            $this->info('Subtotal: '.count($orphanFiles).' orphan files');
             $this->newLine();
         }
 
@@ -176,7 +176,7 @@ class CleanOrphanFiles extends Command
                         //
                     }
                 }
-                $this->info('Cleaned up ' . count($orphanGalleries) . ' empty gallery directories.');
+                $this->info('Cleaned up '.count($orphanGalleries).' empty gallery directories.');
             }
         }
 

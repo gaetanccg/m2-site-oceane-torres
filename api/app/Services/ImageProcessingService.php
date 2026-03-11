@@ -57,7 +57,7 @@ class ImageProcessingService
     public function processUploadedPhoto(UploadedFile $file, string $galleryId): ?array
     {
         $extension = strtolower($file->getClientOriginalExtension());
-        $uuid = (string)Str::uuid();
+        $uuid = (string) Str::uuid();
         $filename = "{$uuid}.{$extension}";
 
         try {
@@ -114,15 +114,15 @@ class ImageProcessingService
         try {
             // Get the original file content
             $content = $this->storageService->getFileContent($originalPath);
-            if (!$content) {
+            if (! $content) {
                 Log::error('Could not retrieve original file', ['path' => $originalPath]);
 
                 return null;
             }
 
             // Get extension from path
-            $extension = strtolower(pathinfo($originalPath, PATHINFO_EXTENSION)) ? : 'jpg';
-            $uuid = (string)Str::uuid();
+            $extension = strtolower(pathinfo($originalPath, PATHINFO_EXTENSION)) ?: 'jpg';
+            $uuid = (string) Str::uuid();
             $filename = "{$uuid}.{$extension}";
 
             // Get mime type
@@ -177,11 +177,11 @@ class ImageProcessingService
     {
         try {
             $content = $this->storageService->getFileContent($originalPath);
-            if (!$content) {
+            if (! $content) {
                 return null;
             }
 
-            $extension = strtolower(pathinfo($originalPath, PATHINFO_EXTENSION)) ? : 'jpg';
+            $extension = strtolower(pathinfo($originalPath, PATHINFO_EXTENSION)) ?: 'jpg';
             $image = $this->readScaledOriented($content, self::PREVIEW_MAX_WIDTH);
             $this->applyWatermark($image, self::PREVIEW_CENTRAL_OPACITY, self::PREVIEW_GRID_OPACITY);
 
@@ -203,11 +203,11 @@ class ImageProcessingService
     {
         try {
             $content = $this->storageService->getFileContent($originalPath);
-            if (!$content) {
+            if (! $content) {
                 return null;
             }
 
-            $extension = strtolower(pathinfo($originalPath, PATHINFO_EXTENSION)) ? : 'jpg';
+            $extension = strtolower(pathinfo($originalPath, PATHINFO_EXTENSION)) ?: 'jpg';
             $image = $this->readScaledOriented($content, self::THUMBNAIL_MAX_WIDTH);
             $this->applyWatermark($image, self::THUMBNAIL_CENTRAL_OPACITY, self::THUMBNAIL_GRID_OPACITY);
 
@@ -229,11 +229,11 @@ class ImageProcessingService
     {
         try {
             $content = $this->storageService->getFileContent($originalPath);
-            if (!$content) {
+            if (! $content) {
                 return null;
             }
 
-            $extension = strtolower(pathinfo($originalPath, PATHINFO_EXTENSION)) ? : 'jpg';
+            $extension = strtolower(pathinfo($originalPath, PATHINFO_EXTENSION)) ?: 'jpg';
             $image = $this->readScaledOriented($content, self::PREVIEW_MAX_WIDTH);
 
             return $this->encodeImage($image, $extension, self::PREVIEW_QUALITY);
@@ -274,7 +274,7 @@ class ImageProcessingService
         }
 
         // Now safe to orient — image is already small
-        $image->modify(new AlignRotationModifier());
+        $image->modify(new AlignRotationModifier);
 
         return $image;
     }
@@ -314,7 +314,7 @@ class ImageProcessingService
         $fontPath = $this->getFontPath();
 
         // --- Layer 1: Dense diagonal grid of small texts ---
-        $gridFontSize = (int)($minDim * 0.04);
+        $gridFontSize = (int) ($minDim * 0.04);
         $gridFontSize = max($gridFontSize, 10);
         $gridColor = "rgba(50, 50, 50, $gridOpacity)";
 
@@ -323,10 +323,10 @@ class ImageProcessingService
         $stepX = $width / $cols;
         $stepY = $height / $rows;
 
-        for ($row = 0 ; $row < $rows ; $row++) {
-            for ($col = 0 ; $col < $cols ; $col++) {
-                $posX = (int)($stepX * $col + $stepX / 2);
-                $posY = (int)($stepY * $row + $stepY / 2);
+        for ($row = 0; $row < $rows; $row++) {
+            for ($col = 0; $col < $cols; $col++) {
+                $posX = (int) ($stepX * $col + $stepX / 2);
+                $posY = (int) ($stepY * $row + $stepY / 2);
 
                 $image->text($watermarkText, $posX, $posY, function ($font) use ($gridFontSize, $gridColor, $fontPath) {
                     if ($fontPath) {
@@ -342,15 +342,15 @@ class ImageProcessingService
         }
 
         // --- Layer 2: Large central text ---
-        $centralFontSize = (int)($minDim * 0.15);
+        $centralFontSize = (int) ($minDim * 0.15);
         // Cap font size so text doesn't overflow image width (~0.6 * fontSize * charCount ≈ text width)
-        $maxFontForWidth = (int)($width * 0.80 / (0.6 * mb_strlen($watermarkText)));
+        $maxFontForWidth = (int) ($width * 0.80 / (0.6 * mb_strlen($watermarkText)));
         $centralFontSize = min($centralFontSize, $maxFontForWidth);
         $centralFontSize = max($centralFontSize, 24);
         $centralColor = "rgba(50, 50, 50, $centralOpacity)";
 
-        $centerX = (int)($width / 2);
-        $centerY = (int)($height / 2);
+        $centerX = (int) ($width / 2);
+        $centerY = (int) ($height / 2);
 
         $image->text($watermarkText, $centerX, $centerY, function ($font) use ($centralFontSize, $centralColor, $fontPath) {
             if ($fontPath) {
