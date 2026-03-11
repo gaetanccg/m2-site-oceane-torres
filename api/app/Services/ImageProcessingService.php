@@ -9,10 +9,11 @@ use Illuminate\Support\Str;
 use Intervention\Image\Drivers\Gd\Driver as GdDriver;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Interfaces\ImageInterface;
+use Intervention\Image\Modifiers\AlignRotationModifier;
 
 class ImageProcessingService
 {
-    private ImageManager $manager;
+    private ImageManager $rawManager;
 
     private MinioStorageService $storageService;
 
@@ -29,18 +30,24 @@ class ImageProcessingService
     private const THUMBNAIL_QUALITY = 90;
 
     // Watermark settings
-    private const WATERMARK_TEXT = '© Oceane Torres';
+    private const WATERMARK_TEXT = '©Oceane Torres';
 
-    private const PREVIEW_WATERMARK_OPACITY = 0.4;
+    // Central big text opacities
+    private const PREVIEW_CENTRAL_OPACITY = 0.5;
 
-    private const THUMBNAIL_WATERMARK_OPACITY = 0.6;
+    private const THUMBNAIL_CENTRAL_OPACITY = 0.5;
+
+    // Diagonal grid text opacities
+    private const PREVIEW_GRID_OPACITY = 0.8;
+
+    private const THUMBNAIL_GRID_OPACITY = 0.7;
 
     // Font path for watermark (TTF required for custom sizes)
     private const WATERMARK_FONT = 'fonts/Amsterdam.ttf';
 
     public function __construct()
     {
-        $this->manager = new ImageManager(new GdDriver);
+        $this->rawManager = new ImageManager(new GdDriver, autoOrientation: false);
         $this->storageService = new MinioStorageService;
     }
 
@@ -50,11 +57,10 @@ class ImageProcessingService
     public function processUploadedPhoto(UploadedFile $file, string $galleryId): ?array
     {
         $extension = strtolower($file->getClientOriginalExtension());
-        $uuid = (string) Str::uuid();
+        $uuid = (string)Str::uuid();
         $filename = "{$uuid}.{$extension}";
 
         try {
-            // Define paths
             $originalPath = "{$galleryId}/original/{$filename}";
             $previewPath = "{$galleryId}/preview/{$filename}";
             $thumbnailPath = "{$galleryId}/thumbnail/{$filename}";
@@ -62,26 +68,27 @@ class ImageProcessingService
             // 1. Upload original file as-is (no re-encoding, preserves 100% quality)
             $originalContent = file_get_contents($file->getRealPath());
             $this->uploadContent($originalPath, $originalContent, $file->getMimeType());
+            unset($originalContent);
 
-            // Read image for processing versions
-            $image = $this->manager->read($file->getRealPath());
-
-            // Get original dimensions
-            $originalWidth = $image->width();
-            $originalHeight = $image->height();
+            // Get oriented dimensions without loading full image into GD
+            [$originalWidth, $originalHeight] = $this->getOrientedDimensions($file->getRealPath());
 
             // 2. Create and upload preview (2560px + watermark)
-            $previewImage = $this->createPreviewVersion($image, $extension);
-            $previewContent = $this->encodeImage($previewImage, $extension, self::PREVIEW_QUALITY);
+            $preview = $this->readScaledOriented($file->getRealPath(), self::PREVIEW_MAX_WIDTH);
+            $this->applyWatermark($preview, self::PREVIEW_CENTRAL_OPACITY, self::PREVIEW_GRID_OPACITY);
+            $previewContent = $this->encodeImage($preview, $extension, self::PREVIEW_QUALITY);
             $this->uploadContent($previewPath, $previewContent, $file->getMimeType());
+            unset($preview, $previewContent);
 
             // 3. Create and upload thumbnail (600px + strong watermark)
-            $thumbnailImage = $this->createThumbnailVersion($image, $extension);
-            $thumbnailContent = $this->encodeImage($thumbnailImage, $extension, self::THUMBNAIL_QUALITY);
+            $thumbnail = $this->readScaledOriented($file->getRealPath(), self::THUMBNAIL_MAX_WIDTH);
+            $this->applyWatermark($thumbnail, self::THUMBNAIL_CENTRAL_OPACITY, self::THUMBNAIL_GRID_OPACITY);
+            $thumbnailContent = $this->encodeImage($thumbnail, $extension, self::THUMBNAIL_QUALITY);
             $this->uploadContent($thumbnailPath, $thumbnailContent, $file->getMimeType());
+            unset($thumbnail, $thumbnailContent);
 
             return [
-                'hd_path' => $originalPath, // Keep key name for compatibility
+                'hd_path' => $originalPath,
                 'original_path' => $originalPath,
                 'preview_path' => $previewPath,
                 'thumbnail_path' => $thumbnailPath,
@@ -107,15 +114,15 @@ class ImageProcessingService
         try {
             // Get the original file content
             $content = $this->storageService->getFileContent($originalPath);
-            if (! $content) {
+            if (!$content) {
                 Log::error('Could not retrieve original file', ['path' => $originalPath]);
 
                 return null;
             }
 
             // Get extension from path
-            $extension = strtolower(pathinfo($originalPath, PATHINFO_EXTENSION)) ?: 'jpg';
-            $uuid = (string) Str::uuid();
+            $extension = strtolower(pathinfo($originalPath, PATHINFO_EXTENSION)) ? : 'jpg';
+            $uuid = (string)Str::uuid();
             $filename = "{$uuid}.{$extension}";
 
             // Get mime type
@@ -129,18 +136,22 @@ class ImageProcessingService
             // 1. Upload original as-is (no re-encoding)
             $this->uploadContent($newOriginalPath, $content, $mimeType);
 
-            // Read image from content for processing
-            $image = $this->manager->read($content);
-
             // 2. Create and upload preview
-            $previewImage = $this->createPreviewVersion($image, $extension);
-            $previewContent = $this->encodeImage($previewImage, $extension, self::PREVIEW_QUALITY);
+            $preview = $this->readScaledOriented($content, self::PREVIEW_MAX_WIDTH);
+            $this->applyWatermark($preview, self::PREVIEW_CENTRAL_OPACITY, self::PREVIEW_GRID_OPACITY);
+            $previewContent = $this->encodeImage($preview, $extension, self::PREVIEW_QUALITY);
             $this->uploadContent($previewPath, $previewContent, $mimeType);
+            unset($preview, $previewContent);
 
             // 3. Create and upload thumbnail
-            $thumbnailImage = $this->createThumbnailVersion($image, $extension);
-            $thumbnailContent = $this->encodeImage($thumbnailImage, $extension, self::THUMBNAIL_QUALITY);
+            $thumbnail = $this->readScaledOriented($content, self::THUMBNAIL_MAX_WIDTH);
+            $this->applyWatermark($thumbnail, self::THUMBNAIL_CENTRAL_OPACITY, self::THUMBNAIL_GRID_OPACITY);
+            $thumbnailContent = $this->encodeImage($thumbnail, $extension, self::THUMBNAIL_QUALITY);
             $this->uploadContent($thumbnailPath, $thumbnailContent, $mimeType);
+            unset($thumbnail, $thumbnailContent);
+
+            // Free source content
+            unset($content);
 
             return [
                 'hd_path' => $newOriginalPath,
@@ -166,15 +177,15 @@ class ImageProcessingService
     {
         try {
             $content = $this->storageService->getFileContent($originalPath);
-            if (! $content) {
+            if (!$content) {
                 return null;
             }
 
-            $extension = strtolower(pathinfo($originalPath, PATHINFO_EXTENSION)) ?: 'jpg';
-            $image = $this->manager->read($content);
-            $previewImage = $this->createPreviewVersion($image, $extension);
+            $extension = strtolower(pathinfo($originalPath, PATHINFO_EXTENSION)) ? : 'jpg';
+            $image = $this->readScaledOriented($content, self::PREVIEW_MAX_WIDTH);
+            $this->applyWatermark($image, self::PREVIEW_CENTRAL_OPACITY, self::PREVIEW_GRID_OPACITY);
 
-            return $this->encodeImage($previewImage, $extension, self::PREVIEW_QUALITY);
+            return $this->encodeImage($image, $extension, self::PREVIEW_QUALITY);
         } catch (\Exception $e) {
             Log::error('On-the-fly preview generation failed', [
                 'error' => $e->getMessage(),
@@ -192,15 +203,15 @@ class ImageProcessingService
     {
         try {
             $content = $this->storageService->getFileContent($originalPath);
-            if (! $content) {
+            if (!$content) {
                 return null;
             }
 
-            $extension = strtolower(pathinfo($originalPath, PATHINFO_EXTENSION)) ?: 'jpg';
-            $image = $this->manager->read($content);
-            $thumbnailImage = $this->createThumbnailVersion($image, $extension);
+            $extension = strtolower(pathinfo($originalPath, PATHINFO_EXTENSION)) ? : 'jpg';
+            $image = $this->readScaledOriented($content, self::THUMBNAIL_MAX_WIDTH);
+            $this->applyWatermark($image, self::THUMBNAIL_CENTRAL_OPACITY, self::THUMBNAIL_GRID_OPACITY);
 
-            return $this->encodeImage($thumbnailImage, $extension, self::THUMBNAIL_QUALITY);
+            return $this->encodeImage($image, $extension, self::THUMBNAIL_QUALITY);
         } catch (\Exception $e) {
             Log::error('On-the-fly thumbnail generation failed', [
                 'error' => $e->getMessage(),
@@ -218,18 +229,12 @@ class ImageProcessingService
     {
         try {
             $content = $this->storageService->getFileContent($originalPath);
-            if (! $content) {
+            if (!$content) {
                 return null;
             }
 
-            $extension = strtolower(pathinfo($originalPath, PATHINFO_EXTENSION)) ?: 'jpg';
-            $image = $this->manager->read($content);
-
-            // Resize without watermark
-            $width = $image->width();
-            if ($width > self::PREVIEW_MAX_WIDTH) {
-                $image->scaleDown(width: self::PREVIEW_MAX_WIDTH);
-            }
+            $extension = strtolower(pathinfo($originalPath, PATHINFO_EXTENSION)) ? : 'jpg';
+            $image = $this->readScaledOriented($content, self::PREVIEW_MAX_WIDTH);
 
             return $this->encodeImage($image, $extension, self::PREVIEW_QUALITY);
         } catch (\Exception $e) {
@@ -243,99 +248,120 @@ class ImageProcessingService
     }
 
     /**
-     * Create preview version (1200px max + watermark)
+     * Read image, scale down, then apply EXIF orientation. Memory-safe for large portraits.
+     *
+     * GD auto-orientation rotates BEFORE scaling, which requires 3x full-size buffers
+     * and causes OOM on large portrait images. This method scales FIRST (small buffer),
+     * then rotates (safe on the already-small image).
      */
-    private function createPreviewVersion(ImageInterface $image, string $extension): ImageInterface
+    private function readScaledOriented(mixed $source, int $maxWidth): ImageInterface
     {
-        // Clone the image to avoid modifying the original
-        $preview = clone $image;
+        $image = $this->rawManager->read($source);
 
-        // Resize if larger than max width
-        $width = $preview->width();
-        if ($width > self::PREVIEW_MAX_WIDTH) {
-            $preview->scaleDown(width: self::PREVIEW_MAX_WIDTH);
+        // Check if EXIF orientation will swap width/height (90° or 270° rotation)
+        $orientation = $image->exif('IFD0.Orientation');
+        $willTranspose = in_array($orientation, [5, 6, 7, 8]);
+
+        if ($willTranspose) {
+            // After rotation, raw height becomes width → scale raw height to target
+            if ($image->height() > $maxWidth) {
+                $image->scaleDown(height: $maxWidth);
+            }
+        } else {
+            if ($image->width() > $maxWidth) {
+                $image->scaleDown(width: $maxWidth);
+            }
         }
 
-        // Apply watermark
-        $this->applyWatermark($preview, self::PREVIEW_WATERMARK_OPACITY);
+        // Now safe to orient — image is already small
+        $image->modify(new AlignRotationModifier());
 
-        return $preview;
+        return $image;
     }
 
     /**
-     * Create thumbnail version (400px max + strong watermark)
+     * Get oriented dimensions using native PHP functions (no GD memory needed)
+     *
+     * @return array{0: int, 1: int} [width, height] after EXIF orientation
      */
-    private function createThumbnailVersion(ImageInterface $image, string $extension): ImageInterface
+    private function getOrientedDimensions(string $filePath): array
     {
-        // Clone the image to avoid modifying the original
-        $thumbnail = clone $image;
+        $info = getimagesize($filePath);
+        $rawWidth = $info[0] ?? 0;
+        $rawHeight = $info[1] ?? 0;
 
-        // Resize if larger than max width
-        $width = $thumbnail->width();
-        if ($width > self::THUMBNAIL_MAX_WIDTH) {
-            $thumbnail->scaleDown(width: self::THUMBNAIL_MAX_WIDTH);
+        $exif = @exif_read_data($filePath);
+        $orientation = $exif['Orientation'] ?? 1;
+
+        // Orientations 5-8 involve 90°/270° rotation which swaps dimensions
+        if (in_array($orientation, [5, 6, 7, 8])) {
+            return [$rawHeight, $rawWidth];
         }
 
-        // Apply strong watermark
-        $this->applyWatermark($thumbnail, self::THUMBNAIL_WATERMARK_OPACITY);
-
-        return $thumbnail;
+        return [$rawWidth, $rawHeight];
     }
 
     /**
-     * Apply horizontal watermark pattern to image
+     * Apply two-layer watermark: dense diagonal grid + large central text
      */
-    private function applyWatermark(ImageInterface $image, float $opacity): void
+    private function applyWatermark(ImageInterface $image, float $centralOpacity, float $gridOpacity): void
     {
         $width = $image->width();
         $height = $image->height();
-
-        // Font size: 5% of the smaller dimension (half of previous)
-        $fontSize = (int) (min($width, $height) * 0.05);
-        $fontSize = max($fontSize, 12);
+        $minDim = min($width, $height);
 
         $watermarkText = self::WATERMARK_TEXT;
-        $color = "rgba(255, 255, 255, $opacity)";
-
         $fontPath = $this->getFontPath();
 
-        // Estimate text dimensions (approximate: width ≈ fontSize * 0.6 * chars, height ≈ fontSize)
-        $textWidth = $fontSize * 0.6 * strlen($watermarkText);
-        $textHeight = $fontSize;
+        // --- Layer 1: Dense diagonal grid of small texts ---
+        $gridFontSize = (int)($minDim * 0.04);
+        $gridFontSize = max($gridFontSize, 10);
+        $gridColor = "rgba(50, 50, 50, $gridOpacity)";
 
-        // Calculate grid spacing to avoid overlap
-        // Add padding (1.5x text size) between watermarks
-        $minStepX = $textWidth * 1.5;
-        $minStepY = $textHeight * 2.5;
-
-        // Calculate number of columns and rows that fit without overlap
-        $cols = max(1, (int) floor($width / $minStepX));
-        $rows = max(1, (int) floor($height / $minStepY));
-
-        // Limit to reasonable numbers
-        $cols = min($cols, 3);
-        $rows = min($rows, 4);
-
+        $cols = 4;
+        $rows = 5;
         $stepX = $width / $cols;
         $stepY = $height / $rows;
 
-        for ($row = 0; $row < $rows; $row++) {
-            for ($col = 0; $col < $cols; $col++) {
-                $posX = (int) ($stepX * $col + $stepX / 2);
-                $posY = (int) ($stepY * $row + $stepY / 2);
+        for ($row = 0 ; $row < $rows ; $row++) {
+            for ($col = 0 ; $col < $cols ; $col++) {
+                $posX = (int)($stepX * $col + $stepX / 2);
+                $posY = (int)($stepY * $row + $stepY / 2);
 
-                $image->text($watermarkText, $posX, $posY, function ($font) use ($fontSize, $color, $fontPath) {
+                $image->text($watermarkText, $posX, $posY, function ($font) use ($gridFontSize, $gridColor, $fontPath) {
                     if ($fontPath) {
                         $font->filename($fontPath);
                     }
-                    $font->size($fontSize);
-                    $font->color($color);
-                    $font->angle(0);
+                    $font->size($gridFontSize);
+                    $font->color($gridColor);
+                    $font->angle(-30);
                     $font->align('center');
                     $font->valign('middle');
                 });
             }
         }
+
+        // --- Layer 2: Large central text ---
+        $centralFontSize = (int)($minDim * 0.15);
+        // Cap font size so text doesn't overflow image width (~0.6 * fontSize * charCount ≈ text width)
+        $maxFontForWidth = (int)($width * 0.80 / (0.6 * mb_strlen($watermarkText)));
+        $centralFontSize = min($centralFontSize, $maxFontForWidth);
+        $centralFontSize = max($centralFontSize, 24);
+        $centralColor = "rgba(50, 50, 50, $centralOpacity)";
+
+        $centerX = (int)($width / 2);
+        $centerY = (int)($height / 2);
+
+        $image->text($watermarkText, $centerX, $centerY, function ($font) use ($centralFontSize, $centralColor, $fontPath) {
+            if ($fontPath) {
+                $font->filename($fontPath);
+            }
+            $font->size($centralFontSize);
+            $font->color($centralColor);
+            $font->angle(0);
+            $font->align('center');
+            $font->valign('middle');
+        });
     }
 
     /**
