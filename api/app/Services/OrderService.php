@@ -38,19 +38,47 @@ class OrderService
             ->first();
 
         if ($existingOrder) {
-            // Verify order still matches current cart (items count and total)
-            $cart->load('items');
+            // Verify order still matches current cart (items count, photos and total)
+            $cart->load('items.photo.gallery.galleryProductTypes.packTiers');
+
             $cartItemCount = $cart->items->count();
             $orderItemCount = $existingOrder->items->count();
 
-            if ($cartItemCount !== $orderItemCount) {
+            // Build current cart total using pack pricing
+            $cartService = app(CartService::class);
+            $packGroups = $cartService->buildPackGroups($cart);
+            $currentCartTotal = 0;
+            foreach ($packGroups as $group) {
+                $first = $group['items']->first();
+                $gallery = $first->photo->gallery;
+                $productType = $first->product_type;
+                $quantity = $group['count'];
+
+                $unitPrice = $gallery?->resolvePackPrice($productType, $quantity)
+                    ?? $gallery?->getPriceForProductType($productType)
+                    ?? CartItem::getPriceForType($productType);
+
+                $currentCartTotal += $unitPrice * $quantity;
+            }
+
+            // Also check that the same photos are in both cart and order
+            $cartPhotoIds = $cart->items->pluck('photo_id')->sort()->values()->toArray();
+            $orderPhotoIds = $existingOrder->items->pluck('photo_id')->sort()->values()->toArray();
+
+            $cartChanged = $cartItemCount !== $orderItemCount
+                || $cartPhotoIds !== $orderPhotoIds
+                || abs((float) $existingOrder->total - $currentCartTotal) > 0.01;
+
+            if ($cartChanged) {
                 // Cart changed — cancel old order and create new one
                 Log::info('Cart changed since order creation, cancelling stale order', [
                     'order_id' => $existingOrder->id,
                     'cart_items' => $cartItemCount,
                     'order_items' => $orderItemCount,
+                    'order_total' => $existingOrder->total,
+                    'cart_total' => $currentCartTotal,
                 ]);
-                $existingOrder->update(['status' => 'cancelled']);
+                $existingOrder->update(['status' => 'expired']);
             } else {
                 Log::info('Returning existing pending order', [
                     'order_id' => $existingOrder->id,
