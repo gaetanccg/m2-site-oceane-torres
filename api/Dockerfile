@@ -114,5 +114,5 @@ RUN php artisan view:cache || true
 # Expose port (Render uses PORT env variable)
 EXPOSE 8000
 
-# Start with artisan serve - run migrations first
-CMD php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=${PORT:-8000}
+# Start scheduler in background, then artisan serve - run migrations first
+CMD php artisan migrate --force && php artisan schedule:work >> /var/www/storage/logs/scheduler.log 2>&1 & php artisan serve --host=0.0.0.0 --port=${PORT:-8000}
