@@ -18,16 +18,24 @@ class CartService
     {
         // If user is logged in, try to find their cart
         if ($user) {
+            // Get the most recently updated active cart for this user
             $cart = Cart::active()
                 ->forUser($user->id)
                 ->with('items.photo')
+                ->latest('updated_at')
                 ->first();
 
+            // Expire any other active carts for this user (prevent duplicates)
             if ($cart) {
+                Cart::active()
+                    ->forUser($user->id)
+                    ->where('id', '!=', $cart->id)
+                    ->update(['status' => 'expired']);
+
                 return $cart;
             }
 
-            // If there's a session cart, merge it with user
+            // If there's a session cart, claim it for the user
             if ($sessionId) {
                 $sessionCart = Cart::active()
                     ->forSession($sessionId)
@@ -35,6 +43,9 @@ class CartService
                     ->first();
 
                 if ($sessionCart) {
+                    // Expire any stale active carts for this user before claiming
+                    Cart::active()->forUser($user->id)->update(['status' => 'expired']);
+
                     $sessionCart->update(['user_id' => $user->id, 'session_id' => null]);
 
                     return $sessionCart->load('items.photo');
@@ -370,11 +381,12 @@ class CartService
     }
 
     /**
-     * Recalculate pack prices for all items in the cart.
-     * Uses cumulative cross-gallery grouping when offers are identical.
+     * Recalculate prices for all items in the cart.
+     * Always syncs with current gallery prices, then applies pack tier discounts.
      */
     public function recalculatePackPrices(Cart $cart): void
     {
+        $cart->load('items.photo.gallery.galleryProductTypes.packTiers');
         $groups = $this->buildPackGroups($cart);
 
         foreach ($groups as $group) {
@@ -383,10 +395,10 @@ class CartService
             $productType = $first->product_type;
             $quantity = $group['count'];
 
-            $unitPrice = $gallery->resolvePackPrice($productType, $quantity);
-            if ($unitPrice === null) {
-                continue;
-            }
+            // First try pack price, then fall back to current gallery base price
+            $unitPrice = $gallery?->resolvePackPrice($productType, $quantity)
+                ?? $gallery?->getPriceForProductType($productType)
+                ?? CartItem::getPriceForType($productType);
 
             foreach ($group['items'] as $item) {
                 if ((float) $item->price !== $unitPrice) {
