@@ -23,66 +23,17 @@
             <p class="text-gray-600 font-light">{{ categoryDescription }}</p>
         </div>
 
-        <!-- Gallery grid -->
-        <div :class="isVideoFilter(activeFilter) ? 'video-grid' : 'gallery-grid'" ref="galleryRef">
+        <!-- Video grid -->
+        <div v-if="isVideoFilter(activeFilter)" class="video-grid" ref="galleryRef">
             <div
-                v-for="(item, index) in filteredItems"
+                v-for="(item, index) in displayItems"
                 :key="item.url + index"
                 class="gallery-item group"
                 @click="openLightbox(index)"
                 @contextmenu.prevent
             >
-                <!-- Image container with loading states -->
-                <template v-if="item.type === 'image'">
-                    <!-- Blur-up placeholder (always visible until main image loads) -->
-                    <div
-                        v-if="!getImageState(item).loaded"
-                        class="blur-placeholder-container"
-                    >
-                        <!-- Thumbnail as blur background -->
-                        <img
-                            v-if="item.thumbnailUrl"
-                            :src="item.thumbnailUrl"
-                            :alt="item.alt"
-                            class="blur-placeholder"
-                            aria-hidden="true"
-                            @load="handleThumbnailLoad(item)"
-                        />
-                        <!-- Skeleton shimmer over blur -->
-                        <div class="skeleton-overlay" />
-                    </div>
-
-                    <!-- Failed state placeholder -->
-                    <div
-                        v-if="getImageState(item).failed"
-                        class="failed-placeholder"
-                        @click.stop="retryFailedImage(item)"
-                    >
-                        <div class="failed-content">
-                            <svg class="w-8 h-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                            <span class="text-xs text-gray-500">Cliquez pour recharger</span>
-                        </div>
-                    </div>
-
-                    <!-- Main image (hidden until loaded, with fallback chain) -->
-                    <img
-                        v-show="getImageState(item).loaded && !getImageState(item).failed"
-                        :src="getImageState(item).currentSrc"
-                        :alt="item.alt"
-                        draggable="false"
-                        decoding="async"
-                        :loading="index < priorityCount ? 'eager' : 'lazy'"
-                        :fetchpriority="index < priorityCount ? 'high' : 'auto'"
-                        class="gallery-image loaded"
-                        @load="handleImageLoadSuccess(item)"
-                        @error="handleImageLoadError(item)"
-                    />
-                </template>
-
                 <!-- Video locale -->
-                <div v-else-if="item.type === 'video'" class="relative w-full h-full bg-black">
+                <div v-if="item.type === 'video'" class="relative w-full h-full bg-black">
                     <video
                         :src="item.url"
                         class="w-full h-full object-cover"
@@ -122,8 +73,68 @@
             </div>
         </div>
 
+        <!-- Image masonry grid with DOM columns -->
+        <div v-else class="gallery-grid" ref="galleryRef">
+            <div v-for="(col, colIdx) in columns" :key="colIdx" class="gallery-column">
+                <div
+                    v-for="entry in col"
+                    :key="entry.item.url"
+                    class="gallery-item group"
+                    @click="openLightbox(entry.flatIndex)"
+                    @contextmenu.prevent
+                >
+                    <!-- Blur-up placeholder (always visible until main image loads) -->
+                    <div
+                        v-if="!getImageState(entry.item).loaded"
+                        class="blur-placeholder-container"
+                    >
+                        <img
+                            v-if="entry.item.thumbnailUrl"
+                            :src="entry.item.thumbnailUrl"
+                            :alt="entry.item.alt"
+                            class="blur-placeholder"
+                            aria-hidden="true"
+                            @load="handleThumbnailLoad(entry.item)"
+                        />
+                        <div class="skeleton-overlay" />
+                    </div>
+
+                    <!-- Failed state placeholder -->
+                    <div
+                        v-if="getImageState(entry.item).failed"
+                        class="failed-placeholder"
+                        @click.stop="retryFailedImage(entry.item)"
+                    >
+                        <div class="failed-content">
+                            <svg class="w-8 h-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <span class="text-xs text-gray-500">Cliquez pour recharger</span>
+                        </div>
+                    </div>
+
+                    <!-- Main image -->
+                    <img
+                        v-show="getImageState(entry.item).loaded && !getImageState(entry.item).failed"
+                        :src="getImageState(entry.item).currentSrc"
+                        :alt="entry.item.alt"
+                        draggable="false"
+                        decoding="async"
+                        :loading="entry.flatIndex < priorityCount ? 'eager' : 'lazy'"
+                        :fetchpriority="entry.flatIndex < priorityCount ? 'high' : 'auto'"
+                        class="gallery-image loaded"
+                        @load="handleImageLoadSuccess(entry.item)"
+                        @error="handleImageLoadError(entry.item)"
+                    />
+
+                    <!-- Hover overlay -->
+                    <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 pointer-events-none" />
+                </div>
+            </div>
+        </div>
+
         <Lightbox
-            :images="filteredItems"
+            :images="displayItems"
             :is-open="lightboxOpen"
             :initial-index="currentImageIndex"
             @close="lightboxOpen = false"
@@ -136,7 +147,6 @@ import {ref, computed, onMounted, onUnmounted, watch, nextTick, reactive} from '
 import type {GalleryItem, CategoryDescriptions} from '@/types'
 import {
     sortByFilename,
-    reorderForColumns,
     getColumnCount,
     isVideoFilter,
     isVideoItem,
@@ -214,11 +224,20 @@ const baseFilteredItems = computed(() => {
     )
 })
 
-const filteredItems = computed(() => {
-    if (isVideoFilter(activeFilter.value)) {
-        return baseFilteredItems.value
-    }
-    return reorderForColumns(baseFilteredItems.value, columnCount.value)
+const displayItems = computed(() => baseFilteredItems.value)
+
+// Distribute items into DOM columns via round-robin
+const columns = computed(() => {
+    const items = displayItems.value
+    const cols = columnCount.value
+    const result: { item: GalleryItem; flatIndex: number }[][] =
+        Array.from({ length: cols }, () => [])
+
+    items.forEach((item, i) => {
+        result[i % cols].push({ item, flatIndex: i })
+    })
+
+    return result
 })
 
 // Get unique key for an image item
@@ -331,7 +350,7 @@ const preloadBatch = async (urls: string[], batchSize = 4) => {
 
 // Preload current filter's images
 const preloadCurrentImages = () => {
-    const imageItems = filteredItems.value.filter(item => item.type === 'image')
+    const imageItems = displayItems.value.filter(item => item.type === 'image')
 
     // Preload thumbnails first (small, fast)
     const thumbnailUrls = imageItems
@@ -416,8 +435,15 @@ watch(activeFilter, async () => {
 
 <style scoped>
 .gallery-grid{
-    columns: 3;
-    column-gap: 4px;
+    display: flex;
+    gap: 4px;
+}
+
+.gallery-column{
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
 }
 
 .video-grid{
@@ -430,8 +456,6 @@ watch(activeFilter, async () => {
     position: relative;
     overflow: hidden;
     cursor: pointer;
-    break-inside: avoid;
-    margin-bottom: 4px;
     min-height: 100px;
     background: #f5f5f5;
 }
@@ -520,10 +544,6 @@ watch(activeFilter, async () => {
 }
 
 @media (max-width: 1024px){
-    .gallery-grid{
-        columns: 2;
-    }
-
     .video-grid{
         grid-template-columns: repeat(2, 1fr);
     }
@@ -531,17 +551,16 @@ watch(activeFilter, async () => {
 
 @media (max-width: 640px){
     .gallery-grid{
-        columns: 1;
-        column-gap: 0;
+        gap: 0;
+    }
+
+    .gallery-column{
+        gap: 8px;
     }
 
     .video-grid{
         grid-template-columns: 1fr;
         gap: 8px;
-    }
-
-    .gallery-item{
-        margin-bottom: 8px;
     }
 
     .gallery-image{
