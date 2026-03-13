@@ -23,6 +23,32 @@ npm install
 
 ---
 
+## Gestion des images du portfolio
+
+Les images originales sont stockées dans `public/images/` par catégorie :
+
+```
+public/images/
+├── Animalier/
+├── Automobile/
+├── Entreprise/
+├── Portraits/
+└── Sport/
+```
+
+Un script d'optimisation génère des versions **WebP** et **AVIF** (qualité 75, max 1200px de large) dans `public/optimized/`.
+
+### Modifier les images
+
+1. Ajouter, remplacer ou supprimer les images dans `public/images/<catégorie>/`
+2. Lancer l'optimisation :
+   ```bash
+   node optimize-images.js
+   ```
+3. Mettre à jour les chemins dans `src/config/gallery.ts` si des images ont été ajoutées ou supprimées
+
+---
+
 ## Déploiement sur Render
 
 Le site utilise le prerendering local pour le SEO. Le dossier `dist/` est commité dans le repo.
