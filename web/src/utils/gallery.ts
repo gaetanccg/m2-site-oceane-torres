@@ -35,40 +35,6 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 /**
- * Réordonne les items pour un affichage en colonnes CSS
- * CSS columns remplit de haut en bas, cette fonction réordonne pour un affichage gauche-droite
- * Exemple: [1,2,3,4,5,6] -> [1,3,5,2,4,6] pour 2 colonnes
- */
-export function reorderForColumns<T>(items: T[], cols: number): T[] {
-    if (cols <= 1 || items.length <= cols) return items
-
-    const totalItems = items.length
-    const baseRows = Math.floor(totalItems / cols)
-    const extraItems = totalItems % cols // Colonnes avec une ligne de plus
-
-    const result: T[] = new Array(totalItems)
-
-    for (let i = 0; i < totalItems; i++) {
-        const row = Math.floor(i / cols)
-        const col = i % cols
-
-        // Calculer l'index de début de cette colonne
-        // Les premières 'extraItems' colonnes ont (baseRows + 1) lignes
-        let colStart = 0
-        for (let c = 0; c < col; c++) {
-            colStart += c < extraItems ? baseRows + 1 : baseRows
-        }
-
-        const newIndex = colStart + row
-        if (newIndex < totalItems) {
-            result[newIndex] = items[i]
-        }
-    }
-
-    return result.filter(item => item !== undefined)
-}
-
-/**
  * Détermine le nombre de colonnes selon la largeur d'écran
  */
 export function getColumnCount(width: number): number {
