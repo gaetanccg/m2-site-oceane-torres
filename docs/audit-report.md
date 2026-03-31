@@ -540,17 +540,21 @@ Ces deux fichiers partagent des centaines de lignes de template et logique dupli
 6. ~~Extraire `clearEventGalleriesCache()` dans `app/Traits/ClearsEventGalleriesCache.php`~~
 7. ~~Extraire la resolution MIME type dans `app/Helpers/MimeTypes.php`~~ (3 fichiers mis a jour)
 
-### Étape 3 : Refactoring structurel (découpage de fichiers)
+### Etape 3 : Refactoring structurel (découpage de fichiers) -- FAIT
 *Risque : Moyen | Impact : Maintenabilité*
 
-1. Découper `GalleryController.php` en 3 controllers
-2. Découper `OrderController.php` en 3 controllers
-3. Extraire les composants partagés de `EventGalleries.vue` / `Galleries.vue` : `ProductTypesEditor`, `PhotoUploadZone`, `PhotoGridManager`
-4. Créer `BaseApiService` pour les services API frontend
-5. Passer `MinioStorageService` en injection de dépendance partout
-6. Ajouter un accessor `$photo->resolved_storage_path` sur le modèle Photo
-7. Découper `adminApi.ts` par domaine
-8. Extraire les sous-méthodes de `OrderService::createFromCart()`
+**Backend :**
+1. ~~Découper `GalleryController.php`~~ : extrait `EventGalleryController` (385 lignes) — GalleryController passe de 877 a 420 lignes (-52%)
+2. ~~Découper `OrderController.php`~~ : extrait `Admin/OrderController` (196 lignes) — OrderController passe de 559 a 334 lignes (-40%)
+3. ~~Extraire `SyncsProductTypes` trait~~ : regles de validation + sync product types partagees (eliminee 4x duplication)
+4. ~~Ajouter accessor `$photo->resolved_storage_path`~~ — remplace 8 variantes incohérentes dans 8 fichiers
+5. ~~Passer `MinioStorageService` en DI~~ — 13 `new MinioStorageService` remplaces par DI ou `app()` container
+6. ~~Extraire sous-methodes `OrderService::createFromCart()`~~ — 105 lignes -> 4 methodes claires (`findReusablePendingOrder`, `calculateCartTotal`, `resolvePackPrices`, `validateCartItems`)
+
+**Frontend :**
+7. ~~Creer `BaseApiService`~~ — logique `request()` partagee entre 4 services (elimine ~200 lignes dupliquees)
+8. ~~Refactorer les 4 services API~~ : api.ts (153->91), authApi.ts (149->59), adminApi.ts (646->495), cartApi.ts (335->268)
+9. ~~Extraire `useProductTypes` composable~~ — 110 lignes de logique identique extraites de Galleries.vue et EventGalleries.vue (Galleries 1394->1290, EventGalleries 1782->1678)
 
 ### Étape 4 : Optimisations de performance
 *Risque : Moyen | Impact : Performance critique*

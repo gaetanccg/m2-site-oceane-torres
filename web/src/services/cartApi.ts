@@ -2,18 +2,9 @@
  * Service API pour le panier et les commandes
  */
 
-import { API_CONFIG } from '@/config/constants'
-import { extractErrorFromResponse, parseApiError, type ApiError } from '@/utils/errorHandler'
+import { BaseApiService, ApiError as BaseApiError } from './baseApi'
 
-export class CartApiError extends Error {
-    public apiError: ApiError
-
-    constructor(apiError: ApiError) {
-        super(apiError.message)
-        this.name = 'CartApiError'
-        this.apiError = apiError
-    }
-}
+export class CartApiError extends BaseApiError {}
 
 // Types
 export type ProductType = 'digital' | 'print_10x15' | 'print_15x20'
@@ -126,15 +117,7 @@ export interface SumUpConfig {
     locale: string
 }
 
-class CartApiService {
-    private baseUrl: string
-    private timeout: number
-
-    constructor() {
-        this.baseUrl = API_CONFIG.baseUrl
-        this.timeout = API_CONFIG.timeout
-    }
-
+class CartApiService extends BaseApiService {
     private getSessionId(): string | null {
         return localStorage.getItem('cart_session_id')
     }
@@ -143,62 +126,13 @@ class CartApiService {
         localStorage.setItem('cart_session_id', sessionId)
     }
 
-    private getAuthToken(): string | null {
-        return localStorage.getItem('auth_token')
-    }
-
-    private async request<T>(
-        endpoint: string,
-        options: RequestInit = {}
-    ): Promise<T> {
-        const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), this.timeout)
-
-        const headers: Record<string, string> = {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        }
-
-        // Add auth token if available
-        const token = this.getAuthToken()
-        if (token) {
-            headers['Authorization'] = `Bearer ${token}`
-        }
-
-        // Add cart session ID
+    private cartRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+        const headers: Record<string, string> = {}
+        const token = this.getToken()
+        if (token) headers['Authorization'] = `Bearer ${token}`
         const sessionId = this.getSessionId()
-        if (sessionId) {
-            headers['X-Cart-Session'] = sessionId
-        }
-
-        try {
-            const response = await fetch(`${this.baseUrl}${endpoint}`, {
-                ...options,
-                signal: controller.signal,
-                headers: {
-                    ...headers,
-                    ...options.headers,
-                },
-            })
-
-            clearTimeout(timeoutId)
-
-            if (!response.ok) {
-                const apiError = await extractErrorFromResponse(response)
-                throw new CartApiError(apiError)
-            }
-
-            return await response.json()
-        } catch (error) {
-            clearTimeout(timeoutId)
-
-            if (error instanceof CartApiError) {
-                throw error
-            }
-
-            const apiError = parseApiError(error)
-            throw new CartApiError(apiError)
-        }
+        if (sessionId) headers['X-Cart-Session'] = sessionId
+        return this.request<T>(endpoint, options, { headers })
     }
 
     // ============================================================================
@@ -206,7 +140,7 @@ class CartApiService {
     // ============================================================================
 
     async getCart(): Promise<CartResponse> {
-        const response = await this.request<CartResponse>('/cart')
+        const response = await this.cartRequest<CartResponse>('/cart')
         if (response.session_id) {
             this.setSessionId(response.session_id)
         }
@@ -214,7 +148,7 @@ class CartApiService {
     }
 
     async addToCart(photoId: string, productType: ProductType = 'digital'): Promise<CartResponse> {
-        const response = await this.request<CartResponse>('/cart/add', {
+        const response = await this.cartRequest<CartResponse>('/cart/add', {
             method: 'POST',
             body: JSON.stringify({ photo_id: photoId, product_type: productType }),
         })
@@ -225,33 +159,33 @@ class CartApiService {
     }
 
     async updateItemType(itemId: string, productType: ProductType): Promise<CartResponse> {
-        return this.request<CartResponse>(`/cart/item/${itemId}/type`, {
+        return this.cartRequest<CartResponse>(`/cart/item/${itemId}/type`, {
             method: 'PUT',
             body: JSON.stringify({ product_type: productType }),
         })
     }
 
     async removeFromCart(itemId: string): Promise<CartResponse> {
-        return this.request<CartResponse>(`/cart/item/${itemId}`, {
+        return this.cartRequest<CartResponse>(`/cart/item/${itemId}`, {
             method: 'DELETE',
         })
     }
 
     async clearCart(): Promise<CartResponse> {
-        return this.request<CartResponse>('/cart/clear', {
+        return this.cartRequest<CartResponse>('/cart/clear', {
             method: 'DELETE',
         })
     }
 
     async updateCartEmail(email: string): Promise<{ success: boolean; message: string }> {
-        return this.request('/cart/email', {
+        return this.cartRequest('/cart/email', {
             method: 'PUT',
             body: JSON.stringify({ email }),
         })
     }
 
     async mergeCart(): Promise<CartResponse> {
-        return this.request<CartResponse>('/cart/merge', {
+        return this.cartRequest<CartResponse>('/cart/merge', {
             method: 'POST',
         })
     }
@@ -261,27 +195,27 @@ class CartApiService {
     // ============================================================================
 
     async createOrder(guestEmail?: string, guestName?: string, cgvAccepted?: boolean): Promise<CheckoutResponse> {
-        return this.request<CheckoutResponse>('/checkout', {
+        return this.cartRequest<CheckoutResponse>('/checkout', {
             method: 'POST',
             body: JSON.stringify({
                 guest_email: guestEmail,
                 guest_name: guestName,
-                cgv_accepted: cgvAccepted ?? true, // RGPD: Required for order creation
+                cgv_accepted: cgvAccepted ?? true,
             }),
         })
     }
 
     async getOrder(orderId: string, token?: string): Promise<{ success: boolean; order: Order }> {
         const params = token ? `?token=${encodeURIComponent(token)}` : ''
-        return this.request(`/orders/${orderId}${params}`)
+        return this.cartRequest(`/orders/${orderId}${params}`)
     }
 
     async getUserOrders(): Promise<{ success: boolean; orders: Order[] }> {
-        return this.request('/orders')
+        return this.cartRequest('/orders')
     }
 
     async getOrdersByEmail(email: string): Promise<{ success: boolean; orders: Order[] }> {
-        return this.request('/orders/by-email', {
+        return this.cartRequest('/orders/by-email', {
             method: 'POST',
             body: JSON.stringify({ email }),
         })
@@ -289,7 +223,7 @@ class CartApiService {
 
     async downloadPhoto(orderId: string, itemId: string, token?: string): Promise<{ success: boolean; download_url: string; filename: string }> {
         const params = token ? `?token=${encodeURIComponent(token)}` : ''
-        return this.request(`/orders/${orderId}/download/${itemId}${params}`)
+        return this.cartRequest(`/orders/${orderId}/download/${itemId}${params}`)
     }
 
     // ============================================================================
@@ -297,18 +231,18 @@ class CartApiService {
     // ============================================================================
 
     async getSumUpConfig(): Promise<{ success: boolean; config: SumUpConfig }> {
-        return this.request('/payments/sumup/config')
+        return this.cartRequest('/payments/sumup/config')
     }
 
     async createSumUpCheckout(orderId: string): Promise<{ success: boolean; checkout_id: string; order_id: string }> {
-        return this.request('/payments/sumup/create-checkout', {
+        return this.cartRequest('/payments/sumup/create-checkout', {
             method: 'POST',
             body: JSON.stringify({ order_id: orderId }),
         })
     }
 
     async verifySumUpPayment(orderId: string): Promise<{ success: boolean; status: string; order?: { id: string; order_number: string; status: string } }> {
-        return this.request('/payments/sumup/verify', {
+        return this.cartRequest('/payments/sumup/verify', {
             method: 'POST',
             body: JSON.stringify({ order_id: orderId }),
         })
@@ -318,11 +252,11 @@ class CartApiService {
         const params = new URLSearchParams()
         if (checkoutId) params.append('checkout_id', checkoutId)
         if (orderId) params.append('order', orderId)
-        return this.request(`/payments/sumup/callback?${params.toString()}`)
+        return this.cartRequest(`/payments/sumup/callback?${params.toString()}`)
     }
 
     async cancelCheckout(orderId: string): Promise<{ success: boolean }> {
-        return this.request('/payments/sumup/cancel-checkout', {
+        return this.cartRequest('/payments/sumup/cancel-checkout', {
             method: 'POST',
             body: JSON.stringify({ order_id: orderId }),
         })

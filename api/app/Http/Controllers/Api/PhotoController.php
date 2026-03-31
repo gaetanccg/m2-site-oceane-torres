@@ -53,7 +53,7 @@ class PhotoController extends Controller
 
                 if ($isVideo) {
                     // Videos: upload directly without processing
-                    $storageService = new MinioStorageService;
+                    $storageService = app(MinioStorageService::class);
                     $result = $storageService->uploadPhoto($file, $gallery->id);
 
                     if ($result) {
@@ -125,12 +125,11 @@ class PhotoController extends Controller
         $isEventGallery = $photo->gallery?->type === 'event';
 
         // Delete all versions from MinIO storage (original, preview, thumbnail)
-        $storageService = new MinioStorageService;
+        $storageService = app(MinioStorageService::class);
 
         // Collect all file paths to delete
         $pathsToDelete = array_filter([
-            // Original/HD path from metadata or file_path
-            $photo->metadata['storage_path'] ?? $photo->metadata['supabase_path'] ?? $photo->file_path,
+            $photo->resolved_storage_path,
             // Preview path
             $photo->file_path_preview,
             // Thumbnail path
@@ -185,8 +184,8 @@ class PhotoController extends Controller
             ], 403);
         }
 
-        $storageService = new MinioStorageService;
-        $storagePath = $photo->metadata['storage_path'] ?? $photo->metadata['supabase_path'] ?? $photo->file_path;
+        $storageService = app(MinioStorageService::class);
+        $storagePath = $photo->resolved_storage_path;
 
         // Track the download
         $photo->recordDownload(

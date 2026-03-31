@@ -46,10 +46,10 @@ class ImageProcessingService
     // Font path for watermark (TTF required for custom sizes)
     private const WATERMARK_FONT = 'fonts/Amsterdam.ttf';
 
-    public function __construct()
+    public function __construct(?MinioStorageService $storageService = null)
     {
         $this->rawManager = new ImageManager(new GdDriver, autoOrientation: false);
-        $this->storageService = new MinioStorageService;
+        $this->storageService = $storageService ?? new MinioStorageService;
     }
 
     /**

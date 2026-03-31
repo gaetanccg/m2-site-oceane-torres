@@ -95,7 +95,7 @@ class Photo extends Model
      */
     private function getVideoUrl(): ?string
     {
-        $storagePath = $this->metadata['storage_path'] ?? $this->metadata['supabase_path'] ?? $this->file_path;
+        $storagePath = $this->resolved_storage_path;
 
         // If it's already a full URL (legacy Supabase), return as-is
         if (str_starts_with($storagePath, 'http')) {
@@ -104,12 +104,24 @@ class Photo extends Model
 
         // Generate signed URL from MinIO
         try {
-            $storageService = new MinioStorageService;
+            $storageService = app(MinioStorageService::class);
 
             return $storageService->getSignedUrl($storagePath, 3600);
         } catch (\Exception $e) {
             return null;
         }
+    }
+
+    /**
+     * Resolve the storage path for the original/HD version of this photo.
+     * Centralizes the fallback chain used across controllers and services.
+     */
+    public function getResolvedStoragePathAttribute(): string
+    {
+        return $this->file_path_hd
+            ?? $this->metadata['storage_path']
+            ?? $this->metadata['supabase_path']
+            ?? $this->file_path;
     }
 
     public function gallery(): BelongsTo
