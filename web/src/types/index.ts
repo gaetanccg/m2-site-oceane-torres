@@ -60,13 +60,6 @@ export interface Prestation {
     sort_order: number
 }
 
-export interface PrestationMini {
-    icon: ServiceIconType
-    title: string
-    description: string
-    features: string[]
-}
-
 // ============================================================================
 // Bons Cadeaux (Gift Cards)
 // ============================================================================

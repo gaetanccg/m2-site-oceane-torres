@@ -245,6 +245,7 @@ import { cartApi, CartApiError, type Order } from '@/services/cartApi'
 import { API_CONFIG } from '@/config/constants'
 import { isInAppBrowser } from '@/utils/download'
 import { useToast } from '@/composables/useToast'
+import { formatPrice } from '@/utils/format'
 
 const route = useRoute()
 const toast = useToast()
@@ -292,13 +293,6 @@ const confirmationMessage = computed(() => {
             return `Un email de confirmation a été envoyé à <strong>${order.value.customer_email}</strong>.`
     }
 })
-
-function formatPrice(price: number): string {
-    return new Intl.NumberFormat('fr-FR', {
-        style: 'currency',
-        currency: 'EUR',
-    }).format(price)
-}
 
 async function loadOrder() {
     const orderId = route.params.id as string

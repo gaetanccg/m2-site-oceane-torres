@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Helpers\MimeTypes;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Photo;
@@ -133,7 +134,7 @@ class ImageProxyController extends Controller
             $filename = ($photo->title ?? 'photo').'.'.$extension;
             $filename = preg_replace('/[^a-zA-Z0-9_.-]/', '_', $filename);
 
-            return $this->createDownloadResponse($content, $filename, $this->getMimeType($extension));
+            return $this->createDownloadResponse($content, $filename, MimeTypes::fromExtension($extension));
         } catch (\Exception $e) {
             Log::error('Download failed', [
                 'photo_id' => $photo->id,
@@ -189,7 +190,7 @@ class ImageProxyController extends Controller
     private function createImageResponse(string $content, string $path): Response
     {
         $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION)) ?: 'jpg';
-        $mimeType = $this->getMimeType($extension);
+        $mimeType = MimeTypes::fromExtension($extension);
 
         return response($content, 200, [
             'Content-Type' => $mimeType,
@@ -223,18 +224,5 @@ class ImageProxyController extends Controller
             'Content-Type' => 'text/plain',
             'X-Content-Type-Options' => 'nosniff',
         ]);
-    }
-
-    /**
-     * Get MIME type from extension
-     */
-    private function getMimeType(string $extension): string
-    {
-        return match (strtolower($extension)) {
-            'png' => 'image/png',
-            'gif' => 'image/gif',
-            'webp' => 'image/webp',
-            default => 'image/jpeg',
-        };
     }
 }

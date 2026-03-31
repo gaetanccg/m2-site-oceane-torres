@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Helpers\MimeTypes;
 use App\Http\Controllers\Controller;
 use App\Jobs\ProcessPhotoJob;
 use App\Models\Gallery;
@@ -9,6 +10,7 @@ use App\Models\Photo;
 use App\Models\PhotoUpload;
 use App\Services\ImageProcessingService;
 use App\Services\MinioStorageService;
+use App\Traits\ClearsEventGalleriesCache;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -16,6 +18,8 @@ use Illuminate\Support\Facades\Storage;
 
 class PhotoController extends Controller
 {
+    use ClearsEventGalleriesCache;
+
     public function show(Photo $photo): JsonResponse
     {
         return response()->json([
@@ -201,12 +205,7 @@ class PhotoController extends Controller
             $extension = pathinfo($photo->file_path, PATHINFO_EXTENSION) ?: 'jpg';
             $filename = ($photo->title ?? 'photo').'.'.$extension;
             $filename = preg_replace('/[^a-zA-Z0-9_.-]/', '_', $filename);
-            $mimeType = match (strtolower($extension)) {
-                'png' => 'image/png',
-                'gif' => 'image/gif',
-                'webp' => 'image/webp',
-                default => 'image/jpeg',
-            };
+            $mimeType = MimeTypes::fromExtension($extension);
 
             return response($content, 200, [
                 'Content-Type' => $mimeType,
@@ -370,15 +369,5 @@ class PhotoController extends Controller
         $status = PhotoUpload::getBatchStatus($validated['batch_id']);
 
         return response()->json($status);
-    }
-
-    /**
-     * Clear event galleries cache (all pages)
-     */
-    private function clearEventGalleriesCache(): void
-    {
-        for ($i = 1; $i <= 10; $i++) {
-            Cache::forget("event_galleries_page_{$i}");
-        }
     }
 }

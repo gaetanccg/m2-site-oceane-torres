@@ -203,6 +203,7 @@ import { useCartStore } from '@/stores/cart'
 import { useAuthStore } from '@/stores/auth'
 import { cartApi } from '@/services/cartApi'
 import { useToast } from '@/composables/useToast'
+import { formatPrice } from '@/utils/format'
 
 declare global {
     interface Window {
@@ -244,13 +245,6 @@ const form = reactive({
     email: '',
     cgv_accepted: false,
 })
-
-function formatPrice(price: number): string {
-    return new Intl.NumberFormat('fr-FR', {
-        style: 'currency',
-        currency: 'EUR',
-    }).format(price)
-}
 
 // Load SumUp SDK
 function loadSumUpSDK(): Promise<void> {

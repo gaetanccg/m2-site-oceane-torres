@@ -93,6 +93,7 @@
 import { ref } from 'vue'
 import { useCartStore } from '@/stores/cart'
 import type { CartItem } from '@/services/cartApi'
+import { formatPrice } from '@/utils/format'
 
 const props = defineProps<{
     item: CartItem
@@ -100,13 +101,6 @@ const props = defineProps<{
 
 const cartStore = useCartStore()
 const isRemoving = ref(false)
-
-function formatPrice(price: number): string {
-    return new Intl.NumberFormat('fr-FR', {
-        style: 'currency',
-        currency: 'EUR',
-    }).format(price)
-}
 
 async function handleRemove() {
     isRemoving.value = true
