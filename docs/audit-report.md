@@ -103,25 +103,29 @@ Les items ci-dessous combinent les restes du refactoring technique et la todolis
 
 ---
 
-### Phase B — Commandes & paiement
+### Phase B — Commandes & paiement -- FAIT
 
-#### B1. Formulaire de commande : nom + prenom obligatoires
-- [ ] Separer en deux champs `guest_first_name` et `guest_last_name` dans le checkout
-- [ ] Mettre a jour `CreateCheckoutRequest`, `OrderService::createFromCart()`, le modele Order, et Checkout.vue
-- [ ] Migration BDD (split de la colonne `guest_name`)
+#### B1. Formulaire de commande : nom + prenom obligatoires -- FAIT
+- [x] Migration BDD : split `guest_name` → `guest_first_name` + `guest_last_name` (avec migration des donnees existantes)
+- [x] `CreateCheckoutRequest` : 2 champs required pour les guests, nullable pour les users authentifies
+- [x] `OrderService::createFromCart()` : signature mise a jour
+- [x] Modele Order : `customer_name` accessor adapte
+- [x] Frontend Checkout.vue : formulaire 2 champs, validation, disabled state
+- [x] `cartApi.createOrder()` : signature mise a jour
 
-#### B2. Admin — Copier le lien de commande
-- [ ] Bouton "Copier le lien" dans la vue admin Orders → copie `{frontend}/commande/{id}?token={download_token}`
-- [ ] Le download_token est deja dans `order.metadata`
+#### B2. Admin — Copier le lien de commande -- FAIT
+- [x] Endpoint `GET /admin/orders/{order}/download-link` → retourne le lien `{frontend}/commande/{id}?token={download_token}`
+- [x] Bouton "Copier lien" dans la modal detail commande (visible si commande payee)
+- [x] Copie dans le presse-papier via `navigator.clipboard`
 
-#### B3. Admin — Re-trigger la verification de paiement
-- [ ] Endpoint `POST /admin/orders/{order}/retry-payment` → appelle `OrderService::verifyAndUpdateOrder()`
-- [ ] Si paiement confirme sur SumUp : generer token download, PDF facture, envoyer email confirmation
-- [ ] Bouton correspondant dans la vue admin Orders
+#### B3. Admin — Re-trigger la verification de paiement -- FAIT
+- [x] Endpoint `POST /admin/orders/{order}/retry-payment` → appelle `OrderService::verifyAndUpdateOrder()`
+- [x] Si paiement confirme sur SumUp : complete l'order (token, PDF, email) via le flow existant
+- [x] Bouton "Re-verifier paiement" dans la modal (visible si pending + checkout SumUp)
 
-#### B4. Envoyer les infos client a SumUp *(necessite B1)*
-- [ ] Modifier `SumUpService::createCheckout()` pour inclure `customer.email`, `customer.first_name`, `customer.last_name` dans le payload
-- [ ] Necessite que les infos client soient disponibles dans l'Order au moment du checkout
+#### B4. Envoyer les infos client a SumUp -- FAIT
+- [x] `SumUpService::createCheckout()` inclut `customer_id`, `personal_details.email/first_name/last_name`
+- [x] Utilise les infos user authentifie OU guest_first_name/last_name de la commande
 
 ---
 

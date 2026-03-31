@@ -39,16 +39,31 @@
 
                                 <!-- Guest form -->
                                 <form v-else @submit.prevent="createOrder" class="space-y-4">
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">
-                                            Nom complet
-                                        </label>
-                                        <input
-                                            v-model="form.name"
-                                            type="text"
-                                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-transparent"
-                                            placeholder="Votre nom"
-                                        />
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                                Prenom *
+                                            </label>
+                                            <input
+                                                v-model="form.firstName"
+                                                type="text"
+                                                required
+                                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-transparent"
+                                                placeholder="Votre prenom"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                                Nom *
+                                            </label>
+                                            <input
+                                                v-model="form.lastName"
+                                                type="text"
+                                                required
+                                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-transparent"
+                                                placeholder="Votre nom"
+                                            />
+                                        </div>
                                     </div>
 
                                     <div>
@@ -100,7 +115,7 @@
                                 <div class="mt-8 pt-6 border-t border-gray-100">
                                     <button
                                         @click="createOrder"
-                                        :disabled="isProcessing || (!authStore.isAuthenticated && !form.email) || !form.cgv_accepted"
+                                        :disabled="isProcessing || (!authStore.isAuthenticated && (!form.email || !form.firstName || !form.lastName)) || !form.cgv_accepted"
                                         class="w-full py-3 bg-gold text-white font-medium rounded-lg hover:bg-gold/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                                     >
                                         <svg
@@ -241,7 +256,8 @@ let pollTimeoutId: ReturnType<typeof setTimeout> | null = null
 let isUnmounted = false
 
 const form = reactive({
-    name: '',
+    firstName: '',
+    lastName: '',
     email: '',
     cgv_accepted: false,
 })
@@ -353,6 +369,10 @@ async function createOrder() {
         error.value = 'Veuillez renseigner votre email'
         return
     }
+    if (!authStore.isAuthenticated && (!form.firstName || !form.lastName)) {
+        error.value = 'Veuillez renseigner votre prenom et votre nom'
+        return
+    }
     if (!form.cgv_accepted) {
         error.value = 'Vous devez accepter les Conditions Generales de Vente'
         return
@@ -364,7 +384,8 @@ async function createOrder() {
     try {
         const orderResponse = await cartApi.createOrder(
             authStore.isAuthenticated ? undefined : form.email,
-            authStore.isAuthenticated ? undefined : form.name,
+            authStore.isAuthenticated ? undefined : form.firstName,
+            authStore.isAuthenticated ? undefined : form.lastName,
             form.cgv_accepted
         )
 

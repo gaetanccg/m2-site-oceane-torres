@@ -34,17 +34,30 @@ class SumUpService
         // (SumUp rejects duplicate references even for FAILED checkouts)
         $reference = $order->id.'_'.Str::random(8);
 
-        $response = Http::timeout(15)->withHeaders([
-            'Authorization' => 'Bearer '.$this->apiKey,
-            'Content-Type' => 'application/json',
-        ])->post($this->apiUrl.'/v0.1/checkouts', [
+        $payload = [
             'checkout_reference' => $reference,
             'amount' => (float) $order->total,
             'currency' => $order->currency,
             'merchant_code' => $this->merchantCode,
             'description' => 'Commande photos - '.$order->order_number,
             'return_url' => $this->returnUrl.'?order='.$order->id,
-        ]);
+        ];
+
+        // Include customer info for SumUp dashboard tracking
+        $customerEmail = $order->customer_email;
+        if ($customerEmail) {
+            $payload['customer_id'] = $customerEmail;
+            $payload['personal_details'] = array_filter([
+                'email' => $customerEmail,
+                'first_name' => $order->user?->first_name ?? $order->guest_first_name,
+                'last_name' => $order->user?->last_name ?? $order->guest_last_name,
+            ]);
+        }
+
+        $response = Http::timeout(15)->withHeaders([
+            'Authorization' => 'Bearer '.$this->apiKey,
+            'Content-Type' => 'application/json',
+        ])->post($this->apiUrl.'/v0.1/checkouts', $payload);
 
         if (! $response->successful()) {
             Log::error('SumUp checkout creation failed', [

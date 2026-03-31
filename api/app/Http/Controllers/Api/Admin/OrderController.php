@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\OrderResource;
 use App\Models\Order;
 use App\Services\InvoiceService;
+use App\Services\OrderService;
 use App\Services\SumUpService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,6 +17,7 @@ class OrderController extends Controller
     public function __construct(
         private InvoiceService $invoiceService,
         private SumUpService $sumUpService,
+        private OrderService $orderService,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -125,6 +127,77 @@ class OrderController extends Controller
             'message' => 'Commande marquée comme expédiée.',
             'order' => self::formatOrder($order),
         ]);
+    }
+
+    /**
+     * Get the customer download link for an order (for support)
+     */
+    public function getDownloadLink(string $orderId): JsonResponse
+    {
+        $order = Order::findOrFail($orderId);
+
+        if (! $order->isPaid()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Aucun lien disponible (commande non payee).',
+            ], 400);
+        }
+
+        // Regenerate token to ensure it's fresh (resets expiration to 7 days)
+        $order->generateDownloadToken();
+
+        $downloadToken = $order->metadata['download_token'];
+        $frontendUrl = config('app.frontend_url', 'https://oceanetorresphotographie.fr');
+        $downloadLink = "{$frontendUrl}/commande/{$order->id}?token={$downloadToken}";
+
+        return response()->json([
+            'success' => true,
+            'download_link' => $downloadLink,
+        ]);
+    }
+
+    /**
+     * Re-trigger payment verification and order completion
+     */
+    public function retryPayment(string $orderId): JsonResponse
+    {
+        $order = Order::findOrFail($orderId);
+
+        if ($order->isPaid()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cette commande est deja payee.',
+            ], 400);
+        }
+
+        if (! $order->sumup_checkout_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Aucun checkout SumUp associe a cette commande.',
+            ], 400);
+        }
+
+        try {
+            $updatedOrder = $this->orderService->verifyAndUpdateOrder($order->sumup_checkout_id);
+
+            return response()->json([
+                'success' => true,
+                'message' => $updatedOrder->isPaid()
+                    ? 'Paiement confirme. Facture generee et email envoye.'
+                    : 'Paiement non confirme sur SumUp. Statut actuel : '.$updatedOrder->status,
+                'order' => self::formatOrder($updatedOrder->load('items.photo')),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Admin retry payment failed', [
+                'order_id' => $orderId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la verification : '.$e->getMessage(),
+            ], 500);
+        }
     }
 
     public function downloadInvoice(string $orderId): JsonResponse

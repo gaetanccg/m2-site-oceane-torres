@@ -255,6 +255,8 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::get('/orders', [AdminOrderController::class, 'index']);
     Route::get('/orders/{order}', [AdminOrderController::class, 'show']);
     Route::get('/orders/{order}/invoice', [AdminOrderController::class, 'downloadInvoice']);
+    Route::get('/orders/{order}/download-link', [AdminOrderController::class, 'getDownloadLink']);
+    Route::post('/orders/{order}/retry-payment', [AdminOrderController::class, 'retryPayment']);
     Route::put('/orders/{order}/ship', [AdminOrderController::class, 'markShipped']);
     Route::delete('/orders/{order}', [AdminOrderController::class, 'destroy']);
 });

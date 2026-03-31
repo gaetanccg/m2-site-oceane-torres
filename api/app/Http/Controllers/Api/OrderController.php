@@ -47,7 +47,8 @@ class OrderController extends Controller
                 $cart,
                 $user,
                 $validated['guest_email'] ?? null,
-                $validated['guest_name'] ?? null,
+                $validated['guest_first_name'] ?? null,
+                $validated['guest_last_name'] ?? null,
                 $request->ip()
             );
 

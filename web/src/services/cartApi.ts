@@ -194,12 +194,13 @@ class CartApiService extends BaseApiService {
     // Checkout & Orders
     // ============================================================================
 
-    async createOrder(guestEmail?: string, guestName?: string, cgvAccepted?: boolean): Promise<CheckoutResponse> {
+    async createOrder(guestEmail?: string, guestFirstName?: string, guestLastName?: string, cgvAccepted?: boolean): Promise<CheckoutResponse> {
         return this.cartRequest<CheckoutResponse>('/checkout', {
             method: 'POST',
             body: JSON.stringify({
                 guest_email: guestEmail,
-                guest_name: guestName,
+                guest_first_name: guestFirstName,
+                guest_last_name: guestLastName,
                 cgv_accepted: cgvAccepted ?? true,
             }),
         })
