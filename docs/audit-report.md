@@ -30,148 +30,199 @@
 
 ### Backend (96 fichiers PHP dans api/app/)
 
-| Categorie | Fichiers | Lignes | Avant |
-|-----------|----------|--------|-------|
-| Controllers API | 16 | 3 320 | - |
-| Controllers Admin | 6 | 724 | - |
-| **Total Controllers** | **22** | **4 044** | - |
-| Services | 7 | 1 939 | 6 services |
-| FormRequests | 19 | ~500 | **0 (inexistant)** |
-| API Resources | 2 | ~50 | **0 (inexistant)** |
-| Policies | 1 | ~60 | **0 (inexistant)** |
-| Events | 2 | ~30 | **0 (inexistant)** |
-| Listeners | 2 | ~100 | **0 (inexistant)** |
-| Traits | 2 | ~60 | 0 |
-| Helpers | 1 | ~20 | 0 |
+| Categorie | Fichiers | Lignes |
+|-----------|----------|--------|
+| Controllers API | 16 | 3 320 |
+| Controllers Admin | 6 | 724 |
+| **Total Controllers** | **22** | **4 044** |
+| Services | 7 | 1 939 |
+| FormRequests | 19 | ~500 |
+| API Resources | 2 | ~50 |
+| Policies | 1 | ~60 |
+| Events | 2 | ~30 |
+| Listeners | 2 | ~100 |
+| Traits | 2 | ~60 |
+| Helpers | 1 | ~20 |
 
 ### Frontend (web/src/)
 
-| Categorie | Fichiers | Lignes | Avant |
-|-----------|----------|--------|-------|
-| Services API | 6 | 1 526 | 4 fichiers, ~1 283 lignes |
-| Composables | 4 | 410 | 3 fichiers, ~275 lignes |
-| Utilitaires | 5 | ~120 | 4 fichiers |
-| admin/Galleries.vue | 1 | 1 290 | 1 394 |
-| admin/EventGalleries.vue | 1 | 1 678 | 1 782 |
+| Categorie | Fichiers | Lignes |
+|-----------|----------|--------|
+| Services API | 6 | 1 526 |
+| Composables | 4 | 410 |
+| Utilitaires | 5 | ~120 |
+| admin/Galleries.vue | 1 | 1 290 |
+| admin/EventGalleries.vue | 1 | 1 678 |
 
 ---
 
-## Recapitulatif complet des actions realisees
+## Plan d'action — Prochaines etapes
 
-### Etape 1 : Suppressions sans risque
-
-| Action | Detail |
-|--------|--------|
-| Supprimer PaymentController.php | Code mort (Stripe/PayPal deprecated) |
-| `composer remove laravel/cashier srmklive/paypal` | 5 packages retires (stripe-php, moneyphp, etc.) |
-| Supprimer vues vendor Cashier | `resources/views/vendor/cashier/` orphelin |
-| `npm uninstall @vueuse/core` | Jamais importe dans le code |
-| Supprimer CartIcon.vue | Composant jamais reference |
-| Supprimer exports morts | `COLORS`, `PORTFOLIO_CATEGORIES` dans constants.ts |
-| Supprimer types morts | `PrestationMini`, `BookingRequestData` |
-| Nettoyer config/services.php | Retire Postmark, Resend, SES, Slack |
-| Nettoyer .env.example | Retire `DB_*_DOCKER`, `BROADCAST_CONNECTION`, `MAIL_ENCRYPTION` |
-| Supprimer persona_2.jpg | Image non referencee dans le code |
-
-### Etape 2 : Corrections rapides
-
-| Action | Impact |
-|--------|--------|
-| Extraire `formatPrice()` dans `utils/format.ts` | Elimine 5 copies identiques |
-| Corriger `config/app.php` timezone | `env('APP_TIMEZONE', 'UTC')` au lieu de hardcode |
-| Corriger `config/filesystems.php` minio | `env('MINIO_USE_PATH_STYLE', true)` au lieu de hardcode |
-| Extraire `ClearsEventGalleriesCache` trait | Elimine duplication entre 2 controllers |
-| Extraire `MimeTypes` helper | Elimine duplication entre 3 fichiers |
-
-### Etape 3 : Refactoring structurel
-
-**Backend — Decoupage controllers :**
-
-| Fichier | Avant | Apres | Extraction |
-|---------|-------|-------|------------|
-| GalleryController.php | 877 | 440 | → EventGalleryController (395 lignes) |
-| OrderController.php | 559 | 319 | → Admin/OrderController (168 lignes) |
-
-**Backend — Nouveaux fichiers :**
-- `EventGalleryController.php` — toutes les methodes event gallery
-- `Admin/OrderController.php` — toutes les methodes admin order
-- `Traits/SyncsProductTypes.php` — validation + sync product types (elimine 4x duplication)
-- `Photo::resolved_storage_path` accessor — remplace 8 variantes incoherentes dans 8 fichiers
-
-**Backend — Injection de dependance :**
-- 13 occurrences de `new MinioStorageService` remplacees par DI constructeur ou `app()` container
-- Reste 2 occurrences dans les constructeurs de services avec valeur par defaut (`= new MinioStorageService`)
-
-**Backend — OrderService refacto :**
-- `createFromCart()` (105 lignes monolithiques) → 4 methodes privees : `findReusablePendingOrder()`, `calculateCartTotal()`, `resolvePackPrices()`, `validateCartItems()`
-
-**Frontend — BaseApiService :**
-- Cree `baseApi.ts` (111 lignes) — logique `request()`, auth headers, CSRF partagee
-
-| Service | Avant | Apres | Reduction |
-|---------|-------|-------|-----------|
-| api.ts | 153 | 91 | -40% |
-| authApi.ts | 149 | 59 | -60% |
-| adminApi.ts | 646 | 495 | -23% |
-| cartApi.ts | 335 | 268 | -20% |
-
-**Frontend — useProductTypes composable :**
-- 135 lignes de logique product types extraites de Galleries.vue et EventGalleries.vue (10 fonctions identiques centralisees)
-
-### Etape 4 : Optimisations de performance
-
-| Probleme | Avant | Apres |
-|----------|-------|-------|
-| N+1 `client_id` (Gallery $appends) | 1 query/gallery serialisee | 1 batch `whereIn` pour toute la page |
-| N+1 `download_status` accessor | 2-3 queries/gallery | 0 query (calcule depuis withCount) |
-| Triple load CartService | 3x `$cart->load(...)` | 1x `load()` + 2x `loadMissing()` |
-| adminEventIndex charge toutes photos | Toutes les photos par gallery | Limite a 1 photo (cover) |
-| PhotoCard double image request | `new Image()` + `<img>` | `<img loading="lazy">` seul |
-| Resize handler sans debounce | Feu a chaque pixel | `requestAnimationFrame` throttle |
-| Scroll handler sans throttle | Feu a chaque pixel | `requestAnimationFrame` throttle |
-| Vite single bundle | Tout dans un chunk | `vendor-vue` separe (cache navigateur) |
-| N UPDATE en boucle (sort order) | N queries individuelles | 1 query CASE/WHEN SQL |
-| Pas de limite sur myGalleries | `->get()` sans limite | `->limit(50)` |
-| Pas de limite sur getOrders | `->get()` sans limite | `->limit(100)` |
-
-### Etape 5 : Ameliorations d'architecture
-
-**19 FormRequests crees et appliques :**
-- Auth : RegisterRequest, LoginRequest, UpdateProfileRequest, ResetPasswordRequest
-- Admin : StorePrestationRequest, UpdatePrestationRequest, StoreUserRequest, UpdateUserRequest, StoreClientRequest, UpdateClientRequest
-- Public : SendContactRequest, StoreBookingRequest, CreateCheckoutRequest, AddToCartRequest, StoreGiftCardRequest, StoreReservationRequest, StorePhotoRequest, StoreAsyncPhotoRequest, UpdateSortOrderRequest
-
-**API Resources :**
-- `OrderResource` + `OrderItemResource` — remplace `formatOrder()` (30 lignes de mapping manuel → resource reutilisable)
-
-**Policy :**
-- `OrderPolicy` (view + download) — formalise les conditions d'acces dispersees dans les controllers
-
-**Events/Listeners :**
-- `ContactMessageSent` → `SendContactEmails` : ContactController passe de 71 a 36 lignes
-- `BookingRequested` → `SendBookingNotifications` : BookingRequestController passe de 143 a 76 lignes
-
-**PricingService :**
-- 4 methodes de pricing extraites du modele Gallery (267 lignes) vers un service dedie (109 lignes)
-- Les methodes du modele restent comme proxy pour compatibilite
+Les items ci-dessous combinent les restes du refactoring technique et la todolist fonctionnelle du projet. Ils sont organises en phases d'implementation logiques.
 
 ---
 
-## Ce qui reste a faire (hors scope de ce refactoring)
+### Phase A — Performance & chargement (OBJECTIF PRINCIPAL)
 
-### Priorite haute
-- **Tests** : 0% de couverture. Ajouter PHPUnit pour les services critiques (OrderService, CartService, PricingService) et Vitest pour les composables frontend.
+> Objectif : photos qui chargent vite, ajouts panier instantanes, navigation fluide.
 
-### Priorite moyenne
-- **~12 validations inline restantes** : petites validations (1-2 regles) dans CartController, GiftCardController, SumUpPaymentController, ReservationController, AvailabilityController. Ne justifient pas un FormRequest dedie.
-- **Galleries.vue (1290 lignes) et EventGalleries.vue (1678 lignes)** : restent volumineux. L'extraction du composable `useProductTypes` a retire ~110 lignes chacun, mais d'autres composants partages pourraient etre extraits (PhotoUploadZone, PhotoGridManager, DeletePhotoModal).
-- **adminApi.ts (495 lignes)** : pourrait etre decoupe par domaine (reservations, galleries, orders) mais le risque d'impact sur les imports dans les vues admin est non negligeable.
+#### A1. Bug panier : ajout bloque par le chargement des photos
+- [ ] Diagnostiquer pourquoi le clic "Ajouter au panier" ne repond pas tant que toutes les photos ne sont pas chargees
+- [ ] Verifier l'ordre des chargements : le store cart ne doit pas dependre du rendu des images
+- [ ] S'assurer que `cartStore.addItem()` est un appel API independant, pas bloque par un `await` sur les photos
+- [ ] Verifier si un composant parent attend un `onMounted` complet qui inclut le chargement d'images avant de rendre les boutons interactifs
 
-### Priorite basse
-- **API Resources supplementaires** : GalleryResource, UserResource, ReservationResource pour uniformiser les reponses API
-- **Policies supplementaires** : GalleryPolicy, ReservationPolicy
-- **uploadService.ts (502 lignes)** : pourrait beneficier d'un refactoring
-- **Images originales /public/images/** : 241 MB d'originaux servent de source pour `optimize-images.js`. Seul `hero.png` est directement reference. Envisager un `.gitignore` ou un stockage externe pour les originaux.
+#### A2. Audit global des temps de chargement
+- [ ] Mesurer les metriques actuelles (LCP, FCP, TTFB) avec Lighthouse et WebPageTest
+- [ ] Identifier les endpoints API les plus lents (logs de timing ou Laravel Telescope en local)
+- [ ] Profiler les requetes SQL lentes avec `DB::listen()` ou `EXPLAIN ANALYZE`
+
+#### A3. Optimisation backend (requetes & cache)
+- [ ] Ajouter du cache sur les endpoints publics frequents (event categories, galleries publiques)
+- [ ] Verifier que les eager-loads sont optimaux sur tous les endpoints qui retournent des photos
+- [ ] Verifier que les endpoints panier (add/remove/update) n'executent pas de recalculs inutiles a chaque action
+
+#### A4. Optimisation frontend (images & assets)
+- [ ] Implementer le chargement progressif des photos (intersection observer, chargement par lots au scroll)
+- [ ] Ajouter `srcset` / `<picture>` pour servir des tailles adaptees (mobile vs desktop)
+- [ ] Verifier que les thumbnails sont utilises dans les grilles et que les previews ne sont charges que dans le lightbox
+- [ ] Images originales `/public/images/` (241 MB) : envisager `.gitignore` ou stockage externe pour les originaux
+
+#### A5. Optimisation frontend (JS & rendu)
+- [ ] Auditer les re-renders inutiles dans les composants lourds (Galleries, EventGalleries, MasonryGallery)
+- [ ] Verifier le code-splitting par route (chaque page admin ne charge que son code)
+- [ ] Verifier la taille du bundle final avec `vite-bundle-visualizer`
+
+---
+
+### Phase B — Commandes & paiement
+
+#### B1. Formulaire de commande : nom + prenom obligatoires
+- [ ] Separer en deux champs `guest_first_name` et `guest_last_name` dans le checkout
+- [ ] Mettre a jour `CreateCheckoutRequest`, `OrderService::createFromCart()`, le modele Order, et Checkout.vue
+- [ ] Migration BDD (split de la colonne `guest_name`)
+
+#### B2. Admin — Copier le lien de commande
+- [ ] Bouton "Copier le lien" dans la vue admin Orders → copie `{frontend}/commande/{id}?token={download_token}`
+- [ ] Le download_token est deja dans `order.metadata`
+
+#### B3. Admin — Re-trigger la verification de paiement
+- [ ] Endpoint `POST /admin/orders/{order}/retry-payment` → appelle `OrderService::verifyAndUpdateOrder()`
+- [ ] Si paiement confirme sur SumUp : generer token download, PDF facture, envoyer email confirmation
+- [ ] Bouton correspondant dans la vue admin Orders
+
+#### B4. Envoyer les infos client a SumUp
+- [ ] Modifier `SumUpService::createCheckout()` pour inclure `customer.email`, `customer.first_name`, `customer.last_name` dans le payload
+- [ ] Necessite que les infos client soient disponibles dans l'Order au moment du checkout
+
+---
+
+### Phase C — Securite & RGPD
+
+#### C1. Audit de securite des formulaires
+- [ ] Verifier que toutes les entrees passent par des FormRequests (19 crees, ~12 inline restantes)
+- [ ] Verifier les `DB::raw()` avec entrees non sanitisees
+- [ ] Verifier les en-tetes HTTP de securite (CSP, X-Frame-Options, X-Content-Type-Options)
+- [ ] Verifier la config Sanctum (domaines stateful, CORS, expiration tokens)
+
+#### C2. Audit RGPD
+- [ ] Verifier consentement explicite sur tous les formulaires publics (deja en place via `gdpr_consent`)
+- [ ] Verifier l'export GDPR (`ClientController::gdprExport()`) — complet ?
+- [ ] Verifier le droit a l'oubli pour les commandes (pas seulement les reservations)
+- [ ] Verifier la duree de retention des donnees (logs, sessions, tokens)
+- [ ] Verifier que les cookies ne sont deposes qu'apres consentement
+
+#### C3. Policies Supabase
+- [ ] Configurer les Row Level Security (RLS) policies sur Supabase
+- [ ] Defense en profondeur meme si l'API Laravel est le seul point d'acces
+
+---
+
+### Phase D — Compte client
+
+#### D1. Rattachement automatique de l'historique
+- [ ] A la creation de compte, rattacher : commandes guest (`orders.guest_email`), galeries (`galleries.assigned_email`), reservations guest (`reservations.guest_email`)
+- [ ] La logique existe partiellement dans `AuthController::register()` (galeries). L'etendre aux commandes et reservations
+
+#### D2. Interface compte client
+- [ ] Verifier que `/mon-compte` affiche achats, galeries, reservations
+- [ ] Permettre le re-telechargement des photos achetees depuis le dashboard
+- [ ] UX : achat en guest → creation de compte → tout se retrouve automatiquement
+
+---
+
+### Phase E — Cookies & consentement
+
+#### E1. Consentement YouTube
+- [ ] Bloquer les iframes YouTube tant que le consentement marketing n'est pas donne (placeholder + bouton)
+- [ ] Le `CookieBanner.vue` gere deja analytics/marketing — verifier que le toggle bloque bien YouTube
+
+#### E2. Revocation du consentement
+- [ ] Verifier que "Modifier mes preferences" permet de revoquer
+- [ ] Quand l'utilisateur refuse apres coup : supprimer cookies GA4, desactiver tracking, supprimer cookies tiers
+- [ ] Tester le flow complet : accepter → naviguer → refuser → verifier arret tracking
+
+---
+
+### Phase F — Admin & fonctionnalites
+
+#### F1. Publier/depublier les evenements
+- [ ] Champ `is_published` (boolean, default true) sur Gallery (type event)
+- [ ] Migration + modifier `EventGalleryController::index()` (public) pour filtrer
+- [ ] Toggle dans l'admin EventGalleries
+
+#### F2. Galerie parent : mode creation simplifie
+- [ ] Option "Galerie parent" (checkbox) dans le formulaire de creation de galerie evenement
+- [ ] Quand coche : rendre optionnels les champs non necessaires (photos, product types, etc.)
+- [ ] Backend : valider que les champs obligatoires dependent du flag `is_parent`
+
+---
+
+### Phase G — SEO & prerendering
+
+#### G1. Audit du prerendering actuel
+- [ ] Verifier que toutes les pages publiques sont prerendues
+- [ ] Verifier les balises meta (title, description, og:image) sur chaque page
+- [ ] Verifier le sitemap.xml
+- [ ] Tester avec Google Search Console
+
+#### G2. Amelioration SEO technique
+- [ ] Donnees structurees JSON-LD (schema.org/Service pour prestations, schema.org/Event pour evenements)
+- [ ] Core Web Vitals (lie a la Phase A)
+
+#### G3. Strategie de prerendering
+- [ ] Evaluer des alternatives a Puppeteer : si migration vers Nuxt (Phase H), le SSR natif remplace le prerendering
+- [ ] Sinon, evaluer `vite-ssg` (static site generation native Vite) comme alternative plus legere a Puppeteer
+
+---
+
+### Phase H — Infrastructure & deploiement (long terme)
+
+#### H1. Migration Render → Vercel
+- [ ] Vercel pour le frontend (SPA/SSR), backend Laravel sur un autre hebergeur (NAS, Render, Railway)
+- [ ] Separer clairement le deploiement frontend et backend
+- [ ] Adapter scripts de build et variables d'environnement
+
+#### H2. Deploiement sur NAS
+- [ ] Configuration Docker pour le NAS (docker-compose existe deja)
+- [ ] Reverse proxy (Nginx/Traefik) + certificats SSL (Let's Encrypt)
+
+#### H3. Evaluation SSR / Nuxt
+- [ ] Evaluer le benefice : le prerendering couvre le SEO des pages statiques, le SSR apporterait un gain sur les pages dynamiques (galeries, evenements)
+- [ ] Migration Vue SPA → Nuxt = refactoring majeur (routeur, layouts, composables serveur). Projet a part entiere
+- [ ] Si Nuxt : le prerendering Puppeteer et le questionnement `vite-ssg` deviennent obsoletes (SSR natif)
+
+---
+
+### Reste technique du refactoring (priorite basse)
+
+- [ ] **Tests** : 0% de couverture. PHPUnit pour services critiques, Vitest pour composables frontend
+- [ ] **~12 validations inline restantes** : petites validations (1-2 regles) dans CartController, GiftCardController, SumUpPaymentController, ReservationController, AvailabilityController
+- [ ] **Galleries.vue (1290 lignes) et EventGalleries.vue (1678 lignes)** : extraire PhotoUploadZone, PhotoGridManager, DeletePhotoModal
+- [ ] **adminApi.ts (495 lignes)** : decouper par domaine
+- [ ] **API Resources supplementaires** : GalleryResource, UserResource, ReservationResource
+- [ ] **Policies supplementaires** : GalleryPolicy, ReservationPolicy
+- [ ] **uploadService.ts (502 lignes)** : refactoring possible
 
 ---
 
@@ -191,8 +242,6 @@
 | Frontend DRY | 4 services avec request() copie | BaseApiService + heritage |
 
 **Score estime : 5.5/10 → 7.5/10**
-
-Les points restants (tests, Galleries/EventGalleries trop gros, API Resources supplementaires) sont des ameliorations incrementales qui peuvent etre traitees au fil du temps sans urgence.
 
 ---
 
