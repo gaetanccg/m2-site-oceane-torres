@@ -65,6 +65,23 @@ export interface AccountReservation {
 }
 
 // ============================================================================
+// Account Order
+// ============================================================================
+
+export interface AccountOrder {
+    id: string
+    order_number: string
+    status: 'pending' | 'paid' | 'failed' | 'refunded' | 'expired'
+    total: number
+    currency: string
+    paid_at: string | null
+    created_at: string
+    items_count: number
+    has_prints: boolean
+    download_token: string | null
+}
+
+// ============================================================================
 // Account Dashboard
 // ============================================================================
 
@@ -72,6 +89,7 @@ export interface AccountDashboard {
     user: User
     galleries: AccountGallery[]
     reservations: AccountReservation[]
+    orders: AccountOrder[]
 }
 
 // ============================================================================

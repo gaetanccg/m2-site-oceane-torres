@@ -150,16 +150,18 @@ Les items ci-dessous combinent les restes du refactoring technique et la todolis
 
 ---
 
-### Phase D — Compte client
+### Phase D — Compte client -- FAIT
 
-#### D1. Rattachement automatique de l'historique *(beneficie de B1 fait en amont)*
-- [ ] A la creation de compte, rattacher : commandes guest (`orders.guest_email`), galeries (`galleries.assigned_email`), reservations guest (`reservations.guest_email`)
-- [ ] La logique existe partiellement dans `AuthController::register()` (galeries). L'etendre aux commandes et reservations
+#### D1. Rattachement automatique de l'historique -- FAIT
+- [x] `AuthController::register()` rattache desormais galeries + commandes + reservations par email
+- [x] 3 requetes ajoutees : `Order::where('guest_email')`, `Reservation::where('guest_email')`, `Gallery::where('assigned_email')` → `update(['user_id' => $user->id])`
 
-#### D2. Interface compte client
-- [ ] Verifier que `/mon-compte` affiche achats, galeries, reservations
-- [ ] Permettre le re-telechargement des photos achetees depuis le dashboard
-- [ ] UX : achat en guest → creation de compte → tout se retrouve automatiquement
+#### D2. Interface compte client -- FAIT
+- [x] `AccountController::dashboard()` retourne desormais les commandes en plus des galeries et reservations
+- [x] Dashboard.vue : nouvel onglet "Mes achats" avec liste des commandes, statut, montant, date
+- [x] Bouton "Voir / Telecharger" sur chaque commande payee → lien direct avec download_token
+- [x] Types `AccountOrder` + `AccountDashboard` mis a jour
+- [ ] **Reste a faire** : ameliorations UX possibles (re-telechargement individuel depuis le dashboard, page de detail commande client)
 
 ---
 
