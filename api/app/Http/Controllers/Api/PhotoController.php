@@ -4,6 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Helpers\MimeTypes;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreAsyncPhotoRequest;
+use App\Http\Requests\StorePhotoRequest;
+use App\Http\Requests\UpdateSortOrderRequest;
 use App\Jobs\ProcessPhotoJob;
 use App\Models\Gallery;
 use App\Models\Photo;
@@ -27,7 +30,7 @@ class PhotoController extends Controller
         ]);
     }
 
-    public function store(Request $request, Gallery $gallery): JsonResponse
+    public function store(StorePhotoRequest $request, Gallery $gallery): JsonResponse
     {
         // Block upload on parent galleries (galleries with children)
         if ($gallery->children()->exists()) {
@@ -37,10 +40,7 @@ class PhotoController extends Controller
             ], 422);
         }
 
-        $validated = $request->validate([
-            'photos' => ['required', 'array', 'min:1'],
-            'photos.*' => ['required', 'file', 'mimes:jpeg,png,jpg,gif,webp,mp4,mov,avi', 'max:51200'], // 50MB max per file
-        ]);
+        $validated = $request->validated();
 
         $imageProcessingService = new ImageProcessingService;
         $uploadedPhotos = [];
@@ -264,17 +264,22 @@ class PhotoController extends Controller
         ]);
     }
 
-    public function updateSortOrder(Request $request): JsonResponse
+    public function updateSortOrder(UpdateSortOrderRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'photos' => ['required', 'array'],
-            'photos.*.id' => ['required', 'exists:photos,id'],
-            'photos.*.sort_order' => ['required', 'integer', 'min:0'],
-        ]);
+        $validated = $request->validated();
 
+        $cases = [];
+        $ids = [];
         foreach ($validated['photos'] as $photoData) {
-            Photo::where('id', $photoData['id'])
-                ->update(['sort_order' => $photoData['sort_order']]);
+            $cases[] = "WHEN '{$photoData['id']}' THEN {$photoData['sort_order']}";
+            $ids[] = $photoData['id'];
+        }
+
+        if (! empty($cases)) {
+            $caseSql = implode(' ', $cases);
+            $idList = implode("','", $ids);
+            Photo::whereIn('id', $ids)
+                ->update(['sort_order' => \DB::raw("CASE id {$caseSql} END")]);
         }
 
         return response()->json([
@@ -286,7 +291,7 @@ class PhotoController extends Controller
      * Store photos asynchronously via job queue
      * Accepts chunks of up to 15 photos at a time
      */
-    public function storeAsync(Request $request, Gallery $gallery): JsonResponse
+    public function storeAsync(StoreAsyncPhotoRequest $request, Gallery $gallery): JsonResponse
     {
         // Block upload on parent galleries (galleries with children)
         if ($gallery->children()->exists()) {
@@ -296,11 +301,7 @@ class PhotoController extends Controller
             ], 422);
         }
 
-        $validated = $request->validate([
-            'photos' => ['required', 'array', 'min:1', 'max:15'],
-            'photos.*' => ['required', 'file', 'mimes:jpeg,png,jpg,gif,webp,mp4,mov,avi', 'max:51200'],
-            'batch_id' => ['required', 'string'],
-        ]);
+        $validated = $request->validated();
 
         $batchId = $validated['batch_id'];
         $uploads = [];

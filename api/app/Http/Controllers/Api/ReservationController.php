@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreReservationRequest;
 use App\Models\Reservation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -68,18 +69,9 @@ class ReservationController extends Controller
         ]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreReservationRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'prestation_id' => ['required', 'exists:prestations,id'],
-            'date' => ['required', 'date', 'after:now'],
-            'notes' => ['nullable', 'string'],
-            'client_form' => ['required', 'array'],
-            'client_form.fullname' => ['required', 'string', 'max:255'],
-            'client_form.phone' => ['nullable', 'string', 'max:20'],
-            'client_form.requirements' => ['nullable', 'string'],
-            'client_form.message' => ['nullable', 'string'],
-        ]);
+        $validated = $request->validated();
 
         $reservation = Reservation::create([
             'user_id' => $request->user()->id,

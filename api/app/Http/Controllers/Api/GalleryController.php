@@ -70,6 +70,7 @@ class GalleryController extends Controller
             ->orWhere('assigned_email', $user->email)
             ->with('photos')
             ->latest()
+            ->limit(50)
             ->get();
 
         return response()->json([
