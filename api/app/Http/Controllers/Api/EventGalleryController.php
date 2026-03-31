@@ -109,7 +109,12 @@ class EventGalleryController extends Controller
     {
         $galleries = Gallery::where('type', 'event')
             ->topLevel()
-            ->with(['photos', 'thumbnailPhoto', 'galleryProductTypes.packTiers', 'eventCategory'])
+            ->with([
+                'thumbnailPhoto',
+                'photos' => fn ($q) => $q->ordered()->limit(1),
+                'galleryProductTypes.packTiers',
+                'eventCategory',
+            ])
             ->withCount(['photos', 'children'])
             ->orderBy('sort_order')
             ->latest()
@@ -369,7 +374,12 @@ class EventGalleryController extends Controller
         }
 
         $children = $gallery->children()
-            ->with(['photos', 'thumbnailPhoto', 'galleryProductTypes.packTiers', 'eventCategory'])
+            ->with([
+                'thumbnailPhoto',
+                'photos' => fn ($q) => $q->ordered()->limit(1),
+                'galleryProductTypes.packTiers',
+                'eventCategory',
+            ])
             ->withCount('photos')
             ->get();
 

@@ -31,9 +31,7 @@ class Gallery extends Model
         'sort_order',
     ];
 
-    protected $appends = [
-        'client_id',
-    ];
+    protected $appends = [];
 
     protected function casts(): array
     {

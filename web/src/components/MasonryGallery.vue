@@ -415,15 +415,23 @@ const openLightbox = (index: number) => {
     lightboxOpen.value = true
 }
 
+// Debounced resize handler
+let resizeRaf: number | null = null
+const debouncedUpdateColumnCount = () => {
+    if (resizeRaf) window.cancelAnimationFrame(resizeRaf)
+    resizeRaf = window.requestAnimationFrame(updateColumnCount)
+}
+
 // Lifecycle
 onMounted(() => {
     updateColumnCount()
-    window.addEventListener('resize', updateColumnCount)
+    window.addEventListener('resize', debouncedUpdateColumnCount)
     preloadCurrentImages()
 })
 
 onUnmounted(() => {
-    window.removeEventListener('resize', updateColumnCount)
+    window.removeEventListener('resize', debouncedUpdateColumnCount)
+    if (resizeRaf) window.cancelAnimationFrame(resizeRaf)
 })
 
 // When filter changes, preload new images

@@ -260,8 +260,9 @@ class CartService
      */
     public function getCartSummary(Cart $cart): array
     {
-        $this->recalculatePackPrices($cart);
+        // Load relations once upfront — recalculatePackPrices and buildPackGroups use loadMissing
         $cart->load('items.photo.gallery.galleryProductTypes.packTiers');
+        $this->recalculatePackPrices($cart);
 
         $groups = $this->buildPackGroups($cart);
 
@@ -350,7 +351,7 @@ class CartService
      */
     public function buildPackGroups(Cart $cart): Collection
     {
-        $cart->load('items.photo.gallery.galleryProductTypes.packTiers');
+        $cart->loadMissing('items.photo.gallery.galleryProductTypes.packTiers');
 
         $groups = [];
 
@@ -386,7 +387,7 @@ class CartService
      */
     public function recalculatePackPrices(Cart $cart): void
     {
-        $cart->load('items.photo.gallery.galleryProductTypes.packTiers');
+        $cart->loadMissing('items.photo.gallery.galleryProductTypes.packTiers');
         $groups = $this->buildPackGroups($cart);
 
         foreach ($groups as $group) {

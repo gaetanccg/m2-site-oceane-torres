@@ -385,9 +385,22 @@ class GalleryController extends Controller
             ->latest()
             ->paginate(20);
 
-        $galleries->getCollection()->transform(function ($gallery) {
+        // Batch-load client_ids for all galleries with a user_id (avoids N+1)
+        $userIds = $galleries->getCollection()->pluck('user_id')->filter()->unique()->values();
+        $clientMap = $userIds->isNotEmpty()
+            ? Client::whereIn('user_id', $userIds)->pluck('id', 'user_id')
+            : collect();
+
+        $galleries->getCollection()->transform(function ($gallery) use ($clientMap) {
             $gallery->total_downloads_count = $gallery->photos_sum_downloads_count ?? 0;
-            $gallery->download_status = $gallery->download_status;
+            // Compute download_status from withCount data (avoids N+1)
+            $downloadable = $gallery->downloadable_count ?? 0;
+            $downloaded = $gallery->downloaded_photos_count ?? 0;
+            $gallery->download_status = $downloadable === 0 || $downloaded === 0
+                ? 'none'
+                : ($downloaded >= $downloadable ? 'complete' : 'partial');
+            // Resolve client_id from batch-loaded map (avoids N+1)
+            $gallery->client_id = $gallery->user_id ? ($clientMap[$gallery->user_id] ?? null) : null;
             unset($gallery->photos_sum_downloads_count);
 
             return $gallery;
@@ -409,8 +422,14 @@ class GalleryController extends Controller
         $gallery->downloadable_count = $gallery->photos->where('is_downloadable', true)->count();
         $gallery->liked_photos_count = $gallery->photos->where('is_liked', true)->count();
         $gallery->total_downloads_count = $gallery->photos->sum('downloads_count');
+        $downloadedCount = $gallery->photos->where('downloads_count', '>', 0)->where('is_downloadable', true)->count();
         $gallery->downloaded_photos_count = $gallery->photos->where('downloads_count', '>', 0)->count();
-        $gallery->download_status = $gallery->download_status;
+        $gallery->download_status = $gallery->downloadable_count === 0 || $downloadedCount === 0
+            ? 'none'
+            : ($downloadedCount >= $gallery->downloadable_count ? 'complete' : 'partial');
+        $gallery->client_id = $gallery->user_id
+            ? Client::where('user_id', $gallery->user_id)->value('id')
+            : null;
 
         return response()->json([
             'success' => true,
