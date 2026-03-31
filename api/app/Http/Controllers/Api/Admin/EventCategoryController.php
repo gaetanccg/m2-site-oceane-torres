@@ -94,9 +94,17 @@ class EventCategoryController extends Controller
             'categories.*.sort_order' => ['required', 'integer', 'min:0'],
         ]);
 
+        $cases = [];
+        $ids = [];
         foreach ($validated['categories'] as $categoryData) {
-            EventCategory::where('id', $categoryData['id'])
-                ->update(['sort_order' => $categoryData['sort_order']]);
+            $cases[] = "WHEN '{$categoryData['id']}' THEN {$categoryData['sort_order']}";
+            $ids[] = $categoryData['id'];
+        }
+
+        if (! empty($cases)) {
+            $caseSql = implode(' ', $cases);
+            EventCategory::whereIn('id', $ids)
+                ->update(['sort_order' => \DB::raw("CASE id {$caseSql} END")]);
         }
 
         return response()->json([

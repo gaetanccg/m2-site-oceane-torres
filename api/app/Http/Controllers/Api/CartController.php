@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\AddToCartRequest;
 use App\Services\CartService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -37,13 +38,9 @@ class CartController extends Controller
     /**
      * Add a photo to cart
      */
-    public function addItem(Request $request): JsonResponse
+    public function addItem(AddToCartRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'photo_id' => ['required', 'uuid', 'exists:photos,id'],
-            'product_type' => ['nullable', 'string', 'in:digital,print_10x15,print_15x20'],
-            'session_id' => ['nullable', 'string'],
-        ]);
+        $validated = $request->validated();
 
         $user = $request->user();
         $sessionId = $request->header('X-Cart-Session') ?? $validated['session_id'] ?? null;

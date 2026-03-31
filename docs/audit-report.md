@@ -561,24 +561,39 @@ Ces deux fichiers partagent des centaines de lignes de template et logique dupli
 
 1. ~~**Corriger le N+1 `client_id`**~~ : retiré de `$appends`, batch-load via `Client::whereIn()` dans adminIndex (1 query au lieu de N)
 2. ~~**Corriger le N+1 `download_status`**~~ : calculé a partir des `withCount` déja presents (0 query supplémentaire au lieu de 2-3 par gallery)
-3. **Optimiser les images** : a vérifier manuellement quelles images originales sont encore référencées -- **RESTE A FAIRE (action manuelle)**
+3. ~~**Audit images**~~ : `persona_2.jpg` supprimé (non référencé). Les originaux `/images/` servent de source pour `optimize-images.js` — seul `hero.png` est encore référencé directement
 4. ~~Corriger le triple chargement de relations dans `CartService`~~ : `load()` -> `loadMissing()` (1 chargement au lieu de 3)
-5. Remplacer les UPDATE en boucle par des opérations batch -- **RESTE A FAIRE (etape 5)**
-6. Ajouter la pagination aux endpoints sans limite -- **RESTE A FAIRE (etape 5)**
+5. ~~Batch UPDATE~~ : `updateSortOrder` et `reorder` utilisent CASE/WHEN SQL (1 query au lieu de N)
+6. ~~Pagination~~ : `myGalleries()` limité a 50, `getOrdersForUser/Email()` limité a 100
 7. ~~Limiter `adminEventIndex()` + `children()`~~ : `photos` limité a 1 au lieu de toutes les photos
 8. ~~Ajouter debounce/throttle~~ : `requestAnimationFrame` sur resize (MasonryGallery) et scroll (Navbar)
 9. ~~Configurer `manualChunks` Vite~~ : vendor-vue séparé (vue, vue-router, pinia)
 10. ~~Supprimer cache check dupliqué `PhotoCard`~~ : retrait du `new Image()` dans `onMounted` + ajout `loading="lazy"`
 
-### Étape 5 : Améliorations d'architecture (design patterns)
+### Etape 5 : Améliorations d'architecture (design patterns) -- FAIT
 *Risque : Moyen-Élevé | Impact : Qualité long terme*
 
-1. Créer des `FormRequest` pour les 43 validations inline (par priorité : auth, order, gallery)
-2. Créer des `API Resources` pour les réponses (OrderResource, GalleryResource, UserResource)
-3. Créer des `Policies` pour l'autorisation (OrderPolicy, GalleryPolicy, ReservationPolicy)
-4. Introduire des Events/Listeners pour les effets de bord (emails, notifications)
-5. Extraire la logique de pricing du modèle Gallery vers un service
-6. Ajouter des tests (PHPUnit pour les services critiques, Vitest pour les composables)
+**FormRequests (19 classes creees, ~30 validations inline remplacees) :**
+- `Auth/` : RegisterRequest, LoginRequest, UpdateProfileRequest, ResetPasswordRequest
+- `Admin/` : StorePrestationRequest, UpdatePrestationRequest, StoreUserRequest, UpdateUserRequest, StoreClientRequest, UpdateClientRequest
+- Racine : SendContactRequest, StoreBookingRequest, CreateCheckoutRequest, AddToCartRequest, StoreGiftCardRequest, StoreReservationRequest, StorePhotoRequest, StoreAsyncPhotoRequest, UpdateSortOrderRequest
+
+**API Resources :**
+- ~~`OrderResource` + `OrderItemResource`~~ : remplace `formatOrder()` (30 lignes de mapping manuel)
+
+**Policies :**
+- ~~`OrderPolicy`~~ (view + download) — auto-decouverte Laravel
+
+**Events/Listeners :**
+- ~~`ContactMessageSent` -> `SendContactEmails`~~ : decouple l'envoi d'emails du ContactController
+- ~~`BookingRequested` -> `SendBookingNotifications`~~ : decouple notifications et emails du BookingRequestController
+
+**PricingService :**
+- ~~Extraire la logique de pricing~~ : `getAvailableProductTypes`, `getPackPricing`, `resolvePackPrice`, `getPriceForProductType` extraits de Gallery vers PricingService. Les methodes du modele restent comme proxy.
+
+**Reste :**
+- Ajouter des tests (PHPUnit, Vitest) — uniquement additif, pas de regression
+- ~12 validations inline mineures restantes (1-2 regles simples, ne justifient pas un FormRequest)
 
 ---
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreGiftCardRequest;
 use App\Models\GiftCard;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -25,14 +26,9 @@ class GiftCardController extends Controller
         ]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreGiftCardRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'amount' => ['required', 'numeric', 'min:10', 'max:500'],
-            'recipient_name' => ['nullable', 'string', 'max:255'],
-            'recipient_email' => ['nullable', 'email', 'max:255'],
-            'message' => ['nullable', 'string', 'max:500'],
-        ]);
+        $validated = $request->validated();
 
         $giftCard = GiftCard::create([
             ...$validated,

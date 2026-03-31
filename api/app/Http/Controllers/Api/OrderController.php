@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Api\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\CreateCheckoutRequest;
 use App\Models\Order;
 use App\Services\CartService;
 use App\Services\InvoiceService;
@@ -26,26 +27,10 @@ class OrderController extends Controller
     /**
      * Create an order from the current cart
      */
-    public function createFromCart(Request $request): JsonResponse
+    public function createFromCart(CreateCheckoutRequest $request): JsonResponse
     {
         $user = Auth::guard('sanctum')->user();
-
-        $rules = [
-            'guest_name' => ['nullable', 'string', 'max:255'],
-            'session_id' => ['nullable', 'string'],
-            'cgv_accepted' => ['required', 'accepted'],
-        ];
-
-        if (! $user) {
-            $rules['guest_email'] = ['required', 'email'];
-        } else {
-            $rules['guest_email'] = ['nullable', 'email'];
-        }
-
-        $validated = $request->validate($rules, [
-            'cgv_accepted.required' => 'Vous devez accepter les Conditions Générales de Vente.',
-            'cgv_accepted.accepted' => 'Vous devez accepter les Conditions Générales de Vente.',
-        ]);
+        $validated = $request->validated();
         $sessionId = $request->header('X-Cart-Session') ?? $validated['session_id'] ?? null;
 
         try {

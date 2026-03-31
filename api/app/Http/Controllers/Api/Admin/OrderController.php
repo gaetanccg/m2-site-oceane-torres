@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\OrderResource;
 use App\Models\Order;
 use App\Services\InvoiceService;
 use App\Services\SumUpService;
@@ -162,35 +163,6 @@ class OrderController extends Controller
      */
     public static function formatOrder(Order $order): array
     {
-        return [
-            'id' => $order->id,
-            'order_number' => $order->order_number,
-            'status' => $order->status,
-            'detailed_status' => $order->detailed_status,
-            'print_status' => $order->print_status,
-            'shipped_at' => $order->shipped_at?->toIso8601String(),
-            'subtotal' => (float) $order->subtotal,
-            'total' => (float) $order->total,
-            'currency' => $order->currency,
-            'paid_at' => $order->paid_at?->toIso8601String(),
-            'created_at' => $order->created_at->toIso8601String(),
-            'items' => $order->items->map(fn ($item) => [
-                'id' => $item->id,
-                'photo_id' => $item->photo_id,
-                'product_type' => $item->product_type ?? 'digital',
-                'product_type_label' => $item->getProductTypeLabel(),
-                'is_print' => $item->isPrint(),
-                'photo_title' => $item->photo_title,
-                'gallery_title' => $item->gallery_title,
-                'price' => (float) $item->price,
-                'is_downloaded' => $item->is_downloaded,
-                'display_url' => $item->photo?->display_url,
-                'preview_url' => $item->photo?->preview_url,
-                'thumbnail_url' => $item->photo?->thumbnail_url,
-            ]),
-            'has_prints' => $order->hasPrintItems(),
-            'customer_email' => $order->customer_email,
-            'customer_name' => $order->customer_name,
-        ];
+        return (new OrderResource($order))->resolve();
     }
 }

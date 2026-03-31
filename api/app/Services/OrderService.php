@@ -443,6 +443,7 @@ class OrderService
         return Order::forUser($user->id)
             ->with('items.photo')
             ->orderBy('created_at', 'desc')
+            ->limit(100)
             ->get();
     }
 
@@ -454,6 +455,7 @@ class OrderService
         return Order::forEmail($email)
             ->with('items.photo')
             ->orderBy('created_at', 'desc')
+            ->limit(100)
             ->get();
     }
 
