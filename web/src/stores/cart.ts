@@ -78,10 +78,11 @@ export const useCartStore = defineStore('cart', () => {
     }
 
     /**
-     * Add a photo to cart
+     * Add a photo to cart.
+     * Does NOT wait for init — the backend creates the cart if needed (getOrCreateCart).
+     * This makes "Add to cart" instant even if the cart hasn't finished loading.
      */
     async function addItem(photoId: string, productType: ProductType = 'digital'): Promise<boolean> {
-        await waitForInit()
         isLoading.value = true
         error.value = null
 
@@ -89,6 +90,7 @@ export const useCartStore = defineStore('cart', () => {
             const response = await cartApi.addToCart(photoId, productType)
             if (response.success) {
                 cart.value = response.cart
+                isInitialized.value = true
                 return true
             }
             error.value = response.message ?? 'Erreur lors de l\'ajout au panier'

@@ -27,6 +27,7 @@
                 :src="imageSrc"
                 :alt="alt"
                 loading="lazy"
+                decoding="async"
                 :class="['photo-image', { 'is-loaded': isLoaded && !hasFailed }]"
                 @load="onImageLoad"
                 @error="onImageError"
