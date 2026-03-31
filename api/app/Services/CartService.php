@@ -127,7 +127,6 @@ class CartService
         ]);
 
         $cart->unsetRelation('items');
-        $this->recalculatePackPrices($cart);
 
         return $item->fresh();
     }
@@ -173,7 +172,6 @@ class CartService
         ]);
 
         $cart->unsetRelation('items');
-        $this->recalculatePackPrices($cart);
 
         return $item->fresh();
     }
@@ -186,7 +184,6 @@ class CartService
         $deleted = $cart->items()->where('id', $itemId)->delete() > 0;
         if ($deleted) {
             $cart->unsetRelation('items');
-            $this->recalculatePackPrices($cart);
         }
 
         return $deleted;
@@ -200,7 +197,6 @@ class CartService
         $deleted = $cart->items()->where('photo_id', $photoId)->delete() > 0;
         if ($deleted) {
             $cart->unsetRelation('items');
-            $this->recalculatePackPrices($cart);
         }
 
         return $deleted;

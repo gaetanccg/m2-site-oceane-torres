@@ -10,6 +10,7 @@ use App\Services\MinioStorageService;
 use App\Traits\SyncsProductTypes;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use ZipArchive;
@@ -20,10 +21,14 @@ class GalleryController extends Controller
 
     public function index(): JsonResponse
     {
-        $galleries = Gallery::public()
-            ->with('photos')
-            ->latest()
-            ->paginate(12);
+        $page = request()->get('page', 1);
+
+        $galleries = Cache::remember("public_galleries_page_{$page}", 300, function () {
+            return Gallery::public()
+                ->with('photos')
+                ->latest()
+                ->paginate(12);
+        });
 
         return response()->json($galleries);
     }
@@ -303,7 +308,7 @@ class GalleryController extends Controller
             ], 403);
         }
 
-        $photos = $gallery->photos()->downloadable()->get();
+        $photos = $gallery->photos()->downloadable()->limit(500)->get();
 
         if ($photos->isEmpty()) {
             return response()->json([
