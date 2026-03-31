@@ -8,6 +8,8 @@ use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Requests\Auth\ResetPasswordRequest;
 use App\Http\Requests\Auth\UpdateProfileRequest;
 use App\Models\Gallery;
+use App\Models\Order;
+use App\Models\Reservation;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -37,8 +39,16 @@ class AuthController extends Controller
             'role' => 'client',
         ]);
 
-        // Lier les galeries assignees par email a ce nouvel utilisateur
+        // Rattacher l'historique existant par email au nouvel utilisateur
         Gallery::where('assigned_email', $validated['email'])
+            ->whereNull('user_id')
+            ->update(['user_id' => $user->id]);
+
+        Order::where('guest_email', $validated['email'])
+            ->whereNull('user_id')
+            ->update(['user_id' => $user->id]);
+
+        Reservation::where('guest_email', $validated['email'])
             ->whereNull('user_id')
             ->update(['user_id' => $user->id]);
 

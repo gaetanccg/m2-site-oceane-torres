@@ -38,6 +38,20 @@
                         </span>
                     </button>
                     <button
+                        @click="activeTab = 'orders'"
+                        :class="[
+                            'px-4 sm:px-6 py-2.5 text-sm font-medium rounded-lg transition-colors whitespace-nowrap flex-shrink-0',
+                            activeTab === 'orders'
+                                ? 'bg-white text-gray-900 shadow-sm'
+                                : 'text-gray-600 hover:text-gray-900'
+                        ]"
+                    >
+                        Mes achats
+                        <span v-if="orders.length > 0" class="ml-1 sm:ml-2 text-xs bg-gold/10 text-gold px-2 py-0.5 rounded-full">
+                            {{ orders.length }}
+                        </span>
+                    </button>
+                    <button
                         @click="activeTab = 'reservations'"
                         :class="[
                             'px-4 sm:px-6 py-2.5 text-sm font-medium rounded-lg transition-colors whitespace-nowrap flex-shrink-0',
@@ -85,6 +99,63 @@
                     </div>
                 </div>
 
+                <!-- Orders Tab -->
+                <div v-if="activeTab === 'orders'">
+                    <!-- Empty state -->
+                    <div v-if="orders.length === 0" class="bg-white rounded-xl border border-gray-200 p-12 text-center">
+                        <svg class="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                        </svg>
+                        <h3 class="text-lg font-medium text-gray-900 mb-2">Aucun achat</h3>
+                        <p class="text-gray-500 mb-6 max-w-sm mx-auto">
+                            Vos achats de photos apparaitront ici.
+                        </p>
+                    </div>
+
+                    <!-- Orders list -->
+                    <div v-else class="space-y-4">
+                        <div
+                            v-for="order in orders"
+                            :key="order.id"
+                            class="bg-white rounded-xl border border-gray-200 p-4 sm:p-6"
+                        >
+                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                <div>
+                                    <div class="flex items-center gap-3 mb-1">
+                                        <span class="font-mono font-medium text-gray-900 bg-gray-100 px-2 py-1 rounded text-sm">
+                                            {{ order.order_number }}
+                                        </span>
+                                        <span
+                                            :class="[
+                                                'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
+                                                order.status === 'paid' ? 'bg-green-100 text-green-800' :
+                                                order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                                'bg-red-100 text-red-800'
+                                            ]"
+                                        >
+                                            {{ order.status === 'paid' ? 'Payee' : order.status === 'pending' ? 'En attente' : 'Echouee' }}
+                                        </span>
+                                    </div>
+                                    <p class="text-sm text-gray-500">
+                                        {{ order.items_count }} photo(s) — {{ formatPrice(order.total) }}
+                                        <span v-if="order.paid_at"> — {{ formatDate(order.paid_at) }}</span>
+                                    </p>
+                                </div>
+                                <router-link
+                                    v-if="order.status === 'paid' && order.download_token"
+                                    :to="`/commande/${order.id}?token=${order.download_token}`"
+                                    class="inline-flex items-center gap-2 px-4 py-2 bg-gold text-white rounded-lg hover:bg-gold/90 transition-colors text-sm whitespace-nowrap"
+                                >
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                    </svg>
+                                    Voir / Telecharger
+                                </router-link>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Reservations Tab -->
                 <div v-if="activeTab === 'reservations'">
                     <!-- Empty state -->
@@ -125,16 +196,26 @@
 import { ref, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { authApi } from '@/services/authApi'
-import type { AccountGallery, AccountReservation } from '@/types/account'
+import type { AccountGallery, AccountReservation, AccountOrder } from '@/types/account'
+import { formatPrice } from '@/utils/format'
 import GalleryCard from './components/GalleryCard.vue'
 import ReservationCard from './components/ReservationCard.vue'
 
 const authStore = useAuthStore()
 
 const isLoading = ref(true)
-const activeTab = ref<'galleries' | 'reservations'>('galleries')
+const activeTab = ref<'galleries' | 'orders' | 'reservations'>('galleries')
 const galleries = ref<AccountGallery[]>([])
 const reservations = ref<AccountReservation[]>([])
+const orders = ref<AccountOrder[]>([])
+
+function formatDate(dateStr: string): string {
+    return new Date(dateStr).toLocaleDateString('fr-FR', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+    })
+}
 
 async function fetchDashboard() {
     isLoading.value = true
@@ -143,6 +224,7 @@ async function fetchDashboard() {
         if (response.success && response.data) {
             galleries.value = response.data.galleries
             reservations.value = response.data.reservations
+            orders.value = response.data.orders ?? []
         }
     } catch {
         // Failed to fetch dashboard
