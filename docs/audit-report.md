@@ -516,29 +516,29 @@ Ces deux fichiers partagent des centaines de lignes de template et logique dupli
 
 ## Plan d'action priorisé
 
-### Étape 1 : Suppressions sans risque (code mort, imports inutiles)
-*Risque : Aucun | Impact : Nettoyage immédiat*
+### Etape 1 : Suppressions sans risque (code mort, imports inutiles) -- FAIT
+*Risque : Aucun | Impact : Nettoyage immediat*
 
-1. Supprimer `api/app/Http/Controllers/Api/PaymentController.php`
-2. `composer remove laravel/cashier srmklive/paypal`
-3. Supprimer `api/resources/views/vendor/cashier/`
-4. `npm uninstall @vueuse/core` (dans `/web`)
-5. Supprimer `web/src/components/cart/CartIcon.vue`
-6. Supprimer les exports morts : `COLORS`, `PORTFOLIO_CATEGORIES` dans `constants.ts`
-7. Supprimer les types morts : `PrestationMini`, `BookingRequestData`
-8. Nettoyer `config/services.php` (retirer Postmark, Resend, SES, Slack)
-9. Nettoyer `.env.example` (retirer variables sans effet)
+1. ~~Supprimer `api/app/Http/Controllers/Api/PaymentController.php`~~
+2. ~~`composer remove laravel/cashier srmklive/paypal`~~ (5 packages retires dont stripe-php, moneyphp/money)
+3. ~~Supprimer `api/resources/views/vendor/cashier/`~~
+4. ~~`npm uninstall @vueuse/core` (dans `/web`)~~
+5. ~~Supprimer `web/src/components/cart/CartIcon.vue`~~
+6. ~~Supprimer les exports morts : `COLORS`, `PORTFOLIO_CATEGORIES` dans `constants.ts`~~
+7. ~~Supprimer les types morts : `PrestationMini`, `BookingRequestData`~~
+8. ~~Nettoyer `config/services.php` (retirer Postmark, Resend, SES, Slack)~~
+9. ~~Nettoyer `.env.example` (retirer `DB_*_DOCKER`, `BROADCAST_CONNECTION`, `MAIL_ENCRYPTION`)~~
 
-### Étape 2 : Corrections rapides à faible risque
-*Risque : Faible | Impact : Performance & qualité*
+### Etape 2 : Corrections rapides a faible risque -- FAIT
+*Risque : Faible | Impact : Performance & qualite*
 
-1. Extraire `formatPrice()` dans `web/src/utils/format.ts`
-2. Changer hero image PNG → WebP dans `Home.vue`
-3. Ajouter `loading="lazy"` sur les `<img>` sous le fold
-4. Corriger `config/app.php` : `env('APP_TIMEZONE', 'UTC')`
-5. Corriger `config/filesystems.php` : `env('MINIO_USE_PATH_STYLE', true)`
-6. Extraire `clearEventGalleriesCache()` dans un trait
-7. Extraire la résolution MIME type dans un helper partagé
+1. ~~Extraire `formatPrice()` dans `web/src/utils/format.ts`~~ (5 fichiers mis a jour)
+2. ~~Changer hero image PNG -> WebP dans `Home.vue`~~ (657 KB -> 28 KB)
+3. Ajouter `loading="lazy"` sur les `<img>` sous le fold -- **RESTE A FAIRE (etape 3)**
+4. ~~Corriger `config/app.php` : `env('APP_TIMEZONE', 'UTC')`~~
+5. ~~Corriger `config/filesystems.php` : `env('MINIO_USE_PATH_STYLE', true)`~~
+6. ~~Extraire `clearEventGalleriesCache()` dans `app/Traits/ClearsEventGalleriesCache.php`~~
+7. ~~Extraire la resolution MIME type dans `app/Helpers/MimeTypes.php`~~ (3 fichiers mis a jour)
 
 ### Étape 3 : Refactoring structurel (découpage de fichiers)
 *Risque : Moyen | Impact : Maintenabilité*

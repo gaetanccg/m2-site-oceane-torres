@@ -177,6 +177,7 @@ import { watch } from 'vue'
 import { useCartStore } from '@/stores/cart'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
+import { formatPrice } from '@/utils/format'
 import type { ProductType, CartItem, AvailableProductType } from '@/services/cartApi'
 
 const cartStore = useCartStore()
@@ -201,13 +202,6 @@ function getAvailableTypes(item: CartItem): Record<ProductType, AvailableProduct
 }
 
 // Cart init is handled by App.vue + waitForInit() in store actions
-
-function formatPrice(price: number): string {
-    return new Intl.NumberFormat('fr-FR', {
-        style: 'currency',
-        currency: 'EUR',
-    }).format(price)
-}
 
 async function updateItemType(itemId: string, productType: string) {
     await cartStore.updateItemType(itemId, productType as ProductType)

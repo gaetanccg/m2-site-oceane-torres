@@ -10,6 +10,7 @@ use App\Models\GalleryProductType;
 use App\Models\PackTier;
 use App\Models\Photo;
 use App\Services\MinioStorageService;
+use App\Traits\ClearsEventGalleriesCache;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -19,6 +20,8 @@ use ZipArchive;
 
 class GalleryController extends Controller
 {
+    use ClearsEventGalleriesCache;
+
     public function index(): JsonResponse
     {
         $galleries = Gallery::public()
@@ -861,17 +864,6 @@ class GalleryController extends Controller
                     ]);
                 }
             }
-        }
-    }
-
-    /**
-     * Clear event galleries cache (all pages)
-     */
-    private function clearEventGalleriesCache(): void
-    {
-        // Clear first 10 pages of cache
-        for ($i = 1; $i <= 10; $i++) {
-            Cache::forget("event_galleries_page_{$i}");
         }
     }
 }

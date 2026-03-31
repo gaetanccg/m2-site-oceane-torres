@@ -6,17 +6,6 @@
 import type {NavLink, SocialLink, ContactInfo, CategoryDescriptions} from '@/types'
 
 // ============================================================================
-// Couleurs
-// ============================================================================
-
-export const COLORS = {
-    gold: '#D4AF37',
-    goldLight: 'rgba(212, 175, 55, 0.9)',
-    black: '#0a0708',
-    white: '#ffffff',
-} as const
-
-// ============================================================================
 // Navigation
 // ============================================================================
 
@@ -64,15 +53,6 @@ export const SOCIAL_LINKS: SocialLink[] = [
 // ============================================================================
 // Catégories Portfolio
 // ============================================================================
-
-export const PORTFOLIO_CATEGORIES = [
-    'Portraits',
-    'Sport',
-    'Animalier',
-    'Automobile',
-    'Entreprise',
-    'Videos',
-] as const
 
 export const CATEGORY_DESCRIPTIONS: CategoryDescriptions = {
     Tous: "Découvrez mes réalisations photographiques : portraits, sport, animaux, automobile et entreprise.",

@@ -328,19 +328,6 @@ export interface GalleryFormData {
 }
 
 // ============================================================================
-// Booking Request (Public)
-// ============================================================================
-
-export interface BookingRequestData {
-    name: string
-    email: string
-    phone?: string
-    prestation_id: string
-    date_preferences: string
-    message?: string
-}
-
-// ============================================================================
 // Gift Cards
 // ============================================================================
 
