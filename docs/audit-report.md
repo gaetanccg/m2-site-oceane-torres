@@ -60,6 +60,16 @@
 
 Les items ci-dessous combinent les restes du refactoring technique et la todolist fonctionnelle du projet. Ils sont organises en phases d'implementation logiques.
 
+**Dependances inter-phases :**
+- **B4 → B1** : l'envoi des infos client a SumUp necessite les champs first_name/last_name ajoutes en B1
+- **C → B + D** : l'audit securite/RGPD doit etre re-verifie une fois les Phases B et D terminees (nouveaux champs, nouveaux endpoints, droit a l'oubli etendu aux commandes)
+- **D1 → B1** : le rattachement d'historique client beneficie d'avoir le schema Order finalise (guest_first_name/last_name)
+- **G3 → H3** : la strategie de prerendering depend de la decision Nuxt — si Nuxt est adopte, Puppeteer/vite-ssg deviennent obsoletes
+- **G2 ↔ A** : les Core Web Vitals sont directement lies aux optimisations de la Phase A
+
+**Phases totalement independantes :** A, E, F
+**Ordre recommande :** A → B → D → C → E/F (parallele) → G → H
+
 ---
 
 ### Phase A — Performance & chargement (OBJECTIF PRINCIPAL)
@@ -111,13 +121,13 @@ Les items ci-dessous combinent les restes du refactoring technique et la todolis
 - [ ] Si paiement confirme sur SumUp : generer token download, PDF facture, envoyer email confirmation
 - [ ] Bouton correspondant dans la vue admin Orders
 
-#### B4. Envoyer les infos client a SumUp
+#### B4. Envoyer les infos client a SumUp *(necessite B1)*
 - [ ] Modifier `SumUpService::createCheckout()` pour inclure `customer.email`, `customer.first_name`, `customer.last_name` dans le payload
 - [ ] Necessite que les infos client soient disponibles dans l'Order au moment du checkout
 
 ---
 
-### Phase C — Securite & RGPD
+### Phase C — Securite & RGPD *(re-verifier apres Phases B et D)*
 
 #### C1. Audit de securite des formulaires
 - [ ] Verifier que toutes les entrees passent par des FormRequests (19 crees, ~12 inline restantes)
@@ -140,7 +150,7 @@ Les items ci-dessous combinent les restes du refactoring technique et la todolis
 
 ### Phase D — Compte client
 
-#### D1. Rattachement automatique de l'historique
+#### D1. Rattachement automatique de l'historique *(beneficie de B1 fait en amont)*
 - [ ] A la creation de compte, rattacher : commandes guest (`orders.guest_email`), galeries (`galleries.assigned_email`), reservations guest (`reservations.guest_email`)
 - [ ] La logique existe partiellement dans `AuthController::register()` (galeries). L'etendre aux commandes et reservations
 
@@ -190,7 +200,7 @@ Les items ci-dessous combinent les restes du refactoring technique et la todolis
 - [ ] Donnees structurees JSON-LD (schema.org/Service pour prestations, schema.org/Event pour evenements)
 - [ ] Core Web Vitals (lie a la Phase A)
 
-#### G3. Strategie de prerendering
+#### G3. Strategie de prerendering *(depend de la decision H3 — Nuxt ou non)*
 - [ ] Evaluer des alternatives a Puppeteer : si migration vers Nuxt (Phase H), le SSR natif remplace le prerendering
 - [ ] Sinon, evaluer `vite-ssg` (static site generation native Vite) comme alternative plus legere a Puppeteer
 
