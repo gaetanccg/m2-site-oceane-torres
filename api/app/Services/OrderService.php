@@ -29,7 +29,7 @@ class OrderService
     /**
      * Create an order from a cart (or return existing pending order)
      */
-    public function createFromCart(Cart $cart, ?User $user = null, ?string $guestEmail = null, ?string $guestName = null, ?string $consentIp = null): Order
+    public function createFromCart(Cart $cart, ?User $user = null, ?string $guestEmail = null, ?string $guestFirstName = null, ?string $guestLastName = null, ?string $consentIp = null): Order
     {
         $existingOrder = $this->findReusablePendingOrder($cart);
         if ($existingOrder) {
@@ -40,7 +40,7 @@ class OrderService
             throw new \Exception('Le panier est vide.');
         }
 
-        return DB::transaction(function () use ($cart, $user, $guestEmail, $guestName, $consentIp) {
+        return DB::transaction(function () use ($cart, $user, $guestEmail, $guestFirstName, $guestLastName, $consentIp) {
             $cart->load('items.photo.gallery.galleryProductTypes.packTiers');
 
             $resolvedPrices = $this->resolvePackPrices($cart);
@@ -56,7 +56,8 @@ class OrderService
                 'user_id' => $user?->id,
                 'cart_id' => $cart->id,
                 'guest_email' => $guestEmail ?? $cart->guest_email,
-                'guest_name' => $guestName,
+                'guest_first_name' => $guestFirstName,
+                'guest_last_name' => $guestLastName,
                 'subtotal' => $subtotal,
                 'total' => $subtotal,
                 'currency' => 'EUR',

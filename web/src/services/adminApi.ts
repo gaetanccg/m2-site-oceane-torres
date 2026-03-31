@@ -470,6 +470,16 @@ class AdminApiService extends BaseApiService {
         })
     }
 
+    async getOrderDownloadLink(id: string): Promise<{ success: boolean; download_link: string }> {
+        return this.adminRequest(`/admin/orders/${id}/download-link`)
+    }
+
+    async retryOrderPayment(id: string): Promise<{ success: boolean; message: string; order: AdminOrder }> {
+        return this.adminRequest(`/admin/orders/${id}/retry-payment`, {
+            method: 'POST',
+        })
+    }
+
     // ========================================================================
     // Notifications
     // ========================================================================

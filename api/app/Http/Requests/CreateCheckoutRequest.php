@@ -17,7 +17,8 @@ class CreateCheckoutRequest extends FormRequest
         $user = Auth::guard('sanctum')->user();
 
         $rules = [
-            'guest_name' => ['nullable', 'string', 'max:255'],
+            'guest_first_name' => $user ? ['nullable', 'string', 'max:255'] : ['required', 'string', 'max:255'],
+            'guest_last_name' => $user ? ['nullable', 'string', 'max:255'] : ['required', 'string', 'max:255'],
             'session_id' => ['nullable', 'string'],
             'cgv_accepted' => ['required', 'accepted'],
         ];
@@ -32,6 +33,8 @@ class CreateCheckoutRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'guest_first_name.required' => 'Le prénom est obligatoire.',
+            'guest_last_name.required' => 'Le nom est obligatoire.',
             'cgv_accepted.required' => 'Vous devez accepter les Conditions Générales de Vente.',
             'cgv_accepted.accepted' => 'Vous devez accepter les Conditions Générales de Vente.',
         ];
