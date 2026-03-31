@@ -236,8 +236,13 @@ const showAuthModal = ref(false)
 const userMenuOpen = ref(false)
 const navUserMenuRef = ref<HTMLElement | null>(null)
 
+let scrollRaf: number | null = null
 const handleScroll = () => {
-    scrolled.value = window.scrollY > 50
+    if (scrollRaf) return
+    scrollRaf = window.requestAnimationFrame(() => {
+        scrolled.value = window.scrollY > 50
+        scrollRaf = null
+    })
 }
 
 function handleClickOutside(event: MouseEvent) {

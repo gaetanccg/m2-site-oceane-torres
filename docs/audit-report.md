@@ -556,18 +556,19 @@ Ces deux fichiers partagent des centaines de lignes de template et logique dupli
 8. ~~Refactorer les 4 services API~~ : api.ts (153->91), authApi.ts (149->59), adminApi.ts (646->495), cartApi.ts (335->268)
 9. ~~Extraire `useProductTypes` composable~~ — 110 lignes de logique identique extraites de Galleries.vue et EventGalleries.vue (Galleries 1394->1290, EventGalleries 1782->1678)
 
-### Étape 4 : Optimisations de performance
+### Etape 4 : Optimisations de performance -- FAIT
 *Risque : Moyen | Impact : Performance critique*
 
-1. **Corriger le N+1 `client_id`** : retirer de `$appends`, eager-loader ou join
-2. **Corriger le N+1 `download_status`** : utiliser `withCount` au lieu de queries dans l'accessor
-3. **Optimiser les images** : supprimer les originaux non optimisés du déploiement, migrer toutes les références vers `/optimized/`
-4. Corriger le triple chargement de relations dans `CartService`
-5. Remplacer les UPDATE en boucle par des opérations batch
-6. Ajouter la pagination aux endpoints sans limite
-7. Limiter `adminEventIndex()` à `thumbnailPhoto` + `withCount`
-8. Ajouter debounce/throttle sur les event listeners resize/scroll
-9. Configurer les `manualChunks` Vite
+1. ~~**Corriger le N+1 `client_id`**~~ : retiré de `$appends`, batch-load via `Client::whereIn()` dans adminIndex (1 query au lieu de N)
+2. ~~**Corriger le N+1 `download_status`**~~ : calculé a partir des `withCount` déja presents (0 query supplémentaire au lieu de 2-3 par gallery)
+3. **Optimiser les images** : a vérifier manuellement quelles images originales sont encore référencées -- **RESTE A FAIRE (action manuelle)**
+4. ~~Corriger le triple chargement de relations dans `CartService`~~ : `load()` -> `loadMissing()` (1 chargement au lieu de 3)
+5. Remplacer les UPDATE en boucle par des opérations batch -- **RESTE A FAIRE (etape 5)**
+6. Ajouter la pagination aux endpoints sans limite -- **RESTE A FAIRE (etape 5)**
+7. ~~Limiter `adminEventIndex()` + `children()`~~ : `photos` limité a 1 au lieu de toutes les photos
+8. ~~Ajouter debounce/throttle~~ : `requestAnimationFrame` sur resize (MasonryGallery) et scroll (Navbar)
+9. ~~Configurer `manualChunks` Vite~~ : vendor-vue séparé (vue, vue-router, pinia)
+10. ~~Supprimer cache check dupliqué `PhotoCard`~~ : retrait du `new Image()` dans `onMounted` + ajout `loading="lazy"`
 
 ### Étape 5 : Améliorations d'architecture (design patterns)
 *Risque : Moyen-Élevé | Impact : Qualité long terme*

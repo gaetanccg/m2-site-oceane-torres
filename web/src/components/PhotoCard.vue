@@ -26,6 +26,7 @@
             <img
                 :src="imageSrc"
                 :alt="alt"
+                loading="lazy"
                 :class="['photo-image', { 'is-loaded': isLoaded && !hasFailed }]"
                 @load="onImageLoad"
                 @error="onImageError"
@@ -40,7 +41,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch } from 'vue'
 
 interface Props {
     src: string
@@ -100,14 +101,7 @@ watch(() => props.src, (newSrc) => {
     imageSrc.value = newSrc
 })
 
-// Check if image is already cached on mount
-onMounted(() => {
-    const img = new Image()
-    img.onload = () => {
-        isLoaded.value = true
-    }
-    img.src = props.src
-})
+
 </script>
 
 <style scoped>
