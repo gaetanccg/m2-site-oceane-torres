@@ -15,15 +15,10 @@ use Illuminate\Support\Facades\Log;
 
 class ImageProxyController extends Controller
 {
-    private MinioStorageService $storageService;
-
-    private ImageProcessingService $imageProcessingService;
-
-    public function __construct()
-    {
-        $this->storageService = new MinioStorageService;
-        $this->imageProcessingService = new ImageProcessingService;
-    }
+    public function __construct(
+        private MinioStorageService $storageService,
+        private ImageProcessingService $imageProcessingService,
+    ) {}
 
     /**
      * Stream preview version of a photo
@@ -67,7 +62,7 @@ class ImageProxyController extends Controller
      */
     private function streamCleanImage(Photo $photo): Response
     {
-        $originalPath = $photo->file_path_hd ?? $photo->metadata['storage_path'] ?? $photo->file_path;
+        $originalPath = $photo->resolved_storage_path;
 
         // Generate clean preview on-the-fly with caching
         $cacheKey = "image_clean_{$photo->id}";
@@ -118,7 +113,7 @@ class ImageProxyController extends Controller
             }
 
             // Get HD path
-            $hdPath = $photo->file_path_hd ?? $photo->metadata['storage_path'] ?? $photo->file_path;
+            $hdPath = $photo->resolved_storage_path;
 
             // Stream HD version
             $content = $this->storageService->getFileContent($hdPath);
@@ -166,7 +161,7 @@ class ImageProxyController extends Controller
         $cacheKey = "image_{$version}_{$photo->id}";
 
         $content = Cache::remember($cacheKey, 3600, function () use ($photo, $version) {
-            $originalPath = $photo->metadata['storage_path'] ?? $photo->file_path;
+            $originalPath = $photo->resolved_storage_path;
 
             if ($version === 'preview') {
                 return $this->imageProcessingService->generatePreviewOnTheFly($originalPath);

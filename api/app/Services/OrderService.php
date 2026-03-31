@@ -31,62 +31,9 @@ class OrderService
      */
     public function createFromCart(Cart $cart, ?User $user = null, ?string $guestEmail = null, ?string $guestName = null, ?string $consentIp = null): Order
     {
-        // Check if there's already a pending order for this cart
-        $existingOrder = Order::where('cart_id', $cart->id)
-            ->where('status', 'pending')
-            ->with('items')
-            ->first();
-
+        $existingOrder = $this->findReusablePendingOrder($cart);
         if ($existingOrder) {
-            // Verify order still matches current cart (items count, photos and total)
-            $cart->load('items.photo.gallery.galleryProductTypes.packTiers');
-
-            $cartItemCount = $cart->items->count();
-            $orderItemCount = $existingOrder->items->count();
-
-            // Build current cart total using pack pricing
-            $cartService = app(CartService::class);
-            $packGroups = $cartService->buildPackGroups($cart);
-            $currentCartTotal = 0;
-            foreach ($packGroups as $group) {
-                $first = $group['items']->first();
-                $gallery = $first->photo->gallery;
-                $productType = $first->product_type;
-                $quantity = $group['count'];
-
-                $unitPrice = $gallery?->resolvePackPrice($productType, $quantity)
-                    ?? $gallery?->getPriceForProductType($productType)
-                    ?? CartItem::getPriceForType($productType);
-
-                $currentCartTotal += $unitPrice * $quantity;
-            }
-
-            // Also check that the same photos are in both cart and order
-            $cartPhotoIds = $cart->items->pluck('photo_id')->sort()->values()->toArray();
-            $orderPhotoIds = $existingOrder->items->pluck('photo_id')->sort()->values()->toArray();
-
-            $cartChanged = $cartItemCount !== $orderItemCount
-                || $cartPhotoIds !== $orderPhotoIds
-                || abs((float) $existingOrder->total - $currentCartTotal) > 0.01;
-
-            if ($cartChanged) {
-                // Cart changed — cancel old order and create new one
-                Log::info('Cart changed since order creation, cancelling stale order', [
-                    'order_id' => $existingOrder->id,
-                    'cart_items' => $cartItemCount,
-                    'order_items' => $orderItemCount,
-                    'order_total' => $existingOrder->total,
-                    'cart_total' => $currentCartTotal,
-                ]);
-                $existingOrder->update(['status' => 'expired']);
-            } else {
-                Log::info('Returning existing pending order', [
-                    'order_id' => $existingOrder->id,
-                    'cart_id' => $cart->id,
-                ]);
-
-                return $existingOrder;
-            }
+            return $existingOrder;
         }
 
         if ($cart->items->isEmpty()) {
@@ -96,73 +43,14 @@ class OrderService
         return DB::transaction(function () use ($cart, $user, $guestEmail, $guestName, $consentIp) {
             $cart->load('items.photo.gallery.galleryProductTypes.packTiers');
 
-            // Build cumulative pack groups for cross-gallery pricing
-            $cartService = app(CartService::class);
-            $packGroups = $cartService->buildPackGroups($cart);
-
-            // Build a map: item_id → resolved price using cumulative quantities
-            $resolvedPrices = [];
-            foreach ($packGroups as $group) {
-                $first = $group['items']->first();
-                $gallery = $first->photo->gallery;
-                $productType = $first->product_type;
-                $quantity = $group['count'];
-
-                $unitPrice = $gallery?->resolvePackPrice($productType, $quantity)
-                    ?? $gallery?->getPriceForProductType($productType)
-                    ?? CartItem::getPriceForType($productType);
-
-                foreach ($group['items'] as $item) {
-                    $resolvedPrices[$item->id] = $unitPrice;
-                }
-            }
-
-            // Re-validate cart items before creating order
-            $validItems = [];
-
-            foreach ($cart->items as $item) {
-                // Photo must still exist
-                if (! $item->photo) {
-                    Log::warning('Cart item photo no longer exists, skipping', ['cart_item_id' => $item->id]);
-
-                    continue;
-                }
-
-                // Photo must still be purchasable
-                if (! $item->photo->is_purchasable) {
-                    Log::warning('Cart item photo no longer purchasable, skipping', [
-                        'cart_item_id' => $item->id,
-                        'photo_id' => $item->photo_id,
-                    ]);
-
-                    continue;
-                }
-
-                // Verify product type is still available for this gallery
-                $productType = $item->product_type ?? 'digital';
-                if (! array_key_exists($productType, CartItem::PRODUCT_TYPES)) {
-                    $productType = 'digital';
-                }
-
-                // Resolve price using cumulative pack groups
-                $currentPrice = $resolvedPrices[$item->id]
-                    ?? $item->photo->gallery?->getPriceForProductType($productType)
-                    ?? CartItem::getPriceForType($productType);
-
-                if ((float) $item->price !== $currentPrice) {
-                    $item->update(['price' => $currentPrice]);
-                    $item->price = $currentPrice;
-                }
-
-                $validItems[] = $item;
-            }
+            $resolvedPrices = $this->resolvePackPrices($cart);
+            $validItems = $this->validateCartItems($cart, $resolvedPrices);
 
             if (empty($validItems)) {
                 throw new \Exception('Le panier ne contient aucun article valide.');
             }
 
             $subtotal = collect($validItems)->sum('price');
-            $total = $subtotal; // No tax for now
 
             $order = Order::create([
                 'user_id' => $user?->id,
@@ -170,17 +58,15 @@ class OrderService
                 'guest_email' => $guestEmail ?? $cart->guest_email,
                 'guest_name' => $guestName,
                 'subtotal' => $subtotal,
-                'total' => $total,
+                'total' => $subtotal,
                 'currency' => 'EUR',
                 'status' => 'pending',
-                // RGPD: Enregistrement du consentement CGV
                 'cgv_accepted' => true,
                 'cgv_accepted_at' => now(),
                 'cgv_version' => '1.0',
                 'consent_ip' => $consentIp,
             ]);
 
-            // Create order items from validated items
             foreach ($validItems as $item) {
                 OrderItem::create([
                     'order_id' => $order->id,
@@ -192,12 +78,146 @@ class OrderService
                 ]);
             }
 
-            // NOTE: Cart is NOT marked as converted here.
-            // It will be marked as converted only after successful payment
-            // in the completeOrder() method.
-
             return $order->load('items');
         });
+    }
+
+    /**
+     * Find an existing pending order that still matches the cart, or expire stale ones.
+     */
+    private function findReusablePendingOrder(Cart $cart): ?Order
+    {
+        $existingOrder = Order::where('cart_id', $cart->id)
+            ->where('status', 'pending')
+            ->with('items')
+            ->first();
+
+        if (! $existingOrder) {
+            return null;
+        }
+
+        $cart->load('items.photo.gallery.galleryProductTypes.packTiers');
+
+        $currentCartTotal = $this->calculateCartTotal($cart);
+        $cartPhotoIds = $cart->items->pluck('photo_id')->sort()->values()->toArray();
+        $orderPhotoIds = $existingOrder->items->pluck('photo_id')->sort()->values()->toArray();
+
+        $cartChanged = $cart->items->count() !== $existingOrder->items->count()
+            || $cartPhotoIds !== $orderPhotoIds
+            || abs((float) $existingOrder->total - $currentCartTotal) > 0.01;
+
+        if ($cartChanged) {
+            Log::info('Cart changed since order creation, cancelling stale order', [
+                'order_id' => $existingOrder->id,
+                'order_total' => $existingOrder->total,
+                'cart_total' => $currentCartTotal,
+            ]);
+            $existingOrder->update(['status' => 'expired']);
+
+            return null;
+        }
+
+        Log::info('Returning existing pending order', [
+            'order_id' => $existingOrder->id,
+            'cart_id' => $cart->id,
+        ]);
+
+        return $existingOrder;
+    }
+
+    /**
+     * Calculate total cart price using pack pricing rules.
+     */
+    private function calculateCartTotal(Cart $cart): float
+    {
+        $cartService = app(CartService::class);
+        $packGroups = $cartService->buildPackGroups($cart);
+        $total = 0;
+
+        foreach ($packGroups as $group) {
+            $first = $group['items']->first();
+            $gallery = $first->photo->gallery;
+            $productType = $first->product_type;
+            $quantity = $group['count'];
+
+            $unitPrice = $gallery?->resolvePackPrice($productType, $quantity)
+                ?? $gallery?->getPriceForProductType($productType)
+                ?? CartItem::getPriceForType($productType);
+
+            $total += $unitPrice * $quantity;
+        }
+
+        return $total;
+    }
+
+    /**
+     * Build a map of item_id → resolved unit price using cumulative pack quantities.
+     */
+    private function resolvePackPrices(Cart $cart): array
+    {
+        $cartService = app(CartService::class);
+        $packGroups = $cartService->buildPackGroups($cart);
+        $resolvedPrices = [];
+
+        foreach ($packGroups as $group) {
+            $first = $group['items']->first();
+            $gallery = $first->photo->gallery;
+            $productType = $first->product_type;
+            $quantity = $group['count'];
+
+            $unitPrice = $gallery?->resolvePackPrice($productType, $quantity)
+                ?? $gallery?->getPriceForProductType($productType)
+                ?? CartItem::getPriceForType($productType);
+
+            foreach ($group['items'] as $item) {
+                $resolvedPrices[$item->id] = $unitPrice;
+            }
+        }
+
+        return $resolvedPrices;
+    }
+
+    /**
+     * Validate cart items and update prices. Returns only valid items.
+     */
+    private function validateCartItems(Cart $cart, array $resolvedPrices): array
+    {
+        $validItems = [];
+
+        foreach ($cart->items as $item) {
+            if (! $item->photo) {
+                Log::warning('Cart item photo no longer exists, skipping', ['cart_item_id' => $item->id]);
+
+                continue;
+            }
+
+            if (! $item->photo->is_purchasable) {
+                Log::warning('Cart item photo no longer purchasable, skipping', [
+                    'cart_item_id' => $item->id,
+                    'photo_id' => $item->photo_id,
+                ]);
+
+                continue;
+            }
+
+            $productType = $item->product_type ?? 'digital';
+            if (! array_key_exists($productType, CartItem::PRODUCT_TYPES)) {
+                $productType = 'digital';
+            }
+
+            $currentPrice = $resolvedPrices[$item->id]
+                ?? $item->photo->gallery?->getPriceForProductType($productType)
+                ?? CartItem::getPriceForType($productType);
+
+            if ((float) $item->price !== $currentPrice) {
+                $item->update(['price' => $currentPrice]);
+                $item->price = $currentPrice;
+            }
+
+            $validItems[] = $item;
+        }
+
+        return $validItems;
     }
 
     /**

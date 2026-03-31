@@ -1,9 +1,8 @@
 /**
  * Service API pour l'administration
- * Gère toutes les requêtes vers l'API admin Laravel
  */
 
-import { API_CONFIG } from '@/config/constants'
+import { BaseApiService, ApiError as BaseApiError } from './baseApi'
 import { emitSessionExpired } from '@/utils/authEvents'
 import type {
     AdminApiResponse,
@@ -30,125 +29,42 @@ import type {
     AdminOrder,
     Notification,
 } from '@/types/admin'
-import { extractErrorFromResponse, parseApiError, ERROR_MESSAGES, type ApiError } from '@/utils/errorHandler'
 
-export class AdminApiError extends Error {
-    public apiError: ApiError
+export class AdminApiError extends BaseApiError {}
 
-    constructor(apiError: ApiError) {
-        super(apiError.message)
-        this.name = 'AdminApiError'
-        this.apiError = apiError
-    }
-}
-
-class AdminApiService {
-    private baseUrl: string
-    private apiOrigin: string
-    private timeout: number
-
-    constructor() {
-        this.baseUrl = API_CONFIG.baseUrl
-        // Extraire l'origine (http://localhost:8000) depuis l'URL de base
-        const url = new URL(this.baseUrl)
-        this.apiOrigin = url.origin
-        this.timeout = API_CONFIG.timeout
-    }
-
-    private getToken(): string | null {
-        return localStorage.getItem('auth_token')
-    }
-
-    /**
-     * Récupère le cookie CSRF depuis Laravel Sanctum
-     * Nécessaire avant toute requête authentifiée en mode SPA
-     */
-    async getCsrfCookie(): Promise<void> {
-        await fetch(`${this.apiOrigin}/sanctum/csrf-cookie`, {
-            method: 'GET',
-            credentials: 'include',
+class AdminApiService extends BaseApiService {
+    private adminRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+        return this.request<T>(endpoint, options, {
+            headers: this.authHeaders(),
+            withCredentials: true,
+            onUnauthorized: () => {
+                emitSessionExpired()
+            },
         })
     }
 
-    /**
-     * Récupère la valeur du token XSRF depuis les cookies
-     */
-    private getXsrfToken(): string | null {
-        const match = document.cookie.match(/XSRF-TOKEN=([^;]+)/)
-        if (match) {
-            return decodeURIComponent(match[1])
-        }
-        return null
-    }
-
-    private async request<T>(
-        endpoint: string,
-        options: RequestInit = {}
-    ): Promise<T> {
-        const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), this.timeout)
-
-        const token = this.getToken()
-        const xsrfToken = this.getXsrfToken()
+    /** Upload files via FormData (no JSON content-type) */
+    private async uploadFiles<T>(path: string, files: File[]): Promise<T> {
+        const formData = new FormData()
+        files.forEach((file) => formData.append('photos[]', file))
 
         const headers: Record<string, string> = {
-            'Content-Type': 'application/json',
             'Accept': 'application/json',
+            ...this.authHeaders(),
         }
 
-        if (token) {
-            headers['Authorization'] = `Bearer ${token}`
+        const response = await fetch(`${this.baseUrl}${path}`, {
+            method: 'POST',
+            headers,
+            credentials: 'include',
+            body: formData,
+        })
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`)
         }
 
-        // Ajouter le token XSRF pour la protection CSRF
-        if (xsrfToken) {
-            headers['X-XSRF-TOKEN'] = xsrfToken
-        }
-
-        try {
-            const response = await fetch(`${this.baseUrl}${endpoint}`, {
-                ...options,
-                signal: controller.signal,
-                credentials: 'include', // Important pour envoyer les cookies
-                headers: {
-                    ...headers,
-                    ...options.headers,
-                },
-            })
-
-            clearTimeout(timeoutId)
-
-            if (response.status === 401) {
-                // Émettre un event pour notifier l'app de la session expirée
-                // L'app se chargera de nettoyer et rediriger
-                emitSessionExpired()
-                const apiError: ApiError = {
-                    status: 401,
-                    message: ERROR_MESSAGES.auth.sessionExpired,
-                    isNetworkError: false,
-                    isValidationError: false,
-                    isAuthError: true,
-                    isServerError: false,
-                }
-                throw new AdminApiError(apiError)
-            }
-
-            if (!response.ok) {
-                const apiError = await extractErrorFromResponse(response)
-                throw new AdminApiError(apiError)
-            }
-
-            return await response.json()
-        } catch (error) {
-            clearTimeout(timeoutId)
-
-            if (error instanceof AdminApiError) {
-                throw error
-            }
-
-            const apiError = parseApiError(error)
-            throw new AdminApiError(apiError)
-        }
+        return response.json()
     }
 
     // ========================================================================
@@ -156,23 +72,21 @@ class AdminApiService {
     // ========================================================================
 
     async login(email: string, password: string): Promise<AdminApiResponse<AuthResponse>> {
-        // Récupérer le cookie CSRF avant le login
         await this.getCsrfCookie()
-
-        return this.request<AdminApiResponse<AuthResponse>>('/auth/login', {
+        return this.adminRequest<AdminApiResponse<AuthResponse>>('/auth/login', {
             method: 'POST',
             body: JSON.stringify({ email, password }),
         })
     }
 
     async logout(): Promise<AdminApiResponse<null>> {
-        return this.request<AdminApiResponse<null>>('/auth/logout', {
+        return this.adminRequest<AdminApiResponse<null>>('/auth/logout', {
             method: 'POST',
         })
     }
 
     async getUser(): Promise<AdminApiResponse<User>> {
-        return this.request<AdminApiResponse<User>>('/auth/user')
+        return this.adminRequest<AdminApiResponse<User>>('/auth/user')
     }
 
     // ========================================================================
@@ -180,11 +94,11 @@ class AdminApiService {
     // ========================================================================
 
     async getDashboardStats(): Promise<AdminApiResponse<DashboardStats>> {
-        return this.request<AdminApiResponse<DashboardStats>>('/admin/dashboard/stats')
+        return this.adminRequest<AdminApiResponse<DashboardStats>>('/admin/dashboard/stats')
     }
 
     async getRecentActivity(): Promise<AdminApiResponse<RecentActivity[]>> {
-        return this.request<AdminApiResponse<RecentActivity[]>>('/admin/dashboard')
+        return this.adminRequest<AdminApiResponse<RecentActivity[]>>('/admin/dashboard')
     }
 
     // ========================================================================
@@ -198,18 +112,18 @@ class AdminApiService {
     ): Promise<AdminPaginatedResponse<Reservation>> {
         let query = `?page=${page}&per_page=${perPage}`
         if (status) query += `&status=${status}`
-        return this.request<AdminPaginatedResponse<Reservation>>(`/admin/reservations${query}`)
+        return this.adminRequest<AdminPaginatedResponse<Reservation>>(`/admin/reservations${query}`)
     }
 
     async getReservation(id: string): Promise<AdminApiResponse<Reservation>> {
-        return this.request<AdminApiResponse<Reservation>>(`/admin/reservations/${id}`)
+        return this.adminRequest<AdminApiResponse<Reservation>>(`/admin/reservations/${id}`)
     }
 
     async updateReservationStatus(
         id: string,
         status: ReservationStatus
     ): Promise<AdminApiResponse<Reservation>> {
-        return this.request<AdminApiResponse<Reservation>>(`/admin/reservations/${id}/status`, {
+        return this.adminRequest<AdminApiResponse<Reservation>>(`/admin/reservations/${id}/status`, {
             method: 'PUT',
             body: JSON.stringify({ status }),
         })
@@ -219,7 +133,7 @@ class AdminApiService {
         id: string,
         data: { date?: string; time?: string; status?: ReservationStatus; notes?: string }
     ): Promise<AdminApiResponse<Reservation>> {
-        return this.request<AdminApiResponse<Reservation>>(`/admin/reservations/${id}`, {
+        return this.adminRequest<AdminApiResponse<Reservation>>(`/admin/reservations/${id}`, {
             method: 'PUT',
             body: JSON.stringify(data),
         })
@@ -229,13 +143,13 @@ class AdminApiService {
         start: string,
         end: string
     ): Promise<AdminApiResponse<CalendarEvent[]>> {
-        return this.request<AdminApiResponse<CalendarEvent[]>>(
+        return this.adminRequest<AdminApiResponse<CalendarEvent[]>>(
             `/admin/reservations/calendar?start=${start}&end=${end}`
         )
     }
 
     async deleteReservation(id: string): Promise<AdminApiResponse<null>> {
-        return this.request<AdminApiResponse<null>>(`/admin/reservations/${id}`, {
+        return this.adminRequest<AdminApiResponse<null>>(`/admin/reservations/${id}`, {
             method: 'DELETE',
         })
     }
@@ -253,39 +167,39 @@ class AdminApiService {
         let query = `?page=${page}&per_page=${perPage}`
         if (search) query += `&search=${encodeURIComponent(search)}`
         if (source) query += `&source=${encodeURIComponent(source)}`
-        return this.request<AdminPaginatedResponse<Client>>(`/admin/clients${query}`)
+        return this.adminRequest<AdminPaginatedResponse<Client>>(`/admin/clients${query}`)
     }
 
     async getClient(id: string): Promise<{ client: Client }> {
-        return this.request<{ client: Client }>(`/admin/clients/${id}`)
+        return this.adminRequest<{ client: Client }>(`/admin/clients/${id}`)
     }
 
     async createClient(data: ClientFormData): Promise<{ client: Client; message: string }> {
-        return this.request<{ client: Client; message: string }>('/admin/clients', {
+        return this.adminRequest<{ client: Client; message: string }>('/admin/clients', {
             method: 'POST',
             body: JSON.stringify(data),
         })
     }
 
     async updateClient(id: string, data: Partial<ClientFormData>): Promise<{ client: Client; message: string }> {
-        return this.request<{ client: Client; message: string }>(`/admin/clients/${id}`, {
+        return this.adminRequest<{ client: Client; message: string }>(`/admin/clients/${id}`, {
             method: 'PUT',
             body: JSON.stringify(data),
         })
     }
 
     async deleteClient(id: string): Promise<{ message: string }> {
-        return this.request<{ message: string }>(`/admin/clients/${id}`, {
+        return this.adminRequest<{ message: string }>(`/admin/clients/${id}`, {
             method: 'DELETE',
         })
     }
 
     async getClientReservations(id: string, page = 1): Promise<AdminPaginatedResponse<Reservation>> {
-        return this.request<AdminPaginatedResponse<Reservation>>(`/admin/clients/${id}/reservations?page=${page}`)
+        return this.adminRequest<AdminPaginatedResponse<Reservation>>(`/admin/clients/${id}/reservations?page=${page}`)
     }
 
     async exportClientGdpr(id: string): Promise<{ data: ClientGdprExport; message: string }> {
-        return this.request<{ data: ClientGdprExport; message: string }>(`/admin/clients/${id}/gdpr-export`, {
+        return this.adminRequest<{ data: ClientGdprExport; message: string }>(`/admin/clients/${id}/gdpr-export`, {
             method: 'POST',
         })
     }
@@ -295,38 +209,35 @@ class AdminApiService {
     // ========================================================================
 
     async getPrestations(): Promise<AdminApiResponse<AdminPrestation[]>> {
-        return this.request<AdminApiResponse<AdminPrestation[]>>('/admin/prestations')
+        return this.adminRequest<AdminApiResponse<AdminPrestation[]>>('/admin/prestations')
     }
 
     async getPrestation(id: string): Promise<AdminApiResponse<AdminPrestation>> {
-        return this.request<AdminApiResponse<AdminPrestation>>(`/prestations/${id}`)
+        return this.adminRequest<AdminApiResponse<AdminPrestation>>(`/prestations/${id}`)
     }
 
     async createPrestation(data: PrestationFormData): Promise<AdminApiResponse<AdminPrestation>> {
-        return this.request<AdminApiResponse<AdminPrestation>>('/admin/prestations', {
+        return this.adminRequest<AdminApiResponse<AdminPrestation>>('/admin/prestations', {
             method: 'POST',
             body: JSON.stringify(data),
         })
     }
 
-    async updatePrestation(
-        id: string,
-        data: PrestationFormData
-    ): Promise<AdminApiResponse<AdminPrestation>> {
-        return this.request<AdminApiResponse<AdminPrestation>>(`/admin/prestations/${id}`, {
+    async updatePrestation(id: string, data: PrestationFormData): Promise<AdminApiResponse<AdminPrestation>> {
+        return this.adminRequest<AdminApiResponse<AdminPrestation>>(`/admin/prestations/${id}`, {
             method: 'PUT',
             body: JSON.stringify(data),
         })
     }
 
     async deletePrestation(id: string): Promise<AdminApiResponse<null>> {
-        return this.request<AdminApiResponse<null>>(`/admin/prestations/${id}`, {
+        return this.adminRequest<AdminApiResponse<null>>(`/admin/prestations/${id}`, {
             method: 'DELETE',
         })
     }
 
     async togglePrestation(id: string): Promise<AdminApiResponse<AdminPrestation>> {
-        return this.request<AdminApiResponse<AdminPrestation>>(`/admin/prestations/${id}/toggle`, {
+        return this.adminRequest<AdminApiResponse<AdminPrestation>>(`/admin/prestations/${id}/toggle`, {
             method: 'PUT',
         })
     }
@@ -335,47 +246,44 @@ class AdminApiService {
     // Galleries
     // ========================================================================
 
-    async getGalleries(
-        page = 1,
-        perPage = 20
-    ): Promise<AdminPaginatedResponse<AdminGallery>> {
+    async getGalleries(page = 1, perPage = 20): Promise<AdminPaginatedResponse<AdminGallery>> {
         const query = `?page=${page}&per_page=${perPage}`
-        return this.request<AdminPaginatedResponse<AdminGallery>>(`/admin/galleries${query}`)
+        return this.adminRequest<AdminPaginatedResponse<AdminGallery>>(`/admin/galleries${query}`)
     }
 
     async getGallery(id: string): Promise<AdminApiResponse<AdminGallery>> {
-        return this.request<AdminApiResponse<AdminGallery>>(`/admin/galleries/${id}`)
+        return this.adminRequest<AdminApiResponse<AdminGallery>>(`/admin/galleries/${id}`)
     }
 
     async createGallery(data: GalleryFormData): Promise<AdminApiResponse<AdminGallery>> {
-        return this.request<AdminApiResponse<AdminGallery>>('/admin/galleries', {
+        return this.adminRequest<AdminApiResponse<AdminGallery>>('/admin/galleries', {
             method: 'POST',
             body: JSON.stringify(data),
         })
     }
 
     async updateGallery(id: string, data: GalleryFormData): Promise<AdminApiResponse<AdminGallery>> {
-        return this.request<AdminApiResponse<AdminGallery>>(`/admin/galleries/${id}`, {
+        return this.adminRequest<AdminApiResponse<AdminGallery>>(`/admin/galleries/${id}`, {
             method: 'PUT',
             body: JSON.stringify(data),
         })
     }
 
     async deleteGallery(id: string): Promise<AdminApiResponse<null>> {
-        return this.request<AdminApiResponse<null>>(`/admin/galleries/${id}`, {
+        return this.adminRequest<AdminApiResponse<null>>(`/admin/galleries/${id}`, {
             method: 'DELETE',
         })
     }
 
     async regenerateGalleryToken(id: string): Promise<AdminApiResponse<{ token: string }>> {
-        return this.request<AdminApiResponse<{ token: string }>>(
+        return this.adminRequest<AdminApiResponse<{ token: string }>>(
             `/admin/galleries/${id}/regenerate-token`,
             { method: 'PUT' }
         )
     }
 
     async regenerateGalleryCode(id: string): Promise<AdminApiResponse<{ share_code: string }>> {
-        return this.request<AdminApiResponse<{ share_code: string }>>(
+        return this.adminRequest<AdminApiResponse<{ share_code: string }>>(
             `/admin/galleries/${id}/regenerate-code`,
             { method: 'POST' }
         )
@@ -386,7 +294,7 @@ class AdminApiService {
         email: string,
         recipientName: string
     ): Promise<AdminApiResponse<{ message: string }>> {
-        return this.request<AdminApiResponse<{ message: string }>>(
+        return this.adminRequest<AdminApiResponse<{ message: string }>>(
             `/admin/galleries/${galleryId}/send-email`,
             {
                 method: 'POST',
@@ -396,44 +304,18 @@ class AdminApiService {
     }
 
     async togglePhotoDownloadable(id: string): Promise<AdminApiResponse<{ is_downloadable: boolean }>> {
-        return this.request<AdminApiResponse<{ is_downloadable: boolean }>>(
+        return this.adminRequest<AdminApiResponse<{ is_downloadable: boolean }>>(
             `/admin/photos/${id}/toggle-downloadable`,
             { method: 'PUT' }
         )
     }
 
     async uploadPhotos(galleryId: string, files: File[]): Promise<AdminApiResponse<AdminPhoto[]>> {
-        const formData = new FormData()
-        files.forEach((file) => formData.append('photos[]', file))
-
-        const token = this.getToken()
-        const xsrfToken = this.getXsrfToken()
-        const headers: Record<string, string> = {
-            'Accept': 'application/json',
-        }
-        if (token) {
-            headers['Authorization'] = `Bearer ${token}`
-        }
-        if (xsrfToken) {
-            headers['X-XSRF-TOKEN'] = xsrfToken
-        }
-
-        const response = await fetch(`${this.baseUrl}/admin/galleries/${galleryId}/photos`, {
-            method: 'POST',
-            headers,
-            credentials: 'include',
-            body: formData,
-        })
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`)
-        }
-
-        return response.json()
+        return this.uploadFiles<AdminApiResponse<AdminPhoto[]>>(`/admin/galleries/${galleryId}/photos`, files)
     }
 
     async deletePhoto(id: string): Promise<AdminApiResponse<null>> {
-        return this.request<AdminApiResponse<null>>(`/admin/photos/${id}`, {
+        return this.adminRequest<AdminApiResponse<null>>(`/admin/photos/${id}`, {
             method: 'DELETE',
         })
     }
@@ -442,77 +324,48 @@ class AdminApiService {
     // Event Galleries
     // ========================================================================
 
-    async getEventGalleries(
-        page = 1,
-        perPage = 20
-    ): Promise<AdminPaginatedResponse<AdminGallery>> {
+    async getEventGalleries(page = 1, perPage = 20): Promise<AdminPaginatedResponse<AdminGallery>> {
         const query = `?page=${page}&per_page=${perPage}`
-        return this.request<AdminPaginatedResponse<AdminGallery>>(`/admin/events${query}`)
+        return this.adminRequest<AdminPaginatedResponse<AdminGallery>>(`/admin/events${query}`)
     }
 
     async getEventGallery(id: string): Promise<AdminApiResponse<AdminGallery>> {
-        return this.request<AdminApiResponse<AdminGallery>>(`/admin/events/${id}`)
+        return this.adminRequest<AdminApiResponse<AdminGallery>>(`/admin/events/${id}`)
     }
 
     async createEventGallery(data: EventGalleryFormData): Promise<AdminApiResponse<AdminGallery>> {
-        return this.request<AdminApiResponse<AdminGallery>>('/admin/events', {
+        return this.adminRequest<AdminApiResponse<AdminGallery>>('/admin/events', {
             method: 'POST',
             body: JSON.stringify(data),
         })
     }
 
     async updateEventGallery(id: string, data: EventGalleryFormData): Promise<AdminApiResponse<AdminGallery>> {
-        return this.request<AdminApiResponse<AdminGallery>>(`/admin/events/${id}`, {
+        return this.adminRequest<AdminApiResponse<AdminGallery>>(`/admin/events/${id}`, {
             method: 'PUT',
             body: JSON.stringify(data),
         })
     }
 
     async deleteEventGallery(id: string): Promise<AdminApiResponse<null>> {
-        return this.request<AdminApiResponse<null>>(`/admin/events/${id}`, {
+        return this.adminRequest<AdminApiResponse<null>>(`/admin/events/${id}`, {
             method: 'DELETE',
         })
     }
 
     async uploadEventPhotos(galleryId: string, files: File[]): Promise<AdminApiResponse<AdminPhoto[]>> {
-        const formData = new FormData()
-        files.forEach((file) => formData.append('photos[]', file))
-
-        const token = this.getToken()
-        const xsrfToken = this.getXsrfToken()
-        const headers: Record<string, string> = {
-            'Accept': 'application/json',
-        }
-        if (token) {
-            headers['Authorization'] = `Bearer ${token}`
-        }
-        if (xsrfToken) {
-            headers['X-XSRF-TOKEN'] = xsrfToken
-        }
-
-        const response = await fetch(`${this.baseUrl}/admin/events/${galleryId}/photos`, {
-            method: 'POST',
-            headers,
-            credentials: 'include',
-            body: formData,
-        })
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`)
-        }
-
-        return response.json()
+        return this.uploadFiles<AdminApiResponse<AdminPhoto[]>>(`/admin/events/${galleryId}/photos`, files)
     }
 
     async getEventGalleryChildren(parentId: string): Promise<AdminApiResponse<AdminGallery[]>> {
-        return this.request<AdminApiResponse<AdminGallery[]>>(`/admin/events/${parentId}/children`)
+        return this.adminRequest<AdminApiResponse<AdminGallery[]>>(`/admin/events/${parentId}/children`)
     }
 
     async setEventThumbnail(
         galleryId: string,
         photoId: string | null
     ): Promise<AdminApiResponse<AdminGallery>> {
-        return this.request<AdminApiResponse<AdminGallery>>(
+        return this.adminRequest<AdminApiResponse<AdminGallery>>(
             `/admin/events/${galleryId}/thumbnail`,
             {
                 method: 'PUT',
@@ -526,31 +379,31 @@ class AdminApiService {
     // ========================================================================
 
     async getEventCategories(): Promise<AdminApiResponse<EventCategory[]>> {
-        return this.request<AdminApiResponse<EventCategory[]>>('/admin/event-categories')
+        return this.adminRequest<AdminApiResponse<EventCategory[]>>('/admin/event-categories')
     }
 
     async createEventCategory(data: EventCategoryFormData): Promise<AdminApiResponse<EventCategory>> {
-        return this.request<AdminApiResponse<EventCategory>>('/admin/event-categories', {
+        return this.adminRequest<AdminApiResponse<EventCategory>>('/admin/event-categories', {
             method: 'POST',
             body: JSON.stringify(data),
         })
     }
 
     async updateEventCategory(id: string, data: EventCategoryFormData): Promise<AdminApiResponse<EventCategory>> {
-        return this.request<AdminApiResponse<EventCategory>>(`/admin/event-categories/${id}`, {
+        return this.adminRequest<AdminApiResponse<EventCategory>>(`/admin/event-categories/${id}`, {
             method: 'PUT',
             body: JSON.stringify(data),
         })
     }
 
     async deleteEventCategory(id: string): Promise<AdminApiResponse<null>> {
-        return this.request<AdminApiResponse<null>>(`/admin/event-categories/${id}`, {
+        return this.adminRequest<AdminApiResponse<null>>(`/admin/event-categories/${id}`, {
             method: 'DELETE',
         })
     }
 
     async reorderEventCategories(categories: Array<{ id: string; sort_order: number }>): Promise<AdminApiResponse<null>> {
-        return this.request<AdminApiResponse<null>>('/admin/event-categories/reorder', {
+        return this.adminRequest<AdminApiResponse<null>>('/admin/event-categories/reorder', {
             method: 'PUT',
             body: JSON.stringify({ categories }),
         })
@@ -561,16 +414,13 @@ class AdminApiService {
     // ========================================================================
 
     async getGiftCards(page = 1, perPage = 20): Promise<AdminPaginatedResponse<AdminGiftCard>> {
-        return this.request<AdminPaginatedResponse<AdminGiftCard>>(
+        return this.adminRequest<AdminPaginatedResponse<AdminGiftCard>>(
             `/admin/gift-cards?page=${page}&per_page=${perPage}`
         )
     }
 
-    async updateGiftCard(
-        id: string,
-        data: Partial<AdminGiftCard>
-    ): Promise<AdminApiResponse<AdminGiftCard>> {
-        return this.request<AdminApiResponse<AdminGiftCard>>(`/admin/gift-cards/${id}`, {
+    async updateGiftCard(id: string, data: Partial<AdminGiftCard>): Promise<AdminApiResponse<AdminGiftCard>> {
+        return this.adminRequest<AdminApiResponse<AdminGiftCard>>(`/admin/gift-cards/${id}`, {
             method: 'PUT',
             body: JSON.stringify(data),
         })
@@ -601,21 +451,21 @@ class AdminApiService {
         if (status) params.append('status', status)
         if (search) params.append('search', search)
 
-        return this.request(`/admin/orders?${params.toString()}`)
+        return this.adminRequest(`/admin/orders?${params.toString()}`)
     }
 
     async getOrder(id: string): Promise<{ success: boolean; order: AdminOrder }> {
-        return this.request(`/admin/orders/${id}`)
+        return this.adminRequest(`/admin/orders/${id}`)
     }
 
     async deleteOrder(id: string): Promise<{ success: boolean; message: string }> {
-        return this.request(`/admin/orders/${id}`, {
+        return this.adminRequest(`/admin/orders/${id}`, {
             method: 'DELETE',
         })
     }
 
     async markOrderShipped(id: string): Promise<{ success: boolean; message: string; order: AdminOrder }> {
-        return this.request(`/admin/orders/${id}/ship`, {
+        return this.adminRequest(`/admin/orders/${id}/ship`, {
             method: 'PUT',
         })
     }
@@ -625,17 +475,17 @@ class AdminApiService {
     // ========================================================================
 
     async getNotifications(): Promise<AdminApiResponse<Notification[]>> {
-        return this.request<AdminApiResponse<Notification[]>>('/notifications')
+        return this.adminRequest<AdminApiResponse<Notification[]>>('/notifications')
     }
 
     async markNotificationRead(id: string): Promise<AdminApiResponse<null>> {
-        return this.request<AdminApiResponse<null>>(`/notifications/${id}/read`, {
+        return this.adminRequest<AdminApiResponse<null>>(`/notifications/${id}/read`, {
             method: 'PUT',
         })
     }
 
     async markAllNotificationsRead(): Promise<AdminApiResponse<null>> {
-        return this.request<AdminApiResponse<null>>('/notifications/read-all', {
+        return this.adminRequest<AdminApiResponse<null>>('/notifications/read-all', {
             method: 'PUT',
         })
     }
