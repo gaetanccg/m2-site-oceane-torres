@@ -269,17 +269,19 @@ class PhotoController extends Controller
         $validated = $request->validated();
 
         $cases = [];
+        $bindings = [];
         $ids = [];
         foreach ($validated['photos'] as $photoData) {
-            $cases[] = "WHEN '{$photoData['id']}' THEN {$photoData['sort_order']}";
+            $cases[] = 'WHEN ? THEN ?';
+            $bindings[] = $photoData['id'];
+            $bindings[] = (int) $photoData['sort_order'];
             $ids[] = $photoData['id'];
         }
 
         if (! empty($cases)) {
             $caseSql = implode(' ', $cases);
-            $idList = implode("','", $ids);
             Photo::whereIn('id', $ids)
-                ->update(['sort_order' => \DB::raw("CASE id {$caseSql} END")]);
+                ->update(['sort_order' => \DB::raw("CASE id {$caseSql} END", $bindings)]);
         }
 
         return response()->json([
