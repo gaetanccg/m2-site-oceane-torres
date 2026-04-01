@@ -95,16 +95,19 @@ class EventCategoryController extends Controller
         ]);
 
         $cases = [];
+        $bindings = [];
         $ids = [];
         foreach ($validated['categories'] as $categoryData) {
-            $cases[] = "WHEN '{$categoryData['id']}' THEN {$categoryData['sort_order']}";
+            $cases[] = 'WHEN ? THEN ?';
+            $bindings[] = $categoryData['id'];
+            $bindings[] = (int) $categoryData['sort_order'];
             $ids[] = $categoryData['id'];
         }
 
         if (! empty($cases)) {
             $caseSql = implode(' ', $cases);
             EventCategory::whereIn('id', $ids)
-                ->update(['sort_order' => \DB::raw("CASE id {$caseSql} END")]);
+                ->update(['sort_order' => \DB::raw("CASE id {$caseSql} END", $bindings)]);
         }
 
         return response()->json([

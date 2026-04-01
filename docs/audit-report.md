@@ -129,24 +129,31 @@ Les items ci-dessous combinent les restes du refactoring technique et la todolis
 
 ---
 
-### Phase C — Securite & RGPD *(re-verifier apres Phases B et D)*
+### Phase C — Securite & RGPD -- FAIT
 
-#### C1. Audit de securite des formulaires
-- [ ] Verifier que toutes les entrees passent par des FormRequests (19 crees, ~12 inline restantes)
-- [ ] Verifier les `DB::raw()` avec entrees non sanitisees
-- [ ] Verifier les en-tetes HTTP de securite (CSP, X-Frame-Options, X-Content-Type-Options)
-- [ ] Verifier la config Sanctum (domaines stateful, CORS, expiration tokens)
+#### C1. Audit de securite des formulaires -- CORRIGE
+- [x] **SQL injection corrigee** : 2 failles dans les CASE/WHEN (PhotoController, EventCategoryController) — remplacement de l'interpolation directe par des bindings parametrises `?`
+- [x] **Token Sanctum** : expiration configuree a 30 jours (etait `null` = pas d'expiration)
+- [x] **Headers HTTP securite** : middleware `SecurityHeaders` cree et enregistre globalement (X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, Referrer-Policy, Permissions-Policy, HSTS)
+- [x] **CORS** : `allowed_methods` restreint a `GET/POST/PUT/DELETE/OPTIONS` (etait wildcard `*`)
+- [x] Toutes les `DB::raw()` restantes verifiees — aucune avec input utilisateur non sanitise
+- [ ] **Reste a faire** : ~27 validations inline restantes (petites, basse priorite)
 
-#### C2. Audit RGPD
-- [ ] Verifier consentement explicite sur tous les formulaires publics (deja en place via `gdpr_consent`)
-- [ ] Verifier l'export GDPR (`ClientController::gdprExport()`) — complet ?
-- [ ] Verifier le droit a l'oubli pour les commandes (pas seulement les reservations)
-- [ ] Verifier la duree de retention des donnees (logs, sessions, tokens)
-- [ ] Verifier que les cookies ne sont deposes qu'apres consentement
+#### C2. Audit RGPD -- CORRIGE
+- [x] **Consentement formulaires** : verifie sur register, contact, booking (tous ont `gdpr_consent`). Checkout utilise `cgv_accepted` qui couvre le traitement des donnees dans le cadre de l'execution du contrat
+- [x] **Droit a l'oubli etendu** : `ClientController::destroy()` anonymise desormais les commandes (`guest_email/first/last_name`), messages de contact (`name/email/phone`), et supprime les download logs lies
+- [x] **Politique de retention** : tache hebdomadaire RGPD ajoutee (`console.php`) :
+  - Paniers expires >30j : suppression
+  - Commandes expirees/echouees >6 mois : anonymisation
+  - Messages de contact >12 mois : suppression
+  - Download logs >12 mois : suppression
+  - Tokens Sanctum inutilises >6 mois : suppression
+- [x] **Cookies** : GA4 Consent Mode v2 en place, initialisation en mode `denied`
+- [ ] **Reste a faire** : enrichir l'export GDPR (ajouter commandes, messages contact, download logs)
+- [ ] **Reste a faire** : bouton "Modifier mes preferences cookies" accessible depuis le footer
 
 #### C3. Policies Supabase
-- [ ] Configurer les Row Level Security (RLS) policies sur Supabase
-- [ ] Defense en profondeur meme si l'API Laravel est le seul point d'acces
+- [ ] Configurer les Row Level Security (RLS) — action manuelle sur le dashboard Supabase
 
 ---
 

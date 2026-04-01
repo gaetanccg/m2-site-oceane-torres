@@ -1,7 +1,10 @@
 <?php
 
 use App\Models\Cart;
+use App\Models\ContactMessage;
+use App\Models\DownloadLog;
 use App\Models\Order;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schedule;
 
@@ -24,3 +27,50 @@ Schedule::call(function () {
         ]);
     }
 })->daily()->at('03:00')->name('cleanup-stale-carts-orders');
+
+// Weekly RGPD cleanup: purge old personal data
+Schedule::call(function () {
+    // Delete expired carts older than 30 days (personal data: guest_email)
+    $deletedCarts = Cart::where('status', 'expired')
+        ->where('updated_at', '<', now()->subDays(30))
+        ->delete();
+
+    // Anonymize expired/failed orders older than 6 months
+    $anonymizedOrders = Order::whereIn('status', ['expired', 'failed'])
+        ->where('created_at', '<', now()->subMonths(6))
+        ->whereNotNull('guest_email')
+        ->update([
+            'guest_email' => null,
+            'guest_first_name' => null,
+            'guest_last_name' => null,
+        ]);
+
+    // Delete contact messages older than 12 months
+    $deletedMessages = ContactMessage::where('created_at', '<', now()->subMonths(12))
+        ->delete();
+
+    // Delete download logs older than 12 months (IP, user agent)
+    $deletedLogs = DownloadLog::where('downloaded_at', '<', now()->subMonths(12))
+        ->delete();
+
+    // Purge expired Sanctum tokens
+    $deletedTokens = DB::table('personal_access_tokens')
+        ->where('last_used_at', '<', now()->subMonths(6))
+        ->orWhere(function ($query) {
+            $query->whereNull('last_used_at')
+                ->where('created_at', '<', now()->subMonths(3));
+        })
+        ->delete();
+
+    $total = $deletedCarts + $anonymizedOrders + $deletedMessages + $deletedLogs + $deletedTokens;
+
+    if ($total > 0) {
+        Log::info('RGPD weekly cleanup completed', [
+            'deleted_carts' => $deletedCarts,
+            'anonymized_orders' => $anonymizedOrders,
+            'deleted_contact_messages' => $deletedMessages,
+            'deleted_download_logs' => $deletedLogs,
+            'deleted_tokens' => $deletedTokens,
+        ]);
+    }
+})->weekly()->sundays()->at('04:00')->name('rgpd-data-retention-cleanup');

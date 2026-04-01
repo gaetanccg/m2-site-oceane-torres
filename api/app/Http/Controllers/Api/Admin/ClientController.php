@@ -87,10 +87,13 @@ class ClientController extends Controller
 
     /**
      * Suppression d'un client (RGPD - droit à l'oubli)
+     * Anonymise toutes les donnees personnelles liees
      */
     public function destroy(Client $client): JsonResponse
     {
-        // Délier les réservations (on garde les réservations mais on les anonymise)
+        $email = $client->email;
+
+        // Anonymiser les reservations
         $client->reservations()->update([
             'client_id' => null,
             'guest_name' => 'Client supprimé',
@@ -98,10 +101,32 @@ class ClientController extends Controller
             'guest_phone' => null,
         ]);
 
+        // Anonymiser les commandes par email
+        \App\Models\Order::where('guest_email', $email)->update([
+            'guest_email' => null,
+            'guest_first_name' => 'Supprimé',
+            'guest_last_name' => null,
+        ]);
+
+        // Anonymiser les messages de contact
+        \App\Models\ContactMessage::where('email', $email)->update([
+            'name' => 'Supprimé',
+            'email' => null,
+            'phone' => null,
+        ]);
+
+        // Supprimer les logs de telechargement lies aux galeries du client
+        if ($client->user_id) {
+            $galleryIds = \App\Models\Gallery::where('user_id', $client->user_id)->pluck('id');
+            if ($galleryIds->isNotEmpty()) {
+                \App\Models\DownloadLog::whereIn('gallery_id', $galleryIds)->delete();
+            }
+        }
+
         $client->delete();
 
         return response()->json([
-            'message' => 'Client supprimé conformément au RGPD.',
+            'message' => 'Client supprimé et données anonymisées conformément au RGPD.',
         ]);
     }
 
