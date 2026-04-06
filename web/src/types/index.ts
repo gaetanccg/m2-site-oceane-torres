@@ -32,6 +32,7 @@ export interface GalleryItem {
 
 export interface LightboxImage {
     url: string
+    previewUrl?: string
     alt: string
     type: MediaType
     youtubeId?: string

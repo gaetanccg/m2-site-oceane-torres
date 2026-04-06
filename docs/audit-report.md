@@ -37,7 +37,7 @@
 | **E** Cookies          | FAIT                 | -                         |
 | **F** Admin + UX       | FAIT                 | -                         |
 | **G** Performance/SEO  | FAIT                 | Prerender a executer      |
-| **H** Infrastructure   | A FAIRE (long terme) | -                         |
+| **H** Infrastructure   | FAIT                 | -                         |
 | **Tech** Refactoring   | Partiel              | 5 items                   |
 
 ---
@@ -223,71 +223,42 @@
 
 ---
 
-### Phase H — Infrastructure & deploiement (long terme)
+### Phase H — Infrastructure & deploiement
 
-#### H1. Migration Render → Vercel
+#### H1. Fix images portfolio Chrome/Opera -- FAIT
 
-- [ ] Frontend sur Vercel, backend sur NAS/Render/Railway
+- [x] Portfolio passe en AVIF primary + WebP fallback (gallery.ts : `previewUrl` = AVIF, `url` = WebP)
+- [x] Fallback chain MasonryGallery gere automatiquement AVIF → WebP si AVIF echoue
+- [x] Lightbox utilise aussi AVIF en priorite via `previewUrl`
+- [x] Resultat estime : ~30% de bande passante en moins, meme qualite visuelle
 
-#### H2. Restructuration deploiement NAS — rendre le repo autonome
+#### H2. Restructuration deploiement NAS -- FAIT
 
-**Situation actuelle :**
+- [x] `deploy/` versionne dans git (seuls `.env.prod` et `.env.deploy` ignores)
+- [x] `deploy/docker-compose.prod.yml` : paths relatifs depuis la racine du repo (`./api`, `./deploy/`)
+- [x] `deploy/nginx.prod.conf` : config Nginx production versionnee
+- [x] `deploy/deploy.sh` : script avec `git pull` + build + migrate + cache (options `--no-pull`, `--no-build`)
+- [x] `deploy/.env.prod.example` : template documente sans secrets
+- [x] `deploy/docker/php.ini` + `deploy/docker/www.conf` : configs PHP versionnees
+- [x] `deploy/README.md` : nouveau flow simplifie
 
-- Le repo contient deja un dossier `deploy/` avec des templates prets a copier : `docker-compose.prod.deploy.yml`, `nginx.prod.deploy.conf`, `deploy.sh.deploy`
-- Le dossier `docker/` (racine monorepo) contient `nginx.conf`, `php.ini`, `www.conf`
-- Le `api/Dockerfile` existe, le `api/.gitignore` ignore deja `.env`, `.env.production`
-- Sur le NAS, la structure cible est `/volume1/docker/oceane-api/` avec `api/` en sous-dossier et les configs a cote
-
-**Probleme :** les fichiers de `deploy/` doivent etre copies manuellement via SCP. Un `git clone` seul ne suffit pas.
-
-**Objectif :** qu'un `git pull` + un seul script suffise, les secrets restant hors versioning.
-
-**Ce qui existe deja :**
-
+**Nouveau workflow deploiement :**
 ```
-deploy/
-├── README.md                      # doc de deploiement
-├── SSH-COMMANDS.md                # commandes SSH
-├── deploy.sh.deploy               # script deploiement (hardcode /volume1/docker/oceane-api)
-├── docker-compose.prod.deploy.yml # compose prod (paths: ./api, ./docker, .env.prod)
-└── nginx.prod.deploy.conf         # nginx prod
-
-docker/                            # configs PHP/Nginx dev
-├── nginx.conf
-├── php.ini
-└── www.conf
-
-api/Dockerfile                     # image Laravel
-docker-compose.yml                 # dev local (racine monorepo)
+Premier deploiement : git clone → cp .env.prod.example .env.prod → remplir → ./deploy/deploy.sh --no-pull
+Mises a jour :        ./deploy/deploy.sh
 ```
 
-**Le compose prod reference `./api` comme sous-dossier** — il est prevu pour tourner depuis la racine NAS, pas depuis `/api`. Donc la bonne approche est de garder cette structure et de l'integrer proprement au repo.
+#### ~~H3. Certificats SSL + reverse proxy~~ RETIRE
 
-**Actions a realiser :**
+- Cloudflare Tunnel gere deja le SSL automatiquement
+- HSTS header deja en place dans le middleware SecurityHeaders Laravel
+- Rien a faire
 
-- [ ] Creer `deploy/nginx.prod.conf` versionne (renommer depuis `nginx.prod.deploy.conf`, retirer le suffixe `.deploy`)
-- [ ] Creer `deploy/docker-compose.prod.yml` versionne (renommer depuis `.deploy.yml`)
-- [ ] Creer `deploy/deploy.sh` versionne — adapter pour accepter un path configurable au lieu de hardcoder `/volume1/docker/oceane-api`
-- [ ] Creer `deploy/.env.prod.example` commite (sans secrets), documente toutes les variables
-- [ ] Ajouter `deploy/.env.prod` au `.gitignore` (fichier reel avec secrets, jamais commite)
-- [ ] Copier `docker/php.ini` et `docker/www.conf` dans `deploy/docker/` pour que tout soit au meme endroit
-- [ ] Mettre a jour `deploy/README.md` avec le nouveau flow simplifie :
-  ```
-  1. git clone → cd deploy/
-  2. cp .env.prod.example .env.prod → remplir les secrets
-  3. ./deploy.sh
-  ```
-- [ ] Ajouter `git pull` au debut de `deploy.sh` pour qu'un re-deploiement soit un seul `./deploy.sh`
+#### ~~H4. Evaluation SSR / Nuxt~~ RETIRE
 
-#### H3. Certificats SSL + reverse proxy
-
-- [ ] Configurer Let's Encrypt sur le NAS (Nginx ou Traefik)
-- [ ] S'assurer que le HSTS header (deja en place via middleware SecurityHeaders) fonctionne en prod
-
-#### H4. Evaluation SSR / Nuxt
-
-- [ ] Evaluer benefice vs cout de migration Vue SPA → Nuxt (ou alternative : vite-ssg, Astro)
-- [ ] Si Nuxt adopte → G4 devient obsolete, SSR natif remplace Puppeteer
+- Ratio cout/benefice trop faible pour un site de photographe (~10 pages statiques)
+- Le prerendering Puppeteer + les fixes SEO (Phase G) couvrent le besoin
+- Alternative `vite-ssg` disponible si besoin futur
 
 ---
 

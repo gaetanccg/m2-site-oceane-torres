@@ -111,8 +111,9 @@ cache/
 PROJECT_REFERENCE.md
 PROJECT_REFERENCE_MVP.md
 
-# Deployment files (contain secrets)
-/deploy/
+# Deployment secrets (never commit)
+/deploy/.env.prod
+/deploy/.env.deploy
 
 .claude
 *.tar.gz

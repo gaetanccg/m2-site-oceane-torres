@@ -1,0 +1,55 @@
+#!/bin/bash
+# ===========================================
+# SCRIPT DE DEPLOIEMENT - NAS UGREEN
+# ===========================================
+# Copier ce fichier sur le NAS :
+# cp deploy.sh.deploy /volume1/docker/oceane-api/deploy.sh
+# chmod +x /volume1/docker/oceane-api/deploy.sh
+# ===========================================
+
+set -e
+
+cd /volume1/docker/oceane-api
+
+echo "=========================================="
+echo "  DEPLOIEMENT OCEANE API"
+echo "=========================================="
+
+echo ""
+echo "1/6 - Building containers..."
+docker compose -f docker-compose.prod.yml build --no-cache
+
+echo ""
+echo "2/6 - Stopping old containers..."
+docker compose -f docker-compose.prod.yml down
+
+echo ""
+echo "3/6 - Starting new containers..."
+docker compose -f docker-compose.prod.yml up -d
+
+echo ""
+echo "4/6 - Waiting for containers to be ready..."
+sleep 15
+
+echo ""
+echo "5/6 - Running Laravel setup..."
+docker exec oceane-laravel composer install --no-dev --optimize-autoloader --no-interaction
+docker exec oceane-laravel php artisan migrate --force
+docker exec oceane-laravel php artisan storage:link || true
+docker exec oceane-laravel php artisan config:cache
+docker exec oceane-laravel php artisan route:cache
+docker exec oceane-laravel php artisan view:cache
+
+echo ""
+echo "6/6 - Setting permissions..."
+docker exec oceane-laravel chmod -R 775 storage bootstrap/cache
+docker exec oceane-laravel chown -R www-data:www-data storage bootstrap/cache
+
+echo ""
+echo "=========================================="
+echo "  DEPLOIEMENT TERMINE !"
+echo "=========================================="
+echo ""
+docker compose -f docker-compose.prod.yml ps
+echo ""
+echo "Test: curl http://localhost:8080/api/prestations"
