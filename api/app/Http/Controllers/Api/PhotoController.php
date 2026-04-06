@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Api;
 
 use App\Helpers\MimeTypes;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\BulkToggleDownloadableRequest;
 use App\Http\Requests\StoreAsyncPhotoRequest;
 use App\Http\Requests\StorePhotoRequest;
 use App\Http\Requests\UpdateSortOrderRequest;
+use App\Http\Requests\UploadStatusRequest;
 use App\Jobs\ProcessPhotoJob;
 use App\Models\Gallery;
 use App\Models\Photo;
@@ -245,13 +247,9 @@ class PhotoController extends Controller
         ]);
     }
 
-    public function bulkToggleDownloadable(Request $request): JsonResponse
+    public function bulkToggleDownloadable(BulkToggleDownloadableRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'photo_ids' => ['required', 'array'],
-            'photo_ids.*' => ['exists:photos,id'],
-            'is_downloadable' => ['required', 'boolean'],
-        ]);
+        $validated = $request->validated();
 
         Photo::whereIn('id', $validated['photo_ids'])
             ->update(['is_downloadable' => $validated['is_downloadable']]);
@@ -362,11 +360,9 @@ class PhotoController extends Controller
     /**
      * Get upload status for a batch
      */
-    public function uploadStatus(Request $request): JsonResponse
+    public function uploadStatus(UploadStatusRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'batch_id' => ['required', 'string'],
-        ]);
+        $validated = $request->validated();
 
         $status = PhotoUpload::getBatchStatus($validated['batch_id']);
 

@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\SendAccessEmailRequest;
+use App\Http\Requests\Admin\StoreGalleryRequest;
+use App\Http\Requests\Admin\UpdateGalleryRequest;
 use App\Mail\GalleryAccessMail;
 use App\Models\Client;
 use App\Models\Gallery;
@@ -85,14 +88,9 @@ class GalleryController extends Controller
         ]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreGalleryRequest $request): JsonResponse
     {
-        $validated = $request->validate(array_merge([
-            'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'client_id' => ['nullable', 'exists:clients,id'],
-            'assigned_email' => ['nullable', 'email', 'max:255'],
-        ], $this->productTypeValidationRules()));
+        $validated = $request->validated();
 
         $productTypes = $validated['product_types'] ?? null;
         unset($validated['product_types']);
@@ -121,14 +119,9 @@ class GalleryController extends Controller
         ], 201);
     }
 
-    public function update(Request $request, Gallery $gallery): JsonResponse
+    public function update(UpdateGalleryRequest $request, Gallery $gallery): JsonResponse
     {
-        $validated = $request->validate(array_merge([
-            'title' => ['sometimes', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'client_id' => ['nullable', 'exists:clients,id'],
-            'assigned_email' => ['nullable', 'email', 'max:255'],
-        ], $this->productTypeValidationRules()));
+        $validated = $request->validated();
 
         $productTypes = $validated['product_types'] ?? null;
         unset($validated['product_types']);
@@ -182,12 +175,9 @@ class GalleryController extends Controller
         ]);
     }
 
-    public function sendAccessEmail(Request $request, Gallery $gallery): JsonResponse
+    public function sendAccessEmail(SendAccessEmailRequest $request, Gallery $gallery): JsonResponse
     {
-        $validated = $request->validate([
-            'email' => ['required', 'email'],
-            'recipient_name' => ['required', 'string', 'max:255'],
-        ]);
+        $validated = $request->validated();
 
         if (! $gallery->share_code) {
             return response()->json([

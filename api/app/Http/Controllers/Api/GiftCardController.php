@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\UpdateGiftCardRequest;
 use App\Http\Requests\StoreGiftCardRequest;
 use App\Models\GiftCard;
 use Illuminate\Http\JsonResponse;
@@ -44,12 +45,9 @@ class GiftCardController extends Controller
         ], 201);
     }
 
-    public function update(Request $request, GiftCard $giftCard): JsonResponse
+    public function update(UpdateGiftCardRequest $request, GiftCard $giftCard): JsonResponse
     {
-        $validated = $request->validate([
-            'status' => ['sometimes', 'in:active,used,expired,cancelled'],
-            'expires_at' => ['nullable', 'date'],
-        ]);
+        $validated = $request->validated();
 
         $giftCard->update($validated);
 

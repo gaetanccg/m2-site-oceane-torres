@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Api\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CreateCheckoutRequest;
+use App\Http\Requests\GetOrdersByEmailRequest;
 use App\Models\Order;
 use App\Services\CartService;
 use App\Services\InvoiceService;
@@ -266,11 +267,9 @@ class OrderController extends Controller
     /**
      * Get orders by guest email
      */
-    public function getByEmail(Request $request): JsonResponse
+    public function getByEmail(GetOrdersByEmailRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'email' => ['required', 'email'],
-        ]);
+        $validated = $request->validated();
 
         $orders = $this->orderService->getOrdersForEmail($validated['email']);
 
