@@ -47,8 +47,10 @@ class ReservationController extends Controller
         return response()->json($reservations);
     }
 
-    public function show(Reservation $reservation): JsonResponse
+    public function show(Request $request, Reservation $reservation): JsonResponse
     {
+        $this->authorize('view', $reservation);
+
         $reservation->load(['user', 'prestation', 'clientForm', 'payments']);
 
         return response()->json([
@@ -94,6 +96,8 @@ class ReservationController extends Controller
 
     public function update(UpdateReservationRequest $request, Reservation $reservation): JsonResponse
     {
+        $this->authorize('update', $reservation);
+
         $validated = $request->validated();
 
         $reservation->update($validated);
@@ -142,13 +146,9 @@ class ReservationController extends Controller
         ]);
     }
 
-    public function destroy(Reservation $reservation): JsonResponse
+    public function destroy(Request $request, Reservation $reservation): JsonResponse
     {
-        if ($reservation->status === 'confirmed') {
-            return response()->json([
-                'message' => 'Impossible de supprimer une réservation confirmée.',
-            ], 422);
-        }
+        $this->authorize('delete', $reservation);
 
         $reservation->delete();
 

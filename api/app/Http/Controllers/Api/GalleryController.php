@@ -293,8 +293,9 @@ class GalleryController extends Controller
     public function downloadZip(Gallery $gallery, Request $request): JsonResponse
     {
         $token = $request->query('token');
+        $user = $request->user();
 
-        if (! $gallery->isAccessible($token)) {
+        if (! app(\App\Policies\GalleryPolicy::class)->download($user, $gallery, $token)) {
             return response()->json([
                 'message' => 'Accès non autorisé.',
             ], 403);
