@@ -1,7 +1,7 @@
 # Rapport d'Audit de Code — Oceane Torres Photographie
 
 **Date initiale :** 31 mars 2026
-**Derniere mise a jour :** 1er avril 2026
+**Derniere mise a jour :** 5 avril 2026
 **Branche :** `refacto`
 **Version projet :** 2.2.1
 
@@ -34,7 +34,7 @@
 | **B** Commandes        | FAIT                 | -                      |
 | **C** Securite/RGPD    | FAIT                 | 3 items                |
 | **D** Compte client    | FAIT                 | 1 item UX              |
-| **E** Cookies          | A FAIRE              | -                      |
+| **E** Cookies          | FAIT                 | -                      |
 | **F** Admin features   | A FAIRE              | -                      |
 | **G** SEO/Prerendering | A FAIRE              | -                      |
 | **H** Infrastructure   | A FAIRE (long terme) | -                      |
@@ -75,17 +75,25 @@
 - [x] Onglet "Mes achats" dans le dashboard client
 - [x] Bouton "Voir / Telecharger" sur commandes payees
 
+### Phase E — Cookies & consentement -- FAIT
+
+- [x] Iframe YouTube bloquee sans consentement marketing (placeholder + bouton "Accepter et regarder")
+- [x] Flow de revocation verifie et corrige (accepter → refuser → arret effectif)
+- [x] Bug corrige : suppression cookies marketing independante du choix analytics
+- [x] Bug corrige : pas de page_view envoye quand analytics desactive
+- [x] Bouton "Cookies" dans le footer pour modifier ses preferences
+
 ---
 
 ## Reste a faire des phases terminees (priorise)
 
 ### Priorite haute
 
-**C2. Bouton "Modifier mes preferences cookies" dans le footer**
+~~**C2. Bouton "Modifier mes preferences cookies" dans le footer**~~ FAIT
 
-- Actuellement l'utilisateur ne peut pas revoquer ses preferences apres avoir accepte
-- Le store `consent.ts` a deja `revokeConsent()` — il manque juste le bouton d'acces
-- Impacte la conformite RGPD (droit de retrait du consentement)
+- ~~Actuellement l'utilisateur ne peut pas revoquer ses preferences apres avoir accepte~~
+- ~~Le store `consent.ts` a deja `revokeConsent()` — il manque juste le bouton d'acces~~
+- Bouton "Cookies" ajoute dans `Footer.vue`, ouvre le modal de preferences via `consentStore.openSettings()`
 
 **C2. Enrichir l'export GDPR**
 
@@ -130,9 +138,9 @@
 
 | Fonctionnalite                    | Statut          | Detail                                                                                                               |
 |-----------------------------------|-----------------|----------------------------------------------------------------------------------------------------------------------|
-| Vues galeries                     | Partiel         | OK sur share code, download, events. **Manque** sur galeries publiques directes et acces par token                   |
+| Vues galeries                     | OK              | `recordView()` sur toutes les methodes : show, showByToken, showByShareCode, showDownloadableByToken                 |
 | Telechargements photos (gratuits) | OK              | `recordDownload()` appele dans PhotoController et GalleryController (ZIP)                                            |
-| Telechargements photos (achats)   | **MANQUE**      | OrderController marque `item.is_downloaded` mais n'incremente PAS `photo.downloads_count` ni ne cree de DownloadLog  |
+| Telechargements photos (achats)   | OK              | `recordDownload()` ajoute dans OrderController::downloadPhoto() et downloadAll()                                     |
 | Likes photos                      | Limite          | Boolean `is_liked` par photo (pas par utilisateur, pas de compteur, pas de logs)                                     |
 | Commandes                         | OK en BDD       | Order, OrderItem, Payment — tout est enregistre. **Manque** : evenements GA4                                         |
 | Revenus dashboard                 | Partiel         | Total et mensuel OK. **Manque** : revenu par galerie, par type de produit, par photo                                 |
@@ -142,16 +150,16 @@
 
 ### Plan de correction tracking (a integrer dans les prochaines phases)
 
-#### T1. Corriger le tracking des telechargements d'achats (priorite haute)
+#### ~~T1. Corriger le tracking des telechargements d'achats~~ FAIT
 
-- [ ] Dans `OrderController::downloadPhoto()` : ajouter `$photo->recordDownload($request->ip(), $request->userAgent())` apres `$item->markAsDownloaded()`
-- [ ] Dans `OrderController::downloadAll()` : ajouter `$photo->recordDownload($request->ip(), $request->userAgent())` apres chaque `$item->markAsDownloaded()`
-- [ ] Resultat : `photo.downloads_count` et `download_logs` refletent TOUS les telechargements (gratuits + achats)
+- [x] Dans `OrderController::downloadPhoto()` : `$photo->recordDownload($request->ip(), $request->userAgent())` ajoute
+- [x] Dans `OrderController::downloadAll()` : `$photo->recordDownload($request->ip(), $request->userAgent())` ajoute
+- [x] Resultat : `photo.downloads_count` et `download_logs` refletent TOUS les telechargements (gratuits + achats)
 
-#### T2. Corriger les vues galeries manquantes (priorite haute)
+#### ~~T2. Corriger les vues galeries manquantes~~ FAIT
 
-- [ ] Dans `GalleryController::show()` : ajouter `$gallery->recordView()` pour les galeries publiques
-- [ ] Dans `GalleryController::showByToken()` : ajouter `$gallery->recordView()` pour les galeries privees par token
+- [x] Dans `GalleryController::show()` : `$gallery->recordView()` ajoute pour les galeries publiques
+- [x] Dans `GalleryController::showByToken()` : `$gallery->recordView()` ajoute pour les galeries privees par token
 
 #### T3. Evenements GA4 e-commerce (priorite haute — impact revenus)
 
@@ -177,17 +185,20 @@
 
 ## Phases restantes a implementer
 
-### Phase E — Cookies & consentement
+### Phase E — Cookies & consentement -- FAIT
 
 #### E1. Consentement YouTube
 
-- [ ] Bloquer les iframes YouTube tant que le consentement marketing n'est pas donne
-- [ ] Afficher un placeholder avec bouton "Accepter pour voir la video"
+- [x] Bloquer les iframes YouTube tant que le consentement marketing n'est pas donne
+- [x] Afficher un placeholder avec bouton "Accepter et regarder" dans `Lightbox.vue`
+- [x] Bouton accepte le marketing et charge l'iframe immediatement
 
 #### E2. Revocation du consentement
 
-- [ ] Verifier le flow : accepter → naviguer → refuser → verifier arret tracking
-- [ ] Supprimer cookies GA4, desactiver tracking, supprimer cookies tiers
+- [x] Verifier le flow : accepter → naviguer → refuser → verifier arret tracking
+- [x] Supprimer cookies GA4, desactiver tracking, supprimer cookies tiers
+- [x] Bug corrige : `savePreferences()` supprime maintenant les cookies marketing meme si analytics reste actif
+- [x] Bug corrige : `sendPageViewAfterConsent()` n'est plus envoye quand analytics est desactive
 
 ---
 
@@ -325,4 +336,4 @@ docker-compose.yml                 # dev local (racine monorepo)
 
 ---
 
-*Rapport mis a jour le 1er avril 2026.*
+*Rapport mis a jour le 5 avril 2026.*

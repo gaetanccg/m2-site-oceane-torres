@@ -42,6 +42,7 @@ class GalleryController extends Controller
         }
 
         $gallery->load('photos');
+        $gallery->recordView();
 
         return response()->json([
             'gallery' => $gallery,
@@ -59,6 +60,7 @@ class GalleryController extends Controller
         }
 
         $gallery->load(['photos', 'galleryProductTypes.packTiers']);
+        $gallery->recordView();
 
         return response()->json([
             'gallery' => $gallery,
