@@ -464,12 +464,18 @@ watch(activeFilter, async () => {
     position: relative;
     overflow: hidden;
     cursor: pointer;
-    min-height: 100px;
+    aspect-ratio: 3/2;
     background: #f5f5f5;
 }
 
 .video-grid .gallery-item{
     margin-bottom: 0;
+    aspect-ratio: 16/9;
+}
+
+/* Once the main image loads, let it dictate natural height */
+.gallery-item:has(.gallery-image.loaded){
+    aspect-ratio: auto;
 }
 
 /* Blur-up placeholder container */

@@ -1,7 +1,7 @@
 <template>
     <nav
         :class="[
-            'fixed top-0 left-0 right-0 z-50 transition-all duration-300',
+            'fixed top-0 left-0 right-0 z-50 h-20 nav-transition',
             scrolled ? 'bg-white/80 backdrop-blur-md shadow-sm' : 'bg-white'
         ]"
     >
@@ -300,6 +300,10 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.nav-transition {
+    transition: background-color 0.3s ease, box-shadow 0.3s ease, backdrop-filter 0.3s ease;
+}
+
 .dropdown-enter-active,
 .dropdown-leave-active{
     transition: all 0.2s ease;
