@@ -30,15 +30,15 @@
 
 | Phase                  | Statut               | Reste a faire          |
 |------------------------|----------------------|------------------------|
-| **A** Performance      | FAIT                 | 2 items basse priorite |
-| **B** Commandes        | FAIT                 | -                      |
-| **C** Securite/RGPD    | FAIT                 | 3 items                |
-| **D** Compte client    | FAIT                 | 1 item UX              |
-| **E** Cookies          | FAIT                 | -                      |
-| **F** Admin features   | A FAIRE              | -                      |
-| **G** SEO/Prerendering | A FAIRE              | -                      |
-| **H** Infrastructure   | A FAIRE (long terme) | -                      |
-| **Tech** Refactoring   | Partiel              | 5 items                |
+| **A** Performance      | FAIT                 | Audit Lighthouse a faire  |
+| **B** Commandes        | FAIT                 | -                         |
+| **C** Securite/RGPD    | FAIT                 | RLS Supabase (manuel)     |
+| **D** Compte client    | FAIT                 | -                         |
+| **E** Cookies          | FAIT                 | -                         |
+| **F** Admin + UX       | A FAIRE              | -                         |
+| **G** SEO/Prerendering | A FAIRE              | -                         |
+| **H** Infrastructure   | A FAIRE (long terme) | -                         |
+| **Tech** Refactoring   | Partiel              | 5 items                   |
 
 ---
 
@@ -85,35 +85,18 @@
 
 ---
 
-## Reste a faire des phases terminees (priorise)
+## Reste a faire des phases terminees — TOUT FAIT
 
-### Fait
-
-~~**C2. Bouton "Modifier mes preferences cookies" dans le footer**~~ — Bouton "Cookies" ajoute dans `Footer.vue`
-
-~~**C2. Enrichir l'export GDPR**~~ — Export enrichi : commandes, messages de contact, download logs
-
-### A faire
-
-~~**C1. ~27 validations inline restantes**~~ FAIT
-
-- 25 FormRequest classes creees, 27 validations inline converties
-- 0 `$request->validate()` inline restant dans les controllers
-- Controllers modifies : GalleryController, EventGalleryController, EventCategoryController, CartController, ReservationController, AvailabilityController, GiftCardController, PhotoController, SumUpPaymentController, AuthController, OrderController
-
-~~**D2. UX compte client**~~ FAIT
-
-- Page detail commande client `/mon-compte/commande/:id` avec telechargement individuel par photo
-- Backend enrichi : items inclus dans les commandes du dashboard (thumbnail, titre, type, prix, statut download)
-- Bouton "Voir / Telecharger" redirige vers la page detail client au lieu de la page commande generique
+- [x] **C2.** Bouton "Cookies" dans le footer
+- [x] **C2.** Export GDPR enrichi (commandes, contacts, download logs)
+- [x] **C1.** 27 validations inline → 25 FormRequest classes (0 inline restant)
+- [x] **D2.** Page detail commande client `/mon-compte/commande/:id` + telechargement individuel
 
 ### Reporte / hors scope
 
-**C3. Policies RLS Supabase** — Action manuelle sur le dashboard Supabase, hors code
-
-**A4. Images responsives `srcset` / `<picture>`** — Gros chantier, pas critique
-
-**A4. Images originales `/public/images/` (241 MB)** — Envisager `.gitignore` ou stockage externe, pas bloquant
+- **C3. Policies RLS Supabase** — Action manuelle sur le dashboard Supabase, hors code
+- **A4. Images responsives** — A evaluer lors de l'audit Lighthouse (Phase G)
+- **A4. Images originales (241 MB)** — Envisager `.gitignore` ou stockage externe, pas bloquant
 
 ---
 
@@ -182,7 +165,7 @@
 
 ---
 
-### Phase F — Admin & fonctionnalites
+### Phase F — Admin & UX
 
 #### F1. Publier/depublier les evenements
 
@@ -196,21 +179,36 @@
 - [ ] Rendre optionnels les champs non necessaires (photos, product types)
 - [ ] Backend : validation conditionnelle selon le flag `is_parent`
 
+#### F3. Inciter a la creation de compte
+
+- [ ] Apres une commande (page OrderConfirmation) : afficher un encart "Creez votre compte pour retrouver vos achats"
+- [ ] Lien vers la creation de compte avec pre-remplissage de l'email si commande guest
+- [ ] Benefices mis en avant : historique commandes, re-telechargement, galeries privees
+
 ---
 
-### Phase G — SEO & prerendering
+### Phase G — Performance, SEO & prerendering
 
-#### G1. Audit du prerendering actuel
+*OBJECTIF PRINCIPAL : temps de chargement rapides, photos qui s'affichent bien, panier instantane.*
+
+#### G1. Audit Lighthouse / Core Web Vitals
+
+- [ ] Audit Lighthouse sur les pages cles (accueil, portfolio, evenements, galerie, checkout)
+- [ ] Identifier les goulots : LCP, CLS, TBT
+- [ ] Evaluer le besoin d'images responsives `srcset` / `<picture>` (lie a A4)
+- [ ] Optimiser le chargement des images selon les resultats
+
+#### G2. Audit du prerendering actuel
 
 - [ ] Verifier pages prerendues, balises meta, sitemap.xml
 - [ ] Tester avec Google Search Console
 
-#### G2. Amelioration SEO technique
+#### G3. Amelioration SEO technique
 
 - [ ] Donnees structurees JSON-LD (schema.org/Service, schema.org/Event)
-- [ ] Core Web Vitals (lie a Phase A)
+- [ ] Corriger les problemes identifies par Lighthouse/Search Console
 
-#### G3. Strategie de prerendering *(depend de H3 — Nuxt ou non)*
+#### G4. Strategie de prerendering *(depend de H4 — Nuxt ou non)*
 
 - [ ] Si Nuxt → SSR natif remplace Puppeteer
 - [ ] Sinon → evaluer `vite-ssg` comme alternative legere
@@ -280,8 +278,8 @@ docker-compose.yml                 # dev local (racine monorepo)
 
 #### H4. Evaluation SSR / Nuxt
 
-- [ ] Evaluer benefice vs cout de migration
-- [ ] Si Nuxt adopte → G3 devient obsolete
+- [ ] Evaluer benefice vs cout de migration Vue SPA → Nuxt (ou alternative : vite-ssg, Astro)
+- [ ] Si Nuxt adopte → G4 devient obsolete, SSR natif remplace Puppeteer
 
 ---
 
