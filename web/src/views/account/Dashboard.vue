@@ -142,8 +142,8 @@
                                     </p>
                                 </div>
                                 <router-link
-                                    v-if="order.status === 'paid' && order.download_token"
-                                    :to="`/commande/${order.id}?token=${order.download_token}`"
+                                    v-if="order.status === 'paid'"
+                                    :to="`/mon-compte/commande/${order.id}`"
                                     class="inline-flex items-center gap-2 px-4 py-2 bg-gold text-white rounded-lg hover:bg-gold/90 transition-colors text-sm whitespace-nowrap"
                                 >
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

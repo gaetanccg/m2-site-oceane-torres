@@ -38,7 +38,7 @@
 | **F** Admin features   | A FAIRE              | -                      |
 | **G** SEO/Prerendering | A FAIRE              | -                      |
 | **H** Infrastructure   | A FAIRE (long terme) | -                      |
-| **Tech** Refactoring   | Partiel              | 7 items                |
+| **Tech** Refactoring   | Partiel              | 5 items                |
 
 ---
 
@@ -101,10 +101,11 @@
 - 0 `$request->validate()` inline restant dans les controllers
 - Controllers modifies : GalleryController, EventGalleryController, EventCategoryController, CartController, ReservationController, AvailabilityController, GiftCardController, PhotoController, SumUpPaymentController, AuthController, OrderController
 
-**D2. UX compte client** *(priorite moyenne)*
+~~**D2. UX compte client**~~ FAIT
 
-- Re-telechargement individuel de photos depuis le dashboard
-- Page de detail commande cote client (actuellement redirige vers la page commande standard)
+- Page detail commande client `/mon-compte/commande/:id` avec telechargement individuel par photo
+- Backend enrichi : items inclus dans les commandes du dashboard (thumbnail, titre, type, prix, statut download)
+- Bouton "Voir / Telecharger" redirige vers la page detail client au lieu de la page commande generique
 
 ### Reporte / hors scope
 

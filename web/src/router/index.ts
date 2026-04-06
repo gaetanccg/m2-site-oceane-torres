@@ -43,6 +43,7 @@ const OrderConfirmation = () => import('@/views/OrderConfirmation.vue')
 
 // Account pages (client)
 const AccountDashboard = () => import('@/views/account/Dashboard.vue')
+const AccountOrderDetail = () => import('@/views/account/OrderDetail.vue')
 
 // Admin pages
 const AdminRoot = () => import('@/views/admin/AdminRoot.vue')
@@ -222,6 +223,16 @@ export const routes: RouteRecordRaw[] = [
         component: AccountDashboard,
         meta: {
             title: 'Mon compte',
+            requiresClientAuth: true,
+            robots: 'noindex, nofollow'
+        }
+    },
+    {
+        path: '/mon-compte/commande/:id',
+        name: 'account-order',
+        component: AccountOrderDetail,
+        meta: {
+            title: 'Detail commande',
             requiresClientAuth: true,
             robots: 'noindex, nofollow'
         }
