@@ -38,7 +38,7 @@
 | **F** Admin + UX       | FAIT                 | -                         |
 | **G** Performance/SEO  | FAIT                 | Prerender a executer      |
 | **H** Infrastructure   | FAIT                 | -                         |
-| **Tech** Refactoring   | Partiel              | 5 items                   |
+| **Tech** Refactoring   | Partiel              | 6 items (R1→R6)           |
 
 ---
 
@@ -262,14 +262,45 @@ Mises a jour :        ./deploy/deploy.sh
 
 ---
 
-### Reste technique du refactoring (priorite basse)
+### Reste technique du refactoring (priorise)
 
-- [ ] **Tests** : 0% de couverture. PHPUnit pour services critiques, Vitest pour composables
-- [ ] **Galleries.vue (1290) et EventGalleries.vue (1678)** : extraire PhotoUploadZone, PhotoGridManager, DeletePhotoModal
-- [ ] **adminApi.ts (495)** : decouper par domaine
-- [ ] **API Resources supplementaires** : GalleryResource, UserResource, ReservationResource
-- [ ] **Policies supplementaires** : GalleryPolicy, ReservationPolicy
-- [ ] **uploadService.ts (502)** : refactoring possible
+#### ~~R1. Policies supplementaires~~ FAIT
+
+- [x] `GalleryPolicy` : view (public/event/token/owner), download (delegue a view)
+- [x] `ReservationPolicy` : view, update, delete (ownership + business rule confirmed)
+- [x] **Bug securite corrige** : ReservationController show/update/destroy n'avaient aucune verification de propriete — tout utilisateur connecte pouvait acceder aux reservations des autres
+- [x] GalleryController::downloadZip utilise maintenant GalleryPolicy::download
+
+#### R2. Decouper adminApi.ts *(priorite 2 — maintenabilite, ~30min)*
+
+- [ ] Fichier actuel : 505 lignes, toutes les methodes admin dans un seul fichier
+- [ ] Decouper en : `adminGalleryApi.ts`, `adminReservationApi.ts`, `adminClientApi.ts`, `adminOrderApi.ts`
+- [ ] Re-exporter depuis un `adminApi.ts` central pour ne pas casser les imports existants
+
+#### R3. Extraire sous-composants des vues admin *(priorite 3 — maintenabilite, ~2h)*
+
+- [ ] `Galleries.vue` (1290 lignes) : extraire PhotoUploadZone, GalleryFormModal, GalleryDrillDown
+- [ ] `EventGalleries.vue` (1732 lignes) : extraire EventGalleryCard, EventGalleryFormModal, CategoryManager
+- [ ] Objectif : chaque fichier < 500 lignes
+
+#### R4. API Resources supplementaires *(priorite 4 — coherence, ~30min)*
+
+- [ ] `GalleryResource` : remplacer le formatage inline dans GalleryController et EventGalleryController
+- [ ] `ReservationResource` : remplacer le formatage inline dans ReservationController
+- [ ] Existant : OrderResource, OrderItemResource (deja faits)
+
+#### R5. uploadService.ts *(priorite 5 — optionnel, ~1h)*
+
+- [ ] Fichier actuel : 502 lignes — complexite justifiee (chunked upload, retry, progress)
+- [ ] Refactoring possible : extraire chunk builder et retry logic en utils separees
+- [ ] **Non prioritaire** : le service fonctionne correctement
+
+#### R6. Tests *(priorite 6 — long terme, progressif)*
+
+- [ ] 0% de couverture actuelle (3 fichiers test vides)
+- [ ] Backend : PHPUnit pour OrderService, CartService, PricingService, ImageProcessingService
+- [ ] Frontend : Vitest pour useGtag, useProductTypes, useConfirm, consent store
+- [ ] A faire progressivement, pas en un bloc
 
 ---
 
@@ -281,7 +312,7 @@ Mises a jour :        ./deploy/deploy.sh
 | Duplication                | ~400+ lignes                                          | Centralise (traits, composables, BaseApiService) |
 | Fichiers geants            | GalleryController 877, OrderController 559            | 440 et 319                                       |
 | Validation                 | 0 FormRequest, 43+ inline                             | 44 FormRequests, 0 inline                        |
-| Autorisation               | 0 Policy                                              | 1 Policy (OrderPolicy)                           |
+| Autorisation               | 0 Policy                                              | 3 Policies (Order, Gallery, Reservation)         |
 | Separation responsabilites | Emails inline, pricing dans modele                    | Events/Listeners, PricingService                 |
 | Performance N+1            | 2 critiques                                           | Corriges (batch, withCount)                      |
 | Securite                   | SQL injection, pas de headers, tokens sans expiration | Corrige (bindings, middleware, 30j)              |
