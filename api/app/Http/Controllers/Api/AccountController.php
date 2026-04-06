@@ -62,6 +62,17 @@ class AccountController extends Controller
                     'items_count' => $order->items->count(),
                     'has_prints' => $order->hasPrintItems(),
                     'download_token' => $order->metadata['download_token'] ?? null,
+                    'items' => $order->items->map(fn ($item) => [
+                        'id' => $item->id,
+                        'photo_id' => $item->photo_id,
+                        'photo_title' => $item->photo?->title ?? $item->photo_title,
+                        'product_type' => $item->product_type,
+                        'product_type_label' => $item->product_type_label,
+                        'is_print' => $item->isPrint(),
+                        'price' => (float) $item->price,
+                        'is_downloaded' => (bool) $item->is_downloaded,
+                        'thumbnail_url' => $item->photo?->thumbnail_url,
+                    ]),
                 ];
             });
 

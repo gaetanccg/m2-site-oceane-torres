@@ -68,6 +68,18 @@ export interface AccountReservation {
 // Account Order
 // ============================================================================
 
+export interface AccountOrderItem {
+    id: string
+    photo_id: string
+    photo_title: string | null
+    product_type: string
+    product_type_label: string
+    is_print: boolean
+    price: number
+    is_downloaded: boolean
+    thumbnail_url?: string
+}
+
 export interface AccountOrder {
     id: string
     order_number: string
@@ -79,6 +91,7 @@ export interface AccountOrder {
     items_count: number
     has_prints: boolean
     download_token: string | null
+    items: AccountOrderItem[]
 }
 
 // ============================================================================
