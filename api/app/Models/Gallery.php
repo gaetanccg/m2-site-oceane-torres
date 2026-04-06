@@ -29,6 +29,7 @@ class Gallery extends Model
         'event_category_id',
         'parent_id',
         'sort_order',
+        'is_published',
     ];
 
     protected $appends = [];
@@ -40,6 +41,7 @@ class Gallery extends Model
             'last_viewed_at' => 'datetime',
             'views_count' => 'integer',
             'sort_order' => 'integer',
+            'is_published' => 'boolean',
         ];
     }
 

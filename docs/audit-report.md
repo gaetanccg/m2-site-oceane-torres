@@ -35,7 +35,7 @@
 | **C** Securite/RGPD    | FAIT                 | RLS Supabase (manuel)     |
 | **D** Compte client    | FAIT                 | -                         |
 | **E** Cookies          | FAIT                 | -                         |
-| **F** Admin + UX       | A FAIRE              | -                         |
+| **F** Admin + UX       | FAIT                 | -                         |
 | **G** SEO/Prerendering | A FAIRE              | -                         |
 | **H** Infrastructure   | A FAIRE (long terme) | -                         |
 | **Tech** Refactoring   | Partiel              | 5 items                   |
@@ -165,25 +165,27 @@
 
 ---
 
-### Phase F — Admin & UX
+### Phase F — Admin & UX -- FAIT
 
 #### F1. Publier/depublier les evenements
 
-- [ ] Champ `is_published` (boolean, default true) sur Gallery (type event)
-- [ ] Migration + modifier `EventGalleryController::index()` (public) pour filtrer
-- [ ] Toggle dans l'admin EventGalleries
+- [x] Migration `is_published` (boolean, default true) sur galleries
+- [x] Filtre `where('is_published', true)` dans `EventGalleryController::index()` et `show()`
+- [x] Enfants filtres par `is_published` dans la vue parent
+- [x] Toggle publier/depublier dans l'admin EventGalleries (icone oeil, badge "Brouillon")
+- [x] `is_published` ajoute aux FormRequests et types TypeScript
 
 #### F2. Galerie parent : mode creation simplifie
 
-- [ ] Option "Galerie parent" (checkbox) dans le formulaire de creation
-- [ ] Rendre optionnels les champs non necessaires (photos, product types)
-- [ ] Backend : validation conditionnelle selon le flag `is_parent`
+- [x] Checkbox "Galerie parent" dans le formulaire de creation (top-level uniquement)
+- [x] Section product types masquee en mode parent (pas de photos directes)
+- [x] Mode parent detecte automatiquement en edition (si `children_count > 0`)
 
 #### F3. Inciter a la creation de compte
 
-- [ ] Apres une commande (page OrderConfirmation) : afficher un encart "Creez votre compte pour retrouver vos achats"
-- [ ] Lien vers la creation de compte avec pre-remplissage de l'email si commande guest
-- [ ] Benefices mis en avant : historique commandes, re-telechargement, galeries privees
+- [x] Encart post-commande dans `OrderConfirmation.vue` (guests uniquement)
+- [x] Lien vers creation de compte avec pre-remplissage email
+- [x] Benefices mis en avant : historique, re-telechargement, galeries privees
 
 ---
 

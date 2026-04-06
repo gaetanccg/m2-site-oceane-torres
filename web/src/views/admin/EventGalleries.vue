@@ -118,7 +118,15 @@
 
                                 <!-- Card Content -->
                                 <div class="p-4">
-                                    <h3 class="font-semibold text-gray-900 mb-1">{{ gallery.title }}</h3>
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <h3 class="font-semibold text-gray-900">{{ gallery.title }}</h3>
+                                        <span
+                                            v-if="gallery.is_published === false"
+                                            class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-200 text-gray-600"
+                                        >
+                                            Brouillon
+                                        </span>
+                                    </div>
                                     <p v-if="gallery.description" class="text-sm text-gray-500 line-clamp-2 mb-2">
                                         {{ gallery.description }}
                                     </p>
@@ -200,6 +208,24 @@
                                                 Sous-galeries
                                             </button>
                                         </template>
+                                        <button
+                                            @click="togglePublish(gallery)"
+                                            :class="[
+                                                'px-3 py-2 text-sm rounded-lg transition-colors',
+                                                gallery.is_published !== false
+                                                    ? 'text-orange-600 hover:text-orange-700 hover:bg-orange-50'
+                                                    : 'text-green-600 hover:text-green-700 hover:bg-green-50'
+                                            ]"
+                                            :title="gallery.is_published !== false ? 'Depublier' : 'Publier'"
+                                        >
+                                            <svg v-if="gallery.is_published !== false" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+                                            </svg>
+                                            <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                        </button>
                                         <button
                                             @click="openEditModal(gallery)"
                                             class="px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
@@ -328,6 +354,19 @@
                     </select>
                 </div>
 
+                <!-- Parent mode toggle (only for top-level creation) -->
+                <div v-if="!currentParent && !isEditing" class="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input
+                            v-model="isParentMode"
+                            type="checkbox"
+                            class="w-4 h-4 text-gold border-gray-300 rounded focus:ring-gold"
+                        />
+                        <span class="text-sm font-medium text-gray-700">Galerie parent</span>
+                    </label>
+                    <span class="text-xs text-gray-500">Contiendra des sous-galeries au lieu de photos directes</span>
+                </div>
+
                 <FormField
                     v-model="form.event_date"
                     type="date"
@@ -349,8 +388,8 @@
                     placeholder="https://www.exemple.com"
                 />
 
-                <!-- Product Types Configuration -->
-                <div class="border-t border-gray-200 pt-4 mt-4">
+                <!-- Product Types Configuration (hidden for parent galleries) -->
+                <div v-if="!isParentMode" class="border-t border-gray-200 pt-4 mt-4">
                     <h4 class="text-sm font-semibold text-gray-700 mb-3">Produits disponibles</h4>
                     <div class="space-y-3">
                         <div
@@ -1050,6 +1089,8 @@ const form = reactive<EventGalleryFormData>({
     parent_id: null,
 })
 
+const isParentMode = ref(false)
+
 // Galleries grouped by category
 const galleriesByCategory = computed<GallerySection[]>(() => {
     const sections: GallerySection[] = []
@@ -1149,6 +1190,7 @@ function resetForm() {
     form.event_link = ''
     form.event_category_id = ''
     form.parent_id = null
+    isParentMode.value = false
     resetProductTypes()
 }
 
@@ -1168,6 +1210,7 @@ function openEditModal(gallery: EventGalleryWithCover) {
     form.event_date = gallery.event_date || ''
     form.event_link = gallery.event_link || ''
     form.event_category_id = gallery.event_category_id || ''
+    isParentMode.value = (gallery.children_count ?? 0) > 0
     loadProductTypesFromGallery(gallery.gallery_product_types)
     isEditing.value = true
     editingId.value = gallery.id
@@ -1204,6 +1247,17 @@ async function openGallery(gallery: EventGalleryWithCover) {
         toast.error('Erreur', 'Impossible de charger la galerie')
     } finally {
         isLoadingPhotos.value = false
+    }
+}
+
+async function togglePublish(gallery: EventGalleryWithCover) {
+    const newStatus = gallery.is_published === false ? true : false
+    try {
+        await adminApi.updateEventGallery(gallery.id, { is_published: newStatus } as EventGalleryFormData)
+        gallery.is_published = newStatus
+        toast.success('Succes', newStatus ? 'Evenement publie' : 'Evenement depublie')
+    } catch {
+        toast.error('Erreur', 'Impossible de modifier le statut')
     }
 }
 

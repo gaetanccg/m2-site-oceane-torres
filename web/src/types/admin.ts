@@ -256,6 +256,7 @@ export interface EventGalleryFormData {
     event_category_id?: string
     parent_id?: string | null
     sort_order?: number
+    is_published?: boolean
     product_types?: GalleryProductTypeConfig[]
 }
 
@@ -267,6 +268,7 @@ export interface AdminGallery {
     description?: string
     event_date?: string
     event_link?: string
+    is_published?: boolean
     type: GalleryType
     client_id?: string
     client?: Client
