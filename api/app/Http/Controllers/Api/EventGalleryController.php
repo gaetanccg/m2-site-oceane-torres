@@ -30,6 +30,7 @@ class EventGalleryController extends Controller
 
         $galleries = Cache::remember("event_galleries_page_{$page}", 300, function () {
             $result = Gallery::where('type', 'event')
+                ->where('is_published', true)
                 ->topLevel()
                 ->with([
                     'photos' => function ($query) {
@@ -57,7 +58,7 @@ class EventGalleryController extends Controller
 
     public function show(Gallery $gallery): JsonResponse
     {
-        if ($gallery->type !== 'event') {
+        if ($gallery->type !== 'event' || ! $gallery->is_published) {
             return response()->json([
                 'message' => 'Galerie non trouvée.',
             ], 404);
@@ -71,7 +72,8 @@ class EventGalleryController extends Controller
             $gallery->load([
                 'thumbnailPhoto',
                 'children' => function ($query) {
-                    $query->withCount('photos')
+                    $query->where('is_published', true)
+                        ->withCount('photos')
                         ->with(['thumbnailPhoto', 'photos' => function ($q) {
                             $q->ordered()->limit(1);
                         }]);

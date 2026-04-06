@@ -21,6 +21,7 @@ class StoreEventGalleryRequest extends FormRequest
             'event_category_id' => ['nullable', 'exists:event_categories,id'],
             'parent_id' => ['nullable', 'uuid', 'exists:galleries,id'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
+            'is_published' => ['nullable', 'boolean'],
             'product_types' => ['nullable', 'array'],
             'product_types.*.product_type' => ['required_with:product_types', 'string', 'in:digital,print_10x15,print_15x20'],
             'product_types.*.is_enabled' => ['required_with:product_types', 'boolean'],
