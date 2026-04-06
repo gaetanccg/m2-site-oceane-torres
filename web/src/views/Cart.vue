@@ -177,12 +177,14 @@ import { watch } from 'vue'
 import { useCartStore } from '@/stores/cart'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
+import { useGtag } from '@/composables/useGtag'
 import { formatPrice } from '@/utils/format'
 import type { ProductType, CartItem, AvailableProductType } from '@/services/cartApi'
 
 const cartStore = useCartStore()
 const toast = useToast()
 const { confirm } = useConfirm()
+const { trackRemoveFromCart } = useGtag()
 
 // Watch for cart errors and show as toast
 watch(() => cartStore.error, (newError) => {
@@ -208,7 +210,15 @@ async function updateItemType(itemId: string, productType: string) {
 }
 
 async function removeItem(itemId: string) {
-    await cartStore.removeItem(itemId)
+    const item = cartStore.items.find(i => i.id === itemId)
+    const success = await cartStore.removeItem(itemId)
+    if (success && item) {
+        trackRemoveFromCart({
+            photoId: item.photo_id,
+            title: item.photo.title,
+            price: item.price,
+        })
+    }
 }
 
 async function handleClear() {
