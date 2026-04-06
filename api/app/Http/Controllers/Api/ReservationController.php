@@ -3,7 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\AdminUpdateReservationRequest;
+use App\Http\Requests\Admin\UpdateReservationStatusRequest;
 use App\Http\Requests\StoreReservationRequest;
+use App\Http\Requests\UpdateReservationRequest;
 use App\Models\Reservation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -89,12 +92,9 @@ class ReservationController extends Controller
         ], 201);
     }
 
-    public function update(Request $request, Reservation $reservation): JsonResponse
+    public function update(UpdateReservationRequest $request, Reservation $reservation): JsonResponse
     {
-        $validated = $request->validate([
-            'date' => ['sometimes', 'date', 'after:now'],
-            'notes' => ['nullable', 'string'],
-        ]);
+        $validated = $request->validated();
 
         $reservation->update($validated);
 
@@ -107,14 +107,9 @@ class ReservationController extends Controller
     /**
      * Mise a jour admin d'une reservation (date, heure, statut, notes)
      */
-    public function adminUpdate(Request $request, Reservation $reservation): JsonResponse
+    public function adminUpdate(AdminUpdateReservationRequest $request, Reservation $reservation): JsonResponse
     {
-        $validated = $request->validate([
-            'date' => ['nullable', 'date'],
-            'time' => ['nullable', 'string'],
-            'status' => ['sometimes', 'in:pending,confirmed,cancelled,completed'],
-            'notes' => ['nullable', 'string'],
-        ]);
+        $validated = $request->validated();
 
         $updateData = [];
 
@@ -180,11 +175,9 @@ class ReservationController extends Controller
         ]);
     }
 
-    public function updateStatus(Request $request, Reservation $reservation): JsonResponse
+    public function updateStatus(UpdateReservationStatusRequest $request, Reservation $reservation): JsonResponse
     {
-        $validated = $request->validate([
-            'status' => ['required', 'in:pending,confirmed,cancelled,completed'],
-        ]);
+        $validated = $request->validated();
 
         $reservation->update($validated);
 

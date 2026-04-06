@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AddToCartRequest;
+use App\Http\Requests\UpdateCartEmailRequest;
+use App\Http\Requests\UpdateCartItemTypeRequest;
 use App\Services\CartService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -68,12 +70,9 @@ class CartController extends Controller
     /**
      * Update item product type
      */
-    public function updateItemType(Request $request, string $itemId): JsonResponse
+    public function updateItemType(UpdateCartItemTypeRequest $request, string $itemId): JsonResponse
     {
-        $validated = $request->validate([
-            'product_type' => ['required', 'string', 'in:digital,print_10x15,print_15x20'],
-            'session_id' => ['nullable', 'string'],
-        ]);
+        $validated = $request->validated();
 
         $user = $request->user();
         $sessionId = $request->header('X-Cart-Session') ?? $validated['session_id'] ?? null;
@@ -150,12 +149,9 @@ class CartController extends Controller
     /**
      * Update guest email on cart
      */
-    public function updateEmail(Request $request): JsonResponse
+    public function updateEmail(UpdateCartEmailRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'email' => ['required', 'email'],
-            'session_id' => ['nullable', 'string'],
-        ]);
+        $validated = $request->validated();
 
         $user = $request->user();
         $sessionId = $request->header('X-Cart-Session') ?? $validated['session_id'] ?? null;

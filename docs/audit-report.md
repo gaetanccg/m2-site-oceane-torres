@@ -95,10 +95,11 @@
 
 ### A faire
 
-**C1. ~27 validations inline restantes** *(priorite moyenne)*
+~~**C1. ~27 validations inline restantes**~~ FAIT
 
-- Petites validations (1-2 regles) dans CartController, GiftCardController, SumUpPaymentController, ReservationController, AvailabilityController, GalleryController, EventGalleryController
-- Fonctionnent correctement mais ne suivent pas le pattern FormRequest du reste du projet
+- 25 FormRequest classes creees, 27 validations inline converties
+- 0 `$request->validate()` inline restant dans les controllers
+- Controllers modifies : GalleryController, EventGalleryController, EventCategoryController, CartController, ReservationController, AvailabilityController, GiftCardController, PhotoController, SumUpPaymentController, AuthController, OrderController
 
 **D2. UX compte client** *(priorite moyenne)*
 
@@ -301,7 +302,7 @@ docker-compose.yml                 # dev local (racine monorepo)
 | Code mort                  | Stripe/PayPal/CartIcon/types                          | Nettoye                                          |
 | Duplication                | ~400+ lignes                                          | Centralise (traits, composables, BaseApiService) |
 | Fichiers geants            | GalleryController 877, OrderController 559            | 440 et 319                                       |
-| Validation                 | 0 FormRequest, 43+ inline                             | 19 FormRequests, ~27 inline mineures             |
+| Validation                 | 0 FormRequest, 43+ inline                             | 44 FormRequests, 0 inline                        |
 | Autorisation               | 0 Policy                                              | 1 Policy (OrderPolicy)                           |
 | Separation responsabilites | Emails inline, pricing dans modele                    | Events/Listeners, PricingService                 |
 | Performance N+1            | 2 critiques                                           | Corriges (batch, withCount)                      |

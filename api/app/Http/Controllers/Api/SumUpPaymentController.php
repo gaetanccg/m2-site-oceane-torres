@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\OrderIdRequest;
 use App\Models\Order;
 use App\Services\OrderService;
 use App\Services\SumUpService;
@@ -42,11 +43,9 @@ class SumUpPaymentController extends Controller
     /**
      * Create a checkout session for an order
      */
-    public function createCheckout(Request $request): JsonResponse
+    public function createCheckout(OrderIdRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'order_id' => ['required', 'uuid', 'exists:orders,id'],
-        ]);
+        $validated = $request->validated();
 
         try {
             $order = Order::findOrFail($validated['order_id']);
@@ -164,11 +163,9 @@ class SumUpPaymentController extends Controller
     /**
      * Verify payment status (polling endpoint for frontend)
      */
-    public function verifyPayment(Request $request): JsonResponse
+    public function verifyPayment(OrderIdRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'order_id' => ['required', 'uuid', 'exists:orders,id'],
-        ]);
+        $validated = $request->validated();
 
         try {
             $order = Order::findOrFail($validated['order_id']);
@@ -271,11 +268,9 @@ class SumUpPaymentController extends Controller
     /**
      * Cancel/deactivate a SumUp checkout for an order
      */
-    public function cancelCheckout(Request $request): JsonResponse
+    public function cancelCheckout(OrderIdRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'order_id' => ['required', 'uuid', 'exists:orders,id'],
-        ]);
+        $validated = $request->validated();
 
         try {
             $order = Order::findOrFail($validated['order_id']);

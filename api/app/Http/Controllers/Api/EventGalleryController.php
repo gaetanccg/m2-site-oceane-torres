@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\SetThumbnailRequest;
+use App\Http\Requests\Admin\StoreEventGalleryRequest;
+use App\Http\Requests\Admin\UpdateEventGalleryRequest;
 use App\Models\Gallery;
 use App\Models\Photo;
 use App\Services\MinioStorageService;
@@ -177,17 +180,9 @@ class EventGalleryController extends Controller
         ]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreEventGalleryRequest $request): JsonResponse
     {
-        $validated = $request->validate(array_merge([
-            'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'event_date' => ['nullable', 'date'],
-            'event_link' => ['nullable', 'url', 'max:500'],
-            'event_category_id' => ['nullable', 'exists:event_categories,id'],
-            'parent_id' => ['nullable', 'uuid', 'exists:galleries,id'],
-            'sort_order' => ['nullable', 'integer', 'min:0'],
-        ], $this->productTypeValidationRules()));
+        $validated = $request->validated();
 
         // Validate parent gallery constraints
         if (! empty($validated['parent_id'])) {
@@ -239,7 +234,7 @@ class EventGalleryController extends Controller
         ], 201);
     }
 
-    public function update(Request $request, Gallery $gallery): JsonResponse
+    public function update(UpdateEventGalleryRequest $request, Gallery $gallery): JsonResponse
     {
         if ($gallery->type !== 'event') {
             return response()->json([
@@ -247,14 +242,7 @@ class EventGalleryController extends Controller
             ], 404);
         }
 
-        $validated = $request->validate(array_merge([
-            'title' => ['sometimes', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'event_date' => ['nullable', 'date'],
-            'event_link' => ['nullable', 'url', 'max:500'],
-            'event_category_id' => ['nullable', 'exists:event_categories,id'],
-            'sort_order' => ['nullable', 'integer', 'min:0'],
-        ], $this->productTypeValidationRules()));
+        $validated = $request->validated();
 
         $productTypes = $validated['product_types'] ?? null;
         unset($validated['product_types']);
@@ -315,7 +303,7 @@ class EventGalleryController extends Controller
         ]);
     }
 
-    public function setThumbnail(Request $request, Gallery $gallery): JsonResponse
+    public function setThumbnail(SetThumbnailRequest $request, Gallery $gallery): JsonResponse
     {
         if ($gallery->type !== 'event') {
             return response()->json([
@@ -323,9 +311,7 @@ class EventGalleryController extends Controller
             ], 404);
         }
 
-        $validated = $request->validate([
-            'photo_id' => ['nullable', 'uuid', 'exists:photos,id'],
-        ]);
+        $validated = $request->validated();
 
         if (! empty($validated['photo_id'])) {
             $photo = Photo::find($validated['photo_id']);
