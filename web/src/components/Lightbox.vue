@@ -107,10 +107,12 @@
                     >
                         <img
                             v-if="image.type === 'image'"
-                            :src="image.url"
+                            :src="image.thumbnailUrl || image.url"
                             :alt="image.alt || `Photo ${index + 1}`"
                             class="thumbnail-img"
                             loading="lazy"
+                            width="60"
+                            height="60"
                         />
                         <div v-else class="thumbnail-placeholder">
                             <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">

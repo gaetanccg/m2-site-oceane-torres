@@ -25,6 +25,7 @@ const Contact = () => import('@/views/Contact.vue')
 const MentionsLegales = () => import('@/views/MentionsLegales.vue')
 const CGV = () => import('@/views/CGV.vue')
 const PolitiqueConfidentialite = () => import('@/views/PolitiqueConfidentialite.vue')
+const NotFound = () => import('@/views/NotFound.vue')
 
 // Gallery access pages
 const GalleryAccess = () => import('@/views/GalleryAccess.vue')
@@ -163,8 +164,8 @@ export const routes: RouteRecordRaw[] = [
         name: 'events',
         component: Events,
         meta: {
-            title: 'Galeries d\'evenements',
-            description: 'Decouvrez les galeries photos des evenements captures par Oceane Torres. Mariages, baptemes, anniversaires et celebrations en Loire et Lyon.'
+            title: 'Galeries d\'événements',
+            description: 'Découvrez les galeries photos des événements capturés par Océane Torres. Mariages, baptêmes, anniversaires et célébrations en Loire et Lyon.'
         }
     },
     {
@@ -172,8 +173,8 @@ export const routes: RouteRecordRaw[] = [
         name: 'event-gallery',
         component: EventGallery,
         meta: {
-            title: 'Galerie Evenement',
-            description: 'Galerie photos d\'evenement par Oceane Torres Photographie.'
+            title: 'Galerie Événement',
+            description: 'Galerie photos d\'événement par Océane Torres Photographie.'
         }
     },
     // Cart & Checkout
@@ -232,7 +233,7 @@ export const routes: RouteRecordRaw[] = [
         name: 'account-order',
         component: AccountOrderDetail,
         meta: {
-            title: 'Detail commande',
+            title: 'Détail commande',
             requiresClientAuth: true,
             robots: 'noindex, nofollow'
         }
@@ -293,10 +294,15 @@ export const routes: RouteRecordRaw[] = [
             },
         ]
     },
-    // Catch-all redirect to home
+    // 404 - Page non trouvée
     {
         path: '/:pathMatch(.*)*',
-        redirect: '/'
+        name: 'not-found',
+        component: NotFound,
+        meta: {
+            title: 'Page non trouvée',
+            robots: 'noindex, nofollow'
+        }
     }
 ]
 
@@ -392,6 +398,16 @@ router.afterEach((to) => {
     if (canonical) {
         canonical.setAttribute('href', `https://oceanetorresphotographie.fr${to.path}`)
     }
+
+    // Update OG and Twitter meta tags
+    const updateMeta = (selector: string, attr: string, content: string) => {
+        const el = document.querySelector(selector)
+        if (el) el.setAttribute(attr, content)
+    }
+    updateMeta('meta[property="og:title"]', 'content', pageTitle || 'Océane Torres Photographe')
+    updateMeta('meta[property="og:url"]', 'content', `https://oceanetorresphotographie.fr${to.path}`)
+    updateMeta('meta[name="twitter:title"]', 'content', pageTitle || 'Océane Torres Photographe')
+    updateMeta('meta[name="twitter:description"]', 'content', pageDescription || '')
 
     // Update robots meta tag
     const robotsContent = to.meta.robots as string | undefined

@@ -113,8 +113,13 @@ watch(() => props.src, (newSrc) => {
 .photo-wrapper {
     position: relative;
     overflow: hidden;
-    min-height: 150px;
+    aspect-ratio: 3/2;
     background: #f5f5f5;
+}
+
+/* Once loaded, let natural image dimensions take over */
+.photo-wrapper:has(.photo-image.is-loaded) {
+    aspect-ratio: auto;
 }
 
 /* Skeleton overlay */

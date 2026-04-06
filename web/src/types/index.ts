@@ -35,6 +35,7 @@ export interface LightboxImage {
     alt: string
     type: MediaType
     youtubeId?: string
+    thumbnailUrl?: string
 }
 
 // ============================================================================

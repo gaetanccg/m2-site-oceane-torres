@@ -2,10 +2,20 @@
     <div>
         <!-- Hero Section -->
         <section class="relative min-h-[100svh] sm:min-h-[85vh] flex items-center justify-center overflow-hidden">
-            <div
-                class="absolute inset-0 bg-cover bg-center bg-no-repeat"
-                :style="{ backgroundImage: `url(${heroImage})` }"
-            />
+            <picture class="absolute inset-0">
+                <source srcset="/optimized/hero.avif" type="image/avif" />
+                <source srcset="/optimized/hero.webp" type="image/webp" />
+                <img
+                    src="/images/hero.png"
+                    alt="Océane Torres Photographie - Hero"
+                    width="1504"
+                    height="518"
+                    loading="eager"
+                    fetchpriority="high"
+                    decoding="async"
+                    class="absolute inset-0 w-full h-full object-cover"
+                />
+            </picture>
 
             <div class="relative z-10 text-center text-white px-6 max-w-5xl mx-auto hero-text">
                 <h1 class="hero-title-main">OCÉANE TORRES</h1>
@@ -36,7 +46,7 @@
             <div class="max-w-6xl mx-auto relative">
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
                     <div>
-                        <img :src="personaImage" alt="Océane Torres - Photographe professionnelle Saint-Étienne Loire" class="w-full h-auto rounded-lg" loading="lazy" />
+                        <img :src="personaImage" alt="Océane Torres - Photographe professionnelle Saint-Étienne Loire" class="w-full h-auto rounded-lg" loading="lazy" width="600" height="800" style="aspect-ratio: 3/4;" />
                     </div>
                     <div class="text-justify">
                         <h2 class="text-4xl md:text-5xl font-light mb-6 mt-4 text-balance title-with-bar">
@@ -119,7 +129,6 @@ import PrestationCardMini from '@/components/PrestationCardMini.vue'
 import MasonryGallery from '@/components/MasonryGallery.vue'
 import CtaSection from '@/components/CtaSection.vue'
 
-const heroImage = '/images/hero.png'
 const personaImage = '/optimized/persona_rev_2.webp'
 
 const masonryItems: GalleryItem[] = [

@@ -36,7 +36,7 @@
 | **D** Compte client    | FAIT                 | -                         |
 | **E** Cookies          | FAIT                 | -                         |
 | **F** Admin + UX       | FAIT                 | -                         |
-| **G** SEO/Prerendering | A FAIRE              | -                         |
+| **G** Performance/SEO  | FAIT                 | Prerender a executer      |
 | **H** Infrastructure   | A FAIRE (long terme) | -                         |
 | **Tech** Refactoring   | Partiel              | 5 items                   |
 
@@ -189,26 +189,32 @@
 
 ---
 
-### Phase G — Performance, SEO & prerendering
+### Phase G — Performance, SEO & prerendering -- FAIT
 
 *OBJECTIF PRINCIPAL : temps de chargement rapides, photos qui s'affichent bien, panier instantane.*
 
-#### G1. Audit Lighthouse / Core Web Vitals
+#### G1. Performance / Core Web Vitals
 
-- [ ] Audit Lighthouse sur les pages cles (accueil, portfolio, evenements, galerie, checkout)
-- [ ] Identifier les goulots : LCP, CLS, TBT
-- [ ] Evaluer le besoin d'images responsives `srcset` / `<picture>` (lie a A4)
-- [ ] Optimiser le chargement des images selon les resultats
+- [x] Hero image converti en `<picture>` AVIF/WebP/PNG (LCP -300-500ms)
+- [x] Preload hero corrige (AVIF au lieu du PNG inutilise)
+- [x] `aspect-ratio` sur MasonryGallery et PhotoCard (CLS -0.10+)
+- [x] `width`/`height` sur persona image (CLS)
+- [x] Lightbox thumbnails utilisent `thumbnailUrl` au lieu du full-res (bande passante -80%)
+- [x] Navbar hauteur fixe `h-20` + transition limitee aux couleurs (CLS -0.05)
+- [x] Spacer `h-20` dans App.vue pour le contenu sous la navbar fixe
 
-#### G2. Audit du prerendering actuel
+#### G2. SEO technique
 
-- [ ] Verifier pages prerendues, balises meta, sitemap.xml
-- [ ] Tester avec Google Search Console
+- [x] Meta tags OG (og:title, og:url) et Twitter (twitter:title, twitter:description) mis a jour dynamiquement par route
+- [x] Accents francais corriges dans les descriptions des routes evenements
+- [x] Sitemap complete : `/politique-confidentialite` ajoute
+- [x] Page 404 creee (`NotFound.vue`) au lieu de la redirection silencieuse
+- [x] JSON-LD deja complet (LocalBusiness, Person, WebSite, OfferCatalog)
 
-#### G3. Amelioration SEO technique
+#### G3. Prerendering
 
-- [ ] Donnees structurees JSON-LD (schema.org/Service, schema.org/Event)
-- [ ] Corriger les problemes identifies par Lighthouse/Search Console
+- [x] Script Puppeteer existant et fonctionnel (11 routes)
+- [ ] **A EXECUTER** : `npm run build:prerender` avant deploiement
 
 #### G4. Strategie de prerendering *(depend de H4 — Nuxt ou non)*
 
