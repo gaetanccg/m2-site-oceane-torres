@@ -32,7 +32,7 @@
                     <div class="media-wrapper">
                         <img
                             v-if="images[currentIndex]?.type === 'image'"
-                            :src="images[currentIndex].url"
+                            :src="images[currentIndex].previewUrl || images[currentIndex].url"
                             :alt="images[currentIndex].alt"
                             draggable="false"
                             class="media-content select-none"
@@ -154,8 +154,14 @@ const emit = defineEmits<{ close: [] }>()
 const currentIndex = ref(props.initialIndex)
 const thumbnailContainer = ref<HTMLElement | null>(null)
 
+// Sync currentIndex when initialIndex changes OR when lightbox opens
 watch(() => props.initialIndex, (newVal) => {
     currentIndex.value = newVal
+})
+watch(() => props.isOpen, (isOpen) => {
+    if (isOpen) {
+        currentIndex.value = props.initialIndex
+    }
 })
 
 const close = () => emit('close')

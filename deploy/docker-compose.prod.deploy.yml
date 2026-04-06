@@ -1,0 +1,143 @@
+# ===========================================
+# DOCKER COMPOSE PRODUCTION - NAS UGREEN
+# ===========================================
+# Copier ce fichier sur le NAS :
+# cp docker-compose.prod.deploy.yml /volume1/docker/oceane-api/docker-compose.prod.yml
+# ===========================================
+
+name: oceane-api-prod
+
+services:
+  # ----------------------------
+  # Backend Laravel (PHP-FPM)
+  # ----------------------------
+  laravel:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+      target: development
+    container_name: oceane-laravel
+    restart: always
+    working_dir: /var/www
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 1.1.1.1
+    volumes:
+      - ./api:/var/www
+      - ./docker/php.ini:/usr/local/etc/php/conf.d/custom.ini
+      - ./docker/www.conf:/usr/local/etc/php-fpm.d/zz-custom.conf
+    env_file:
+      - .env.prod
+    networks:
+      - oceane-network
+    command: >
+      sh -c "
+        mkdir -p /var/log/php &&
+        mkdir -p /var/www/storage/framework/sessions &&                                                                                                                       
+        mkdir -p /var/www/storage/framework/views &&                                                                                                                          
+        mkdir -p /var/www/storage/framework/cache &&                                                                                                                          
+        mkdir -p /var/www/storage/logs &&                                                                                                                                     
+        chmod -R 755 /var/www &&                                                                                                                                              
+        chmod -R 777 /var/www/storage /var/www/bootstrap/cache &&                                                                                                             
+        chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache &&                                                                                               
+        php-fpm
+      "
+    healthcheck:
+      test: [ "CMD-SHELL", "php-fpm -t || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ----------------------------
+  # Queue Worker (Background Jobs)
+  # ----------------------------
+  queue:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+      target: development
+    container_name: oceane-queue
+    restart: always
+    working_dir: /var/www
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 1.1.1.1
+    volumes:
+      - ./api:/var/www
+      - ./docker/php.ini:/usr/local/etc/php/conf.d/custom.ini
+    env_file:
+      - .env.prod
+    networks:
+      - oceane-network
+    command: >
+      sh -c "
+        mkdir -p /var/www/storage/framework/sessions &&
+        mkdir -p /var/www/storage/framework/views &&
+        mkdir -p /var/www/storage/framework/cache &&
+        mkdir -p /var/www/storage/logs &&
+        chmod -R 755 /var/www &&
+        chmod -R 777 /var/www/storage /var/www/bootstrap/cache &&
+        chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache &&
+        php artisan queue:work --sleep=3 --tries=3 --max-time=3600
+      "
+    depends_on:
+      laravel:
+        condition: service_healthy
+
+  # ----------------------------
+  # Scheduler (Cron Jobs)
+  # ----------------------------
+  scheduler:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+      target: development
+    container_name: oceane-scheduler
+    restart: always
+    working_dir: /var/www
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 1.1.1.1
+    volumes:
+      - ./api:/var/www
+      - ./docker/php.ini:/usr/local/etc/php/conf.d/custom.ini
+    env_file:
+      - .env.prod
+    networks:
+      - oceane-network
+    command: >
+      sh -c "
+        mkdir -p /var/www/storage/logs &&
+        chmod -R 777 /var/www/storage /var/www/bootstrap/cache &&
+        php artisan schedule:work
+      "
+    depends_on:
+      laravel:
+        condition: service_healthy
+
+  # ----------------------------
+  # Nginx (Reverse Proxy API)
+  # ----------------------------
+  nginx:
+    image: nginx:alpine
+    container_name: oceane-nginx
+    restart: always
+    ports:
+      - "8080:80"
+    volumes:
+      # IMPORTANT: Même volume que laravel pour éviter les problèmes de chemin
+      - ./api:/var/www:ro
+      - ./docker/nginx.prod.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      laravel:
+        condition: service_healthy
+    networks:
+      - oceane-network
+
+networks:
+  oceane-network:
+    driver: bridge
