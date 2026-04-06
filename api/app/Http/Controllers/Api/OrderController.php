@@ -168,6 +168,7 @@ class OrderController extends Controller
             $downloadUrl = $storageService->getSignedUrl($storagePath, 3600);
 
             $item->markAsDownloaded();
+            $photo->recordDownload($request->ip(), $request->userAgent());
 
             return response()->json([
                 'success' => true,
@@ -230,6 +231,7 @@ class OrderController extends Controller
 
                         $zip->addFile($tempFile, $filename);
                         $item->markAsDownloaded();
+                        $photo->recordDownload($request->ip(), $request->userAgent());
                     }
                 } catch (\Exception $e) {
                     continue;
