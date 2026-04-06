@@ -245,10 +245,13 @@ import { cartApi, CartApiError, type Order } from '@/services/cartApi'
 import { API_CONFIG } from '@/config/constants'
 import { isInAppBrowser } from '@/utils/download'
 import { useToast } from '@/composables/useToast'
+import { useGtag } from '@/composables/useGtag'
 import { formatPrice } from '@/utils/format'
 
 const route = useRoute()
 const toast = useToast()
+const { trackPurchase } = useGtag()
+let purchaseTracked = false
 
 const order = ref<Order | null>(null)
 const isLoading = ref(true)
@@ -317,6 +320,24 @@ async function loadOrder() {
         const response = await cartApi.getOrder(orderId, token)
         if (response.success) {
             order.value = response.order
+
+            // Track purchase event (only once per page load)
+            if (response.order.status === 'paid' && !purchaseTracked) {
+                purchaseTracked = true
+                trackPurchase({
+                    id: response.order.id,
+                    orderNumber: response.order.order_number,
+                    total: response.order.total,
+                    currency: response.order.currency,
+                    items: response.order.items.map(item => ({
+                        item_id: item.photo_id,
+                        item_name: item.photo_title || 'Photo',
+                        item_category: item.gallery_title || undefined,
+                        price: item.price,
+                        quantity: 1,
+                    })),
+                })
+            }
 
             // If pending, start polling
             if (response.order.status === 'pending') {

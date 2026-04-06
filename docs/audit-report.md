@@ -87,48 +87,31 @@
 
 ## Reste a faire des phases terminees (priorise)
 
-### Priorite haute
+### Fait
 
-~~**C2. Bouton "Modifier mes preferences cookies" dans le footer**~~ FAIT
+~~**C2. Bouton "Modifier mes preferences cookies" dans le footer**~~ — Bouton "Cookies" ajoute dans `Footer.vue`
 
-- ~~Actuellement l'utilisateur ne peut pas revoquer ses preferences apres avoir accepte~~
-- ~~Le store `consent.ts` a deja `revokeConsent()` — il manque juste le bouton d'acces~~
-- Bouton "Cookies" ajoute dans `Footer.vue`, ouvre le modal de preferences via `consentStore.openSettings()`
+~~**C2. Enrichir l'export GDPR**~~ — Export enrichi : commandes, messages de contact, download logs
 
-**C2. Enrichir l'export GDPR**
+### A faire
 
-- `ClientController::gdprExport()` n'inclut pas les commandes, messages de contact, ni download logs
-- A completer pour conformite Article 15 RGPD (droit d'acces)
-
-### Priorite moyenne
-
-**C1. ~27 validations inline restantes**
+**C1. ~27 validations inline restantes** *(priorite moyenne)*
 
 - Petites validations (1-2 regles) dans CartController, GiftCardController, SumUpPaymentController, ReservationController, AvailabilityController, GalleryController, EventGalleryController
 - Fonctionnent correctement mais ne suivent pas le pattern FormRequest du reste du projet
 
-**C3. Policies RLS Supabase**
-
-- Action manuelle sur le dashboard Supabase
-- Defense en profondeur (l'API Laravel est le seul point d'acces)
-
-### Priorite basse
-
-**A4. Images responsives `srcset` / `<picture>`**
-
-- Necessite des changements sur l'image proxy backend pour servir differentes tailles
-- Gain de perf sur mobile mais pas critique
-
-**A4. Images originales `/public/images/` (241 MB)**
-
-- Seul `hero.png` est directement reference
-- Les originaux servent de source pour `optimize-images.js`
-- Envisager `.gitignore` ou stockage externe
-
-**D2. UX compte client**
+**D2. UX compte client** *(priorite moyenne)*
 
 - Re-telechargement individuel de photos depuis le dashboard
 - Page de detail commande cote client (actuellement redirige vers la page commande standard)
+
+### Reporte / hors scope
+
+**C3. Policies RLS Supabase** — Action manuelle sur le dashboard Supabase, hors code
+
+**A4. Images responsives `srcset` / `<picture>`** — Gros chantier, pas critique
+
+**A4. Images originales `/public/images/` (241 MB)** — Envisager `.gitignore` ou stockage externe, pas bloquant
 
 ---
 
@@ -141,12 +124,12 @@
 | Vues galeries                     | OK              | `recordView()` sur toutes les methodes : show, showByToken, showByShareCode, showDownloadableByToken                 |
 | Telechargements photos (gratuits) | OK              | `recordDownload()` appele dans PhotoController et GalleryController (ZIP)                                            |
 | Telechargements photos (achats)   | OK              | `recordDownload()` ajoute dans OrderController::downloadPhoto() et downloadAll()                                     |
-| Likes photos                      | Limite          | Boolean `is_liked` par photo (pas par utilisateur, pas de compteur, pas de logs)                                     |
-| Commandes                         | OK en BDD       | Order, OrderItem, Payment — tout est enregistre. **Manque** : evenements GA4                                         |
-| Revenus dashboard                 | Partiel         | Total et mensuel OK. **Manque** : revenu par galerie, par type de produit, par photo                                 |
-| Panier                            | Minimal         | Status active/converted/expired en BDD. **Manque** : evenements GA4, taux d'abandon                                  |
-| GA4                               | Page views seul | `page_view` envoye a chaque navigation. **Aucun** evenement e-commerce (add_to_cart, purchase)                       |
-| Stats admin                       | Partiel         | Reservations, paiements, revenus mensuels. **Manque** : photos populaires, galeries les plus vues, funnel conversion |
+| Likes photos                      | Suffisant       | Boolean `is_liked` par photo — suffisant pour le besoin (favoris photographe)                                        |
+| Commandes                         | OK              | Order, OrderItem, Payment en BDD + evenement GA4 `purchase`                                                          |
+| Revenus dashboard                 | Partiel         | Total et mensuel OK. **Manque** : revenu par galerie, par type de produit                                            |
+| Panier                            | OK              | Status BDD + evenements GA4 `add_to_cart`, `remove_from_cart`                                                         |
+| GA4                               | OK              | `page_view` + e-commerce complet : `add_to_cart`, `remove_from_cart`, `begin_checkout`, `purchase`                   |
+| Stats admin                       | Partiel         | Reservations, paiements, revenus mensuels. **Manque** : revenu par galerie/produit, taux conversion panier           |
 
 ### Plan de correction tracking (a integrer dans les prochaines phases)
 
@@ -161,25 +144,20 @@
 - [x] Dans `GalleryController::show()` : `$gallery->recordView()` ajoute pour les galeries publiques
 - [x] Dans `GalleryController::showByToken()` : `$gallery->recordView()` ajoute pour les galeries privees par token
 
-#### T3. Evenements GA4 e-commerce (priorite haute — impact revenus)
+#### ~~T3. Evenements GA4 e-commerce~~ FAIT
 
-- [ ] `add_to_cart` : envoyer depuis le frontend quand `cartStore.addItem()` reussit (item_id, item_name, price, currency)
-- [ ] `remove_from_cart` : envoyer quand un item est retire
-- [ ] `purchase` : envoyer depuis OrderConfirmation.vue quand la commande est payee (transaction_id, value, currency, items)
-- [ ] `begin_checkout` : envoyer quand l'utilisateur arrive sur Checkout.vue
-- [ ] Respecter le consentement : ne pas envoyer si analytics non accepte
+- [x] `add_to_cart` : envoye depuis `AddToCartButton.vue` apres ajout reussi
+- [x] `remove_from_cart` : envoye depuis `Cart.vue` apres suppression reussie
+- [x] `begin_checkout` : envoye depuis `Checkout.vue` au montage du composant
+- [x] `purchase` : envoye depuis `OrderConfirmation.vue` quand la commande est payee (une seule fois par chargement)
+- [x] Consentement respecte : composable `useGtag.ts` verifie `analyticsEnabled` avant chaque envoi
 
-#### T4. Analytics admin enrichies (priorite moyenne)
+#### T4. Stats admin complementaires (priorite basse)
 
-- [ ] Endpoint ou section dashboard : top 10 photos les plus telechargees
-- [ ] Endpoint ou section dashboard : top 10 galeries les plus vues
-- [ ] Endpoint ou section dashboard : revenu par galerie / par type de produit (digital vs print)
-- [ ] Endpoint ou section dashboard : taux de conversion panier → commande payee
+- [ ] Revenu par galerie / par type de produit (digital vs print)
+- [ ] Taux de conversion panier → commande payee
 
-#### T5. Amelioration du systeme de likes (priorite basse)
-
-- [ ] Le systeme actuel est un boolean par photo (pas par utilisateur) — suffisant pour le besoin actuel (marquer les favoris du photographe)
-- [ ] Si besoin futur de likes utilisateur : creer une table `photo_likes` (photo_id, user_id/session_id, created_at)
+~~#### T5. Amelioration du systeme de likes~~ RETIRE — systeme actuel suffisant pour le besoin
 
 ---
 

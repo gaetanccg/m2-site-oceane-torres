@@ -212,12 +212,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, nextTick, onUnmounted } from 'vue'
+import { ref, reactive, nextTick, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCartStore } from '@/stores/cart'
 import { useAuthStore } from '@/stores/auth'
 import { cartApi } from '@/services/cartApi'
 import { useToast } from '@/composables/useToast'
+import { useGtag } from '@/composables/useGtag'
 import { formatPrice } from '@/utils/format'
 
 declare global {
@@ -242,6 +243,7 @@ const router = useRouter()
 const cartStore = useCartStore()
 const authStore = useAuthStore()
 const toast = useToast()
+const { trackBeginCheckout } = useGtag()
 
 const isProcessing = ref(false)
 const isPaymentProcessing = ref(false)
@@ -250,6 +252,21 @@ const paymentError = ref('')
 const showPaymentWidget = ref(false)
 const currentOrder = ref<{ id: string; order_number: string; total: number } | null>(null)
 const checkoutId = ref('')
+
+onMounted(() => {
+    if (!cartStore.isEmpty) {
+        trackBeginCheckout(
+            cartStore.items.map(item => ({
+                item_id: item.photo_id,
+                item_name: item.photo.title || 'Photo',
+                item_category: item.photo.gallery_title || undefined,
+                price: item.price,
+                quantity: 1,
+            })),
+            cartStore.total
+        )
+    }
+})
 
 let sumupWidget: { unmount: () => void } | null = null
 let pollTimeoutId: ReturnType<typeof setTimeout> | null = null
