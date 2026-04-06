@@ -271,11 +271,11 @@ Mises a jour :        ./deploy/deploy.sh
 - [x] **Bug securite corrige** : ReservationController show/update/destroy n'avaient aucune verification de propriete — tout utilisateur connecte pouvait acceder aux reservations des autres
 - [x] GalleryController::downloadZip utilise maintenant GalleryPolicy::download
 
-#### R2. Decouper adminApi.ts *(priorite 2 — maintenabilite, ~30min)*
+#### ~~R2. Decouper adminApi.ts~~ FAIT
 
-- [ ] Fichier actuel : 505 lignes, toutes les methodes admin dans un seul fichier
-- [ ] Decouper en : `adminGalleryApi.ts`, `adminReservationApi.ts`, `adminClientApi.ts`, `adminOrderApi.ts`
-- [ ] Re-exporter depuis un `adminApi.ts` central pour ne pas casser les imports existants
+- [x] 505 lignes → 7 sous-services dans `services/admin/` (baseAdmin, dashboard, reservation, client, prestation, gallery, order)
+- [x] Plus gros fichier : `galleryApi.ts` (146 lignes)
+- [x] Facade `adminApi.ts` (97 lignes) re-exporte tout — zero import casse
 
 #### R3. Extraire sous-composants des vues admin *(priorite 3 — maintenabilite, ~2h)*
 
