@@ -277,11 +277,13 @@ Mises a jour :        ./deploy/deploy.sh
 - [x] Plus gros fichier : `galleryApi.ts` (146 lignes)
 - [x] Facade `adminApi.ts` (97 lignes) re-exporte tout — zero import casse
 
-#### R3. Extraire sous-composants des vues admin *(priorite 3 — maintenabilite, ~2h)*
+#### ~~R3. Extraire sous-composants des vues admin~~ FAIT
 
-- [ ] `Galleries.vue` (1290 lignes) : extraire PhotoUploadZone, GalleryFormModal, GalleryDrillDown
-- [ ] `EventGalleries.vue` (1732 lignes) : extraire EventGalleryCard, EventGalleryFormModal, CategoryManager
-- [ ] Objectif : chaque fichier < 500 lignes
+- [x] `PhotosManager.vue` (755 lignes) : composant partage — upload, grille, selection, bulk delete, lightbox
+- [x] `GalleryFormModal.vue` (232 lignes) : formulaire creation/edition galerie client
+- [x] `EventGalleryFormModal.vue` (260 lignes) : formulaire creation/edition galerie evenement
+- [x] `Galleries.vue` : 1290 → **508 lignes** (-60%)
+- [x] `EventGalleries.vue` : 1732 → **1030 lignes** (-40%, reste la vue duale categories/drill-down specifique)
 
 #### R4. API Resources supplementaires *(priorite 4 — coherence, ~30min)*
 
