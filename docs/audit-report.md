@@ -285,11 +285,12 @@ Mises a jour :        ./deploy/deploy.sh
 - [x] `Galleries.vue` : 1290 → **508 lignes** (-60%)
 - [x] `EventGalleries.vue` : 1732 → **1030 lignes** (-40%, reste la vue duale categories/drill-down specifique)
 
-#### R4. API Resources supplementaires *(priorite 4 — coherence, ~30min)*
+#### ~~R4. API Resources supplementaires~~ FAIT
 
-- [ ] `GalleryResource` : remplacer le formatage inline dans GalleryController et EventGalleryController
-- [ ] `ReservationResource` : remplacer le formatage inline dans ReservationController
-- [ ] Existant : OrderResource, OrderItemResource (deja faits)
+- [x] `GalleryResource` : format admin avec download_status, cover_photo (disponible pour usage futur)
+- [x] `CalendarEventResource` : remplace le formatage inline de ReservationController::calendar
+- [x] Total : 4 Resources (OrderResource, OrderItemResource, GalleryResource, CalendarEventResource)
+- Note : les transforms contextuels dans adminIndex (batch client_ids, cache) restes inline — justifie par le contexte query
 
 #### R5. uploadService.ts *(priorite 5 — optionnel, ~1h)*
 

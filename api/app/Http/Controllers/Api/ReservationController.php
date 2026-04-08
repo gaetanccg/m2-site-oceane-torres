@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\AdminUpdateReservationRequest;
 use App\Http\Requests\Admin\UpdateReservationStatusRequest;
 use App\Http\Requests\StoreReservationRequest;
 use App\Http\Requests\UpdateReservationRequest;
+use App\Http\Resources\CalendarEventResource;
 use App\Models\Reservation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -204,30 +205,9 @@ class ReservationController extends Controller
 
         $reservations = $query->get();
 
-        // Transformer en format CalendarEvent
-        $events = $reservations->map(function ($reservation) {
-            // Determiner le nom du client
-            $clientName = $reservation->client_name ?? 'Client';
-
-            // Calculer la fin (date + duree prestation ou 1h par defaut)
-            $startDate = $reservation->date;
-            $duration = $reservation->prestation?->duration ?? 60;
-            $endDate = $startDate->copy()->addMinutes($duration);
-
-            return [
-                'id' => $reservation->id,
-                'title' => $reservation->prestation?->title ?? 'Reservation',
-                'start' => $startDate->toIso8601String(),
-                'end' => $endDate->toIso8601String(),
-                'status' => $reservation->status,
-                'client' => $clientName,
-                'prestation' => $reservation->prestation?->title ?? 'N/A',
-            ];
-        });
-
         return response()->json([
             'success' => true,
-            'data' => $events,
+            'data' => CalendarEventResource::collection($reservations),
         ]);
     }
 }
