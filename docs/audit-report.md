@@ -292,11 +292,11 @@ Mises a jour :        ./deploy/deploy.sh
 - [x] Total : 4 Resources (OrderResource, OrderItemResource, GalleryResource, CalendarEventResource)
 - Note : les transforms contextuels dans adminIndex (batch client_ids, cache) restes inline — justifie par le contexte query
 
-#### R5. uploadService.ts *(priorite 5 — optionnel, ~1h)*
+#### ~~R5. uploadService.ts~~ FAIT
 
-- [ ] Fichier actuel : 502 lignes — complexite justifiee (chunked upload, retry, progress)
-- [ ] Refactoring possible : extraire chunk builder et retry logic en utils separees
-- [ ] **Non prioritaire** : le service fonctionne correctement
+- [x] 502 lignes → 3 fichiers : orchestrateur (266), chunkUploader (114), uploadUtils (81)
+- [x] Fonctions pures extraites : `buildChunks`, `buildProgress`, `findFileState`, `generateBatchId`
+- [x] XHR upload + retry extraits dans `upload/chunkUploader.ts`
 
 #### R6. Tests *(priorite 6 — long terme, progressif)*
 

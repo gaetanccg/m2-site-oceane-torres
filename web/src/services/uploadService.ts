@@ -1,12 +1,17 @@
 /**
  * Chunked Upload Service
- * Handles large batch uploads with real progress tracking
+ * Orchestrates large batch uploads with progress tracking, retry, and polling.
+ *
+ * Internal modules:
+ *   upload/uploadUtils.ts   — pure functions (buildChunks, buildProgress)
+ *   upload/chunkUploader.ts — XHR upload with progress and retry
  */
 
 import { API_CONFIG, UPLOAD_CONFIG } from '@/config/constants'
+import { buildChunks, buildProgress, findFileState, generateBatchId } from './upload/uploadUtils'
+import { uploadChunkWithRetry } from './upload/chunkUploader'
 import type {
     BatchUploadStatus,
-    ChunkUploadResponse,
     FileUploadState,
     UploadProgress,
     UploadCallbacks,
@@ -32,6 +37,14 @@ export class ChunkedUploadService {
         return match ? decodeURIComponent(match[1]) : null
     }
 
+    private get uploaderConfig() {
+        return {
+            baseUrl: this.baseUrl,
+            getToken: () => this.getToken(),
+            getXsrfToken: () => this.getXsrfToken(),
+        }
+    }
+
     /**
      * Upload files in chunks with real progress tracking and parallel uploads
      */
@@ -55,10 +68,9 @@ export class ChunkedUploadService {
         this.isCancelled = false
         this.activeXHRs = []
 
-        // Generate batch ID
-        const batchId = this.generateBatchId()
+        const batchId = generateBatchId()
 
-        // Initialize file states with size info for progress tracking
+        // Initialize file states
         const fileStates: Map<string, FileUploadState> = new Map()
         files.forEach((file, index) => {
             const id = `local_${index}`
@@ -73,59 +85,48 @@ export class ChunkedUploadService {
             })
         })
 
-        // Split files into chunks (respecting both file count and byte size limits)
-        const chunks = this.buildChunks(files, chunkSize, maxChunkBytes)
-
+        const chunks = buildChunks(files, chunkSize, maxChunkBytes)
         const uploadedIds: Set<string> = new Set()
 
         try {
             // Upload chunks in parallel batches
             for (let batchIndex = 0; batchIndex < chunks.length; batchIndex += concurrentChunks) {
-                if (this.isCancelled) {
-                    break
-                }
+                if (this.isCancelled) break
 
-                // Get the batch of chunks to upload in parallel
                 const parallelChunks = chunks.slice(batchIndex, batchIndex + concurrentChunks)
 
-                // Mark all files in parallel chunks as uploading
+                // Mark files as uploading
                 parallelChunks.forEach((chunk) => {
                     chunk.forEach((file) => {
-                        const state = this.findFileState(fileStates, file.name)
+                        const state = findFileState(fileStates, file.name)
                         if (state) {
                             state.status = 'uploading'
                             state.progress = 0
                         }
                     })
                 })
-
                 this.notifyProgress(fileStates, callbacks)
 
-                // Upload all chunks in parallel with progress tracking and retry
-                const uploadPromises = parallelChunks.map((chunk, _chunkIndexInBatch) =>
-                    this.uploadChunkWithRetry(
-                        galleryId,
-                        chunk,
-                        batchId,
-                        timeout,
-                        endpointPath,
-                        maxRetries,
+                // Upload all chunks in parallel
+                const uploadPromises = parallelChunks.map((chunk) =>
+                    uploadChunkWithRetry(
+                        this.uploaderConfig,
+                        galleryId, chunk, batchId, timeout, endpointPath, maxRetries,
                         (chunkProgress) => {
-                            // Update individual file progress based on chunk upload progress
                             chunk.forEach((file) => {
-                                const state = this.findFileState(fileStates, file.name)
+                                const state = findFileState(fileStates, file.name)
                                 if (state && state.status === 'uploading') {
-                                    // Upload phase is 0-50%, processing is 50-100%
                                     state.progress = Math.round(chunkProgress * 0.5)
                                     state.uploadedBytes = Math.round((chunkProgress / 100) * file.size)
                                 }
                             })
                             this.notifyProgress(fileStates, callbacks)
-                        }
+                        },
+                        this.activeXHRs,
+                        () => this.isCancelled
                     ).catch((error) => {
-                        // Mark files as failed on chunk error (after all retries exhausted)
                         chunk.forEach((file) => {
-                            const state = this.findFileState(fileStates, file.name)
+                            const state = findFileState(fileStates, file.name)
                             if (state) {
                                 state.status = 'failed'
                                 state.progress = 100
@@ -143,7 +144,7 @@ export class ChunkedUploadService {
                 responses.forEach((response) => {
                     if (response) {
                         response.uploads.forEach((upload) => {
-                            const state = this.findFileState(fileStates, upload.original_filename)
+                            const state = findFileState(fileStates, upload.original_filename)
                             if (state) {
                                 state.id = upload.id
                                 state.status = upload.status === 'failed' ? 'failed' : 'processing'
@@ -154,20 +155,17 @@ export class ChunkedUploadService {
                         })
                     }
                 })
-
                 this.notifyProgress(fileStates, callbacks)
             }
 
-            // Start polling for processing status updates
+            // Poll for processing completion
             if (!this.isCancelled && uploadedIds.size > 0) {
                 await this.pollUntilComplete(batchId, fileStates, callbacks, pollInterval)
             }
 
-            return this.buildProgress(fileStates)
+            return buildProgress(fileStates)
         } catch (error) {
-            if (this.isCancelled) {
-                throw new Error('Upload cancelled')
-            }
+            if (this.isCancelled) throw new Error('Upload cancelled')
             callbacks.onError?.(error as Error)
             throw error
         } finally {
@@ -175,173 +173,10 @@ export class ChunkedUploadService {
         }
     }
 
-    /**
-     * Cancel ongoing upload
-     */
     cancel(): void {
         this.isCancelled = true
-        // Abort all active XHR requests
-        this.activeXHRs.forEach(xhr => {
-            try {
-                xhr.abort()
-            } catch (_e) {
-                // Ignore abort errors
-            }
-        })
+        this.activeXHRs.forEach(xhr => { try { xhr.abort() } catch { /* ignore */ } })
         this.cleanup()
-    }
-
-    /**
-     * Build chunks respecting both file count and byte size limits.
-     * A single file that exceeds maxChunkBytes gets its own chunk.
-     */
-    private buildChunks(files: File[], maxFiles: number, maxBytes: number): File[][] {
-        const chunks: File[][] = []
-        let currentChunk: File[] = []
-        let currentBytes = 0
-
-        for (const file of files) {
-            const wouldExceedBytes = currentBytes + file.size > maxBytes
-            const wouldExceedCount = currentChunk.length >= maxFiles
-
-            if (currentChunk.length > 0 && (wouldExceedBytes || wouldExceedCount)) {
-                chunks.push(currentChunk)
-                currentChunk = []
-                currentBytes = 0
-            }
-
-            currentChunk.push(file)
-            currentBytes += file.size
-        }
-
-        if (currentChunk.length > 0) {
-            chunks.push(currentChunk)
-        }
-
-        return chunks
-    }
-
-    /**
-     * Upload a chunk with retry on timeout/network errors
-     */
-    private async uploadChunkWithRetry(
-        galleryId: string,
-        files: File[],
-        batchId: string,
-        timeout: number,
-        endpointPath: string,
-        maxRetries: number,
-        onProgress: (percent: number) => void
-    ): Promise<ChunkUploadResponse> {
-        let lastError: Error | null = null
-
-        for (let attempt = 0; attempt <= maxRetries; attempt++) {
-            try {
-                return await this.uploadChunkWithProgress(
-                    galleryId, files, batchId, timeout, endpointPath, onProgress
-                )
-            } catch (error) {
-                lastError = error as Error
-                const isRetryable = lastError.message === 'Upload timeout'
-                    || lastError.message === 'Network error'
-
-                if (!isRetryable || attempt >= maxRetries || this.isCancelled) {
-                    throw lastError
-                }
-
-                // Reset progress before retry
-                onProgress(0)
-            }
-        }
-
-        throw lastError!
-    }
-
-    /**
-     * Upload a chunk with real progress tracking using XMLHttpRequest
-     */
-    private uploadChunkWithProgress(
-        galleryId: string,
-        files: File[],
-        batchId: string,
-        timeout: number,
-        endpointPath: string,
-        onProgress: (percent: number) => void
-    ): Promise<ChunkUploadResponse> {
-        return new Promise((resolve, reject) => {
-            const formData = new FormData()
-            files.forEach((file) => formData.append('photos[]', file))
-            formData.append('batch_id', batchId)
-
-            const xhr = new XMLHttpRequest()
-            this.activeXHRs.push(xhr)
-
-            // Set timeout
-            xhr.timeout = timeout
-
-            // Track upload progress
-            xhr.upload.onprogress = (event) => {
-                if (event.lengthComputable) {
-                    const percent = Math.round((event.loaded / event.total) * 100)
-                    onProgress(percent)
-                }
-            }
-
-            xhr.onload = () => {
-                this.removeXHR(xhr)
-                if (xhr.status >= 200 && xhr.status < 300) {
-                    try {
-                        const response = JSON.parse(xhr.responseText)
-                        resolve(response)
-                    } catch (_e) {
-                        reject(new Error('Invalid JSON response'))
-                    }
-                } else {
-                    reject(new Error(`Upload failed: ${xhr.status}`))
-                }
-            }
-
-            xhr.onerror = () => {
-                this.removeXHR(xhr)
-                reject(new Error('Network error'))
-            }
-
-            xhr.ontimeout = () => {
-                this.removeXHR(xhr)
-                reject(new Error('Upload timeout'))
-            }
-
-            xhr.onabort = () => {
-                this.removeXHR(xhr)
-                reject(new Error('Upload cancelled'))
-            }
-
-            // Open connection
-            xhr.open('POST', `${this.baseUrl}/admin/${endpointPath}/${galleryId}/photos/async`)
-
-            // Set headers
-            const token = this.getToken()
-            const xsrfToken = this.getXsrfToken()
-
-            xhr.setRequestHeader('Accept', 'application/json')
-            if (token) {
-                xhr.setRequestHeader('Authorization', `Bearer ${token}`)
-            }
-            if (xsrfToken) {
-                xhr.setRequestHeader('X-XSRF-TOKEN', xsrfToken)
-            }
-            xhr.withCredentials = true
-
-            // Send
-            xhr.send(formData)
-        })
-    }
-
-    private removeXHR(xhr: XMLHttpRequest): void {
-        const index = this.activeXHRs.indexOf(xhr)
-        if (index > -1) {
-            this.activeXHRs.splice(index, 1)
-        }
     }
 
     private async pollUntilComplete(
@@ -352,20 +187,14 @@ export class ChunkedUploadService {
     ): Promise<void> {
         return new Promise((resolve, reject) => {
             const poll = async () => {
-                if (this.isCancelled) {
-                    resolve()
-                    return
-                }
+                if (this.isCancelled) { resolve(); return }
 
                 try {
                     const status = await this.fetchBatchStatus(batchId)
 
                     if (status.found && status.uploads) {
-                        // Update file states from server
                         status.uploads.forEach((upload) => {
-                            const state = Array.from(fileStates.values()).find(
-                                (s) => s.id === upload.id
-                            )
+                            const state = Array.from(fileStates.values()).find((s) => s.id === upload.id)
                             if (state) {
                                 const previousStatus = state.status
                                 state.status = upload.status
@@ -374,19 +203,12 @@ export class ChunkedUploadService {
 
                                 if (upload.status === 'completed') {
                                     state.progress = 100
-                                    if (previousStatus !== 'completed') {
-                                        callbacks.onFileComplete?.(state)
-                                    }
+                                    if (previousStatus !== 'completed') callbacks.onFileComplete?.(state)
                                 } else if (upload.status === 'failed') {
                                     state.progress = 100
-                                    if (previousStatus !== 'failed') {
-                                        callbacks.onFileError?.(state, upload.error_message || 'Unknown error')
-                                    }
+                                    if (previousStatus !== 'failed') callbacks.onFileError?.(state, upload.error_message || 'Unknown error')
                                 } else if (upload.status === 'processing') {
-                                    // Processing phase: 50-90% (estimate progress over time)
-                                    if (state.progress < 90) {
-                                        state.progress = Math.min(90, state.progress + 5)
-                                    }
+                                    if (state.progress < 90) state.progress = Math.min(90, state.progress + 5)
                                 }
                             }
                         })
@@ -394,21 +216,16 @@ export class ChunkedUploadService {
                         this.notifyProgress(fileStates, callbacks)
 
                         if (status.is_complete) {
-                            const progress = this.buildProgress(fileStates)
-                            callbacks.onBatchComplete?.(progress)
+                            callbacks.onBatchComplete?.(buildProgress(fileStates))
                             resolve()
                             return
                         }
                     }
 
-                    // Continue polling
                     this.pollingInterval = setTimeout(poll, pollInterval)
                 } catch (error) {
-                    if (!this.isCancelled) {
-                        reject(error)
-                    } else {
-                        resolve()
-                    }
+                    if (!this.isCancelled) reject(error)
+                    else resolve()
                 }
             }
 
@@ -422,72 +239,19 @@ export class ChunkedUploadService {
             Accept: 'application/json',
             'Content-Type': 'application/json',
         }
-        if (token) {
-            headers['Authorization'] = `Bearer ${token}`
-        }
+        if (token) headers['Authorization'] = `Bearer ${token}`
 
         const response = await fetch(
             `${this.baseUrl}/admin/upload-status?batch_id=${encodeURIComponent(batchId)}`,
-            {
-                headers,
-                credentials: 'include',
-            }
+            { headers, credentials: 'include' }
         )
 
-        if (!response.ok) {
-            throw new Error(`Status check failed: ${response.status}`)
-        }
-
+        if (!response.ok) throw new Error(`Status check failed: ${response.status}`)
         return response.json()
     }
 
-    private findFileState(
-        fileStates: Map<string, FileUploadState>,
-        filename: string
-    ): FileUploadState | undefined {
-        return Array.from(fileStates.values()).find(
-            (state) => state.originalFilename === filename
-        )
-    }
-
-    /**
-     * Build progress with real percentage based on individual file progress
-     */
-    private buildProgress(fileStates: Map<string, FileUploadState>): UploadProgress {
-        const files = Array.from(fileStates.values())
-        const total = files.length
-        const completed = files.filter((f) => f.status === 'completed').length
-        const failed = files.filter((f) => f.status === 'failed').length
-        const processing = files.filter((f) =>
-            ['pending', 'uploading', 'processing'].includes(f.status)
-        ).length
-
-        // Calculate real percentage based on individual file progress
-        const totalProgress = files.reduce((sum, file) => sum + (file.progress || 0), 0)
-        const percentage = total > 0 ? Math.round(totalProgress / total) : 0
-
-        return {
-            total,
-            uploaded: total - processing,
-            completed,
-            failed,
-            processing,
-            percentage,
-            isComplete: processing === 0,
-            files,
-        }
-    }
-
-    private notifyProgress(
-        fileStates: Map<string, FileUploadState>,
-        callbacks: UploadCallbacks
-    ): void {
-        const progress = this.buildProgress(fileStates)
-        callbacks.onProgress?.(progress)
-    }
-
-    private generateBatchId(): string {
-        return `batch_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+    private notifyProgress(fileStates: Map<string, FileUploadState>, callbacks: UploadCallbacks): void {
+        callbacks.onProgress?.(buildProgress(fileStates))
     }
 
     private cleanup(): void {
