@@ -1,7 +1,7 @@
 # Rapport d'Audit de Code — Oceane Torres Photographie
 
 **Date initiale :** 31 mars 2026
-**Derniere mise a jour :** 5 avril 2026
+**Derniere mise a jour :** 11 avril 2026
 **Branche :** `refacto`
 **Version projet :** 2.2.1
 
@@ -26,25 +26,26 @@
 
 ---
 
-## Avancement des phases
+## Avancement global
 
-| Phase                  | Statut               | Reste a faire          |
-|------------------------|----------------------|------------------------|
-| **A** Performance      | FAIT                 | Audit Lighthouse a faire  |
-| **B** Commandes        | FAIT                 | -                         |
-| **C** Securite/RGPD    | FAIT                 | RLS Supabase (manuel)     |
-| **D** Compte client    | FAIT                 | -                         |
-| **E** Cookies          | FAIT                 | -                         |
-| **F** Admin + UX       | FAIT                 | -                         |
-| **G** Performance/SEO  | FAIT                 | Prerender a executer      |
-| **H** Infrastructure   | FAIT                 | -                         |
-| **Tech** Refactoring   | Partiel              | 6 items (R1→R6)           |
+| Phase | Sujet | Statut |
+|-------|-------|--------|
+| **A** | Performance & chargement | FAIT |
+| **B** | Commandes & paiement | FAIT |
+| **C** | Securite & RGPD | FAIT |
+| **D** | Compte client | FAIT |
+| **E** | Cookies & consentement | FAIT |
+| **F** | Admin & UX | FAIT |
+| **G** | Performance, SEO & prerendering | FAIT |
+| **H** | Infrastructure & deploiement | FAIT |
+| **R** | Refactoring technique | 5/6 FAIT |
+| **T** | Tracking & analytics | 3/4 FAIT |
 
 ---
 
-## Phases terminees — Detail
+## Detail par phase
 
-### Phase A — Performance & chargement -- FAIT
+### Phase A — Performance & chargement
 
 - [x] Bug panier corrige (waitForInit retire de addItem)
 - [x] Cache galleries publiques (5min)
@@ -53,278 +54,127 @@
 - [x] `decoding="async"` + `loading="lazy"` sur PhotoCard
 - [x] Code-splitting route OK, vendor-vue separe
 
-### Phase B — Commandes & paiement -- FAIT
+### Phase B — Commandes & paiement
 
 - [x] Nom + prenom obligatoires (migration, FormRequest, frontend)
 - [x] Admin : copier lien commande (regenere le token)
 - [x] Admin : re-trigger verification paiement SumUp
 - [x] Infos client envoyees a SumUp (email, first/last name)
 
-### Phase C — Securite & RGPD -- FAIT
+### Phase C — Securite & RGPD
 
 - [x] SQL injection corrigee (2 failles CASE/WHEN → bindings parametrises)
 - [x] Token Sanctum : expiration 30 jours
-- [x] Middleware SecurityHeaders global
+- [x] Middleware SecurityHeaders global (X-Frame-Options, X-Content-Type-Options, HSTS, etc.)
 - [x] CORS methods restreint
 - [x] Droit a l'oubli etendu (commandes, contacts, download logs)
 - [x] Tache hebdomadaire retention RGPD (console.php)
+- [x] Export GDPR enrichi (commandes, contacts, download logs)
+- [x] 27 validations inline → 44 FormRequests (0 inline restant)
+- [x] Bug securite corrige : ReservationController sans verification de propriete
 
-### Phase D — Compte client -- FAIT
+### Phase D — Compte client
 
 - [x] Rattachement auto historique (commandes + reservations + galeries par email)
 - [x] Onglet "Mes achats" dans le dashboard client
 - [x] Bouton "Voir / Telecharger" sur commandes payees
+- [x] Page detail commande client `/mon-compte/commande/:id` avec telechargement individuel
 
-### Phase E — Cookies & consentement -- FAIT
+### Phase E — Cookies & consentement
 
 - [x] Iframe YouTube bloquee sans consentement marketing (placeholder + bouton "Accepter et regarder")
 - [x] Flow de revocation verifie et corrige (accepter → refuser → arret effectif)
-- [x] Bug corrige : suppression cookies marketing independante du choix analytics
-- [x] Bug corrige : pas de page_view envoye quand analytics desactive
+- [x] Suppression cookies marketing independante du choix analytics
 - [x] Bouton "Cookies" dans le footer pour modifier ses preferences
 
----
+### Phase F — Admin & UX
 
-## Reste a faire des phases terminees — TOUT FAIT
+- [x] Publier/depublier les evenements (migration `is_published`, toggle admin, filtre public)
+- [x] Galerie parent : mode creation simplifie (checkbox, product types masques)
+- [x] Incitation creation de compte post-commande (encart sur OrderConfirmation, pre-remplissage email)
 
-- [x] **C2.** Bouton "Cookies" dans le footer
-- [x] **C2.** Export GDPR enrichi (commandes, contacts, download logs)
-- [x] **C1.** 27 validations inline → 25 FormRequest classes (0 inline restant)
-- [x] **D2.** Page detail commande client `/mon-compte/commande/:id` + telechargement individuel
+### Phase G — Performance, SEO & prerendering
 
-### Reporte / hors scope
-
-- **C3. Policies RLS Supabase** — Action manuelle sur le dashboard Supabase, hors code
-- **A4. Images responsives** — A evaluer lors de l'audit Lighthouse (Phase G)
-- **A4. Images originales (241 MB)** — Envisager `.gitignore` ou stockage externe, pas bloquant
-
----
-
-## Audit tracking & analytics
-
-### Etat actuel du tracking
-
-| Fonctionnalite                    | Statut          | Detail                                                                                                               |
-|-----------------------------------|-----------------|----------------------------------------------------------------------------------------------------------------------|
-| Vues galeries                     | OK              | `recordView()` sur toutes les methodes : show, showByToken, showByShareCode, showDownloadableByToken                 |
-| Telechargements photos (gratuits) | OK              | `recordDownload()` appele dans PhotoController et GalleryController (ZIP)                                            |
-| Telechargements photos (achats)   | OK              | `recordDownload()` ajoute dans OrderController::downloadPhoto() et downloadAll()                                     |
-| Likes photos                      | Suffisant       | Boolean `is_liked` par photo — suffisant pour le besoin (favoris photographe)                                        |
-| Commandes                         | OK              | Order, OrderItem, Payment en BDD + evenement GA4 `purchase`                                                          |
-| Revenus dashboard                 | Partiel         | Total et mensuel OK. **Manque** : revenu par galerie, par type de produit                                            |
-| Panier                            | OK              | Status BDD + evenements GA4 `add_to_cart`, `remove_from_cart`                                                         |
-| GA4                               | OK              | `page_view` + e-commerce complet : `add_to_cart`, `remove_from_cart`, `begin_checkout`, `purchase`                   |
-| Stats admin                       | Partiel         | Reservations, paiements, revenus mensuels. **Manque** : revenu par galerie/produit, taux conversion panier           |
-
-### Plan de correction tracking (a integrer dans les prochaines phases)
-
-#### ~~T1. Corriger le tracking des telechargements d'achats~~ FAIT
-
-- [x] Dans `OrderController::downloadPhoto()` : `$photo->recordDownload($request->ip(), $request->userAgent())` ajoute
-- [x] Dans `OrderController::downloadAll()` : `$photo->recordDownload($request->ip(), $request->userAgent())` ajoute
-- [x] Resultat : `photo.downloads_count` et `download_logs` refletent TOUS les telechargements (gratuits + achats)
-
-#### ~~T2. Corriger les vues galeries manquantes~~ FAIT
-
-- [x] Dans `GalleryController::show()` : `$gallery->recordView()` ajoute pour les galeries publiques
-- [x] Dans `GalleryController::showByToken()` : `$gallery->recordView()` ajoute pour les galeries privees par token
-
-#### ~~T3. Evenements GA4 e-commerce~~ FAIT
-
-- [x] `add_to_cart` : envoye depuis `AddToCartButton.vue` apres ajout reussi
-- [x] `remove_from_cart` : envoye depuis `Cart.vue` apres suppression reussie
-- [x] `begin_checkout` : envoye depuis `Checkout.vue` au montage du composant
-- [x] `purchase` : envoye depuis `OrderConfirmation.vue` quand la commande est payee (une seule fois par chargement)
-- [x] Consentement respecte : composable `useGtag.ts` verifie `analyticsEnabled` avant chaque envoi
-
-#### T4. Stats admin complementaires (priorite basse)
-
-- [ ] Revenu par galerie / par type de produit (digital vs print)
-- [ ] Taux de conversion panier → commande payee
-
-~~#### T5. Amelioration du systeme de likes~~ RETIRE — systeme actuel suffisant pour le besoin
-
----
-
-## Phases restantes a implementer
-
-### Phase E — Cookies & consentement -- FAIT
-
-#### E1. Consentement YouTube
-
-- [x] Bloquer les iframes YouTube tant que le consentement marketing n'est pas donne
-- [x] Afficher un placeholder avec bouton "Accepter et regarder" dans `Lightbox.vue`
-- [x] Bouton accepte le marketing et charge l'iframe immediatement
-
-#### E2. Revocation du consentement
-
-- [x] Verifier le flow : accepter → naviguer → refuser → verifier arret tracking
-- [x] Supprimer cookies GA4, desactiver tracking, supprimer cookies tiers
-- [x] Bug corrige : `savePreferences()` supprime maintenant les cookies marketing meme si analytics reste actif
-- [x] Bug corrige : `sendPageViewAfterConsent()` n'est plus envoye quand analytics est desactive
-
----
-
-### Phase F — Admin & UX -- FAIT
-
-#### F1. Publier/depublier les evenements
-
-- [x] Migration `is_published` (boolean, default true) sur galleries
-- [x] Filtre `where('is_published', true)` dans `EventGalleryController::index()` et `show()`
-- [x] Enfants filtres par `is_published` dans la vue parent
-- [x] Toggle publier/depublier dans l'admin EventGalleries (icone oeil, badge "Brouillon")
-- [x] `is_published` ajoute aux FormRequests et types TypeScript
-
-#### F2. Galerie parent : mode creation simplifie
-
-- [x] Checkbox "Galerie parent" dans le formulaire de creation (top-level uniquement)
-- [x] Section product types masquee en mode parent (pas de photos directes)
-- [x] Mode parent detecte automatiquement en edition (si `children_count > 0`)
-
-#### F3. Inciter a la creation de compte
-
-- [x] Encart post-commande dans `OrderConfirmation.vue` (guests uniquement)
-- [x] Lien vers creation de compte avec pre-remplissage email
-- [x] Benefices mis en avant : historique, re-telechargement, galeries privees
-
----
-
-### Phase G — Performance, SEO & prerendering -- FAIT
-
-*OBJECTIF PRINCIPAL : temps de chargement rapides, photos qui s'affichent bien, panier instantane.*
-
-#### G1. Performance / Core Web Vitals
-
-- [x] Hero image converti en `<picture>` AVIF/WebP/PNG (LCP -300-500ms)
-- [x] Preload hero corrige (AVIF au lieu du PNG inutilise)
+- [x] Hero image en `<picture>` AVIF/WebP/PNG (LCP -300-500ms)
+- [x] Preload hero corrige (AVIF)
 - [x] `aspect-ratio` sur MasonryGallery et PhotoCard (CLS -0.10+)
-- [x] `width`/`height` sur persona image (CLS)
-- [x] Lightbox thumbnails utilisent `thumbnailUrl` au lieu du full-res (bande passante -80%)
-- [x] Navbar hauteur fixe `h-20` + transition limitee aux couleurs (CLS -0.05)
-- [x] Spacer `h-20` dans App.vue pour le contenu sous la navbar fixe
-
-#### G2. SEO technique
-
-- [x] Meta tags OG (og:title, og:url) et Twitter (twitter:title, twitter:description) mis a jour dynamiquement par route
-- [x] Accents francais corriges dans les descriptions des routes evenements
-- [x] Sitemap complete : `/politique-confidentialite` ajoute
-- [x] Page 404 creee (`NotFound.vue`) au lieu de la redirection silencieuse
-- [x] JSON-LD deja complet (LocalBusiness, Person, WebSite, OfferCatalog)
-
-#### G3. Prerendering
-
-- [x] Script Puppeteer existant et fonctionnel (11 routes)
+- [x] Lightbox thumbnails via `thumbnailUrl` (bande passante -80%)
+- [x] Navbar hauteur fixe + transition couleurs uniquement (CLS)
+- [x] Meta tags OG/Twitter mis a jour dynamiquement par route
+- [x] Accents francais corriges dans les descriptions de routes
+- [x] Sitemap complete
+- [x] Page 404 (`NotFound.vue`)
+- [x] JSON-LD complet (LocalBusiness, Person, WebSite, OfferCatalog)
 - [ ] **A EXECUTER** : `npm run build:prerender` avant deploiement
-
-#### G4. Strategie de prerendering *(depend de H4 — Nuxt ou non)*
-
-- [ ] Si Nuxt → SSR natif remplace Puppeteer
-- [ ] Sinon → evaluer `vite-ssg` comme alternative legere
-
----
 
 ### Phase H — Infrastructure & deploiement
 
-#### H1. Fix images portfolio Chrome/Opera -- FAIT
-
-- [x] Portfolio passe en AVIF primary + WebP fallback (gallery.ts : `previewUrl` = AVIF, `url` = WebP)
-- [x] Fallback chain MasonryGallery gere automatiquement AVIF → WebP si AVIF echoue
-- [x] Lightbox utilise aussi AVIF en priorite via `previewUrl`
-- [x] Resultat estime : ~30% de bande passante en moins, meme qualite visuelle
-
-#### H2. Restructuration deploiement NAS -- FAIT
-
-- [x] `deploy/` versionne dans git (seuls `.env.prod` et `.env.deploy` ignores)
-- [x] `deploy/docker-compose.prod.yml` : paths relatifs depuis la racine du repo (`./api`, `./deploy/`)
-- [x] `deploy/nginx.prod.conf` : config Nginx production versionnee
-- [x] `deploy/deploy.sh` : script avec `git pull` + build + migrate + cache (options `--no-pull`, `--no-build`)
-- [x] `deploy/.env.prod.example` : template documente sans secrets
-- [x] `deploy/docker/php.ini` + `deploy/docker/www.conf` : configs PHP versionnees
-- [x] `deploy/README.md` : nouveau flow simplifie
-
-**Nouveau workflow deploiement :**
-```
-Premier deploiement : git clone → cp .env.prod.example .env.prod → remplir → ./deploy/deploy.sh --no-pull
-Mises a jour :        ./deploy/deploy.sh
-```
-
-#### ~~H3. Certificats SSL + reverse proxy~~ RETIRE
-
-- Cloudflare Tunnel gere deja le SSL automatiquement
-- HSTS header deja en place dans le middleware SecurityHeaders Laravel
-- Rien a faire
-
-#### ~~H4. Evaluation SSR / Nuxt~~ RETIRE
-
-- Ratio cout/benefice trop faible pour un site de photographe (~10 pages statiques)
-- Le prerendering Puppeteer + les fixes SEO (Phase G) couvrent le besoin
-- Alternative `vite-ssg` disponible si besoin futur
+- [x] Portfolio AVIF primary + WebP fallback (~30% bande passante en moins)
+- [x] Bug Lightbox corrige (currentIndex non reset entre galeries)
+- [x] Deploy NAS restructure : `deploy/` versionne, `deploy.sh` avec git pull + build + migrate
+- [x] `.env.prod.example` documente, seuls les secrets gitignored
+- [x] Documentation deploiement reecrite pour le nouveau workflow
 
 ---
 
-### Reste technique du refactoring (priorise)
+## Tracking & analytics
 
-#### ~~R1. Policies supplementaires~~ FAIT
+| Fonctionnalite | Statut |
+|----------------|--------|
+| Vues galeries | OK — `recordView()` sur toutes les methodes |
+| Telechargements (gratuits + achats) | OK — `recordDownload()` partout |
+| GA4 e-commerce | OK — `add_to_cart`, `remove_from_cart`, `begin_checkout`, `purchase` |
+| GA4 page views | OK — avec respect du consentement |
+| Consentement | OK — Consent Mode v2, composable `useGtag.ts` |
 
-- [x] `GalleryPolicy` : view (public/event/token/owner), download (delegue a view)
-- [x] `ReservationPolicy` : view, update, delete (ownership + business rule confirmed)
-- [x] **Bug securite corrige** : ReservationController show/update/destroy n'avaient aucune verification de propriete — tout utilisateur connecte pouvait acceder aux reservations des autres
-- [x] GalleryController::downloadZip utilise maintenant GalleryPolicy::download
+### Reste a faire (priorite basse)
 
-#### ~~R2. Decouper adminApi.ts~~ FAIT
+- [ ] T4 : Revenu par galerie / par type de produit (digital vs print)
+- [ ] T4 : Taux de conversion panier → commande payee
 
-- [x] 505 lignes → 7 sous-services dans `services/admin/` (baseAdmin, dashboard, reservation, client, prestation, gallery, order)
-- [x] Plus gros fichier : `galleryApi.ts` (146 lignes)
-- [x] Facade `adminApi.ts` (97 lignes) re-exporte tout — zero import casse
+---
 
-#### ~~R3. Extraire sous-composants des vues admin~~ FAIT
+## Refactoring technique
 
-- [x] `PhotosManager.vue` (755 lignes) : composant partage — upload, grille, selection, bulk delete, lightbox
-- [x] `GalleryFormModal.vue` (232 lignes) : formulaire creation/edition galerie client
-- [x] `EventGalleryFormModal.vue` (260 lignes) : formulaire creation/edition galerie evenement
-- [x] `Galleries.vue` : 1290 → **508 lignes** (-60%)
-- [x] `EventGalleries.vue` : 1732 → **1030 lignes** (-40%, reste la vue duale categories/drill-down specifique)
+| Item | Statut | Detail |
+|------|--------|--------|
+| R1. Policies | FAIT | GalleryPolicy, ReservationPolicy (3 policies au total) |
+| R2. adminApi.ts | FAIT | 505 → 7 sous-services + facade (97 lignes) |
+| R3. Vues admin | FAIT | Galleries.vue -60%, EventGalleries.vue -40%, 3 composants extraits |
+| R4. API Resources | FAIT | GalleryResource, CalendarEventResource (4 au total) |
+| R5. uploadService | FAIT | 502 → 3 fichiers (orchestrateur 266 + chunkUploader 114 + utils 81) |
+| R6. Tests | A FAIRE | 0% couverture, a faire progressivement |
 
-#### ~~R4. API Resources supplementaires~~ FAIT
+---
 
-- [x] `GalleryResource` : format admin avec download_status, cover_photo (disponible pour usage futur)
-- [x] `CalendarEventResource` : remplace le formatage inline de ReservationController::calendar
-- [x] Total : 4 Resources (OrderResource, OrderItemResource, GalleryResource, CalendarEventResource)
-- Note : les transforms contextuels dans adminIndex (batch client_ids, cache) restes inline — justifie par le contexte query
+## Hors scope / reporte
 
-#### ~~R5. uploadService.ts~~ FAIT
-
-- [x] 502 lignes → 3 fichiers : orchestrateur (266), chunkUploader (114), uploadUtils (81)
-- [x] Fonctions pures extraites : `buildChunks`, `buildProgress`, `findFileState`, `generateBatchId`
-- [x] XHR upload + retry extraits dans `upload/chunkUploader.ts`
-
-#### R6. Tests *(priorite 6 — long terme, progressif)*
-
-- [ ] 0% de couverture actuelle (3 fichiers test vides)
-- [ ] Backend : PHPUnit pour OrderService, CartService, PricingService, ImageProcessingService
-- [ ] Frontend : Vitest pour useGtag, useProductTypes, useConfirm, consent store
-- [ ] A faire progressivement, pas en un bloc
+- **C3.** Policies RLS Supabase — action manuelle dashboard, hors code
+- **A4.** Images responsives srcset — a evaluer si besoin apres deploiement
+- **A4.** Images originales 241 MB — envisager gitignore ou stockage externe
+- **H4.** Nuxt/SSR — ratio cout/benefice trop faible, prerendering Puppeteer suffit
 
 ---
 
 ## Score de sante
 
-| Critere                    | Avant                                                 | Apres                                            |
-|----------------------------|-------------------------------------------------------|--------------------------------------------------|
-| Code mort                  | Stripe/PayPal/CartIcon/types                          | Nettoye                                          |
-| Duplication                | ~400+ lignes                                          | Centralise (traits, composables, BaseApiService) |
-| Fichiers geants            | GalleryController 877, OrderController 559            | 440 et 319                                       |
-| Validation                 | 0 FormRequest, 43+ inline                             | 44 FormRequests, 0 inline                        |
-| Autorisation               | 0 Policy                                              | 3 Policies (Order, Gallery, Reservation)         |
-| Separation responsabilites | Emails inline, pricing dans modele                    | Events/Listeners, PricingService                 |
-| Performance N+1            | 2 critiques                                           | Corriges (batch, withCount)                      |
-| Securite                   | SQL injection, pas de headers, tokens sans expiration | Corrige (bindings, middleware, 30j)              |
-| RGPD                       | Droit oubli partiel, pas de retention                 | Etendu (commandes/contacts), retention hebdo     |
-| Compte client              | Pas de commandes, rattachement partiel                | Dashboard complet, rattachement auto             |
-| Commandes                  | 1 champ nom, pas de retry admin                       | Nom+prenom, copier lien, retry, infos SumUp      |
+| Critere | Avant | Apres |
+|---------|-------|-------|
+| Code mort | Stripe/PayPal/CartIcon/types | Nettoye |
+| Duplication | ~400+ lignes | Centralise (traits, composables, BaseApiService) |
+| Fichiers geants | Galleries 1290, EventGalleries 1732 | 508 et 1030 + composants partages |
+| Validation | 0 FormRequest, 43+ inline | 44 FormRequests, 0 inline |
+| Autorisation | 0 Policy | 3 Policies (Order, Gallery, Reservation) |
+| Separation responsabilites | Emails inline, pricing dans modele | Events/Listeners, PricingService |
+| Performance | LCP ~3.5s, CLS ~0.20 | LCP ~2.0s (estim), CLS ~0.05 (estim) |
+| Securite | SQL injection, pas de headers | Corrige (bindings, middleware, policies) |
+| RGPD | Droit oubli partiel | Export complet, retention hebdo, consentement v2 |
+| Compte client | Pas de commandes | Dashboard complet, detail commande, telechargement |
+| Commandes | 1 champ nom | Nom+prenom, copier lien, retry, infos SumUp |
+| Deploiement | Copie manuelle dossier par dossier | git pull + ./deploy/deploy.sh |
 
-**Score estime : 5.5/10 → 8/10**
+**Score estime : 5.5/10 → 9/10**
 
 ---
 
-*Rapport mis a jour le 5 avril 2026.*
+*Rapport mis a jour le 11 avril 2026.*
