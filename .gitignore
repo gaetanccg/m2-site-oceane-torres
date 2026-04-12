@@ -113,7 +113,6 @@ PROJECT_REFERENCE_MVP.md
 
 # Deployment secrets (never commit)
 /deploy/.env.prod
-/deploy/.env.deploy
 
 .claude
 *.tar.gz
