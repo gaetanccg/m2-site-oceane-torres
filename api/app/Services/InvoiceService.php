@@ -11,6 +11,10 @@ use Illuminate\Support\Facades\Storage;
 
 class InvoiceService
 {
+    public function __construct(
+        private MinioStorageService $storageService = new MinioStorageService,
+    ) {}
+
     /**
      * Generate an invoice for an order (idempotent)
      */
@@ -67,9 +71,7 @@ class InvoiceService
         }
 
         try {
-            $storageService = new MinioStorageService;
-
-            return $storageService->getSignedUrl($invoice->file_path, 3600);
+            return $this->storageService->getSignedUrl($invoice->file_path, 3600);
         } catch (\Exception $e) {
             Log::error('Failed to generate invoice download URL', [
                 'invoice_id' => $invoice->id,

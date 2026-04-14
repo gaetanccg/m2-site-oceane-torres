@@ -40,6 +40,8 @@ function shuffle<T>(arr: T[]): T[] {
 export function getColumnCount(width: number): number {
     if (width <= 640) return 1
     if (width <= 1024) return 2
+    // if (width <= 1440) return 3
+    // if (width <= 1920) return 5
     return 3
 }
 

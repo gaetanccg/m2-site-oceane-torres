@@ -196,10 +196,13 @@ export const useConsentStore = defineStore('consent', () => {
         }
         saveToStorage()
         updateGA4Consent()
-        sendPageViewAfterConsent()
 
-        // Supprimer les cookies si refusé
-        if (!analytics) {
+        if (analytics) {
+            sendPageViewAfterConsent()
+        }
+
+        // Supprimer les cookies tracking si refusé
+        if (!analytics || !marketing) {
             removeTrackingCookies()
         }
 

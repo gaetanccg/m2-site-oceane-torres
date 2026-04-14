@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\StoreClientRequest;
+use App\Http\Requests\Admin\UpdateClientRequest;
 use App\Models\Client;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -46,15 +48,9 @@ class ClientController extends Controller
     /**
      * Création manuelle d'un client
      */
-    public function store(Request $request): JsonResponse
+    public function store(StoreClientRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'unique:clients'],
-            'phone' => ['nullable', 'string', 'max:20'],
-            'notes' => ['nullable', 'string', 'max:5000'],
-            'gdpr_consent' => ['sometimes', 'boolean'],
-        ]);
+        $validated = $request->validated();
 
         $client = Client::create([
             ...$validated,
@@ -72,15 +68,9 @@ class ClientController extends Controller
     /**
      * Modification d'un client
      */
-    public function update(Request $request, Client $client): JsonResponse
+    public function update(UpdateClientRequest $request, Client $client): JsonResponse
     {
-        $validated = $request->validate([
-            'name' => ['sometimes', 'string', 'max:255'],
-            'email' => ['sometimes', 'email', 'unique:clients,email,'.$client->id],
-            'phone' => ['nullable', 'string', 'max:20'],
-            'notes' => ['nullable', 'string', 'max:5000'],
-            'gdpr_consent' => ['sometimes', 'boolean'],
-        ]);
+        $validated = $request->validated();
 
         // Si le consentement RGPD passe de false à true, enregistrer la date
         if (isset($validated['gdpr_consent']) && $validated['gdpr_consent'] && ! $client->gdpr_consent) {
@@ -97,10 +87,13 @@ class ClientController extends Controller
 
     /**
      * Suppression d'un client (RGPD - droit à l'oubli)
+     * Anonymise toutes les donnees personnelles liees
      */
     public function destroy(Client $client): JsonResponse
     {
-        // Délier les réservations (on garde les réservations mais on les anonymise)
+        $email = $client->email;
+
+        // Anonymiser les reservations
         $client->reservations()->update([
             'client_id' => null,
             'guest_name' => 'Client supprimé',
@@ -108,10 +101,32 @@ class ClientController extends Controller
             'guest_phone' => null,
         ]);
 
+        // Anonymiser les commandes par email
+        \App\Models\Order::where('guest_email', $email)->update([
+            'guest_email' => null,
+            'guest_first_name' => 'Supprimé',
+            'guest_last_name' => null,
+        ]);
+
+        // Anonymiser les messages de contact
+        \App\Models\ContactMessage::where('email', $email)->update([
+            'name' => 'Supprimé',
+            'email' => null,
+            'phone' => null,
+        ]);
+
+        // Supprimer les logs de telechargement lies aux galeries du client
+        if ($client->user_id) {
+            $galleryIds = \App\Models\Gallery::where('user_id', $client->user_id)->pluck('id');
+            if ($galleryIds->isNotEmpty()) {
+                \App\Models\DownloadLog::whereIn('gallery_id', $galleryIds)->delete();
+            }
+        }
+
         $client->delete();
 
         return response()->json([
-            'message' => 'Client supprimé conformément au RGPD.',
+            'message' => 'Client supprimé et données anonymisées conformément au RGPD.',
         ]);
     }
 

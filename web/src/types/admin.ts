@@ -256,6 +256,7 @@ export interface EventGalleryFormData {
     event_category_id?: string
     parent_id?: string | null
     sort_order?: number
+    is_published?: boolean
     product_types?: GalleryProductTypeConfig[]
 }
 
@@ -267,6 +268,7 @@ export interface AdminGallery {
     description?: string
     event_date?: string
     event_link?: string
+    is_published?: boolean
     type: GalleryType
     client_id?: string
     client?: Client
@@ -325,19 +327,6 @@ export interface GalleryFormData {
     client_id: string
     assigned_email: string
     product_types?: GalleryProductTypeConfig[]
-}
-
-// ============================================================================
-// Booking Request (Public)
-// ============================================================================
-
-export interface BookingRequestData {
-    name: string
-    email: string
-    phone?: string
-    prestation_id: string
-    date_preferences: string
-    message?: string
 }
 
 // ============================================================================
@@ -406,6 +395,8 @@ export interface AdminOrder {
     has_prints: boolean
     customer_email: string
     customer_name: string
+    sumup_checkout_id?: string | null
+    sumup_transaction_id?: string | null
     user?: {
         id: string
         email: string

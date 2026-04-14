@@ -156,6 +156,32 @@
                         </div>
                     </div>
 
+                    <!-- Account creation prompt (guests only) -->
+                    <div v-if="!authStore.isAuthenticated" class="bg-gold/5 border border-gold/20 rounded-xl p-6 mt-6">
+                        <div class="flex items-start gap-4">
+                            <div class="w-10 h-10 bg-gold/10 rounded-full flex items-center justify-center flex-shrink-0">
+                                <svg class="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                </svg>
+                            </div>
+                            <div class="flex-1">
+                                <h3 class="font-medium text-gray-900 mb-1">Créez votre compte gratuitement !</h3>
+                                <p class="text-sm text-gray-600 mb-3">
+                                    Retrouvez vos achats, re-téléchargez vos photos et accédez à vos galeries privées depuis votre espace personnel.
+                                </p>
+                                <router-link
+                                    :to="{ path: '/', query: { login: 'true', tab: 'register', email: order?.customer_email } }"
+                                    class="inline-flex items-center gap-2 px-4 py-2 bg-gold text-white text-sm rounded-lg hover:bg-gold/90 transition-colors"
+                                >
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                                    </svg>
+                                    Creer mon compte
+                                </router-link>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Back home -->
                     <div class="text-center mt-8">
                         <router-link
@@ -245,9 +271,15 @@ import { cartApi, CartApiError, type Order } from '@/services/cartApi'
 import { API_CONFIG } from '@/config/constants'
 import { isInAppBrowser } from '@/utils/download'
 import { useToast } from '@/composables/useToast'
+import { useGtag } from '@/composables/useGtag'
+import { useAuthStore } from '@/stores/auth'
+import { formatPrice } from '@/utils/format'
 
 const route = useRoute()
 const toast = useToast()
+const authStore = useAuthStore()
+const { trackPurchase } = useGtag()
+let purchaseTracked = false
 
 const order = ref<Order | null>(null)
 const isLoading = ref(true)
@@ -293,13 +325,6 @@ const confirmationMessage = computed(() => {
     }
 })
 
-function formatPrice(price: number): string {
-    return new Intl.NumberFormat('fr-FR', {
-        style: 'currency',
-        currency: 'EUR',
-    }).format(price)
-}
-
 async function loadOrder() {
     const orderId = route.params.id as string
     const token = route.query.token as string
@@ -323,6 +348,24 @@ async function loadOrder() {
         const response = await cartApi.getOrder(orderId, token)
         if (response.success) {
             order.value = response.order
+
+            // Track purchase event (only once per page load)
+            if (response.order.status === 'paid' && !purchaseTracked) {
+                purchaseTracked = true
+                trackPurchase({
+                    id: response.order.id,
+                    orderNumber: response.order.order_number,
+                    total: response.order.total,
+                    currency: response.order.currency,
+                    items: response.order.items.map(item => ({
+                        item_id: item.photo_id,
+                        item_name: item.photo_title || 'Photo',
+                        item_category: item.gallery_title || undefined,
+                        price: item.price,
+                        quantity: 1,
+                    })),
+                })
+            }
 
             // If pending, start polling
             if (response.order.status === 'pending') {

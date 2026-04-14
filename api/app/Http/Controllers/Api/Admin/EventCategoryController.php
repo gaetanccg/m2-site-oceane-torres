@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\ReorderEventCategoriesRequest;
+use App\Http\Requests\Admin\StoreEventCategoryRequest;
+use App\Http\Requests\Admin\UpdateEventCategoryRequest;
 use App\Models\EventCategory;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
 class EventCategoryController extends Controller
@@ -22,13 +24,9 @@ class EventCategoryController extends Controller
         ]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreEventCategoryRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'sort_order' => ['nullable', 'integer', 'min:0'],
-        ]);
+        $validated = $request->validated();
 
         $validated['slug'] = Str::slug($validated['name']);
         $validated['sort_order'] = $validated['sort_order'] ?? 0;
@@ -49,13 +47,9 @@ class EventCategoryController extends Controller
         ], 201);
     }
 
-    public function update(Request $request, EventCategory $category): JsonResponse
+    public function update(UpdateEventCategoryRequest $request, EventCategory $category): JsonResponse
     {
-        $validated = $request->validate([
-            'name' => ['sometimes', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'sort_order' => ['nullable', 'integer', 'min:0'],
-        ]);
+        $validated = $request->validated();
 
         if (isset($validated['name'])) {
             $slug = Str::slug($validated['name']);
@@ -86,17 +80,24 @@ class EventCategoryController extends Controller
         ]);
     }
 
-    public function reorder(Request $request): JsonResponse
+    public function reorder(ReorderEventCategoriesRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'categories' => ['required', 'array'],
-            'categories.*.id' => ['required', 'exists:event_categories,id'],
-            'categories.*.sort_order' => ['required', 'integer', 'min:0'],
-        ]);
+        $validated = $request->validated();
 
+        $cases = [];
+        $bindings = [];
+        $ids = [];
         foreach ($validated['categories'] as $categoryData) {
-            EventCategory::where('id', $categoryData['id'])
-                ->update(['sort_order' => $categoryData['sort_order']]);
+            $cases[] = 'WHEN ? THEN ?';
+            $bindings[] = $categoryData['id'];
+            $bindings[] = (int) $categoryData['sort_order'];
+            $ids[] = $categoryData['id'];
+        }
+
+        if (! empty($cases)) {
+            $caseSql = implode(' ', $cases);
+            EventCategory::whereIn('id', $ids)
+                ->update(['sort_order' => \DB::raw("CASE id {$caseSql} END", $bindings)]);
         }
 
         return response()->json([

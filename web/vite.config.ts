@@ -28,6 +28,13 @@ export default defineConfig({
     },
     build: {
         // Ne pas inliner les assets dans le JS
-        assetsInlineLimit: 0
+        assetsInlineLimit: 0,
+        rollupOptions: {
+            output: {
+                manualChunks: {
+                    'vendor-vue': ['vue', 'vue-router', 'pinia'],
+                },
+            },
+        },
     }
 })

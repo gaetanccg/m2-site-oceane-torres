@@ -118,7 +118,15 @@
 
                                 <!-- Card Content -->
                                 <div class="p-4">
-                                    <h3 class="font-semibold text-gray-900 mb-1">{{ gallery.title }}</h3>
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <h3 class="font-semibold text-gray-900">{{ gallery.title }}</h3>
+                                        <span
+                                            v-if="gallery.is_published === false"
+                                            class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-200 text-gray-600"
+                                        >
+                                            Brouillon
+                                        </span>
+                                    </div>
                                     <p v-if="gallery.description" class="text-sm text-gray-500 line-clamp-2 mb-2">
                                         {{ gallery.description }}
                                     </p>
@@ -200,6 +208,24 @@
                                                 Sous-galeries
                                             </button>
                                         </template>
+                                        <button
+                                            @click="togglePublish(gallery)"
+                                            :class="[
+                                                'px-3 py-2 text-sm rounded-lg transition-colors',
+                                                gallery.is_published !== false
+                                                    ? 'text-orange-600 hover:text-orange-700 hover:bg-orange-50'
+                                                    : 'text-green-600 hover:text-green-700 hover:bg-green-50'
+                                            ]"
+                                            :title="gallery.is_published !== false ? 'Depublier' : 'Publier'"
+                                        >
+                                            <svg v-if="gallery.is_published !== false" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+                                            </svg>
+                                            <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                        </button>
                                         <button
                                             @click="openEditModal(gallery)"
                                             class="px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
@@ -308,135 +334,13 @@
         </div>
 
         <!-- Create/Edit Gallery Modal -->
-        <Modal v-model="showFormModal" :title="formModalTitle" size="md">
-            <form @submit.prevent="saveGallery" class="space-y-4">
-                <FormField
-                    v-model="form.title"
-                    :label="currentParent ? 'Nom de la sous-galerie' : 'Nom de l\'événement'"
-                    required
-                    :placeholder="currentParent ? 'Ex: Épreuve 1 - Shetlands' : 'Ex: Mariage Julie & Thomas'"
-                />
-
-                <div v-if="!currentParent">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Catégorie</label>
-                    <select
-                        v-model="form.event_category_id"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-gold focus:border-gold text-sm"
-                    >
-                        <option value="">Aucune catégorie</option>
-                        <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
-                    </select>
-                </div>
-
-                <FormField
-                    v-model="form.event_date"
-                    type="date"
-                    label="Date de l'événement"
-                    placeholder="Date de l'événement"
-                />
-
-                <FormField
-                    v-model="form.description"
-                    type="textarea"
-                    label="Description (optionnel)"
-                    :rows="3"
-                    placeholder="Une courte description de l'événement..."
-                />
-
-                <FormField
-                    v-model="form.event_link"
-                    label="Lien du site (optionnel)"
-                    placeholder="https://www.exemple.com"
-                />
-
-                <!-- Product Types Configuration -->
-                <div class="border-t border-gray-200 pt-4 mt-4">
-                    <h4 class="text-sm font-semibold text-gray-700 mb-3">Produits disponibles</h4>
-                    <div class="space-y-3">
-                        <div
-                            v-for="pt in productTypesList"
-                            :key="pt.key"
-                            class="p-3 rounded-lg border transition-colors"
-                            :class="pt.is_enabled ? 'border-gold/30 bg-gold/5' : 'border-gray-200 bg-gray-50'"
-                        >
-                            <div class="flex items-center gap-3">
-                                <label class="flex items-center gap-2 cursor-pointer flex-shrink-0">
-                                    <input
-                                        type="checkbox"
-                                        :checked="pt.is_enabled"
-                                        @change="toggleProductType(pt.key)"
-                                        class="w-4 h-4 text-gold border-gray-300 rounded focus:ring-gold"
-                                    />
-                                    <span class="text-sm font-medium" :class="pt.is_enabled ? 'text-gray-900' : 'text-gray-400'">
-                                        {{ pt.label }}
-                                    </span>
-                                </label>
-                                <div class="flex items-center gap-1 ml-auto">
-                                    <input
-                                        type="number"
-                                        :value="pt.price"
-                                        @input="updateProductPrice(pt.key, ($event.target as HTMLInputElement).value)"
-                                        :disabled="!pt.is_enabled"
-                                        step="0.01"
-                                        min="0.01"
-                                        class="w-20 px-2 py-1 text-sm text-right border rounded-md focus:ring-gold focus:border-gold disabled:opacity-40 disabled:bg-gray-100"
-                                        :class="pt.is_enabled ? 'border-gray-300' : 'border-gray-200'"
-                                    />
-                                    <span class="text-sm text-gray-500">&euro;</span>
-                                </div>
-                            </div>
-                            <!-- Pack Tiers -->
-                            <div v-if="pt.is_enabled" class="mt-3 ml-6 space-y-2">
-                                <div v-for="(tier, ti) in pt.tiers" :key="ti" class="flex items-center gap-2 text-sm">
-                                    <span class="text-gray-500 whitespace-nowrap">À partir de</span>
-                                    <input
-                                        type="number"
-                                        :value="tier.min_quantity"
-                                        @input="updateTierQuantity(pt.key, ti, ($event.target as HTMLInputElement).value)"
-                                        min="2"
-                                        class="w-16 px-2 py-1 text-sm text-center border border-gray-300 rounded-md focus:ring-gold focus:border-gold"
-                                    />
-                                    <span class="text-gray-500">photos &rarr;</span>
-                                    <input
-                                        type="number"
-                                        :value="tier.unit_price"
-                                        @input="updateTierPrice(pt.key, ti, ($event.target as HTMLInputElement).value)"
-                                        step="0.01"
-                                        min="0.01"
-                                        class="w-20 px-2 py-1 text-sm text-right border border-gray-300 rounded-md focus:ring-gold focus:border-gold"
-                                    />
-                                    <span class="text-gray-500">&euro;/photo</span>
-                                    <button type="button" @click="removeTier(pt.key, ti)" class="text-red-400 hover:text-red-600 ml-1">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                        </svg>
-                                    </button>
-                                </div>
-                                <button
-                                    v-if="pt.tiers.length < 3"
-                                    type="button"
-                                    @click="addTier(pt.key)"
-                                    class="text-xs text-gold hover:text-gold/80 font-medium flex items-center gap-1"
-                                >
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                                    </svg>
-                                    Ajouter un palier pack
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    <p v-if="productTypesError" class="text-xs text-red-500 mt-2">{{ productTypesError }}</p>
-                </div>
-            </form>
-
-            <template #footer>
-                <Button variant="secondary" @click="showFormModal = false">Annuler</Button>
-                <Button :loading="isSaving" @click="saveGallery">
-                    {{ isEditing ? 'Enregistrer' : 'Creer' }}
-                </Button>
-            </template>
-        </Modal>
+        <EventGalleryFormModal
+            v-model="showFormModal"
+            :gallery="editingGallery"
+            :categories="categories"
+            :parent-id="currentParent?.id ?? null"
+            @saved="onGallerySaved"
+        />
 
         <!-- Category Management Modal -->
         <Modal v-model="showCategoryModal" title="Gérer les catégories" size="md">
@@ -515,194 +419,17 @@
             </template>
         </Modal>
 
-        <!-- Photos Modal -->
-        <Modal v-model="showPhotosModal" :title="selectedGallery?.title || 'Photos'" size="full">
-            <div v-if="selectedGallery" class="space-y-4">
-                <!-- Upload Zone (hidden on parent galleries) -->
-                <div
-                    v-if="!selectedGalleryIsParent"
-                    @dragover.prevent="isDragging = true"
-                    @dragleave="isDragging = false"
-                    @drop.prevent="handleDrop"
-                    :class="[
-                        'border-2 border-dashed rounded-xl p-6 text-center transition-colors',
-                        isDragging ? 'border-gold bg-gold/5' : 'border-gray-300 hover:border-gray-400'
-                    ]"
-                >
-                    <input
-                        type="file"
-                        ref="fileInput"
-                        multiple
-                        accept="image/*"
-                        class="hidden"
-                        @change="handleFileSelect"
-                    />
-                    <svg class="w-8 h-8 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                    </svg>
-                    <p class="text-gray-600 mb-2 text-sm">Glissez vos photos ici ou</p>
-                    <Button variant="secondary" size="sm" @click="triggerFileInput">
-                        Parcourir
-                    </Button>
-                </div>
-
-                <!-- Upload Progress -->
-                <UploadProgress
-                    v-if="isUploading || (uploadProgress && !uploadProgress.isComplete)"
-                    :progress="uploadProgress"
-                    :show-file-list="true"
-                    :show-cancel-button="true"
-                    @cancel="handleCancelUpload"
-                />
-
-                <!-- Loading State for Photos -->
-                <div v-if="isLoadingPhotos" class="flex items-center justify-center py-16">
-                    <svg class="w-10 h-10 text-gold animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                </div>
-
-                <!-- Selection Mode Toggle -->
-                <div v-if="!isLoadingPhotos && galleryPhotos.length > 0" class="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                    <span class="text-sm text-gray-600">{{ galleryPhotos.length }} photo(s)</span>
-                    <button
-                        @click="toggleSelectionMode"
-                        :class="['px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-1', selectionMode ? 'bg-blue-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200']"
-                    >
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                        </svg>
-                        {{ selectionMode ? 'Annuler' : 'Selection' }}
-                    </button>
-                </div>
-
-                <!-- Selection Actions Bar -->
-                <Transition name="slide-down">
-                    <div v-if="selectionMode && selectedPhotos.length > 0" class="flex flex-wrap items-center justify-between gap-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-                        <div class="flex items-center gap-3">
-                            <span class="text-sm font-medium text-blue-800">
-                                {{ selectedPhotos.length }} photo(s) selectionnee(s)
-                            </span>
-                            <button
-                                @click="selectAllPhotos"
-                                class="text-sm text-blue-600 hover:text-blue-800 underline"
-                            >
-                                Tout selectionner ({{ galleryPhotos.length }})
-                            </button>
-                            <button
-                                @click="clearSelection"
-                                class="text-sm text-gray-500 hover:text-gray-700 underline"
-                            >
-                                Deselectionner
-                            </button>
-                        </div>
-                        <button
-                            @click="confirmBulkDelete"
-                            class="px-4 py-2 text-sm font-medium bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center gap-1"
-                            :disabled="isBulkProcessing"
-                        >
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                            Supprimer
-                        </button>
-                    </div>
-                </Transition>
-
-                <!-- Photos Grid -->
-                <div v-if="!isLoadingPhotos" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                    <div
-                        v-for="(photo, index) in galleryPhotos"
-                        :key="photo.id"
-                        class="relative group aspect-square rounded-lg overflow-hidden bg-gray-100 cursor-pointer"
-                        :class="{
-                            'ring-3 ring-blue-500': selectionMode && selectedPhotos.includes(photo.id)
-                        }"
-                        @click="selectionMode ? togglePhotoSelection(photo.id) : openLightbox(index)"
-                    >
-                        <img
-                            :src="photo.preview_url || photo.display_url || photo.file_path"
-                            :alt="photo.title"
-                            class="w-full h-full object-cover"
-                        />
-
-                        <!-- Selection checkbox -->
-                        <div
-                            v-if="selectionMode"
-                            class="absolute top-2 left-2 z-10"
-                            @click.stop="togglePhotoSelection(photo.id)"
-                        >
-                            <div
-                                :class="[
-                                    'w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all',
-                                    selectedPhotos.includes(photo.id)
-                                        ? 'bg-blue-500 border-blue-500'
-                                        : 'bg-white/80 border-gray-300 hover:border-blue-400'
-                                ]"
-                            >
-                                <svg v-if="selectedPhotos.includes(photo.id)" class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
-                                </svg>
-                            </div>
-                        </div>
-
-                        <!-- Current thumbnail indicator -->
-                        <div
-                            v-if="selectedGallery?.thumbnail_photo_id === photo.id"
-                            class="absolute top-2 right-2 px-2 py-1 bg-gold text-white text-xs font-medium rounded-lg flex items-center gap-1 z-10"
-                        >
-                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                            </svg>
-                            Miniature
-                        </div>
-
-                        <!-- Hover actions (only in normal mode) -->
-                        <div v-if="!selectionMode" class="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
-                            <button
-                                @click.stop="setAsThumbnail(photo.id)"
-                                class="p-2 bg-gold rounded-lg text-white hover:bg-gold/80"
-                                :title="selectedGallery?.thumbnail_photo_id === photo.id ? 'Retirer comme miniature' : 'Definir comme miniature'"
-                            >
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                                </svg>
-                            </button>
-                            <button
-                                @click.stop="confirmDeletePhoto(photo.id)"
-                                class="p-2 bg-red-500 rounded-lg text-white hover:bg-red-600"
-                                title="Supprimer"
-                            >
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                            </button>
-                        </div>
-
-                        <!-- Selection overlay -->
-                        <div v-if="selectionMode && selectedPhotos.includes(photo.id)" class="absolute inset-0 bg-blue-500/20 pointer-events-none" />
-                    </div>
-                </div>
-
-                <div v-if="!isLoadingPhotos && galleryPhotos.length === 0 && !selectedGalleryIsParent" class="py-12 text-center text-gray-500">
-                    Aucune photo dans cette galerie
-                </div>
-
-                <!-- Parent gallery info -->
-                <div v-if="selectedGalleryIsParent" class="py-12 text-center text-gray-500">
-                    <svg class="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                    </svg>
-                    <p class="mb-2">Cette galerie est un conteneur de sous-galeries.</p>
-                    <p class="text-sm">Les photos se trouvent dans les sous-galeries. Fermez cette modale et cliquez sur "Sous-galeries" pour y accéder.</p>
-                </div>
-            </div>
-
-            <template #footer>
-                <Button variant="secondary" @click="showPhotosModal = false">Fermer</Button>
-            </template>
-        </Modal>
+        <!-- Photos Manager -->
+        <PhotosManager
+            v-model="showPhotosModal"
+            :gallery-id="selectedGallery?.id || null"
+            :gallery-title="selectedGallery?.title || 'Photos'"
+            :is-event-gallery="true"
+            :hide-upload="selectedGalleryIsParent"
+            :thumbnail-photo-id="selectedGallery?.thumbnail_photo_id || null"
+            @photos-changed="fetchGalleries"
+            @thumbnail-changed="handleThumbnailChanged"
+        />
 
         <!-- Delete Gallery Confirmation Modal -->
         <Modal v-model="showDeleteModal" title="Confirmer la suppression" size="sm">
@@ -773,69 +500,6 @@
             <template #footer>
                 <Button variant="secondary" @click="showDeleteCategoryModal = false">Annuler</Button>
                 <Button variant="danger" :loading="isDeletingCategory" @click="deleteCategory">Supprimer</Button>
-            </template>
-        </Modal>
-
-        <!-- Single Photo Delete Confirmation Modal -->
-        <Modal v-model="showDeletePhotoModal" title="Supprimer la photo" size="sm">
-            <div class="space-y-4">
-                <!-- Preview -->
-                <div v-if="photoToDelete" class="flex justify-center">
-                    <img
-                        :src="photoToDelete.thumbnail_url || photoToDelete.preview_url || photoToDelete.display_url || photoToDelete.file_path"
-                        :alt="photoToDelete.title || 'Photo'"
-                        class="h-32 rounded-lg object-cover"
-                    />
-                </div>
-                <p class="text-gray-600 text-center">
-                    Etes-vous sur de vouloir supprimer cette photo ?
-                    Cette action est irreversible.
-                </p>
-            </div>
-
-            <template #footer>
-                <Button variant="secondary" @click="showDeletePhotoModal = false">Annuler</Button>
-                <Button variant="danger" :loading="isDeletingPhoto" @click="deletePhoto">Supprimer</Button>
-            </template>
-        </Modal>
-
-        <!-- Bulk Delete Confirmation Modal -->
-        <Modal v-model="showBulkDeleteModal" title="Supprimer les photos selectionnées" size="sm">
-            <div class="space-y-4">
-                <div class="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 space-y-1">
-                    <p class="font-medium flex items-center gap-1.5">
-                        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                        Cette action est irreversible
-                    </p>
-                    <p class="ml-5">{{ selectedPhotos.length }} photo(s) seront définitivement supprimées.</p>
-                </div>
-
-                <div v-if="selectedPhotos.length >= 5">
-                    <label class="block text-sm text-gray-600 mb-1.5">
-                        Tapez <strong class="text-gray-900">{{ selectedPhotos.length }}</strong> pour confirmer :
-                    </label>
-                    <input
-                        v-model="bulkDeleteConfirmInput"
-                        type="text"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-red-500 focus:border-red-500"
-                        placeholder="Nombre de photos"
-                        @keyup.enter="bulkDeleteConfirmMatches && bulkDeletePhotos()"
-                    />
-                </div>
-            </div>
-
-            <template #footer>
-                <Button variant="secondary" @click="showBulkDeleteModal = false">Annuler</Button>
-                <Button
-                    variant="danger"
-                    :loading="isBulkProcessing"
-                    :disabled="selectedPhotos.length >= 5 && !bulkDeleteConfirmMatches"
-                    @click="bulkDeletePhotos"
-                >
-                    Supprimer ({{ selectedPhotos.length }})
-                </Button>
             </template>
         </Modal>
 
@@ -915,45 +579,7 @@
                 />
             </div>
         </Teleport>
-
-        <!-- Lightbox -->
-        <Teleport to="body">
-            <div
-                v-if="lightboxOpen"
-                class="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center"
-                @click="lightboxOpen = false"
-            >
-                <button @click="lightboxOpen = false" class="absolute top-4 right-4 p-2 text-white/70 hover:text-white z-10">
-                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-
-                <button v-if="lightboxIndex > 0" @click.stop="lightboxIndex--" class="absolute left-4 p-3 text-white/70 hover:text-white bg-black/30 hover:bg-black/50 rounded-full">
-                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                    </svg>
-                </button>
-                <button v-if="lightboxIndex < galleryPhotos.length - 1" @click.stop="lightboxIndex++" class="absolute right-4 p-3 text-white/70 hover:text-white bg-black/30 hover:bg-black/50 rounded-full">
-                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                    </svg>
-                </button>
-
-                <img
-                    v-if="currentLightboxPhoto"
-                    :src="currentLightboxPhoto.preview_url || currentLightboxPhoto.display_url || currentLightboxPhoto.file_path"
-                    :alt="currentLightboxPhoto.title || 'Photo'"
-                    class="max-h-[90vh] max-w-[90vw] object-contain"
-                    @click.stop
-                />
-
-                <div class="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-4 px-4 py-2 bg-black/50 rounded-full text-white text-sm">
-                    <span>{{ lightboxIndex + 1 }} / {{ galleryPhotos.length }}</span>
-                </div>
-            </div>
-        </Teleport>
-    </div>
+</div>
 </template>
 
 <script setup lang="ts">
@@ -961,12 +587,11 @@ import {ref, reactive, computed, onMounted} from 'vue'
 import AdminHeader from '@/components/admin/AdminHeader.vue'
 import Modal from '@/components/admin/ui/Modal.vue'
 import Button from '@/components/admin/ui/Button.vue'
-import FormField from '@/components/admin/ui/FormField.vue'
-import UploadProgress from '@/components/admin/ui/UploadProgress.vue'
+import EventGalleryFormModal from '@/components/admin/EventGalleryFormModal.vue'
+import PhotosManager from '@/components/admin/PhotosManager.vue'
 import {adminApi} from '@/services/adminApi'
-import {useChunkedUpload} from '@/composables/useChunkedUpload'
 import {useToast} from '@/composables/useToast'
-import type {AdminGallery, AdminPhoto, EventGalleryFormData, EventCategory, ProductType} from '@/types/admin'
+import type {AdminGallery, AdminPhoto, EventGalleryFormData, EventCategory} from '@/types/admin'
 
 interface EventGalleryWithCover extends AdminGallery {
     cover_photo?: AdminPhoto
@@ -984,32 +609,16 @@ const childGalleries = ref<EventGalleryWithCover[]>([])
 const currentParent = ref<EventGalleryWithCover | null>(null)
 const categories = ref<EventCategory[]>([])
 const isLoading = ref(true)
-const isLoadingPhotos = ref(false)
-const galleryPhotos = ref<AdminPhoto[]>([])
 const showFormModal = ref(false)
 const showPhotosModal = ref(false)
 const showDeleteModal = ref(false)
-const showBulkDeleteModal = ref(false)
 const showCategoryModal = ref(false)
 const showDeleteCategoryModal = ref(false)
-const isEditing = ref(false)
-const isSaving = ref(false)
 const isDeleting = ref(false)
-const isDragging = ref(false)
-const fileInput = ref<HTMLInputElement | null>(null)
-const editingId = ref<string | null>(null)
+const editingGallery = ref<EventGalleryWithCover | null>(null)
 const selectedGallery = ref<EventGalleryWithCover | null>(null)
 const galleryToDelete = ref<EventGalleryWithCover | null>(null)
 const deleteConfirmInput = ref('')
-const lightboxOpen = ref(false)
-const lightboxIndex = ref(0)
-const selectionMode = ref(false)
-const selectedPhotos = ref<string[]>([])
-const isBulkProcessing = ref(false)
-const bulkDeleteConfirmInput = ref('')
-const showDeletePhotoModal = ref(false)
-const photoToDelete = ref<AdminPhoto | null>(null)
-const isDeletingPhoto = ref(false)
 
 // Thumbnail picker for parent galleries
 const showThumbnailPicker = ref(false)
@@ -1027,27 +636,7 @@ const categoryForm = reactive({
     description: '',
 })
 
-// Chunked upload
-const {
-    files: _uploadFiles,
-    isUploading,
-    progress: uploadProgress,
-    completedPhotos: _completedPhotos,
-    upload: chunkedUpload,
-    cancel: cancelUpload,
-    reset: resetUpload
-} = useChunkedUpload()
-
 const toast = useToast()
-
-const form = reactive<EventGalleryFormData>({
-    title: '',
-    description: '',
-    event_date: '',
-    event_link: '',
-    event_category_id: '',
-    parent_id: null,
-})
 
 // Galleries grouped by category
 const galleriesByCategory = computed<GallerySection[]>(() => {
@@ -1116,169 +705,21 @@ const deleteConfirmMatches = computed(() => {
     return deleteConfirmInput.value.trim() === galleryToDelete.value.title.trim()
 })
 
-const bulkDeleteConfirmMatches = computed(() => {
-    return bulkDeleteConfirmInput.value.trim() === String(selectedPhotos.value.length)
-})
-
-const formModalTitle = computed(() => {
-    if (isEditing.value) {
-        return currentParent.value ? 'Modifier la sous-galerie' : 'Modifier l\'événement'
-    }
-    return currentParent.value ? 'Nouvelle sous-galerie' : 'Nouvel événement'
-})
-
-// Product types configuration
-const DEFAULT_PRODUCT_TYPES: Record<ProductType, {label: string; price: number}> = {
-    digital: {label: 'Photo numerique', price: 13},
-    print_10x15: {label: 'Impression 10x15', price: 10},
-    print_15x20: {label: 'Impression 15x20', price: 15},
-}
-
-interface TierState {
-    min_quantity: number
-    unit_price: number
-}
-
-const productTypesState = ref<Record<ProductType, {is_enabled: boolean; price: number; tiers: TierState[]}>>({
-    digital: {is_enabled: true, price: 13, tiers: []},
-    print_10x15: {is_enabled: true, price: 10, tiers: []},
-    print_15x20: {is_enabled: true, price: 15, tiers: []},
-})
-
-const productTypesError = ref('')
-
-const productTypesList = computed(() => {
-    return (Object.keys(DEFAULT_PRODUCT_TYPES) as ProductType[]).map(key => ({
-        key,
-        label: DEFAULT_PRODUCT_TYPES[key].label,
-        is_enabled: productTypesState.value[key].is_enabled,
-        price: productTypesState.value[key].price,
-        tiers: productTypesState.value[key].tiers,
-    }))
-})
-
-function toggleProductType(key: ProductType) {
-    productTypesState.value[key].is_enabled = !productTypesState.value[key].is_enabled
-    productTypesError.value = ''
-}
-
-function updateProductPrice(key: ProductType, value: string) {
-    const num = parseFloat(value)
-    if (!isNaN(num) && num > 0) {
-        productTypesState.value[key].price = num
-    }
-}
-
-function resetProductTypes() {
-    productTypesState.value = {
-        digital: {is_enabled: true, price: DEFAULT_PRODUCT_TYPES.digital.price, tiers: []},
-        print_10x15: {is_enabled: true, price: DEFAULT_PRODUCT_TYPES.print_10x15.price, tiers: []},
-        print_15x20: {is_enabled: true, price: DEFAULT_PRODUCT_TYPES.print_15x20.price, tiers: []},
-    }
-    productTypesError.value = ''
-}
-
-function loadProductTypesFromGallery(gallery: EventGalleryWithCover) {
-    const configs = gallery.gallery_product_types
-    if (!configs || configs.length === 0) {
-        resetProductTypes()
-        return
-    }
-
-    const state: Record<string, {is_enabled: boolean; price: number; tiers: TierState[]}> = {}
-    for (const key of Object.keys(DEFAULT_PRODUCT_TYPES) as ProductType[]) {
-        const config = configs.find(c => c.product_type === key)
-        const tiers: TierState[] = (config?.pack_tiers ?? []).map(t => ({
-            min_quantity: t.min_quantity,
-            unit_price: Number(t.unit_price),
-        }))
-        state[key] = {
-            is_enabled: config ? config.is_enabled : false,
-            price: config?.price !== null && config?.price !== undefined
-                ? Number(config.price)
-                : DEFAULT_PRODUCT_TYPES[key].price,
-            tiers,
-        }
-    }
-    productTypesState.value = state as Record<ProductType, {is_enabled: boolean; price: number; tiers: TierState[]}>
-    productTypesError.value = ''
-}
-
-function buildProductTypesPayload() {
-    return (Object.keys(productTypesState.value) as ProductType[]).map(key => ({
-        product_type: key,
-        is_enabled: productTypesState.value[key].is_enabled,
-        price: productTypesState.value[key].price !== DEFAULT_PRODUCT_TYPES[key].price
-            ? productTypesState.value[key].price
-            : null,
-        tiers: productTypesState.value[key].tiers
-            .filter(t => t.min_quantity >= 2 && t.unit_price > 0)
-            .map(t => ({min_quantity: t.min_quantity, unit_price: t.unit_price})),
-    }))
-}
-
-function addTier(key: ProductType) {
-    if (productTypesState.value[key].tiers.length >= 3) return
-    productTypesState.value[key].tiers.push({min_quantity: 2, unit_price: 0})
-}
-
-function removeTier(key: ProductType, index: number) {
-    productTypesState.value[key].tiers.splice(index, 1)
-}
-
-function updateTierQuantity(key: ProductType, index: number, value: string) {
-    const num = parseInt(value)
-    if (!isNaN(num) && num >= 2) {
-        productTypesState.value[key].tiers[index].min_quantity = num
-    }
-}
-
-function updateTierPrice(key: ProductType, index: number, value: string) {
-    const num = parseFloat(value)
-    if (!isNaN(num) && num > 0) {
-        productTypesState.value[key].tiers[index].unit_price = num
-    }
-}
-
-const currentLightboxPhoto = computed(() => galleryPhotos.value[lightboxIndex.value] || null)
-
 function formatDate(dateStr: string): string {
     return new Date(dateStr).toLocaleDateString('fr-FR', {day: 'numeric', month: 'short', year: 'numeric'})
 }
 
-function resetForm() {
-    form.title = ''
-    form.description = ''
-    form.event_date = ''
-    form.event_link = ''
-    form.event_category_id = ''
-    form.parent_id = null
-    resetProductTypes()
-}
-
 function openCreateModal() {
-    resetForm()
-    if (currentParent.value) {
-        form.parent_id = currentParent.value.id
-    }
-    isEditing.value = false
-    editingId.value = null
+    editingGallery.value = null
     showFormModal.value = true
 }
 
 function openEditModal(gallery: EventGalleryWithCover) {
-    form.title = gallery.title
-    form.description = gallery.description || ''
-    form.event_date = gallery.event_date || ''
-    form.event_link = gallery.event_link || ''
-    form.event_category_id = gallery.event_category_id || ''
-    loadProductTypesFromGallery(gallery)
-    isEditing.value = true
-    editingId.value = gallery.id
+    editingGallery.value = gallery
     showFormModal.value = true
 }
 
-async function openGallery(gallery: EventGalleryWithCover) {
+function openGallery(gallery: EventGalleryWithCover) {
     // If it's a parent gallery, drill-down instead of opening photos modal
     if ((gallery.children_count ?? 0) > 0) {
         enterDrillDown(gallery)
@@ -1286,28 +727,28 @@ async function openGallery(gallery: EventGalleryWithCover) {
     }
 
     selectedGallery.value = gallery
-    galleryPhotos.value = []
-    isLoadingPhotos.value = true
     showPhotosModal.value = true
-    selectionMode.value = false
-    selectedPhotos.value = []
+}
 
+function handleThumbnailChanged(photoId: string | null) {
+    if (!selectedGallery.value) return
+    selectedGallery.value.thumbnail_photo_id = photoId
+
+    // Update gallery in list
+    const galleryIndex = galleries.value.findIndex(g => g.id === selectedGallery.value?.id)
+    if (galleryIndex !== -1) {
+        galleries.value[galleryIndex].thumbnail_photo_id = photoId
+    }
+}
+
+async function togglePublish(gallery: EventGalleryWithCover) {
+    const newStatus = gallery.is_published === false ? true : false
     try {
-        const response = await adminApi.getEventGallery(gallery.id) as { success: boolean; data: EventGalleryWithCover; is_parent?: boolean }
-        if (response.success && response.data) {
-            selectedGallery.value = response.data
-            if (response.is_parent) {
-                // Gallery became a parent since last fetch, update count
-                selectedGallery.value.children_count = response.data.children?.length || 0
-                galleryPhotos.value = []
-            } else {
-                galleryPhotos.value = response.data.photos || []
-            }
-        }
+        await adminApi.updateEventGallery(gallery.id, { is_published: newStatus } as EventGalleryFormData)
+        gallery.is_published = newStatus
+        toast.success('Succes', newStatus ? 'Evenement publie' : 'Evenement depublie')
     } catch {
-        toast.error('Erreur', 'Impossible de charger la galerie')
-    } finally {
-        isLoadingPhotos.value = false
+        toast.error('Erreur', 'Impossible de modifier le statut')
     }
 }
 
@@ -1340,45 +781,12 @@ async function fetchCategories() {
     }
 }
 
-function triggerFileInput() {
-    fileInput.value?.click()
-}
-
-async function saveGallery() {
-    const hasEnabled = Object.values(productTypesState.value).some(pt => pt.is_enabled)
-    if (!hasEnabled) {
-        productTypesError.value = 'Au moins un type de produit doit etre actif.'
-        return
-    }
-
-    isSaving.value = true
-    try {
-        const payload = {
-            ...form,
-            event_category_id: form.event_category_id || undefined,
-            parent_id: form.parent_id || undefined,
-            product_types: buildProductTypesPayload(),
-        }
-        if (isEditing.value && editingId.value) {
-            await adminApi.updateEventGallery(editingId.value, payload)
-        } else {
-            await adminApi.createEventGallery(payload)
-        }
-        showFormModal.value = false
-        const label = currentParent.value ? 'Sous-galerie' : 'Événement'
-        toast.success(isEditing.value ? `${label} modifié` : `${label} créé`)
-
-        if (currentParent.value) {
-            await fetchChildren(currentParent.value.id)
-            // Also refresh parent to update children_count
-            await fetchGalleries()
-        } else {
-            await fetchGalleries()
-        }
-    } catch {
-        toast.error('Erreur', 'Impossible de sauvegarder')
-    } finally {
-        isSaving.value = false
+async function onGallerySaved() {
+    if (currentParent.value) {
+        await fetchChildren(currentParent.value.id)
+        await fetchGalleries()
+    } else {
+        await fetchGalleries()
     }
 }
 
@@ -1604,157 +1012,6 @@ async function swapCategoryOrder(fromIndex: number, toIndex: number) {
     }
 }
 
-function handleDrop(event: DragEvent) {
-    isDragging.value = false
-    const files = Array.from(event.dataTransfer?.files || [])
-    uploadPhotos(files)
-}
-
-function handleFileSelect(event: Event) {
-    const target = event.target as HTMLInputElement
-    const files = Array.from(target.files || [])
-    uploadPhotos(files)
-}
-
-async function uploadPhotos(files: File[]) {
-    if (!selectedGallery.value || files.length === 0) return
-
-    try {
-        const result = await chunkedUpload(selectedGallery.value.id, files)
-
-        if (result.completed > 0) {
-            await refreshGalleryPhotos()
-        }
-    } catch {
-        toast.error('Erreur', 'Erreur lors de l\'upload des photos')
-    }
-}
-
-async function refreshGalleryPhotos() {
-    if (!selectedGallery.value) return
-
-    try {
-        const response = await adminApi.getEventGallery(selectedGallery.value.id)
-        if (response.success && response.data) {
-            galleryPhotos.value = response.data.photos || []
-        }
-    } catch {
-        toast.error('Erreur', 'Impossible de rafraîchir les photos')
-    }
-}
-
-function handleCancelUpload() {
-    cancelUpload()
-    resetUpload()
-}
-
-function confirmDeletePhoto(photoId: string) {
-    photoToDelete.value = galleryPhotos.value.find(p => p.id === photoId) || null
-    showDeletePhotoModal.value = true
-}
-
-async function deletePhoto() {
-    if (!photoToDelete.value) return
-    isDeletingPhoto.value = true
-    const photoId = photoToDelete.value.id
-    try {
-        await adminApi.deletePhoto(photoId)
-        galleryPhotos.value = galleryPhotos.value.filter(p => p.id !== photoId)
-        if (selectedGallery.value?.thumbnail_photo_id === photoId) {
-            selectedGallery.value.thumbnail_photo_id = null
-        }
-        showDeletePhotoModal.value = false
-        photoToDelete.value = null
-        toast.success('Photo supprimée')
-    } catch {
-        toast.error('Erreur', 'Impossible de supprimer la photo')
-    } finally {
-        isDeletingPhoto.value = false
-    }
-}
-
-async function setAsThumbnail(photoId: string) {
-    if (!selectedGallery.value) return
-
-    try {
-        const newThumbnailId = selectedGallery.value.thumbnail_photo_id === photoId ? null : photoId
-        const response = await adminApi.setEventThumbnail(selectedGallery.value.id, newThumbnailId)
-
-        if (response.success) {
-            selectedGallery.value.thumbnail_photo_id = newThumbnailId
-
-            const galleryIndex = galleries.value.findIndex(g => g.id === selectedGallery.value?.id)
-            if (galleryIndex !== -1) {
-                galleries.value[galleryIndex].thumbnail_photo_id = newThumbnailId
-                const thumbnailPhoto = newThumbnailId
-                    ? galleryPhotos.value.find(p => p.id === newThumbnailId)
-                    : galleryPhotos.value[0]
-                if (thumbnailPhoto) {
-                    galleries.value[galleryIndex].cover_photo = thumbnailPhoto
-                }
-            }
-        }
-    } catch {
-        toast.error('Erreur', 'Impossible de modifier la miniature')
-    }
-}
-
-function openLightbox(index: number) {
-    lightboxIndex.value = index
-    lightboxOpen.value = true
-}
-
-// Selection mode functions
-function toggleSelectionMode() {
-    selectionMode.value = !selectionMode.value
-    if (!selectionMode.value) {
-        selectedPhotos.value = []
-    }
-}
-
-function togglePhotoSelection(photoId: string) {
-    const index = selectedPhotos.value.indexOf(photoId)
-    if (index === -1) {
-        selectedPhotos.value.push(photoId)
-    } else {
-        selectedPhotos.value.splice(index, 1)
-    }
-}
-
-function selectAllPhotos() {
-    selectedPhotos.value = galleryPhotos.value.map(p => p.id)
-}
-
-function clearSelection() {
-    selectedPhotos.value = []
-}
-
-function confirmBulkDelete() {
-    if (selectedPhotos.value.length === 0) return
-    bulkDeleteConfirmInput.value = ''
-    showBulkDeleteModal.value = true
-}
-
-async function bulkDeletePhotos() {
-    if (selectedPhotos.value.length === 0) return
-    isBulkProcessing.value = true
-
-    try {
-        for (const photoId of selectedPhotos.value) {
-            await adminApi.deletePhoto(photoId)
-        }
-        galleryPhotos.value = galleryPhotos.value.filter(p => !selectedPhotos.value.includes(p.id))
-        toast.success('Photos supprimées')
-        selectedPhotos.value = []
-        selectionMode.value = false
-        showBulkDeleteModal.value = false
-    } catch {
-        toast.error('Erreur', 'Impossible de supprimer les photos')
-    } finally {
-        isBulkProcessing.value = false
-    }
-}
-
 onMounted(async () => {
     await fetchCategories()
     await fetchGalleries()
@@ -1762,16 +1019,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.slide-down-enter-active,
-.slide-down-leave-active{
-    transition: all 0.3s ease;
-}
-
-.slide-down-enter-from,
-.slide-down-leave-to{
-    opacity: 0;
-    transform: translateY(-10px);
-}
 
 .line-clamp-2{
     display: -webkit-box;

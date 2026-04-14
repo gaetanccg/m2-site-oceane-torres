@@ -3,6 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\GenerateAvailabilitySlotsRequest;
+use App\Http\Requests\Admin\StoreAvailabilityPatternRequest;
+use App\Http\Requests\Admin\StoreAvailabilitySlotRequest;
+use App\Http\Requests\Admin\UpdateAvailabilityPatternRequest;
+use App\Http\Requests\Admin\UpdateAvailabilitySlotRequest;
 use App\Models\AvailabilityPattern;
 use App\Models\AvailabilitySlot;
 use Carbon\Carbon;
@@ -61,15 +66,9 @@ class AvailabilityController extends Controller
         ]);
     }
 
-    public function storeSlot(Request $request): JsonResponse
+    public function storeSlot(StoreAvailabilitySlotRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'date' => ['required', 'date'],
-            'start_time' => ['required', 'date_format:H:i'],
-            'end_time' => ['required', 'date_format:H:i', 'after:start_time'],
-            'duration_minutes' => ['nullable', 'integer', 'min:15'],
-            'notes' => ['nullable', 'string'],
-        ]);
+        $validated = $request->validated();
 
         // Calculer la duree si non fournie
         if (empty($validated['duration_minutes'])) {
@@ -89,7 +88,7 @@ class AvailabilityController extends Controller
         ], 201);
     }
 
-    public function updateSlot(Request $request, AvailabilitySlot $slot): JsonResponse
+    public function updateSlot(UpdateAvailabilitySlotRequest $request, AvailabilitySlot $slot): JsonResponse
     {
         if ($slot->isBooked()) {
             return response()->json([
@@ -97,14 +96,7 @@ class AvailabilityController extends Controller
             ], 422);
         }
 
-        $validated = $request->validate([
-            'date' => ['sometimes', 'date'],
-            'start_time' => ['sometimes', 'date_format:H:i'],
-            'end_time' => ['sometimes', 'date_format:H:i'],
-            'duration_minutes' => ['nullable', 'integer', 'min:15'],
-            'status' => ['sometimes', 'in:available,unavailable'],
-            'notes' => ['nullable', 'string'],
-        ]);
+        $validated = $request->validated();
 
         $slot->update($validated);
 
@@ -143,20 +135,9 @@ class AvailabilityController extends Controller
         ]);
     }
 
-    public function storePattern(Request $request): JsonResponse
+    public function storePattern(StoreAvailabilityPatternRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'days_of_week' => ['required', 'array', 'min:1'],
-            'days_of_week.*' => ['integer', 'min:1', 'max:7'],
-            'start_time' => ['required', 'date_format:H:i'],
-            'end_time' => ['required', 'date_format:H:i', 'after:start_time'],
-            'slot_duration_minutes' => ['required', 'integer', 'min:15'],
-            'repeat_every_weeks' => ['required', 'integer', 'min:1', 'max:12'],
-            'start_date' => ['required', 'date'],
-            'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
-            'is_active' => ['boolean'],
-        ]);
+        $validated = $request->validated();
 
         $pattern = AvailabilityPattern::create($validated);
 
@@ -167,20 +148,9 @@ class AvailabilityController extends Controller
         ], 201);
     }
 
-    public function updatePattern(Request $request, AvailabilityPattern $pattern): JsonResponse
+    public function updatePattern(UpdateAvailabilityPatternRequest $request, AvailabilityPattern $pattern): JsonResponse
     {
-        $validated = $request->validate([
-            'name' => ['sometimes', 'string', 'max:255'],
-            'days_of_week' => ['sometimes', 'array', 'min:1'],
-            'days_of_week.*' => ['integer', 'min:1', 'max:7'],
-            'start_time' => ['sometimes', 'date_format:H:i'],
-            'end_time' => ['sometimes', 'date_format:H:i'],
-            'slot_duration_minutes' => ['sometimes', 'integer', 'min:15'],
-            'repeat_every_weeks' => ['sometimes', 'integer', 'min:1', 'max:12'],
-            'start_date' => ['sometimes', 'date'],
-            'end_date' => ['nullable', 'date'],
-            'is_active' => ['boolean'],
-        ]);
+        $validated = $request->validated();
 
         $pattern->update($validated);
 
@@ -200,11 +170,9 @@ class AvailabilityController extends Controller
         ]);
     }
 
-    public function generateSlots(Request $request, AvailabilityPattern $pattern): JsonResponse
+    public function generateSlots(GenerateAvailabilitySlotsRequest $request, AvailabilityPattern $pattern): JsonResponse
     {
-        $validated = $request->validate([
-            'until_date' => ['required', 'date', 'after:today'],
-        ]);
+        $validated = $request->validated();
 
         $untilDate = Carbon::parse($validated['until_date']);
         $slots = $pattern->generateSlots($untilDate);
