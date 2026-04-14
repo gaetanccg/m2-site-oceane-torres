@@ -16,7 +16,7 @@
 Cette commande permet de vérifier l'état d'une commande et ses données associées.
 
 ```bash
-sudo docker exec -it oceane-laravel php artisan tinker --execute="
+sudo docker exec -it api-php php artisan tinker --execute="
   \$o = App\Models\Order::where('order_number','OT-2026-xxxxx')->first();
   echo 'Status: '.\$o->status.PHP_EOL;
   echo 'Paid at: '.\$o->paid_at.PHP_EOL;
@@ -50,7 +50,7 @@ Cette commande effectue les 3 étapes manquantes :
 3. Envoi de l'email de confirmation
 
 ```bash
-sudo docker exec -it oceane-laravel php artisan tinker --execute="
+sudo docker exec -it api-php php artisan tinker --execute="
   \$order = App\Models\Order::where('order_number','OT-2026-xxxxx')->first();
   \$order->load('items.photo');
 
@@ -87,13 +87,13 @@ sudo docker exec -it oceane-laravel php artisan tinker --execute="
 Retraite toutes les photos existantes (preview + thumbnail avec nouveaux watermarks). Les anciens fichiers preview/thumbnail deviennent orphelins sur MinIO.
 
 ```bash
-sudo docker exec -it oceane-laravel php artisan photos:process-existing --force
+sudo docker exec -it api-php php artisan photos:process-existing --force
 ```
 
 ### Regénérer les watermarks d'une seule galerie
 
 ```bash
-sudo docker exec -it oceane-laravel php artisan photos:process-existing --force --gallery=ID_DE_LA_GALERIE
+sudo docker exec -it api-php php artisan photos:process-existing --force --gallery=ID_DE_LA_GALERIE
 ```
 
 ### Regénérer uniquement les photos non traitées
@@ -101,7 +101,7 @@ sudo docker exec -it oceane-laravel php artisan photos:process-existing --force 
 Sans `--force`, ne traite que les photos où `is_processed = false`.
 
 ```bash
-sudo docker exec -it oceane-laravel php artisan photos:process-existing
+sudo docker exec -it api-php php artisan photos:process-existing
 ```
 
 **Options :**
@@ -120,19 +120,19 @@ Liste les fichiers orphelins sans rien supprimer. Détecte :
 2. **Fichiers orphelins** — anciens preview/thumbnail non référencés après un `--force`
 
 ```bash
-sudo docker exec -it oceane-laravel php artisan storage:clean-orphans
+sudo docker exec -it api-php php artisan storage:clean-orphans
 ```
 
 ### Supprimer les fichiers orphelins
 
 ```bash
-sudo docker exec -it oceane-laravel php artisan storage:clean-orphans --delete
+sudo docker exec -it api-php php artisan storage:clean-orphans --delete
 ```
 
 ### Nettoyer une seule galerie
 
 ```bash
-sudo docker exec -it oceane-laravel php artisan storage:clean-orphans --gallery=ID_DE_LA_GALERIE --delete
+sudo docker exec -it api-php php artisan storage:clean-orphans --gallery=ID_DE_LA_GALERIE --delete
 ```
 
 **Note :** Toujours lancer sans `--delete` d'abord pour vérifier ce qui sera supprimé.
@@ -142,5 +142,5 @@ sudo docker exec -it oceane-laravel php artisan storage:clean-orphans --gallery=
 ## 📝 Notes importantes
 
 - Les commandes utilisent `docker exec` pour accéder au conteneur Laravel
-- Le conteneur est nommé `oceane-laravel`
+- Le conteneur est nommé `api-php`
 - Les commandes utilisent `php artisan tinker` pour exécuter du code PHP directement

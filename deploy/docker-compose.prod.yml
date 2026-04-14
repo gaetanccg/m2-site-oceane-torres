@@ -13,7 +13,7 @@ services:
       context: ./api
       dockerfile: Dockerfile
       target: development
-    container_name: oceane-laravel
+    container_name: api-php
     restart: always
     working_dir: /var/www
     dns:
@@ -55,7 +55,7 @@ services:
       context: ./api
       dockerfile: Dockerfile
       target: development
-    container_name: oceane-queue
+    container_name: api-queue
     restart: always
     working_dir: /var/www
     dns:
@@ -92,7 +92,7 @@ services:
       context: ./api
       dockerfile: Dockerfile
       target: development
-    container_name: oceane-scheduler
+    container_name: api-scheduler
     restart: always
     working_dir: /var/www
     dns:
@@ -121,7 +121,7 @@ services:
   # ----------------------------
   nginx:
     image: nginx:alpine
-    container_name: oceane-nginx
+    container_name: api-nginx
     restart: always
     ports:
       - "8080:80"

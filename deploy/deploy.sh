@@ -68,18 +68,18 @@ docker compose -f "$COMPOSE_FILE" up -d
 echo ""
 echo "5/6 - Waiting for containers + Laravel setup..."
 sleep 15
-docker exec oceane-laravel composer install --no-dev --optimize-autoloader --no-interaction
-docker exec oceane-laravel php artisan migrate --force
-docker exec oceane-laravel php artisan storage:link || true
-docker exec oceane-laravel php artisan config:cache
-docker exec oceane-laravel php artisan route:cache
-docker exec oceane-laravel php artisan view:cache
+docker exec api-php composer install --no-dev --optimize-autoloader --no-interaction
+docker exec api-php php artisan migrate --force
+docker exec api-php php artisan storage:link || true
+docker exec api-php php artisan config:cache
+docker exec api-php php artisan route:cache
+docker exec api-php php artisan view:cache
 
 # Etape 6: Permissions
 echo ""
 echo "6/6 - Setting permissions..."
-docker exec oceane-laravel chmod -R 775 storage bootstrap/cache
-docker exec oceane-laravel chown -R www-data:www-data storage bootstrap/cache
+docker exec api-php chmod -R 775 storage bootstrap/cache
+docker exec api-php chown -R www-data:www-data storage bootstrap/cache
 
 echo ""
 echo "=========================================="
