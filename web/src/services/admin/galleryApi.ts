@@ -3,7 +3,6 @@ import type {
     AdminApiResponse,
     AdminPaginatedResponse,
     AdminGallery,
-    AdminPhoto,
     GalleryFormData,
     EventGalleryFormData,
     EventCategory,

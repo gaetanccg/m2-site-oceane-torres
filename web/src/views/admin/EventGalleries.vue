@@ -579,8 +579,7 @@
                 />
             </div>
         </Teleport>
-
-    </div>
+</div>
 </template>
 
 <script setup lang="ts">

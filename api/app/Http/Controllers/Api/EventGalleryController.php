@@ -12,7 +12,6 @@ use App\Services\MinioStorageService;
 use App\Traits\ClearsEventGalleriesCache;
 use App\Traits\SyncsProductTypes;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
 class EventGalleryController extends Controller

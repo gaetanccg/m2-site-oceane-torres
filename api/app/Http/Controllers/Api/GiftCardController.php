@@ -7,7 +7,6 @@ use App\Http\Requests\Admin\UpdateGiftCardRequest;
 use App\Http\Requests\StoreGiftCardRequest;
 use App\Models\GiftCard;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class GiftCardController extends Controller
 {
