@@ -115,14 +115,16 @@
 
                     <!-- Main image -->
                     <img
-                        v-show="getImageState(entry.item).loaded && !getImageState(entry.item).failed"
                         :src="getImageState(entry.item).currentSrc"
                         :alt="entry.item.alt"
                         draggable="false"
                         decoding="async"
                         :loading="entry.flatIndex < priorityCount ? 'eager' : 'lazy'"
                         :fetchpriority="entry.flatIndex < priorityCount ? 'high' : 'auto'"
-                        class="gallery-image loaded"
+                        :class="[
+                            'gallery-image',
+                            { 'loaded': getImageState(entry.item).loaded && !getImageState(entry.item).failed }
+                        ]"
                         @load="handleImageLoadSuccess(entry.item)"
                         @error="handleImageLoadError(entry.item)"
                     />
@@ -539,6 +541,11 @@ watch(activeFilter, async () => {
     display: block;
     width: 100%;
     height: auto;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.gallery-image.loaded{
     opacity: 1;
     transition: transform 0.5s ease;
     z-index: 2;

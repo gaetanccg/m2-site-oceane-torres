@@ -30,7 +30,7 @@ class EventGalleryController extends Controller
 
         $galleries = Cache::remember("event_galleries_page_{$page}", 300, function () {
             $result = Gallery::where('type', 'event')
-                ->where('is_published', true)
+                ->published()
                 ->topLevel()
                 ->with([
                     'photos' => function ($query) {
@@ -72,7 +72,7 @@ class EventGalleryController extends Controller
             $gallery->load([
                 'thumbnailPhoto',
                 'children' => function ($query) {
-                    $query->where('is_published', true)
+                    $query->published()
                         ->withCount('photos')
                         ->with(['thumbnailPhoto', 'photos' => function ($q) {
                             $q->ordered()->limit(1);
