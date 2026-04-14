@@ -120,10 +120,10 @@ Le script fait automatiquement :
 
 | Container | Image | Role | Port |
 |-----------|-------|------|------|
-| oceane-laravel | PHP 8.4 FPM Alpine | Backend API | 9000 (interne) |
-| oceane-queue | PHP 8.4 FPM Alpine | Background jobs | - |
-| oceane-scheduler | PHP 8.4 FPM Alpine | Taches planifiees | - |
-| oceane-nginx | Nginx Alpine | Reverse proxy | 8080 (expose) |
+| api-php | PHP 8.4 FPM Alpine | Backend API | 9000 (interne) |
+| api-queue | PHP 8.4 FPM Alpine | Background jobs | - |
+| api-scheduler | PHP 8.4 FPM Alpine | Taches planifiees | - |
+| api-nginx | Nginx Alpine | Reverse proxy | 8080 (expose) |
 
 ---
 
@@ -147,13 +147,13 @@ docker compose -f deploy/docker-compose.prod.yml ps
 ### Voir les logs Laravel
 
 ```bash
-docker exec oceane-laravel tail -f storage/logs/laravel.log
+docker exec api-php tail -f storage/logs/laravel.log
 ```
 
 ### Voir les logs Nginx
 
 ```bash
-docker logs oceane-nginx --tail 50
+docker logs api-nginx --tail 50
 ```
 
 ### Tester l'API
@@ -181,8 +181,8 @@ docker compose -f deploy/docker-compose.prod.yml up -d
 ### Executer une commande artisan
 
 ```bash
-docker exec oceane-laravel php artisan migrate:status
-docker exec oceane-laravel php artisan tinker
+docker exec api-php php artisan migrate:status
+docker exec api-php php artisan tinker
 ```
 
 ---

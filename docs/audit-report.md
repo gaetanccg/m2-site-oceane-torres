@@ -147,6 +147,16 @@
 
 ---
 
+## Reste a faire
+
+- [ ] **Admin : Renvoyer l'email de confirmation de commande** — bouton dans l'admin Orders pour re-declencher l'envoi du mail (OrderConfirmationMail existe deja, manque juste l'endpoint + le bouton)
+- [ ] **T4.** Revenu par galerie / par type de produit (digital vs print)
+- [ ] **T4.** Taux de conversion panier → commande payee
+- [ ] **R6.** Tests (0% couverture, a faire progressivement)
+- [ ] Executer `npm run build:prerender` avant deploiement
+
+---
+
 ## Hors scope / reporte
 
 - **C3.** Policies RLS Supabase — action manuelle dashboard, hors code
