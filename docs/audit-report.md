@@ -127,11 +127,6 @@
 | GA4 page views | OK — avec respect du consentement |
 | Consentement | OK — Consent Mode v2, composable `useGtag.ts` |
 
-### Reste a faire (priorite basse)
-
-- [ ] T4 : Revenu par galerie / par type de produit (digital vs print)
-- [ ] T4 : Taux de conversion panier → commande payee
-
 ---
 
 ## Refactoring technique
@@ -147,13 +142,15 @@
 
 ---
 
-## Reste a faire
+## Reste a faire (dans l'ordre)
 
-- [ ] **Admin : Renvoyer l'email de confirmation de commande** — bouton dans l'admin Orders pour re-declencher l'envoi du mail (OrderConfirmationMail existe deja, manque juste l'endpoint + le bouton)
-- [ ] **T4.** Revenu par galerie / par type de produit (digital vs print)
-- [ ] **T4.** Taux de conversion panier → commande payee
-- [ ] **R6.** Tests (0% couverture, a faire progressivement)
-- [ ] Executer `npm run build:prerender` avant deploiement
+| # | Item | Effort | Type |
+|---|------|--------|------|
+| 1 | **Renvoyer l'email de confirmation de commande** depuis l'admin Orders — endpoint + bouton (OrderConfirmationMail existe deja) | ~30min | Feature admin |
+| 2 | **Envoi SMS acces galerie via Brevo** — choix mail/SMS dans le modal d'envoi de Galleries.vue, API SMS Brevo | ~1-2h | Feature admin |
+| 3 | **T4 — Stats admin** : revenu par galerie / par type de produit, taux de conversion panier → commande payee | ~1h | Analytics |
+| 4 | **R6 — Tests** : PHPUnit pour OrderService, CartService, PricingService + Vitest pour useGtag, consent store | Long terme | Qualite |
+| 5 | **Executer `npm run build:prerender`** avant deploiement | 2min | Operation |
 
 ---
 
@@ -187,4 +184,4 @@
 
 ---
 
-*Rapport mis a jour le 11 avril 2026.*
+*Rapport mis a jour le 14 avril 2026.*
