@@ -201,7 +201,7 @@ async function downloadPhoto(item: AccountOrderItem) {
 
     downloadingItemId.value = item.id
     try {
-        const token = order.value.download_token
+        const token = order.value.download_token ?? undefined
         const response = await cartApi.downloadPhoto(order.value.id, item.id, token)
         if (response.success && response.download_url) {
             const fileResponse = await fetch(response.download_url)

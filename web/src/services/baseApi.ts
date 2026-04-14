@@ -3,12 +3,12 @@
  */
 
 import { API_CONFIG } from '@/config/constants'
-import { extractErrorFromResponse, parseApiError, type ApiError } from '@/utils/errorHandler'
+import { extractErrorFromResponse, parseApiError, type ApiError as ApiErrorData } from '@/utils/errorHandler'
 
 export class ApiError extends Error {
-    public apiError: ApiError
+    public apiError: ApiErrorData
 
-    constructor(apiError: ApiError) {
+    constructor(apiError: ApiErrorData) {
         super(apiError.message)
         this.name = 'ApiError'
         this.apiError = apiError
