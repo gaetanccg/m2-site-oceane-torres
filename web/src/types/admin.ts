@@ -395,6 +395,8 @@ export interface AdminOrder {
     has_prints: boolean
     customer_email: string
     customer_name: string
+    sumup_checkout_id?: string | null
+    sumup_transaction_id?: string | null
     user?: {
         id: string
         email: string
