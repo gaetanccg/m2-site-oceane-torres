@@ -3,6 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\AdminUpdateReservationRequest;
+use App\Http\Requests\Admin\UpdateReservationStatusRequest;
+use App\Http\Requests\StoreReservationRequest;
+use App\Http\Requests\UpdateReservationRequest;
+use App\Http\Resources\CalendarEventResource;
 use App\Models\Reservation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -43,8 +48,10 @@ class ReservationController extends Controller
         return response()->json($reservations);
     }
 
-    public function show(Reservation $reservation): JsonResponse
+    public function show(Request $request, Reservation $reservation): JsonResponse
     {
+        $this->authorize('view', $reservation);
+
         $reservation->load(['user', 'prestation', 'clientForm', 'payments']);
 
         return response()->json([
@@ -68,18 +75,9 @@ class ReservationController extends Controller
         ]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreReservationRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'prestation_id' => ['required', 'exists:prestations,id'],
-            'date' => ['required', 'date', 'after:now'],
-            'notes' => ['nullable', 'string'],
-            'client_form' => ['required', 'array'],
-            'client_form.fullname' => ['required', 'string', 'max:255'],
-            'client_form.phone' => ['nullable', 'string', 'max:20'],
-            'client_form.requirements' => ['nullable', 'string'],
-            'client_form.message' => ['nullable', 'string'],
-        ]);
+        $validated = $request->validated();
 
         $reservation = Reservation::create([
             'user_id' => $request->user()->id,
@@ -97,12 +95,11 @@ class ReservationController extends Controller
         ], 201);
     }
 
-    public function update(Request $request, Reservation $reservation): JsonResponse
+    public function update(UpdateReservationRequest $request, Reservation $reservation): JsonResponse
     {
-        $validated = $request->validate([
-            'date' => ['sometimes', 'date', 'after:now'],
-            'notes' => ['nullable', 'string'],
-        ]);
+        $this->authorize('update', $reservation);
+
+        $validated = $request->validated();
 
         $reservation->update($validated);
 
@@ -115,14 +112,9 @@ class ReservationController extends Controller
     /**
      * Mise a jour admin d'une reservation (date, heure, statut, notes)
      */
-    public function adminUpdate(Request $request, Reservation $reservation): JsonResponse
+    public function adminUpdate(AdminUpdateReservationRequest $request, Reservation $reservation): JsonResponse
     {
-        $validated = $request->validate([
-            'date' => ['nullable', 'date'],
-            'time' => ['nullable', 'string'],
-            'status' => ['sometimes', 'in:pending,confirmed,cancelled,completed'],
-            'notes' => ['nullable', 'string'],
-        ]);
+        $validated = $request->validated();
 
         $updateData = [];
 
@@ -155,13 +147,9 @@ class ReservationController extends Controller
         ]);
     }
 
-    public function destroy(Reservation $reservation): JsonResponse
+    public function destroy(Request $request, Reservation $reservation): JsonResponse
     {
-        if ($reservation->status === 'confirmed') {
-            return response()->json([
-                'message' => 'Impossible de supprimer une réservation confirmée.',
-            ], 422);
-        }
+        $this->authorize('delete', $reservation);
 
         $reservation->delete();
 
@@ -188,11 +176,9 @@ class ReservationController extends Controller
         ]);
     }
 
-    public function updateStatus(Request $request, Reservation $reservation): JsonResponse
+    public function updateStatus(UpdateReservationStatusRequest $request, Reservation $reservation): JsonResponse
     {
-        $validated = $request->validate([
-            'status' => ['required', 'in:pending,confirmed,cancelled,completed'],
-        ]);
+        $validated = $request->validated();
 
         $reservation->update($validated);
 
@@ -219,30 +205,9 @@ class ReservationController extends Controller
 
         $reservations = $query->get();
 
-        // Transformer en format CalendarEvent
-        $events = $reservations->map(function ($reservation) {
-            // Determiner le nom du client
-            $clientName = $reservation->client_name ?? 'Client';
-
-            // Calculer la fin (date + duree prestation ou 1h par defaut)
-            $startDate = $reservation->date;
-            $duration = $reservation->prestation?->duration ?? 60;
-            $endDate = $startDate->copy()->addMinutes($duration);
-
-            return [
-                'id' => $reservation->id,
-                'title' => $reservation->prestation?->title ?? 'Reservation',
-                'start' => $startDate->toIso8601String(),
-                'end' => $endDate->toIso8601String(),
-                'status' => $reservation->status,
-                'client' => $clientName,
-                'prestation' => $reservation->prestation?->title ?? 'N/A',
-            ];
-        });
-
         return response()->json([
             'success' => true,
-            'data' => $events,
+            'data' => CalendarEventResource::collection($reservations),
         ]);
     }
 }

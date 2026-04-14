@@ -39,16 +39,31 @@
 
                                 <!-- Guest form -->
                                 <form v-else @submit.prevent="createOrder" class="space-y-4">
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">
-                                            Nom complet
-                                        </label>
-                                        <input
-                                            v-model="form.name"
-                                            type="text"
-                                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-transparent"
-                                            placeholder="Votre nom"
-                                        />
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                                Prenom *
+                                            </label>
+                                            <input
+                                                v-model="form.firstName"
+                                                type="text"
+                                                required
+                                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-transparent"
+                                                placeholder="Votre prenom"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                                Nom *
+                                            </label>
+                                            <input
+                                                v-model="form.lastName"
+                                                type="text"
+                                                required
+                                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-transparent"
+                                                placeholder="Votre nom"
+                                            />
+                                        </div>
                                     </div>
 
                                     <div>
@@ -67,6 +82,39 @@
                                         </p>
                                     </div>
                                 </form>
+
+                                <!-- Account creation prompt (guests only) -->
+                                <div v-if="!authStore.isAuthenticated" class="mt-6 bg-gold/5 border border-gold/20 rounded-lg p-4">
+                                    <div class="flex items-start gap-3">
+                                        <svg class="w-5 h-5 text-gold mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        <div>
+                                            <p class="text-sm text-gray-700">
+                                                <strong>Vous avez un compte ?</strong>
+                                                <button
+                                                    type="button"
+                                                    @click="$router.push({ path: '/', query: { login: 'true', redirect: '/checkout' } })"
+                                                    class="text-gold hover:underline font-bold ml-1"
+                                                >
+                                                    Connectez-vous
+                                                </button>
+                                                pour retrouver cette commande dans votre espace client.
+                                            </p>
+                                            <p class="text-xs text-gray-500 mt-1">
+                                                Pas encore de compte ?
+                                                <button
+                                                    type="button"
+                                                    @click="$router.push({ path: '/', query: { login: 'true', tab: 'register', redirect: '/checkout' } })"
+                                                    class="text-gold hover:underline font-bold"
+                                                >
+                                                    Créez-en un gratuitement
+                                                </button>
+                                                pour accéder à vos achats et galeries.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
 
                                 <!-- CGV Acceptance (RGPD) -->
                                 <div class="mt-6 bg-gray-50 border border-gray-200 rounded-lg p-4">
@@ -100,7 +148,7 @@
                                 <div class="mt-8 pt-6 border-t border-gray-100">
                                     <button
                                         @click="createOrder"
-                                        :disabled="isProcessing || (!authStore.isAuthenticated && !form.email) || !form.cgv_accepted"
+                                        :disabled="isProcessing || (!authStore.isAuthenticated && (!form.email || !form.firstName || !form.lastName)) || !form.cgv_accepted"
                                         class="w-full py-3 bg-gold text-white font-medium rounded-lg hover:bg-gold/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                                     >
                                         <svg
@@ -197,12 +245,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, nextTick, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { useCartStore } from '@/stores/cart'
-import { useAuthStore } from '@/stores/auth'
-import { cartApi } from '@/services/cartApi'
-import { useToast } from '@/composables/useToast'
+import {ref, reactive, nextTick, onMounted, onUnmounted} from 'vue'
+import {useRouter} from 'vue-router'
+import {useCartStore} from '@/stores/cart'
+import {useAuthStore} from '@/stores/auth'
+import {cartApi} from '@/services/cartApi'
+import {useToast} from '@/composables/useToast'
+import {useGtag} from '@/composables/useGtag'
+import {formatPrice} from '@/utils/format'
 
 declare global {
     interface Window {
@@ -226,6 +276,7 @@ const router = useRouter()
 const cartStore = useCartStore()
 const authStore = useAuthStore()
 const toast = useToast()
+const {trackBeginCheckout} = useGtag()
 
 const isProcessing = ref(false)
 const isPaymentProcessing = ref(false)
@@ -235,22 +286,31 @@ const showPaymentWidget = ref(false)
 const currentOrder = ref<{ id: string; order_number: string; total: number } | null>(null)
 const checkoutId = ref('')
 
+onMounted(() => {
+    if (!cartStore.isEmpty) {
+        trackBeginCheckout(
+            cartStore.items.map(item => ({
+                item_id: item.photo_id,
+                item_name: item.photo.title || 'Photo',
+                item_category: item.photo.gallery_title || undefined,
+                price: item.price,
+                quantity: 1,
+            })),
+            cartStore.total
+        )
+    }
+})
+
 let sumupWidget: { unmount: () => void } | null = null
 let pollTimeoutId: ReturnType<typeof setTimeout> | null = null
 let isUnmounted = false
 
 const form = reactive({
-    name: '',
+    firstName: '',
+    lastName: '',
     email: '',
     cgv_accepted: false,
 })
-
-function formatPrice(price: number): string {
-    return new Intl.NumberFormat('fr-FR', {
-        style: 'currency',
-        currency: 'EUR',
-    }).format(price)
-}
 
 // Load SumUp SDK
 function loadSumUpSDK(): Promise<void> {
@@ -359,6 +419,10 @@ async function createOrder() {
         error.value = 'Veuillez renseigner votre email'
         return
     }
+    if (!authStore.isAuthenticated && (!form.firstName || !form.lastName)) {
+        error.value = 'Veuillez renseigner votre prenom et votre nom'
+        return
+    }
     if (!form.cgv_accepted) {
         error.value = 'Vous devez accepter les Conditions Generales de Vente'
         return
@@ -370,7 +434,8 @@ async function createOrder() {
     try {
         const orderResponse = await cartApi.createOrder(
             authStore.isAuthenticated ? undefined : form.email,
-            authStore.isAuthenticated ? undefined : form.name,
+            authStore.isAuthenticated ? undefined : form.firstName,
+            authStore.isAuthenticated ? undefined : form.lastName,
             form.cgv_accepted
         )
 

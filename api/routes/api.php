@@ -5,12 +5,14 @@ use App\Http\Controllers\Api\Admin\ClientController;
 use App\Http\Controllers\Api\Admin\DashboardController;
 use App\Http\Controllers\Api\Admin\EventCategoryController;
 use App\Http\Controllers\Api\Admin\NotificationController;
+use App\Http\Controllers\Api\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Api\Admin\UserController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AvailabilityController;
 use App\Http\Controllers\Api\BookingRequestController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\ContactController;
+use App\Http\Controllers\Api\EventGalleryController;
 use App\Http\Controllers\Api\GalleryController;
 use App\Http\Controllers\Api\GiftCardController;
 use App\Http\Controllers\Api\HealthController;
@@ -77,8 +79,8 @@ Route::middleware('throttle:downloads')->group(function () {
 Route::post('/contact', [ContactController::class, 'send']);
 
 // Event Galleries (public)
-Route::get('/events', [GalleryController::class, 'eventIndex']);
-Route::get('/events/{gallery}', [GalleryController::class, 'eventShow']);
+Route::get('/events', [EventGalleryController::class, 'index']);
+Route::get('/events/{gallery}', [EventGalleryController::class, 'show']);
 
 // Gift cards (public)
 Route::get('/gift-cards/validate/{code}', [GiftCardController::class, 'validate']);
@@ -229,13 +231,13 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::delete('/event-categories/{category}', [EventCategoryController::class, 'destroy']);
 
     // Event Galleries management
-    Route::get('/events', [GalleryController::class, 'adminEventIndex']);
-    Route::get('/events/{gallery}', [GalleryController::class, 'adminEventShow']);
-    Route::post('/events', [GalleryController::class, 'storeEvent']);
-    Route::put('/events/{gallery}', [GalleryController::class, 'updateEvent']);
-    Route::delete('/events/{gallery}', [GalleryController::class, 'destroyEvent']);
-    Route::put('/events/{gallery}/thumbnail', [GalleryController::class, 'setEventThumbnail']);
-    Route::get('/events/{gallery}/children', [GalleryController::class, 'adminEventChildren']);
+    Route::get('/events', [EventGalleryController::class, 'adminIndex']);
+    Route::get('/events/{gallery}', [EventGalleryController::class, 'adminShow']);
+    Route::post('/events', [EventGalleryController::class, 'store']);
+    Route::put('/events/{gallery}', [EventGalleryController::class, 'update']);
+    Route::delete('/events/{gallery}', [EventGalleryController::class, 'destroy']);
+    Route::put('/events/{gallery}/thumbnail', [EventGalleryController::class, 'setThumbnail']);
+    Route::get('/events/{gallery}/children', [EventGalleryController::class, 'children']);
     Route::post('/events/{gallery}/photos', [PhotoController::class, 'store']);
     Route::post('/events/{gallery}/photos/async', [PhotoController::class, 'storeAsync']);
 
@@ -250,11 +252,13 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::post('/notifications', [NotificationController::class, 'store']);
 
     // Orders management
-    Route::get('/orders', [OrderController::class, 'adminIndex']);
-    Route::get('/orders/{order}', [OrderController::class, 'adminShow']);
-    Route::get('/orders/{order}/invoice', [OrderController::class, 'adminDownloadInvoice']);
-    Route::put('/orders/{order}/ship', [OrderController::class, 'adminMarkShipped']);
-    Route::delete('/orders/{order}', [OrderController::class, 'adminDestroy']);
+    Route::get('/orders', [AdminOrderController::class, 'index']);
+    Route::get('/orders/{order}', [AdminOrderController::class, 'show']);
+    Route::get('/orders/{order}/invoice', [AdminOrderController::class, 'downloadInvoice']);
+    Route::get('/orders/{order}/download-link', [AdminOrderController::class, 'getDownloadLink']);
+    Route::post('/orders/{order}/retry-payment', [AdminOrderController::class, 'retryPayment']);
+    Route::put('/orders/{order}/ship', [AdminOrderController::class, 'markShipped']);
+    Route::delete('/orders/{order}', [AdminOrderController::class, 'destroy']);
 });
 
 /*

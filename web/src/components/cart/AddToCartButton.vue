@@ -70,6 +70,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useCartStore } from '@/stores/cart'
+import { useGtag } from '@/composables/useGtag'
 
 interface AvailableProductType {
     label: string
@@ -97,6 +98,7 @@ const emit = defineEmits<{
 }>()
 
 const cartStore = useCartStore()
+const { trackAddToCart } = useGtag()
 const isLoading = ref(false)
 
 const isInCart = computed(() => cartStore.isPhotoInCart(props.photoId))
@@ -139,6 +141,16 @@ async function handleClick() {
         const productType = getDefaultProductType()
         const success = await cartStore.addItem(props.photoId, productType)
         if (success) {
+            const addedItem = cartStore.items.find(i => i.photo_id === props.photoId)
+            if (addedItem) {
+                trackAddToCart({
+                    photoId: addedItem.photo_id,
+                    title: addedItem.photo.title,
+                    galleryTitle: addedItem.photo.gallery_title,
+                    price: addedItem.price,
+                    productType,
+                })
+            }
             emit('added')
         } else {
             emit('error', cartStore.error ?? 'Erreur lors de l\'ajout')

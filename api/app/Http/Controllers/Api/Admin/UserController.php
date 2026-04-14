@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\StoreUserRequest;
+use App\Http\Requests\Admin\UpdateUserRequest;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -41,16 +43,9 @@ class UserController extends Controller
         ]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreUserRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'first_name' => ['required', 'string', 'max:255'],
-            'last_name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'unique:users'],
-            'phone' => ['nullable', 'string', 'max:20'],
-            'password' => ['required', 'string', 'min:8'],
-            'role' => ['required', 'in:admin,client'],
-        ]);
+        $validated = $request->validated();
 
         $user = User::create([
             ...$validated,
@@ -63,15 +58,9 @@ class UserController extends Controller
         ], 201);
     }
 
-    public function update(Request $request, User $user): JsonResponse
+    public function update(UpdateUserRequest $request, User $user): JsonResponse
     {
-        $validated = $request->validate([
-            'first_name' => ['sometimes', 'string', 'max:255'],
-            'last_name' => ['sometimes', 'string', 'max:255'],
-            'email' => ['sometimes', 'email', 'unique:users,email,'.$user->id],
-            'phone' => ['nullable', 'string', 'max:20'],
-            'role' => ['sometimes', 'in:admin,client'],
-        ]);
+        $validated = $request->validated();
 
         $user->update($validated);
 

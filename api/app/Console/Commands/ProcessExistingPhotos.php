@@ -74,7 +74,7 @@ class ProcessExistingPhotos extends Command
         $query->chunk($batchSize, function ($photos) use ($imageProcessingService, $progressBar, &$processed, &$failed, &$errors) {
             foreach ($photos as $photo) {
                 try {
-                    $originalPath = $photo->metadata['storage_path'] ?? $photo->file_path;
+                    $originalPath = $photo->resolved_storage_path;
                     $galleryId = $photo->gallery_id;
 
                     // Process the photo

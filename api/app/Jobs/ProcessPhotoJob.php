@@ -82,7 +82,7 @@ class ProcessPhotoJob implements ShouldQueue
 
     private function processImage(Gallery $gallery): ?\App\Models\Photo
     {
-        $imageProcessingService = new ImageProcessingService;
+        $imageProcessingService = app(ImageProcessingService::class);
 
         // Get the full path to the temp file
         $fullPath = Storage::disk('local')->path($this->tempFilePath);
@@ -120,7 +120,7 @@ class ProcessPhotoJob implements ShouldQueue
 
     private function processVideo(Gallery $gallery): ?\App\Models\Photo
     {
-        $storageService = new MinioStorageService;
+        $storageService = app(MinioStorageService::class);
 
         // Get the full path to the temp file
         $fullPath = Storage::disk('local')->path($this->tempFilePath);

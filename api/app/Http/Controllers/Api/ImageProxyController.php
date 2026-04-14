@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Helpers\MimeTypes;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Photo;
@@ -14,15 +15,10 @@ use Illuminate\Support\Facades\Log;
 
 class ImageProxyController extends Controller
 {
-    private MinioStorageService $storageService;
-
-    private ImageProcessingService $imageProcessingService;
-
-    public function __construct()
-    {
-        $this->storageService = new MinioStorageService;
-        $this->imageProcessingService = new ImageProcessingService;
-    }
+    public function __construct(
+        private MinioStorageService $storageService,
+        private ImageProcessingService $imageProcessingService,
+    ) {}
 
     /**
      * Stream preview version of a photo
@@ -66,7 +62,7 @@ class ImageProxyController extends Controller
      */
     private function streamCleanImage(Photo $photo): Response
     {
-        $originalPath = $photo->file_path_hd ?? $photo->metadata['storage_path'] ?? $photo->file_path;
+        $originalPath = $photo->resolved_storage_path;
 
         // Generate clean preview on-the-fly with caching
         $cacheKey = "image_clean_{$photo->id}";
@@ -117,7 +113,7 @@ class ImageProxyController extends Controller
             }
 
             // Get HD path
-            $hdPath = $photo->file_path_hd ?? $photo->metadata['storage_path'] ?? $photo->file_path;
+            $hdPath = $photo->resolved_storage_path;
 
             // Stream HD version
             $content = $this->storageService->getFileContent($hdPath);
@@ -133,7 +129,7 @@ class ImageProxyController extends Controller
             $filename = ($photo->title ?? 'photo').'.'.$extension;
             $filename = preg_replace('/[^a-zA-Z0-9_.-]/', '_', $filename);
 
-            return $this->createDownloadResponse($content, $filename, $this->getMimeType($extension));
+            return $this->createDownloadResponse($content, $filename, MimeTypes::fromExtension($extension));
         } catch (\Exception $e) {
             Log::error('Download failed', [
                 'photo_id' => $photo->id,
@@ -165,7 +161,7 @@ class ImageProxyController extends Controller
         $cacheKey = "image_{$version}_{$photo->id}";
 
         $content = Cache::remember($cacheKey, 3600, function () use ($photo, $version) {
-            $originalPath = $photo->metadata['storage_path'] ?? $photo->file_path;
+            $originalPath = $photo->resolved_storage_path;
 
             if ($version === 'preview') {
                 return $this->imageProcessingService->generatePreviewOnTheFly($originalPath);
@@ -189,7 +185,7 @@ class ImageProxyController extends Controller
     private function createImageResponse(string $content, string $path): Response
     {
         $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION)) ?: 'jpg';
-        $mimeType = $this->getMimeType($extension);
+        $mimeType = MimeTypes::fromExtension($extension);
 
         return response($content, 200, [
             'Content-Type' => $mimeType,
@@ -223,18 +219,5 @@ class ImageProxyController extends Controller
             'Content-Type' => 'text/plain',
             'X-Content-Type-Options' => 'nosniff',
         ]);
-    }
-
-    /**
-     * Get MIME type from extension
-     */
-    private function getMimeType(string $extension): string
-    {
-        return match (strtolower($extension)) {
-            'png' => 'image/png',
-            'gif' => 'image/gif',
-            'webp' => 'image/webp',
-            default => 'image/jpeg',
-        };
     }
 }
