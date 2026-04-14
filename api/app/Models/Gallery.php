@@ -11,7 +11,7 @@ use Illuminate\Support\Str;
 
 class Gallery extends Model
 {
-    use HasFactory, HasUuids;
+    use Concerns\CastsBooleansForPostgres, HasFactory, HasUuids;
 
     protected $fillable = [
         'user_id',
@@ -97,6 +97,11 @@ class Gallery extends Model
     public function children(): HasMany
     {
         return $this->hasMany(Gallery::class, 'parent_id')->orderBy('sort_order')->orderBy('title');
+    }
+
+    public function scopePublished($query)
+    {
+        return $query->whereRaw('"is_published" = true');
     }
 
     public function scopeTopLevel($query)

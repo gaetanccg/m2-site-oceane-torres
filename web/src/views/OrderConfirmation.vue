@@ -165,9 +165,9 @@
                                 </svg>
                             </div>
                             <div class="flex-1">
-                                <h3 class="font-medium text-gray-900 mb-1">Creez votre compte gratuit</h3>
+                                <h3 class="font-medium text-gray-900 mb-1">Créez votre compte gratuitement !</h3>
                                 <p class="text-sm text-gray-600 mb-3">
-                                    Retrouvez vos achats, re-telechargez vos photos et accedez a vos galeries privees depuis votre espace personnel.
+                                    Retrouvez vos achats, re-téléchargez vos photos et accédez à vos galeries privées depuis votre espace personnel.
                                 </p>
                                 <router-link
                                     :to="{ path: '/', query: { login: 'true', tab: 'register', email: order?.customer_email } }"

@@ -83,6 +83,39 @@
                                     </div>
                                 </form>
 
+                                <!-- Account creation prompt (guests only) -->
+                                <div v-if="!authStore.isAuthenticated" class="mt-6 bg-gold/5 border border-gold/20 rounded-lg p-4">
+                                    <div class="flex items-start gap-3">
+                                        <svg class="w-5 h-5 text-gold mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        <div>
+                                            <p class="text-sm text-gray-700">
+                                                <strong>Vous avez un compte ?</strong>
+                                                <button
+                                                    type="button"
+                                                    @click="$router.push({ path: '/', query: { login: 'true', redirect: '/checkout' } })"
+                                                    class="text-gold hover:underline font-bold ml-1"
+                                                >
+                                                    Connectez-vous
+                                                </button>
+                                                pour retrouver cette commande dans votre espace client.
+                                            </p>
+                                            <p class="text-xs text-gray-500 mt-1">
+                                                Pas encore de compte ?
+                                                <button
+                                                    type="button"
+                                                    @click="$router.push({ path: '/', query: { login: 'true', tab: 'register', redirect: '/checkout' } })"
+                                                    class="text-gold hover:underline font-bold"
+                                                >
+                                                    Créez-en un gratuitement
+                                                </button>
+                                                pour accéder à vos achats et galeries.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <!-- CGV Acceptance (RGPD) -->
                                 <div class="mt-6 bg-gray-50 border border-gray-200 rounded-lg p-4">
                                     <label class="flex items-start gap-3 cursor-pointer">
@@ -212,14 +245,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, nextTick, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { useCartStore } from '@/stores/cart'
-import { useAuthStore } from '@/stores/auth'
-import { cartApi } from '@/services/cartApi'
-import { useToast } from '@/composables/useToast'
-import { useGtag } from '@/composables/useGtag'
-import { formatPrice } from '@/utils/format'
+import {ref, reactive, nextTick, onMounted, onUnmounted} from 'vue'
+import {useRouter} from 'vue-router'
+import {useCartStore} from '@/stores/cart'
+import {useAuthStore} from '@/stores/auth'
+import {cartApi} from '@/services/cartApi'
+import {useToast} from '@/composables/useToast'
+import {useGtag} from '@/composables/useGtag'
+import {formatPrice} from '@/utils/format'
 
 declare global {
     interface Window {
@@ -243,7 +276,7 @@ const router = useRouter()
 const cartStore = useCartStore()
 const authStore = useAuthStore()
 const toast = useToast()
-const { trackBeginCheckout } = useGtag()
+const {trackBeginCheckout} = useGtag()
 
 const isProcessing = ref(false)
 const isPaymentProcessing = ref(false)

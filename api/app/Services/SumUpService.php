@@ -46,7 +46,6 @@ class SumUpService
         // Include customer info for SumUp dashboard tracking
         $customerEmail = $order->customer_email;
         if ($customerEmail) {
-            $payload['customer_id'] = $customerEmail;
             $payload['personal_details'] = array_filter([
                 'email' => $customerEmail,
                 'first_name' => $order->user?->first_name ?? $order->guest_first_name,
