@@ -99,13 +99,15 @@ export function getGalleryItems(): GalleryItem[] {
     const items: GalleryItem[] = []
 
     // Ajouter les images des catégories
-    // AVIF en primary (30% plus léger), WebP en fallback
+    // Grille : thumbnails 400px (AVIF primary, WebP fallback)
+    // Lightbox : full-res (AVIF primary, WebP fallback)
     for (const category of categories) {
         for (let i = 0; i < category.images.length; i++) {
             const image = category.images[i]
             const avifImage = image.replace('.webp', '.avif')
             const altPrefix = categoryAltPrefix[category.name] || category.name
             items.push({
+                thumbnailUrl: `${category.basePath}/thumbs/${avifImage}`,
                 previewUrl: `${category.basePath}/${avifImage}`,
                 url: `${category.basePath}/${image}`,
                 alt: `${altPrefix} - ${i + 1}`,

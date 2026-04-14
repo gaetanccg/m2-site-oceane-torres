@@ -107,7 +107,7 @@
                     >
                         <img
                             v-if="image.type === 'image'"
-                            :src="image.thumbnailUrl || image.url"
+                            :src="image.url"
                             :alt="image.alt || `Photo ${index + 1}`"
                             class="thumbnail-img"
                             loading="lazy"
