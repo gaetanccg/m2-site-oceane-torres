@@ -251,8 +251,8 @@ const getImageKey = (item: GalleryItem): string => {
 const getImageState = (item: GalleryItem): ImageState => {
     const key = getImageKey(item)
     if (!imageStates.has(key)) {
-        // Initialize with preview URL, fallback chain: preview -> thumbnail -> original
-        const initialSrc = item.previewUrl || item.thumbnailUrl || item.url
+        // Grid uses thumbnail first (small, fast), fallback to preview then original
+        const initialSrc = item.thumbnailUrl || item.previewUrl || item.url
         imageStates.set(key, {
             loaded: false,
             failed: false,
@@ -267,8 +267,8 @@ const getImageState = (item: GalleryItem): ImageState => {
 // Get fallback URL chain for an item
 const getFallbackUrls = (item: GalleryItem): string[] => {
     const urls: string[] = []
-    if (item.previewUrl) urls.push(item.previewUrl)
-    if (item.thumbnailUrl && !urls.includes(item.thumbnailUrl)) urls.push(item.thumbnailUrl)
+    if (item.thumbnailUrl) urls.push(item.thumbnailUrl)
+    if (item.previewUrl && !urls.includes(item.previewUrl)) urls.push(item.previewUrl)
     if (item.url && !urls.includes(item.url)) urls.push(item.url)
     return urls
 }
