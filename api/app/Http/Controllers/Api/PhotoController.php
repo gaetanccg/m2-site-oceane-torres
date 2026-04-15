@@ -2,13 +2,20 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Helpers\MimeTypes;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\BulkToggleDownloadableRequest;
+use App\Http\Requests\StoreAsyncPhotoRequest;
+use App\Http\Requests\StorePhotoRequest;
+use App\Http\Requests\UpdateSortOrderRequest;
+use App\Http\Requests\UploadStatusRequest;
 use App\Jobs\ProcessPhotoJob;
 use App\Models\Gallery;
 use App\Models\Photo;
 use App\Models\PhotoUpload;
 use App\Services\ImageProcessingService;
 use App\Services\MinioStorageService;
+use App\Traits\ClearsEventGalleriesCache;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -16,6 +23,8 @@ use Illuminate\Support\Facades\Storage;
 
 class PhotoController extends Controller
 {
+    use ClearsEventGalleriesCache;
+
     public function show(Photo $photo): JsonResponse
     {
         return response()->json([
@@ -23,7 +32,7 @@ class PhotoController extends Controller
         ]);
     }
 
-    public function store(Request $request, Gallery $gallery): JsonResponse
+    public function store(StorePhotoRequest $request, Gallery $gallery): JsonResponse
     {
         // Block upload on parent galleries (galleries with children)
         if ($gallery->children()->exists()) {
@@ -33,10 +42,7 @@ class PhotoController extends Controller
             ], 422);
         }
 
-        $validated = $request->validate([
-            'photos' => ['required', 'array', 'min:1'],
-            'photos.*' => ['required', 'file', 'mimes:jpeg,png,jpg,gif,webp,mp4,mov,avi', 'max:51200'], // 50MB max per file
-        ]);
+        $validated = $request->validated();
 
         $imageProcessingService = new ImageProcessingService;
         $uploadedPhotos = [];
@@ -49,7 +55,7 @@ class PhotoController extends Controller
 
                 if ($isVideo) {
                     // Videos: upload directly without processing
-                    $storageService = new MinioStorageService;
+                    $storageService = app(MinioStorageService::class);
                     $result = $storageService->uploadPhoto($file, $gallery->id);
 
                     if ($result) {
@@ -121,12 +127,11 @@ class PhotoController extends Controller
         $isEventGallery = $photo->gallery?->type === 'event';
 
         // Delete all versions from MinIO storage (original, preview, thumbnail)
-        $storageService = new MinioStorageService;
+        $storageService = app(MinioStorageService::class);
 
         // Collect all file paths to delete
         $pathsToDelete = array_filter([
-            // Original/HD path from metadata or file_path
-            $photo->metadata['storage_path'] ?? $photo->metadata['supabase_path'] ?? $photo->file_path,
+            $photo->resolved_storage_path,
             // Preview path
             $photo->file_path_preview,
             // Thumbnail path
@@ -181,8 +186,8 @@ class PhotoController extends Controller
             ], 403);
         }
 
-        $storageService = new MinioStorageService;
-        $storagePath = $photo->metadata['storage_path'] ?? $photo->metadata['supabase_path'] ?? $photo->file_path;
+        $storageService = app(MinioStorageService::class);
+        $storagePath = $photo->resolved_storage_path;
 
         // Track the download
         $photo->recordDownload(
@@ -201,12 +206,7 @@ class PhotoController extends Controller
             $extension = pathinfo($photo->file_path, PATHINFO_EXTENSION) ?: 'jpg';
             $filename = ($photo->title ?? 'photo').'.'.$extension;
             $filename = preg_replace('/[^a-zA-Z0-9_.-]/', '_', $filename);
-            $mimeType = match (strtolower($extension)) {
-                'png' => 'image/png',
-                'gif' => 'image/gif',
-                'webp' => 'image/webp',
-                default => 'image/jpeg',
-            };
+            $mimeType = MimeTypes::fromExtension($extension);
 
             return response($content, 200, [
                 'Content-Type' => $mimeType,
@@ -247,13 +247,9 @@ class PhotoController extends Controller
         ]);
     }
 
-    public function bulkToggleDownloadable(Request $request): JsonResponse
+    public function bulkToggleDownloadable(BulkToggleDownloadableRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'photo_ids' => ['required', 'array'],
-            'photo_ids.*' => ['exists:photos,id'],
-            'is_downloadable' => ['required', 'boolean'],
-        ]);
+        $validated = $request->validated();
 
         Photo::whereIn('id', $validated['photo_ids'])
             ->update(['is_downloadable' => $validated['is_downloadable']]);
@@ -266,17 +262,24 @@ class PhotoController extends Controller
         ]);
     }
 
-    public function updateSortOrder(Request $request): JsonResponse
+    public function updateSortOrder(UpdateSortOrderRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'photos' => ['required', 'array'],
-            'photos.*.id' => ['required', 'exists:photos,id'],
-            'photos.*.sort_order' => ['required', 'integer', 'min:0'],
-        ]);
+        $validated = $request->validated();
 
+        $cases = [];
+        $bindings = [];
+        $ids = [];
         foreach ($validated['photos'] as $photoData) {
-            Photo::where('id', $photoData['id'])
-                ->update(['sort_order' => $photoData['sort_order']]);
+            $cases[] = 'WHEN ? THEN ?';
+            $bindings[] = $photoData['id'];
+            $bindings[] = (int) $photoData['sort_order'];
+            $ids[] = $photoData['id'];
+        }
+
+        if (! empty($cases)) {
+            $caseSql = implode(' ', $cases);
+            Photo::whereIn('id', $ids)
+                ->update(['sort_order' => \DB::raw("CASE id {$caseSql} END", $bindings)]);
         }
 
         return response()->json([
@@ -288,7 +291,7 @@ class PhotoController extends Controller
      * Store photos asynchronously via job queue
      * Accepts chunks of up to 15 photos at a time
      */
-    public function storeAsync(Request $request, Gallery $gallery): JsonResponse
+    public function storeAsync(StoreAsyncPhotoRequest $request, Gallery $gallery): JsonResponse
     {
         // Block upload on parent galleries (galleries with children)
         if ($gallery->children()->exists()) {
@@ -298,11 +301,7 @@ class PhotoController extends Controller
             ], 422);
         }
 
-        $validated = $request->validate([
-            'photos' => ['required', 'array', 'min:1', 'max:15'],
-            'photos.*' => ['required', 'file', 'mimes:jpeg,png,jpg,gif,webp,mp4,mov,avi', 'max:51200'],
-            'batch_id' => ['required', 'string'],
-        ]);
+        $validated = $request->validated();
 
         $batchId = $validated['batch_id'];
         $uploads = [];
@@ -361,24 +360,12 @@ class PhotoController extends Controller
     /**
      * Get upload status for a batch
      */
-    public function uploadStatus(Request $request): JsonResponse
+    public function uploadStatus(UploadStatusRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'batch_id' => ['required', 'string'],
-        ]);
+        $validated = $request->validated();
 
         $status = PhotoUpload::getBatchStatus($validated['batch_id']);
 
         return response()->json($status);
-    }
-
-    /**
-     * Clear event galleries cache (all pages)
-     */
-    private function clearEventGalleriesCache(): void
-    {
-        for ($i = 1; $i <= 10; $i++) {
-            Cache::forget("event_galleries_page_{$i}");
-        }
     }
 }

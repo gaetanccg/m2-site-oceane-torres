@@ -1,0 +1,7 @@
+export { AdminApiError } from './baseAdmin'
+export { dashboardApi } from './dashboardApi'
+export { reservationApi } from './reservationApi'
+export { clientApi } from './clientApi'
+export { prestationApi } from './prestationApi'
+export { galleryApi } from './galleryApi'
+export { orderApi } from './orderApi'

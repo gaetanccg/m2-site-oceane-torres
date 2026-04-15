@@ -2,10 +2,15 @@
 
 namespace App\Providers;
 
+use App\Events\BookingRequested;
+use App\Events\ContactMessageSent;
+use App\Listeners\SendBookingNotifications;
+use App\Listeners\SendContactEmails;
 use App\Models\User;
 use App\Observers\UserObserver;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
@@ -26,6 +31,10 @@ class AppServiceProvider extends ServiceProvider
     {
         // Observer pour synchroniser Users -> Clients
         User::observe(UserObserver::class);
+
+        // Event listeners
+        Event::listen(ContactMessageSent::class, SendContactEmails::class);
+        Event::listen(BookingRequested::class, SendBookingNotifications::class);
 
         // Rate limiting for image proxy endpoints
         $this->configureRateLimiting();

@@ -32,9 +32,11 @@ export interface GalleryItem {
 
 export interface LightboxImage {
     url: string
+    previewUrl?: string
     alt: string
     type: MediaType
     youtubeId?: string
+    thumbnailUrl?: string
 }
 
 // ============================================================================
@@ -58,13 +60,6 @@ export interface Prestation {
     category: string
     is_active: boolean
     sort_order: number
-}
-
-export interface PrestationMini {
-    icon: ServiceIconType
-    title: string
-    description: string
-    features: string[]
 }
 
 // ============================================================================

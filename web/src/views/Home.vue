@@ -2,10 +2,20 @@
     <div>
         <!-- Hero Section -->
         <section class="relative min-h-[100svh] sm:min-h-[85vh] flex items-center justify-center overflow-hidden">
-            <div
-                class="absolute inset-0 bg-cover bg-center bg-no-repeat"
-                :style="{ backgroundImage: `url(${heroImage})` }"
-            />
+            <picture class="absolute inset-0">
+                <source srcset="/optimized/hero.avif" type="image/avif" />
+                <source srcset="/optimized/hero.webp" type="image/webp" />
+                <img
+                    src="/images/hero.png"
+                    alt="Océane Torres Photographie - Hero"
+                    width="1504"
+                    height="518"
+                    loading="eager"
+                    fetchpriority="high"
+                    decoding="async"
+                    class="absolute inset-0 w-full h-full object-cover"
+                />
+            </picture>
 
             <div class="relative z-10 text-center text-white px-6 max-w-5xl mx-auto hero-text">
                 <h1 class="hero-title-main">OCÉANE TORRES</h1>
@@ -36,7 +46,7 @@
             <div class="max-w-6xl mx-auto relative">
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
                     <div>
-                        <img :src="personaImage" alt="Océane Torres - Photographe professionnelle Saint-Étienne Loire" class="w-full h-auto rounded-lg" loading="lazy" />
+                        <img :src="personaImage" alt="Océane Torres - Photographe professionnelle Saint-Étienne Loire" class="w-full h-auto rounded-lg" loading="lazy" width="600" height="800" style="aspect-ratio: 3/4;" />
                     </div>
                     <div class="text-justify">
                         <h2 class="text-4xl md:text-5xl font-light mb-6 mt-4 text-balance title-with-bar">
@@ -119,25 +129,24 @@ import PrestationCardMini from '@/components/PrestationCardMini.vue'
 import MasonryGallery from '@/components/MasonryGallery.vue'
 import CtaSection from '@/components/CtaSection.vue'
 
-const heroImage = '/images/hero.png'
 const personaImage = '/optimized/persona_rev_2.webp'
 
 const masonryItems: GalleryItem[] = [
-    {url: '/optimized/Automobile/4.webp', alt: 'Shooting photo automobile par Océane Torres photographe Loire', type: 'image', category: 'Automobile'},
-    {url: '/optimized/Entreprise/2.webp', alt: 'Photo entreprise professionnelle Saint-Étienne Lyon', type: 'image', category: 'Entreprise'},
-    {url: '/optimized/Portraits/1.webp', alt: 'Portrait photo professionnelle Auvergne-Rhône-Alpes', type: 'image', category: 'Portraits'},
-    {url: '/optimized/Animalier/1.webp', alt: 'Photographie animalière cheval Loire par Océane Torres', type: 'image', category: 'Animalier'},
-    {url: '/optimized/Sport/5.webp', alt: 'Photo reportage sportif équitation Saint-Étienne', type: 'image', category: 'Sport'},
-    {url: '/optimized/Portraits/10.webp', alt: 'Séance portrait couple photographe Rive-de-Gier', type: 'image', category: 'Portraits'},
-    {url: '/optimized/Animalier/3.webp', alt: 'Photo animalière chien photographe Loire Rhône', type: 'image', category: 'Animalier'},
-    {url: '/optimized/Sport/18.webp', alt: 'Reportage photo sport action Lyon Saint-Étienne', type: 'image', category: 'Sport'},
-    {url: '/optimized/Automobile/8.webp', alt: 'Photo voiture shooting automobile Givors Saint-Chamond', type: 'image', category: 'Automobile'},
-    {url: '/optimized/Entreprise/4.webp', alt: 'Photographe corporate entreprise Auvergne-Rhône-Alpes', type: 'image', category: 'Entreprise'},
-    {url: '/optimized/Sport/7.webp', alt: 'Photographie sportive boxe danse photographe Loire', type: 'image', category: 'Sport'},
-    {url: '/optimized/Automobile/10.webp', alt: 'Shooting moto voiture photographe Lorette Saint-Chamond', type: 'image', category: 'Automobile'},
-    {url: '/optimized/Portraits/20.webp', alt: 'Portrait professionnel CV LinkedIn photographe Lyon', type: 'image', category: 'Portraits'},
-    {url: '/optimized/Portraits/2.webp', alt: 'Séance photo portrait famille grossesse Saint-Étienne', type: 'image', category: 'Portraits'},
-    {url: '/optimized/Animalier/2.webp', alt: 'Photo animaux de compagnie photographe Rhône Loire', type: 'image', category: 'Animalier'},
+    {thumbnailUrl: '/optimized/thumbs/Automobile/4.avif', previewUrl: '/optimized/Automobile/4.avif', url: '/optimized/Automobile/4.webp', alt: 'Shooting photo automobile par Océane Torres photographe Loire', type: 'image', category: 'Automobile'},
+    {thumbnailUrl: '/optimized/thumbs/Entreprise/2.avif', previewUrl: '/optimized/Entreprise/2.avif', url: '/optimized/Entreprise/2.webp', alt: 'Photo entreprise professionnelle Saint-Étienne Lyon', type: 'image', category: 'Entreprise'},
+    {thumbnailUrl: '/optimized/thumbs/Portraits/1.avif', previewUrl: '/optimized/Portraits/1.avif', url: '/optimized/Portraits/1.webp', alt: 'Portrait photo professionnelle Auvergne-Rhône-Alpes', type: 'image', category: 'Portraits'},
+    {thumbnailUrl: '/optimized/thumbs/Animalier/1.avif', previewUrl: '/optimized/Animalier/1.avif', url: '/optimized/Animalier/1.webp', alt: 'Photographie animalière cheval Loire par Océane Torres', type: 'image', category: 'Animalier'},
+    {thumbnailUrl: '/optimized/thumbs/Sport/5.avif', previewUrl: '/optimized/Sport/5.avif', url: '/optimized/Sport/5.webp', alt: 'Photo reportage sportif équitation Saint-Étienne', type: 'image', category: 'Sport'},
+    {thumbnailUrl: '/optimized/thumbs/Portraits/10.avif', previewUrl: '/optimized/Portraits/10.avif', url: '/optimized/Portraits/10.webp', alt: 'Séance portrait couple photographe Rive-de-Gier', type: 'image', category: 'Portraits'},
+    {thumbnailUrl: '/optimized/thumbs/Animalier/3.avif', previewUrl: '/optimized/Animalier/3.avif', url: '/optimized/Animalier/3.webp', alt: 'Photo animalière chien photographe Loire Rhône', type: 'image', category: 'Animalier'},
+    {thumbnailUrl: '/optimized/thumbs/Sport/18.avif', previewUrl: '/optimized/Sport/18.avif', url: '/optimized/Sport/18.webp', alt: 'Reportage photo sport action Lyon Saint-Étienne', type: 'image', category: 'Sport'},
+    {thumbnailUrl: '/optimized/thumbs/Automobile/8.avif', previewUrl: '/optimized/Automobile/8.avif', url: '/optimized/Automobile/8.webp', alt: 'Photo voiture shooting automobile Givors Saint-Chamond', type: 'image', category: 'Automobile'},
+    {thumbnailUrl: '/optimized/thumbs/Entreprise/4.avif', previewUrl: '/optimized/Entreprise/4.avif', url: '/optimized/Entreprise/4.webp', alt: 'Photographe corporate entreprise Auvergne-Rhône-Alpes', type: 'image', category: 'Entreprise'},
+    {thumbnailUrl: '/optimized/thumbs/Sport/7.avif', previewUrl: '/optimized/Sport/7.avif', url: '/optimized/Sport/7.webp', alt: 'Photographie sportive boxe danse photographe Loire', type: 'image', category: 'Sport'},
+    {thumbnailUrl: '/optimized/thumbs/Automobile/10.avif', previewUrl: '/optimized/Automobile/10.avif', url: '/optimized/Automobile/10.webp', alt: 'Shooting moto voiture photographe Lorette Saint-Chamond', type: 'image', category: 'Automobile'},
+    {thumbnailUrl: '/optimized/thumbs/Portraits/20.avif', previewUrl: '/optimized/Portraits/20.avif', url: '/optimized/Portraits/20.webp', alt: 'Portrait professionnel CV LinkedIn photographe Lyon', type: 'image', category: 'Portraits'},
+    {thumbnailUrl: '/optimized/thumbs/Portraits/2.avif', previewUrl: '/optimized/Portraits/2.avif', url: '/optimized/Portraits/2.webp', alt: 'Séance photo portrait famille grossesse Saint-Étienne', type: 'image', category: 'Portraits'},
+    {thumbnailUrl: '/optimized/thumbs/Animalier/2.avif', previewUrl: '/optimized/Animalier/2.avif', url: '/optimized/Animalier/2.webp', alt: 'Photo animaux de compagnie photographe Rhône Loire', type: 'image', category: 'Animalier'},
 ]
 
 interface FeaturedPrestation {

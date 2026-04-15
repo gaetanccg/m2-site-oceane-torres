@@ -1,74 +1,16 @@
 /**
- * Service API pour l'intégration avec Laravel
- * Prêt pour connecter un backend REST API
+ * Service API public (non-authentifié)
  */
 
-import {API_CONFIG} from '@/config/constants'
-import type {ApiResponse, PaginatedResponse, GalleryItem, Prestation, GiftCard} from '@/types'
-import {extractErrorFromResponse, parseApiError, type ApiError} from '@/utils/errorHandler'
+import { BaseApiService, ApiError as BaseApiError } from './baseApi'
+import type { ApiResponse, PaginatedResponse, GalleryItem, Prestation, GiftCard } from '@/types'
 
-export class ApiServiceError extends Error {
-    public apiError: ApiError
+export { BaseApiError as ApiServiceError }
 
-    constructor(apiError: ApiError) {
-        super(apiError.message)
-        this.name = 'ApiServiceError'
-        this.apiError = apiError
-    }
-}
-
-class ApiService {
-    private baseUrl: string
-    private timeout: number
-
-    constructor() {
-        this.baseUrl = API_CONFIG.baseUrl
-        this.timeout = API_CONFIG.timeout
-    }
-
-    private async request<T>(
-        endpoint: string,
-        options: RequestInit = {}
-    ): Promise<T> {
-        const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), this.timeout)
-
-        try {
-            const response = await fetch(`${this.baseUrl}${endpoint}`, {
-                ...options,
-                signal: controller.signal,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    ...options.headers,
-                },
-            })
-
-            clearTimeout(timeoutId)
-
-            if (!response.ok) {
-                const apiError = await extractErrorFromResponse(response)
-                throw new ApiServiceError(apiError)
-            }
-
-            return await response.json()
-        } catch (error) {
-            clearTimeout(timeoutId)
-
-            // Si c'est déjà une ApiServiceError, la propager
-            if (error instanceof ApiServiceError) {
-                throw error
-            }
-
-            // Sinon, parser l'erreur
-            const apiError = parseApiError(error)
-            throw new ApiServiceError(apiError)
-        }
-    }
-
-    // ============================================================================
+class ApiService extends BaseApiService {
+    // ========================================================================
     // Gallery
-    // ============================================================================
+    // ========================================================================
 
     async getGalleryItems(category?: string): Promise<ApiResponse<GalleryItem[]>> {
         const query = category ? `?category=${encodeURIComponent(category)}` : ''
@@ -87,9 +29,9 @@ class ApiService {
         return this.request<PaginatedResponse<GalleryItem>>(`/galleries${query}`)
     }
 
-    // ============================================================================
+    // ========================================================================
     // Prestations
-    // ============================================================================
+    // ========================================================================
 
     async getPrestations(): Promise<ApiResponse<Prestation[]>> {
         return this.request<ApiResponse<Prestation[]>>('/prestations')
@@ -99,17 +41,17 @@ class ApiService {
         return this.request<ApiResponse<Prestation>>(`/prestations/${id}`)
     }
 
-    // ============================================================================
+    // ========================================================================
     // Gift Cards
-    // ============================================================================
+    // ========================================================================
 
     async getGiftCards(): Promise<ApiResponse<GiftCard[]>> {
         return this.request<ApiResponse<GiftCard[]>>('/gift-cards')
     }
 
-    // ============================================================================
-    // Contact Form (pour une future implémentation)
-    // ============================================================================
+    // ========================================================================
+    // Contact Form
+    // ========================================================================
 
     async sendContactMessage(data: {
         name: string
@@ -125,9 +67,9 @@ class ApiService {
         })
     }
 
-    // ============================================================================
-    // Booking Request (demande de reservation)
-    // ============================================================================
+    // ========================================================================
+    // Booking Request
+    // ========================================================================
 
     async sendBookingRequest(data: {
         name: string
@@ -145,8 +87,5 @@ class ApiService {
     }
 }
 
-// Export singleton instance
 export const api = new ApiService()
-
-// Export default pour compatibilité
 export default api

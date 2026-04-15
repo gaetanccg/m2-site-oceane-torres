@@ -3,9 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\StorePrestationRequest;
+use App\Http\Requests\Admin\UpdatePrestationRequest;
 use App\Models\Prestation;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
 class PrestationController extends Controller
@@ -43,25 +44,9 @@ class PrestationController extends Controller
         ]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StorePrestationRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'icon' => ['nullable', 'string', 'max:50'],
-            'description' => ['nullable', 'string'],
-            'features' => ['nullable', 'array'],
-            'features.*' => ['string'],
-            'price' => ['required', 'numeric', 'min:0'],
-            'price_text' => ['nullable', 'string', 'max:100'],
-            'price_unit' => ['nullable', 'string', 'max:100'],
-            'duration' => ['nullable', 'integer', 'min:0'],
-            'category' => ['nullable', 'string', 'max:100'],
-            'background_image' => ['nullable', 'string', 'max:500'],
-            'background_opacity' => ['nullable', 'numeric', 'min:0', 'max:1'],
-            'disclaimer' => ['nullable', 'string'],
-            'is_active' => ['boolean'],
-            'sort_order' => ['integer'],
-        ]);
+        $validated = $request->validated();
 
         $prestation = Prestation::create($validated);
 
@@ -73,25 +58,9 @@ class PrestationController extends Controller
         ], 201);
     }
 
-    public function update(Request $request, Prestation $prestation): JsonResponse
+    public function update(UpdatePrestationRequest $request, Prestation $prestation): JsonResponse
     {
-        $validated = $request->validate([
-            'title' => ['sometimes', 'string', 'max:255'],
-            'icon' => ['nullable', 'string', 'max:50'],
-            'description' => ['nullable', 'string'],
-            'features' => ['nullable', 'array'],
-            'features.*' => ['string'],
-            'price' => ['sometimes', 'numeric', 'min:0'],
-            'price_text' => ['nullable', 'string', 'max:100'],
-            'price_unit' => ['nullable', 'string', 'max:100'],
-            'duration' => ['nullable', 'integer', 'min:0'],
-            'category' => ['nullable', 'string', 'max:100'],
-            'background_image' => ['nullable', 'string', 'max:500'],
-            'background_opacity' => ['nullable', 'numeric', 'min:0', 'max:1'],
-            'disclaimer' => ['nullable', 'string'],
-            'is_active' => ['boolean'],
-            'sort_order' => ['integer'],
-        ]);
+        $validated = $request->validated();
 
         $prestation->update($validated);
 
