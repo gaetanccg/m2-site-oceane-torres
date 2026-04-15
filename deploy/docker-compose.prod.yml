@@ -38,6 +38,12 @@ services:
         chmod -R 755 /var/www &&
         chmod -R 777 /var/www/storage /var/www/bootstrap/cache &&
         chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache &&
+        composer install --no-dev --optimize-autoloader --no-interaction &&
+        php artisan migrate --force &&
+        php artisan storage:link 2>/dev/null || true &&
+        php artisan config:cache &&
+        php artisan route:cache &&
+        php artisan view:cache &&
         php-fpm
       "
     healthcheck:
