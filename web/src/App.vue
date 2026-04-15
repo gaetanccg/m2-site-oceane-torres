@@ -5,6 +5,8 @@
     <!-- Public layout -->
     <div v-else class="min-h-screen flex flex-col">
         <Navbar />
+        <!-- Spacer for fixed navbar (h-20 = 5rem) -->
+        <div class="h-20" aria-hidden="true"></div>
         <main class="flex-grow">
             <router-view />
         </main>

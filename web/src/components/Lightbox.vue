@@ -32,7 +32,7 @@
                     <div class="media-wrapper">
                         <img
                             v-if="images[currentIndex]?.type === 'image'"
-                            :src="images[currentIndex].url"
+                            :src="images[currentIndex].previewUrl || images[currentIndex].url"
                             :alt="images[currentIndex].alt"
                             draggable="false"
                             class="media-content select-none"
@@ -43,15 +43,33 @@
                             controls
                             class="media-content"
                         />
-                        <!-- YouTube iframe -->
-                        <iframe
-                            v-else-if="images[currentIndex]?.type === 'youtube'"
-                            :src="`https://www.youtube.com/embed/${images[currentIndex].youtubeId}?autoplay=1&rel=0`"
-                            class="youtube-iframe"
-                            frameborder="0"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                            allowfullscreen
-                        />
+                        <!-- YouTube iframe (requiert consentement marketing) -->
+                        <template v-else-if="images[currentIndex]?.type === 'youtube'">
+                            <iframe
+                                v-if="consentStore.marketingEnabled"
+                                :src="`https://www.youtube.com/embed/${images[currentIndex].youtubeId}?autoplay=1&rel=0`"
+                                class="youtube-iframe"
+                                frameborder="0"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowfullscreen
+                            />
+                            <div v-else class="youtube-iframe youtube-placeholder" @click.stop>
+                                <div class="flex flex-col items-center justify-center h-full text-center px-6">
+                                    <svg class="w-16 h-16 text-gray-400 mb-4" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0C.488 3.45.029 5.804 0 12c.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0C23.512 20.55 23.971 18.196 24 12c-.029-6.185-.484-8.549-4.385-8.816zM9 16V8l8 4-8 4z"/>
+                                    </svg>
+                                    <p class="text-gray-300 text-sm mb-4">
+                                        Cette vidéo est hébergée par YouTube. En l'affichant, vous acceptez les cookies tiers de YouTube.
+                                    </p>
+                                    <button
+                                        @click="acceptMarketingAndPlay"
+                                        class="px-6 py-2.5 bg-gold text-black text-sm font-medium rounded-lg hover:bg-gold/90 transition-colors"
+                                    >
+                                        Accepter et regarder
+                                    </button>
+                                </div>
+                            </div>
+                        </template>
 
                         <!-- Watermark overlay (uniquement pour les images) -->
                         <div v-if="showWatermark && images[currentIndex]?.type === 'image'" class="watermark-overlay" aria-hidden="true">
@@ -93,6 +111,8 @@
                             :alt="image.alt || `Photo ${index + 1}`"
                             class="thumbnail-img"
                             loading="lazy"
+                            width="60"
+                            height="60"
                         />
                         <div v-else class="thumbnail-placeholder">
                             <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
@@ -115,6 +135,9 @@
 import {ref, watch, onMounted, onUnmounted, nextTick} from 'vue'
 import type {LightboxImage} from '@/types'
 import {IconClose, IconChevronLeft, IconChevronRight} from './icons'
+import {useConsentStore} from '@/stores/consent'
+
+const consentStore = useConsentStore()
 
 interface Props {
     images: LightboxImage[]
@@ -131,11 +154,21 @@ const emit = defineEmits<{ close: [] }>()
 const currentIndex = ref(props.initialIndex)
 const thumbnailContainer = ref<HTMLElement | null>(null)
 
+// Sync currentIndex when initialIndex changes OR when lightbox opens
 watch(() => props.initialIndex, (newVal) => {
     currentIndex.value = newVal
 })
+watch(() => props.isOpen, (isOpen) => {
+    if (isOpen) {
+        currentIndex.value = props.initialIndex
+    }
+})
 
 const close = () => emit('close')
+
+const acceptMarketingAndPlay = () => {
+    consentStore.savePreferences(consentStore.preferences.analytics, true)
+}
 
 const previous = () => {
     if (currentIndex.value > 0) {
@@ -215,6 +248,12 @@ onUnmounted(() => {
     height: 45vw;
     max-width: 1280px;
     max-height: 720px;
+}
+
+.youtube-placeholder{
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
 }
 
 .watermark-overlay{

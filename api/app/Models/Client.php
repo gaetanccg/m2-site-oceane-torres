@@ -160,16 +160,33 @@ class Client extends Model
     }
 
     /**
-     * Export des données RGPD
+     * Export des données RGPD (Article 15 — droit d'accès)
      */
     public function gdprExport(): array
     {
         $this->load(['reservations.prestation', 'reservations.payments']);
 
+        $email = $this->email;
+
+        // Commandes liées par user_id ou guest_email
+        $orders = Order::forEmail($email)->with('items')->get();
+
+        // Messages de contact par email
+        $contacts = ContactMessage::where('email', $email)->get();
+
+        // Download logs des galeries du client
+        $downloadLogs = collect();
+        if ($this->user_id) {
+            $galleryIds = Gallery::where('user_id', $this->user_id)->pluck('id');
+            if ($galleryIds->isNotEmpty()) {
+                $downloadLogs = DownloadLog::whereIn('gallery_id', $galleryIds)->get();
+            }
+        }
+
         return [
             'personal_data' => [
                 'name' => $this->name,
-                'email' => $this->email,
+                'email' => $email,
                 'phone' => $this->phone,
                 'created_at' => $this->created_at->toIso8601String(),
             ],
@@ -189,6 +206,26 @@ class Client extends Model
                 'currency' => $p->currency,
                 'status' => $p->status,
                 'created_at' => $p->created_at->toIso8601String(),
+            ])->toArray(),
+            'orders' => $orders->map(fn ($o) => [
+                'order_number' => $o->order_number,
+                'status' => $o->status,
+                'total' => $o->total,
+                'currency' => $o->currency,
+                'items_count' => $o->items->count(),
+                'created_at' => $o->created_at->toIso8601String(),
+                'paid_at' => $o->paid_at?->toIso8601String(),
+            ])->toArray(),
+            'contact_messages' => $contacts->map(fn ($c) => [
+                'subject' => $c->subject,
+                'message' => $c->message,
+                'created_at' => $c->created_at->toIso8601String(),
+            ])->toArray(),
+            'download_logs' => $downloadLogs->map(fn ($d) => [
+                'photo_id' => $d->photo_id,
+                'gallery_id' => $d->gallery_id,
+                'ip_address' => $d->ip_address,
+                'downloaded_at' => $d->downloaded_at?->toIso8601String(),
             ])->toArray(),
             'exported_at' => now()->toIso8601String(),
         ];

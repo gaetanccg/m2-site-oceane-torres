@@ -3,31 +3,27 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Auth\ForgotPasswordRequest;
+use App\Http\Requests\Auth\LoginRequest;
+use App\Http\Requests\Auth\RegisterRequest;
+use App\Http\Requests\Auth\ResetPasswordRequest;
+use App\Http\Requests\Auth\UpdateProfileRequest;
 use App\Models\Gallery;
+use App\Models\Order;
+use App\Models\Reservation;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
-use Illuminate\Validation\Rules\Password as PasswordRule;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    public function register(Request $request): JsonResponse
+    public function register(RegisterRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'first_name' => ['required', 'string', 'max:255'],
-            'last_name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
-            'phone' => ['nullable', 'string', 'max:20'],
-            'password' => ['required', 'confirmed', PasswordRule::defaults()],
-            'gdpr_consent' => ['required', 'accepted'],
-        ], [
-            'gdpr_consent.required' => 'Vous devez accepter la politique de confidentialité.',
-            'gdpr_consent.accepted' => 'Vous devez accepter la politique de confidentialité.',
-        ]);
+        $validated = $request->validated();
 
         // RGPD: Stocker les infos de consentement pour le User Observer
         $request->merge([
@@ -44,8 +40,16 @@ class AuthController extends Controller
             'role' => 'client',
         ]);
 
-        // Lier les galeries assignees par email a ce nouvel utilisateur
+        // Rattacher l'historique existant par email au nouvel utilisateur
         Gallery::where('assigned_email', $validated['email'])
+            ->whereNull('user_id')
+            ->update(['user_id' => $user->id]);
+
+        Order::where('guest_email', $validated['email'])
+            ->whereNull('user_id')
+            ->update(['user_id' => $user->id]);
+
+        Reservation::where('guest_email', $validated['email'])
             ->whereNull('user_id')
             ->update(['user_id' => $user->id]);
 
@@ -57,12 +61,8 @@ class AuthController extends Controller
         ], 201);
     }
 
-    public function login(Request $request): JsonResponse
+    public function login(LoginRequest $request): JsonResponse
     {
-        $request->validate([
-            'email' => ['required', 'email'],
-            'password' => ['required'],
-        ]);
 
         if (! Auth::attempt($request->only('email', 'password'))) {
             throw ValidationException::withMessages([
@@ -101,16 +101,11 @@ class AuthController extends Controller
         ]);
     }
 
-    public function updateProfile(Request $request): JsonResponse
+    public function updateProfile(UpdateProfileRequest $request): JsonResponse
     {
         $user = $request->user();
 
-        $validated = $request->validate([
-            'first_name' => ['sometimes', 'string', 'max:255'],
-            'last_name' => ['sometimes', 'string', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:20'],
-            'email' => ['sometimes', 'email', 'unique:users,email,'.$user->id],
-        ]);
+        $validated = $request->validated();
 
         $user->update($validated);
 
@@ -120,11 +115,9 @@ class AuthController extends Controller
         ]);
     }
 
-    public function forgotPassword(Request $request): JsonResponse
+    public function forgotPassword(ForgotPasswordRequest $request): JsonResponse
     {
-        $request->validate([
-            'email' => ['required', 'email'],
-        ]);
+        $validated = $request->validated();
 
         $status = Password::sendResetLink($request->only('email'));
 
@@ -139,13 +132,9 @@ class AuthController extends Controller
         ]);
     }
 
-    public function resetPassword(Request $request): JsonResponse
+    public function resetPassword(ResetPasswordRequest $request): JsonResponse
     {
-        $request->validate([
-            'token' => ['required'],
-            'email' => ['required', 'email'],
-            'password' => ['required', 'confirmed', PasswordRule::defaults()],
-        ]);
+        $validated = $request->validated();
 
         $status = Password::reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),

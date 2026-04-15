@@ -115,14 +115,16 @@
 
                     <!-- Main image -->
                     <img
-                        v-show="getImageState(entry.item).loaded && !getImageState(entry.item).failed"
                         :src="getImageState(entry.item).currentSrc"
                         :alt="entry.item.alt"
                         draggable="false"
                         decoding="async"
                         :loading="entry.flatIndex < priorityCount ? 'eager' : 'lazy'"
                         :fetchpriority="entry.flatIndex < priorityCount ? 'high' : 'auto'"
-                        class="gallery-image loaded"
+                        :class="[
+                            'gallery-image',
+                            { 'loaded': getImageState(entry.item).loaded && !getImageState(entry.item).failed }
+                        ]"
                         @load="handleImageLoadSuccess(entry.item)"
                         @error="handleImageLoadError(entry.item)"
                     />
@@ -249,8 +251,8 @@ const getImageKey = (item: GalleryItem): string => {
 const getImageState = (item: GalleryItem): ImageState => {
     const key = getImageKey(item)
     if (!imageStates.has(key)) {
-        // Initialize with preview URL, fallback chain: preview -> thumbnail -> original
-        const initialSrc = item.previewUrl || item.thumbnailUrl || item.url
+        // Grid uses thumbnail first (small, fast), fallback to preview then original
+        const initialSrc = item.thumbnailUrl || item.previewUrl || item.url
         imageStates.set(key, {
             loaded: false,
             failed: false,
@@ -265,8 +267,8 @@ const getImageState = (item: GalleryItem): ImageState => {
 // Get fallback URL chain for an item
 const getFallbackUrls = (item: GalleryItem): string[] => {
     const urls: string[] = []
-    if (item.previewUrl) urls.push(item.previewUrl)
-    if (item.thumbnailUrl && !urls.includes(item.thumbnailUrl)) urls.push(item.thumbnailUrl)
+    if (item.thumbnailUrl) urls.push(item.thumbnailUrl)
+    if (item.previewUrl && !urls.includes(item.previewUrl)) urls.push(item.previewUrl)
     if (item.url && !urls.includes(item.url)) urls.push(item.url)
     return urls
 }
@@ -415,15 +417,23 @@ const openLightbox = (index: number) => {
     lightboxOpen.value = true
 }
 
+// Debounced resize handler
+let resizeRaf: number | null = null
+const debouncedUpdateColumnCount = () => {
+    if (resizeRaf) window.cancelAnimationFrame(resizeRaf)
+    resizeRaf = window.requestAnimationFrame(updateColumnCount)
+}
+
 // Lifecycle
 onMounted(() => {
     updateColumnCount()
-    window.addEventListener('resize', updateColumnCount)
+    window.addEventListener('resize', debouncedUpdateColumnCount)
     preloadCurrentImages()
 })
 
 onUnmounted(() => {
-    window.removeEventListener('resize', updateColumnCount)
+    window.removeEventListener('resize', debouncedUpdateColumnCount)
+    if (resizeRaf) window.cancelAnimationFrame(resizeRaf)
 })
 
 // When filter changes, preload new images
@@ -456,12 +466,18 @@ watch(activeFilter, async () => {
     position: relative;
     overflow: hidden;
     cursor: pointer;
-    min-height: 100px;
+    aspect-ratio: 3/2;
     background: #f5f5f5;
 }
 
 .video-grid .gallery-item{
     margin-bottom: 0;
+    aspect-ratio: 16/9;
+}
+
+/* Once the main image loads, let it dictate natural height */
+.gallery-item:has(.gallery-image.loaded){
+    aspect-ratio: auto;
 }
 
 /* Blur-up placeholder container */
@@ -525,6 +541,11 @@ watch(activeFilter, async () => {
     display: block;
     width: 100%;
     height: auto;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.gallery-image.loaded{
     opacity: 1;
     transition: transform 0.5s ease;
     z-index: 2;

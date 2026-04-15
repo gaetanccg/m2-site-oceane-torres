@@ -301,7 +301,27 @@
                     >
                         Supprimer
                     </Button>
-                    <Button variant="secondary" @click="showDetailModal = false">Fermer</Button>
+                    <div class="flex items-center gap-2">
+                        <Button
+                            v-if="selectedOrder?.status === 'paid'"
+                            variant="secondary"
+                            size="sm"
+                            @click="copyDownloadLink"
+                            title="Copier le lien de telechargement client"
+                        >
+                            Copier lien
+                        </Button>
+                        <Button
+                            v-if="selectedOrder?.status === 'pending' && selectedOrder?.sumup_checkout_id"
+                            variant="primary"
+                            size="sm"
+                            :loading="isRetryingPayment"
+                            @click="retryPayment"
+                        >
+                            Re-verifier paiement
+                        </Button>
+                        <Button variant="secondary" @click="showDetailModal = false">Fermer</Button>
+                    </div>
                 </div>
             </template>
         </Modal>
@@ -336,6 +356,7 @@ const to = ref(0)
 const showDetailModal = ref(false)
 const selectedOrder = ref<AdminOrder | null>(null)
 const isMarkingShipped = ref(false)
+const isRetryingPayment = ref(false)
 
 const stats = computed(() => {
     const paid = orders.value.filter(o => o.status === 'paid')
@@ -403,6 +424,35 @@ async function markAsShipped() {
         toast.error('Erreur', 'Impossible de marquer comme expédié')
     } finally {
         isMarkingShipped.value = false
+    }
+}
+
+async function copyDownloadLink() {
+    if (!selectedOrder.value) return
+    try {
+        const response = await adminApi.getOrderDownloadLink(selectedOrder.value.id)
+        await navigator.clipboard.writeText(response.download_link)
+        toast.success('Lien copié dans le presse-papier')
+    } catch {
+        toast.error('Erreur', 'Impossible de recuperer le lien')
+    }
+}
+
+async function retryPayment() {
+    if (!selectedOrder.value) return
+    isRetryingPayment.value = true
+    try {
+        const response = await adminApi.retryOrderPayment(selectedOrder.value.id)
+        const index = orders.value.findIndex(o => o.id === selectedOrder.value?.id)
+        if (index !== -1) {
+            orders.value[index] = response.order
+        }
+        selectedOrder.value = response.order
+        toast.success(response.message)
+    } catch {
+        toast.error('Erreur', 'Echec de la re-verification du paiement')
+    } finally {
+        isRetryingPayment.value = false
     }
 }
 

@@ -20,7 +20,8 @@ class Order extends Model
         'user_id',
         'cart_id',
         'guest_email',
-        'guest_name',
+        'guest_first_name',
+        'guest_last_name',
         'order_number',
         'subtotal',
         'total',
@@ -116,7 +117,7 @@ class Order extends Model
             return trim($this->user->first_name.' '.$this->user->last_name);
         }
 
-        return $this->guest_name ?? '';
+        return trim(($this->guest_first_name ?? '').' '.($this->guest_last_name ?? ''));
     }
 
     public function isPaid(): bool

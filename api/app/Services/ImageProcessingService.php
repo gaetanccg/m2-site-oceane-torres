@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Helpers\MimeTypes;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -45,10 +46,10 @@ class ImageProcessingService
     // Font path for watermark (TTF required for custom sizes)
     private const WATERMARK_FONT = 'fonts/Amsterdam.ttf';
 
-    public function __construct()
+    public function __construct(?MinioStorageService $storageService = null)
     {
         $this->rawManager = new ImageManager(new GdDriver, autoOrientation: false);
-        $this->storageService = new MinioStorageService;
+        $this->storageService = $storageService ?? new MinioStorageService;
     }
 
     /**
@@ -126,7 +127,7 @@ class ImageProcessingService
             $filename = "{$uuid}.{$extension}";
 
             // Get mime type
-            $mimeType = $this->getMimeTypeFromExtension($extension);
+            $mimeType = MimeTypes::fromExtension($extension);
 
             // Define paths
             $newOriginalPath = "{$galleryId}/original/{$filename}";
@@ -443,19 +444,6 @@ class ImageProcessingService
         Storage::disk($this->disk)->put($path, $content, [
             'ContentType' => $mimeType,
         ]);
-    }
-
-    /**
-     * Get MIME type from extension
-     */
-    private function getMimeTypeFromExtension(string $extension): string
-    {
-        return match ($extension) {
-            'png' => 'image/png',
-            'gif' => 'image/gif',
-            'webp' => 'image/webp',
-            default => 'image/jpeg',
-        };
     }
 
     /**

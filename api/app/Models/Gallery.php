@@ -11,7 +11,7 @@ use Illuminate\Support\Str;
 
 class Gallery extends Model
 {
-    use HasFactory, HasUuids;
+    use Concerns\CastsBooleansForPostgres, HasFactory, HasUuids;
 
     protected $fillable = [
         'user_id',
@@ -29,11 +29,10 @@ class Gallery extends Model
         'event_category_id',
         'parent_id',
         'sort_order',
+        'is_published',
     ];
 
-    protected $appends = [
-        'client_id',
-    ];
+    protected $appends = [];
 
     protected function casts(): array
     {
@@ -42,6 +41,7 @@ class Gallery extends Model
             'last_viewed_at' => 'datetime',
             'views_count' => 'integer',
             'sort_order' => 'integer',
+            'is_published' => 'boolean',
         ];
     }
 
@@ -97,6 +97,11 @@ class Gallery extends Model
     public function children(): HasMany
     {
         return $this->hasMany(Gallery::class, 'parent_id')->orderBy('sort_order')->orderBy('title');
+    }
+
+    public function scopePublished($query)
+    {
+        return $query->whereRaw('"is_published" = true');
     }
 
     public function scopeTopLevel($query)
@@ -198,111 +203,27 @@ class Gallery extends Model
     }
 
     /**
-     * Get available product types for this gallery with resolved prices.
-     * If no configuration exists, all product types are available at default prices.
+     * Delegate pricing methods to PricingService.
+     * Kept as proxy methods to avoid breaking existing callers.
      */
     public function getAvailableProductTypes(): array
     {
-        $configured = $this->galleryProductTypes;
-
-        // No configuration → all types at default prices
-        if ($configured->isEmpty()) {
-            $result = [];
-            foreach (CartItem::PRODUCT_TYPES as $type => $info) {
-                $result[$type] = [
-                    'label' => $info['label'],
-                    'price' => $info['price'],
-                    'is_print' => $info['is_print'],
-                    'is_enabled' => true,
-                ];
-            }
-
-            return $result;
-        }
-
-        // Build from configuration
-        $result = [];
-        foreach (CartItem::PRODUCT_TYPES as $type => $info) {
-            $config = $configured->firstWhere('product_type', $type);
-
-            $result[$type] = [
-                'label' => $info['label'],
-                'price' => $config ? $config->effective_price : $info['price'],
-                'is_print' => $info['is_print'],
-                'is_enabled' => $config ? $config->is_enabled : false,
-            ];
-        }
-
-        return $result;
+        return app(\App\Services\PricingService::class)->getAvailableProductTypes($this);
     }
 
-    /**
-     * Get pack pricing info for all product types on this gallery.
-     * Returns array keyed by product_type with tiers.
-     */
     public function getPackPricing(): array
     {
-        $this->loadMissing('galleryProductTypes.packTiers');
-        $result = [];
-
-        foreach ($this->galleryProductTypes as $gpt) {
-            if (! $gpt->is_enabled || $gpt->packTiers->isEmpty()) {
-                continue;
-            }
-
-            $result[$gpt->product_type] = [
-                'label' => CartItem::PRODUCT_TYPES[$gpt->product_type]['label'] ?? $gpt->product_type,
-                'base_price' => $gpt->effective_price,
-                'tiers' => $gpt->packTiers->map(fn ($t) => [
-                    'min_quantity' => $t->min_quantity,
-                    'unit_price' => (float) $t->unit_price,
-                ])->values()->toArray(),
-            ];
-        }
-
-        return $result;
+        return app(\App\Services\PricingService::class)->getPackPricing($this);
     }
 
-    /**
-     * Resolve the unit price for a product type given a quantity.
-     * Falls back to normal price if no pack tiers match.
-     */
     public function resolvePackPrice(string $productType, int $quantity): ?float
     {
-        $this->loadMissing('galleryProductTypes.packTiers');
-        $gpt = $this->galleryProductTypes->firstWhere('product_type', $productType);
-
-        if (! $gpt || ! $gpt->is_enabled) {
-            return null;
-        }
-
-        $matchingTier = $gpt->packTiers
-            ->where('min_quantity', '<=', $quantity)
-            ->sortByDesc('min_quantity')
-            ->first();
-
-        return $matchingTier ? (float) $matchingTier->unit_price : $gpt->effective_price;
+        return app(\App\Services\PricingService::class)->resolvePackPrice($this, $productType, $quantity);
     }
 
-    /**
-     * Get the price for a specific product type on this gallery.
-     * Returns null if the product type is disabled.
-     */
     public function getPriceForProductType(string $productType): ?float
     {
-        $configured = $this->galleryProductTypes->firstWhere('product_type', $productType);
-
-        // No configuration for this gallery → default price
-        if ($this->galleryProductTypes->isEmpty()) {
-            return CartItem::getPriceForType($productType);
-        }
-
-        // Product type not configured or disabled
-        if (! $configured || ! $configured->is_enabled) {
-            return null;
-        }
-
-        return $configured->effective_price;
+        return app(\App\Services\PricingService::class)->getPriceForProductType($this, $productType);
     }
 
     /**

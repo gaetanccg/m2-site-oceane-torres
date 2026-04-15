@@ -60,6 +60,9 @@
                     <router-link to="/cgv" class="hover:text-gold transition-colors">
                         CGV
                     </router-link>
+                    <button @click="openCookieSettings" class="hover:text-gold transition-colors">
+                        Cookies
+                    </button>
                 </div>
             </div>
         </div>
@@ -69,6 +72,12 @@
 <script setup lang="ts">
 import {NAV_LINKS, CONTACT_INFO} from '@/config/constants'
 import SocialLinks from './SocialLinks.vue'
+import {useConsentStore} from '@/stores/consent'
 
+const consentStore = useConsentStore()
 const currentYear = new Date().getFullYear()
+
+function openCookieSettings() {
+    consentStore.openSettings()
+}
 </script>
