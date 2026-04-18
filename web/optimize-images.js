@@ -19,6 +19,14 @@ const OUTPUT_DIR = path.join(__dirname, 'public/optimized');
 const MAX_WIDTH = 1200;
 const QUALITY = 75;
 
+// Fichiers à ne pas ré-optimiser (versions custom conservées)
+const SKIP_FILES = [
+    'hero.png',
+    'hero.jpg',
+    'hero.jpeg',
+    'hero.webp'
+];
+
 // Extensions supportées
 const SUPPORTED_EXTENSIONS = [
     '.jpg',
@@ -38,7 +46,7 @@ function getImageFiles(dir, files = []) {
 
         if (entry.isDirectory()) {
             getImageFiles(fullPath, files);
-        } else if (SUPPORTED_EXTENSIONS.includes(path.extname(entry.name).toLowerCase())) {
+        } else if (SUPPORTED_EXTENSIONS.includes(path.extname(entry.name).toLowerCase()) && !SKIP_FILES.includes(entry.name)) {
             files.push(fullPath);
         }
     }
@@ -88,11 +96,10 @@ async function optimizeImage(inputPath) {
 async function main() {
     console.log('Optimisation des images...\n');
 
-    // Nettoyer le dossier de sortie
-    if (fs.existsSync(OUTPUT_DIR)) {
-        fs.rmSync(OUTPUT_DIR, {recursive: true});
+    // Créer le dossier de sortie s'il n'existe pas (sans effacer l'existant)
+    if (!fs.existsSync(OUTPUT_DIR)) {
+        fs.mkdirSync(OUTPUT_DIR, {recursive: true});
     }
-    fs.mkdirSync(OUTPUT_DIR, {recursive: true});
 
     const files = getImageFiles(SOURCE_DIR);
     console.log(`${files.length} images trouvées\n`);
