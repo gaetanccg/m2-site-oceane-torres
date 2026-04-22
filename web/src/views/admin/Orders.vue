@@ -174,6 +174,9 @@
                     </div>
                     <div class="text-right">
                         <p class="text-2xl font-bold text-gold">{{ formatCurrency(selectedOrder.total) }}</p>
+                        <p v-if="selectedOrder.shipping_fee > 0" class="text-xs text-gray-500 mt-1">
+                            dont {{ formatCurrency(selectedOrder.shipping_fee) }} de frais de port
+                        </p>
                     </div>
                 </div>
 
@@ -240,6 +243,40 @@
                         <div>
                             <p class="text-gray-500">Nom</p>
                             <p class="text-gray-900">{{ selectedOrder.customer_name || '-' }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Shipping Address -->
+                <div v-if="selectedOrder.shipping" class="space-y-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-5 h-5 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0zM15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <h4 class="font-medium text-amber-900">Adresse de livraison</h4>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <p class="text-amber-800/70">Adresse</p>
+                            <address class="not-italic text-gray-900 leading-relaxed">
+                                <div>{{ selectedOrder.shipping.address_line1 }}</div>
+                                <div v-if="selectedOrder.shipping.address_line2">{{ selectedOrder.shipping.address_line2 }}</div>
+                                <div>{{ selectedOrder.shipping.postal_code }} {{ selectedOrder.shipping.city }}</div>
+                                <div class="text-gray-500">France</div>
+                            </address>
+                        </div>
+                        <div>
+                            <p class="text-amber-800/70">Téléphone</p>
+                            <p class="text-gray-900">
+                                <a
+                                    v-if="selectedOrder.shipping.phone"
+                                    :href="`tel:${selectedOrder.shipping.phone}`"
+                                    class="hover:underline"
+                                >
+                                    {{ selectedOrder.shipping.phone }}
+                                </a>
+                                <span v-else>-</span>
+                            </p>
                         </div>
                     </div>
                 </div>

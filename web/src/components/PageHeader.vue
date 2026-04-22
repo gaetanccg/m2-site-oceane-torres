@@ -20,7 +20,7 @@ interface Props {
 
 withDefaults(defineProps<Props>(), {
     subtitle: '',
-    wrapperClass: 'text-center mb-16',
+    wrapperClass: 'text-center mb-8',
     titleClass: 'text-5xl md:text-6xl font-light mb-4',
     subtitleClass: 'text-gray-600 font-light text-lg'
 })

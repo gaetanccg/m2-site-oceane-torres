@@ -21,6 +21,8 @@ export const useCartStore = defineStore('cart', () => {
     // Getters
     const items = computed(() => cart.value?.items ?? [])
     const itemsCount = computed(() => cart.value?.items_count ?? 0)
+    const subtotal = computed(() => cart.value?.subtotal ?? 0)
+    const shippingFee = computed(() => cart.value?.shipping_fee ?? 0)
     const total = computed(() => cart.value?.total ?? 0)
     const currency = computed(() => cart.value?.currency ?? 'EUR')
     const isEmpty = computed(() => itemsCount.value === 0)
@@ -259,6 +261,8 @@ export const useCartStore = defineStore('cart', () => {
         // Getters
         items,
         itemsCount,
+        subtotal,
+        shippingFee,
         total,
         currency,
         isEmpty,

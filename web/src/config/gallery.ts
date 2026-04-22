@@ -1,15 +1,18 @@
 import type {GalleryItem} from '@/types'
+import manifest from './gallery-manifest.json'
 
 /**
- * Configuration statique des images de la galerie
- * Images optimisées WebP depuis /public/optimized/
+ * Configuration de la galerie
+ *
+ * La liste des images est auto-générée depuis public/optimized/
+ * par `node optimize-images.js` (manifest: gallery-manifest.json).
+ *
+ * Pour ajouter des photos :
+ *   1. Déposer les JPG dans public/images/<Catégorie>/ avec préfixe padded
+ *      (ex: 010_description.jpg, 020_autre.jpg...)
+ *   2. node optimize-images.js   (optimise + régénère le manifest)
+ *   3. node scripts/generate-thumbs.js
  */
-
-interface CategoryConfig {
-    name: string
-    basePath: string
-    images: string[]
-}
 
 /**
  * Configuration des vidéos YouTube
@@ -24,73 +27,24 @@ interface YouTubeVideoConfig {
 }
 
 const youtubeVideos: YouTubeVideoConfig[] = [
-    // === AJOUTE TES LIENS YOUTUBE ICI ===
-    // Remplace les IDs par les vrais IDs de tes vidéos
-    // L'ID est la partie après "v=" dans l'URL YouTube
-    // Exemple: https://www.youtube.com/watch?v=ABC123def -> youtubeId: 'ABC123def'
-
     {youtubeId: 'pdEuOR5ckHQ', title: 'Vidéo hair transformation Vince Barb\'or'},
     {youtubeId: 'GArIbW4F5UI', title: 'Récap d\'une journée de CSO à Cluny'},
     {youtubeId: '0iPOlSZPzlI', title: 'Concert des Chœur du Sud de Rive de Gier avec Frank CASTELLANO et Ycare'},
     {youtubeId: 'FNUomXKX1hE', title: 'Céleste Joly en CSO à Saint-Georges Équitation'},
     {youtubeId: 'xSUVxBedOhc', title: 'Vidéo au drone d\'un motard'},
-    {youtubeId: 'Sea2FkTh9Vg', title: 'Vidéo immersive lors de la Semaine Vichyssoise'},
-    {youtubeId: 'PfvJwdAEZH8', title: 'Vidéo drone randonnée au Gouffre d\'Enfer'},
+    {youtubeId: 'Sea2FkTh9Vg', title: 'Vidéo immersive lors de la Semaine Vichyssoise'},
+    {youtubeId: 'PfvJwdAEZH8', title: 'Vidéo drone randonnée au Gouffre d\'Enfer'},
 ]
 
-const categories: CategoryConfig[] = [
-    {
-        name: 'Portraits',
-        basePath: '/optimized/Portraits',
-        images: [
-            '1.webp', '2.webp', '3.webp', '4.webp', '5.webp', '6.webp', '7.webp', '8.webp', '9.webp', '10.webp',
-            '11.webp', '12.webp', '13.webp', '14.webp', '15.webp', '16.webp', '17.webp', '18.webp', '19.webp', '20.webp',
-            '21.webp', '22.webp', '23.webp', '24.webp', '25.webp', '26.webp', '27.webp', '28.webp', '29.webp', '30.webp',
-            '31.webp', '32.webp', '33.webp'
-        ]
-    },
-    {
-        name: 'Sport',
-        basePath: '/optimized/Sport',
-        images: [
-            '1.webp', '2.webp', '3.webp', '4.webp', '5.webp', '6.webp', '7.webp', '8.webp', '9.webp', '10.webp',
-            '11.webp', '12.webp', '13.webp', '14.webp', '15.webp', '16.webp', '17.webp', '18.webp', '19.webp', '20.webp',
-            '21.webp', '22.webp', '23.webp', '24.webp', '25.webp', '26.webp', '27.webp', '28.webp', '29.webp', '30.webp',
-            '31.webp', '32.webp', '33.webp', '34.webp', '35.webp', '36.webp'
-        ]
-    },
-    {
-        name: 'Animalier',
-        basePath: '/optimized/Animalier',
-        images: [
-            '1.webp', '2.webp', '3.webp', '4.webp', '5.webp', '6.webp', '7.webp', '8.webp', '9.webp', '10.webp',
-            '11.webp', '12.webp', '13.webp', '14.webp', '15.webp'
-        ]
-    },
-    {
-        name: 'Automobile',
-        basePath: '/optimized/Automobile',
-        images: [
-            '1.webp', '2.webp', '3.webp', '4.webp', '5.webp', '6.webp', '7.webp', '8.webp', '9.webp', '10.webp',
-            '11.webp', '12.webp', '13.webp', '14.webp', '15.webp', '16.webp', '17.webp', '18.webp', '19.webp', '20.webp',
-            '21.webp', '22.webp', '23.webp', '24.webp'
-        ]
-    },
-    {
-        name: 'Entreprise',
-        basePath: '/optimized/Entreprise',
-        images: [
-            '1.webp', '2.webp', '3.webp', '4.webp', '5.webp', '6.webp', '8.webp', '9.webp', '10.webp',
-            '11.webp', '12.webp', '13.webp', '14.webp', '15.webp', '16.webp'
-        ]
-    }
-]
+// Ordre d'affichage des catégories dans le portfolio
+const CATEGORY_ORDER = ['Portraits', 'Sport', 'Animalier', 'Concert', 'Automobile', 'Entreprise']
 
 // Alt texts SEO-friendly par catégorie
 const categoryAltPrefix: Record<string, string> = {
     'Portraits': 'Photo portrait par Océane Torres photographe Loire Saint-Étienne',
     'Sport': 'Photo sportive par Océane Torres photographe Lyon Rhône',
     'Animalier': 'Photo animalière par Océane Torres photographe Auvergne-Rhône-Alpes',
+    'Concert': 'Photo de concert par Océane Torres photographe Auvergne-Rhône-Alpes',
     'Automobile': 'Shooting automobile par Océane Torres photographe Saint-Étienne Loire',
     'Entreprise': 'Photo entreprise par Océane Torres photographe Lyon Saint-Étienne',
 }
@@ -98,28 +52,30 @@ const categoryAltPrefix: Record<string, string> = {
 export function getGalleryItems(): GalleryItem[] {
     const items: GalleryItem[] = []
 
-    // Ajouter les images des catégories
+    // Images : ordre défini par CATEGORY_ORDER, ordre interne par le manifest
     // Grille : thumbnails 400px (AVIF primary, WebP fallback)
     // Lightbox : full-res (AVIF primary, WebP fallback)
-    for (const category of categories) {
-        for (let i = 0; i < category.images.length; i++) {
-            const image = category.images[i]
+    for (const category of CATEGORY_ORDER) {
+        const images = (manifest.categories as Record<string, string[]>)[category] || []
+        const basePath = `/optimized/${category}`
+        const altPrefix = categoryAltPrefix[category] || category
+
+        for (let i = 0; i < images.length; i++) {
+            const image = images[i]
             const avifImage = image.replace('.webp', '.avif')
-            const altPrefix = categoryAltPrefix[category.name] || category.name
             items.push({
-                thumbnailUrl: `${category.basePath}/thumbs/${avifImage}`,
-                previewUrl: `${category.basePath}/${avifImage}`,
-                url: `${category.basePath}/${image}`,
+                thumbnailUrl: `${basePath}/thumbs/${avifImage}`,
+                previewUrl: `${basePath}/${avifImage}`,
+                url: `${basePath}/${image}`,
                 alt: `${altPrefix} - ${i + 1}`,
                 type: 'image',
-                category: category.name
+                category
             })
         }
     }
 
-    // Ajouter les vidéos YouTube
+    // Vidéos YouTube
     for (const video of youtubeVideos) {
-        // Ignorer les placeholders non configurés
         if (!video.youtubeId.startsWith('VIDEO_ID_')) {
             items.push({
                 url: `https://img.youtube.com/vi/${video.youtubeId}/maxresdefault.jpg`,
@@ -135,5 +91,5 @@ export function getGalleryItems(): GalleryItem[] {
 }
 
 export function getCategories(): string[] {
-    return ['Portraits', 'Sport', 'Animalier', 'Automobile', 'Entreprise', 'Vidéos']
+    return [...CATEGORY_ORDER, 'Vidéos']
 }
