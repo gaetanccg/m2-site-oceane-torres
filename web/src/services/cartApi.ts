@@ -48,12 +48,23 @@ export interface Cart {
     id: string
     items: CartItem[]
     items_count: number
+    subtotal: number
+    shipping_fee: number
     total: number
     has_prints: boolean
     has_pack_pricing?: boolean
     pack_savings?: number
     currency: string
     product_types: Record<ProductType, ProductTypeInfo>
+}
+
+export interface ShippingAddress {
+    shipping_phone: string
+    shipping_address_line1: string
+    shipping_address_line2?: string | null
+    shipping_postal_code: string
+    shipping_city: string
+    shipping_country?: string
 }
 
 export interface CartResponse {
@@ -83,6 +94,7 @@ export interface Order {
     order_number: string
     status: 'pending' | 'paid' | 'failed' | 'refunded' | 'expired'
     subtotal: number
+    shipping_fee: number
     total: number
     currency: string
     paid_at: string | null
@@ -91,6 +103,14 @@ export interface Order {
     has_prints: boolean
     customer_email: string
     customer_name: string
+    shipping: {
+        phone: string | null
+        address_line1: string | null
+        address_line2: string | null
+        postal_code: string | null
+        city: string | null
+        country: string | null
+    } | null
 }
 
 export interface CheckoutResponse {
@@ -98,9 +118,19 @@ export interface CheckoutResponse {
     order: {
         id: string
         order_number: string
+        subtotal: number
+        shipping_fee: number
         total: number
         currency: string
         items_count: number
+        shipping: {
+            phone: string
+            address_line1: string
+            address_line2: string | null
+            postal_code: string
+            city: string
+            country: string
+        } | null
     }
     payment: {
         checkout_id: string
@@ -194,7 +224,13 @@ class CartApiService extends BaseApiService {
     // Checkout & Orders
     // ============================================================================
 
-    async createOrder(guestEmail?: string, guestFirstName?: string, guestLastName?: string, cgvAccepted?: boolean): Promise<CheckoutResponse> {
+    async createOrder(
+        guestEmail?: string,
+        guestFirstName?: string,
+        guestLastName?: string,
+        cgvAccepted?: boolean,
+        shipping?: ShippingAddress | null,
+    ): Promise<CheckoutResponse> {
         return this.cartRequest<CheckoutResponse>('/checkout', {
             method: 'POST',
             body: JSON.stringify({
@@ -202,6 +238,7 @@ class CartApiService extends BaseApiService {
                 guest_first_name: guestFirstName,
                 guest_last_name: guestLastName,
                 cgv_accepted: cgvAccepted ?? true,
+                ...(shipping ?? {}),
             }),
         })
     }

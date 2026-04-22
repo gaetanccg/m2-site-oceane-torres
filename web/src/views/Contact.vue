@@ -1,5 +1,5 @@
 <template>
-    <div class="pt-20">
+    <div class="pt-4">
         <!-- Hero Section -->
         <section class="relative py-10 px-6 lg:px-12 bg-gradient-to-br from-cream via-white to-cream overflow-hidden">
             <!-- Decorative elements -->

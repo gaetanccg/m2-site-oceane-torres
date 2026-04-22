@@ -17,6 +17,7 @@ class OrderResource extends JsonResource
             'print_status' => $this->print_status,
             'shipped_at' => $this->shipped_at?->toIso8601String(),
             'subtotal' => (float) $this->subtotal,
+            'shipping_fee' => (float) $this->shipping_fee,
             'total' => (float) $this->total,
             'currency' => $this->currency,
             'paid_at' => $this->paid_at?->toIso8601String(),
@@ -25,6 +26,14 @@ class OrderResource extends JsonResource
             'has_prints' => $this->hasPrintItems(),
             'customer_email' => $this->customer_email,
             'customer_name' => $this->customer_name,
+            'shipping' => $this->shipping_fee > 0 ? [
+                'phone' => $this->shipping_phone,
+                'address_line1' => $this->shipping_address_line1,
+                'address_line2' => $this->shipping_address_line2,
+                'postal_code' => $this->shipping_postal_code,
+                'city' => $this->shipping_city,
+                'country' => $this->shipping_country,
+            ] : null,
         ];
     }
 }

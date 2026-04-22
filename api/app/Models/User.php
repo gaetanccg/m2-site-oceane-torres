@@ -18,6 +18,10 @@ class User extends Authenticatable
         'last_name',
         'email',
         'phone',
+        'address_line1',
+        'address_line2',
+        'postal_code',
+        'city',
         'password',
         'role',
     ];
