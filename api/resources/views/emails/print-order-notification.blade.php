@@ -37,10 +37,44 @@
                                     <p style="margin: 0 0 10px 0; color: #666666; font-size: 14px;">
                                         <strong>Email :</strong> {{ $order->customer_email }}
                                     </p>
+                                    <p style="margin: 0 0 6px 0; color: #666666; font-size: 14px;">
+                                        Sous-total : {{ number_format($order->subtotal, 2, ',', ' ') }} €
+                                    </p>
+                                    @if($order->shipping_fee > 0)
+                                        <p style="margin: 0 0 10px 0; color: #666666; font-size: 14px;">
+                                            Frais de port : +{{ number_format($order->shipping_fee, 2, ',', ' ') }} €
+                                        </p>
+                                    @endif
                                     <p style="margin: 0; color: #D4AF37; font-size: 18px; font-weight: 600;">
                                         Total : {{ number_format($order->total, 2, ',', ' ') }} €
                                     </p>
                                 </div>
+
+                                @if($order->shipping_address_line1)
+                                    <!-- Shipping Address Box -->
+                                    <div style="background-color: #fff9e6; border: 2px solid #D4AF37; border-radius: 4px; padding: 20px; margin: 25px 0;">
+                                        <h3 style="margin: 0 0 12px 0; color: #8a6d1b; font-size: 15px; text-transform: uppercase; letter-spacing: 1px;">
+                                            📦 Adresse d'expédition
+                                        </h3>
+                                        <p style="margin: 0 0 4px 0; color: #333; font-size: 15px; line-height: 1.6;">
+                                            <strong>{{ $order->customer_name ?: 'Client' }}</strong>
+                                        </p>
+                                        <p style="margin: 0; color: #333; font-size: 14px; line-height: 1.7;">
+                                            {{ $order->shipping_address_line1 }}<br>
+                                            @if($order->shipping_address_line2)
+                                                {{ $order->shipping_address_line2 }}<br>
+                                            @endif
+                                            {{ $order->shipping_postal_code }} {{ $order->shipping_city }}<br>
+                                            <span style="color: #888;">France</span>
+                                        </p>
+                                        @if($order->shipping_phone)
+                                            <p style="margin: 12px 0 0 0; color: #555; font-size: 14px;">
+                                                <strong>Téléphone :</strong>
+                                                <a href="tel:{{ $order->shipping_phone }}" style="color: #8a6d1b; text-decoration: none;">{{ $order->shipping_phone }}</a>
+                                            </p>
+                                        @endif
+                                    </div>
+                                @endif
 
                                 <!-- Print Items -->
                                 <h3 style="margin: 25px 0 15px 0; color: #333333; font-size: 16px; text-transform: uppercase; letter-spacing: 1px;">
