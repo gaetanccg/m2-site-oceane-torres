@@ -323,12 +323,18 @@ class CartService
             ];
         });
 
+        $subtotal = (float) $items->sum('price');
+        $hasPrints = $items->contains('is_print', true);
+        $shippingFee = $hasPrints ? (float) config('shop.shipping_fee_print', 0) : 0.0;
+
         return [
             'id' => $cart->id,
             'items' => $items,
             'items_count' => $items->count(),
-            'total' => $items->sum('price'),
-            'has_prints' => $items->contains('is_print', true),
+            'subtotal' => $subtotal,
+            'shipping_fee' => $shippingFee,
+            'total' => $subtotal + $shippingFee,
+            'has_prints' => $hasPrints,
             'has_pack_pricing' => $totalSavings > 0,
             'pack_savings' => $totalSavings,
             'currency' => 'EUR',
