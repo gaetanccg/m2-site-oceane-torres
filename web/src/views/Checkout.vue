@@ -83,6 +83,14 @@
                                     </div>
                                 </form>
 
+                                <!-- Bloc shipping (si au moins un tirage dans le panier) -->
+                                <div v-if="cartStore.hasPrints" class="mt-6 pt-6 border-t border-gray-100">
+                                    <ShippingAddressFields
+                                        v-model="shipping"
+                                        :errors="shippingErrors"
+                                    />
+                                </div>
+
                                 <!-- Account creation prompt (guests only) -->
                                 <div v-if="!authStore.isAuthenticated" class="mt-6 bg-gold/5 border border-gold/20 rounded-lg p-4">
                                     <div class="flex items-start gap-3">
@@ -223,8 +231,16 @@
                                 </div>
                             </div>
 
-                            <div class="border-t border-gray-100 mt-4 pt-4">
-                                <div class="flex justify-between text-lg font-semibold">
+                            <div class="border-t border-gray-100 mt-4 pt-4 space-y-2 text-sm">
+                                <div class="flex justify-between text-gray-600">
+                                    <span>Sous-total</span>
+                                    <span>{{ formatPrice(cartStore.subtotal) }}</span>
+                                </div>
+                                <div v-if="cartStore.shippingFee > 0" class="flex justify-between text-gray-600">
+                                    <span>Frais de port</span>
+                                    <span>+{{ formatPrice(cartStore.shippingFee) }}</span>
+                                </div>
+                                <div class="flex justify-between text-lg font-semibold pt-2 border-t border-gray-100">
                                     <span>Total</span>
                                     <span class="text-gold">{{ formatPrice(currentOrder?.total ?? cartStore.total) }}</span>
                                 </div>
@@ -245,14 +261,15 @@
 </template>
 
 <script setup lang="ts">
-import {ref, reactive, nextTick, onMounted, onUnmounted} from 'vue'
+import {ref, reactive, nextTick, onMounted, onUnmounted, watch} from 'vue'
 import {useRouter} from 'vue-router'
 import {useCartStore} from '@/stores/cart'
 import {useAuthStore} from '@/stores/auth'
-import {cartApi} from '@/services/cartApi'
+import {cartApi, type ShippingAddress} from '@/services/cartApi'
 import {useToast} from '@/composables/useToast'
 import {useGtag} from '@/composables/useGtag'
 import {formatPrice} from '@/utils/format'
+import ShippingAddressFields from '@/components/cart/ShippingAddressFields.vue'
 
 declare global {
     interface Window {
@@ -311,6 +328,70 @@ const form = reactive({
     email: '',
     cgv_accepted: false,
 })
+
+const shipping = ref<ShippingAddress>({
+    shipping_phone: '',
+    shipping_address_line1: '',
+    shipping_address_line2: '',
+    shipping_postal_code: '',
+    shipping_city: '',
+    shipping_country: 'FR',
+})
+
+const shippingErrors = ref<Partial<Record<keyof ShippingAddress, string>>>({})
+
+const PHONE_REGEX = /^0[1-9]\d{8}$/
+const POSTAL_REGEX = /^\d{5}$/
+
+function validateShipping(): boolean {
+    const errors: Partial<Record<keyof ShippingAddress, string>> = {}
+    const s = shipping.value
+
+    if (!s.shipping_phone?.trim()) {
+        errors.shipping_phone = 'Numéro de téléphone requis'
+    } else if (!PHONE_REGEX.test(s.shipping_phone.trim())) {
+        errors.shipping_phone = 'Numéro français à 10 chiffres (ex: 0612345678)'
+    }
+
+    if (!s.shipping_address_line1?.trim()) {
+        errors.shipping_address_line1 = 'Adresse requise'
+    }
+
+    if (!s.shipping_postal_code?.trim()) {
+        errors.shipping_postal_code = 'Code postal requis'
+    } else if (!POSTAL_REGEX.test(s.shipping_postal_code.trim())) {
+        errors.shipping_postal_code = 'Code postal : 5 chiffres'
+    }
+
+    if (!s.shipping_city?.trim()) {
+        errors.shipping_city = 'Ville requise'
+    }
+
+    shippingErrors.value = errors
+    return Object.keys(errors).length === 0
+}
+
+// Pré-remplissage depuis le profil user authentifié
+function fillShippingFromUser(): void {
+    const u = authStore.user
+    if (!u) return
+    shipping.value = {
+        shipping_phone: u.phone ?? '',
+        shipping_address_line1: u.address_line1 ?? '',
+        shipping_address_line2: u.address_line2 ?? '',
+        shipping_postal_code: u.postal_code ?? '',
+        shipping_city: u.city ?? '',
+        shipping_country: 'FR',
+    }
+}
+
+watch(
+    () => [cartStore.hasPrints, authStore.isAuthenticated] as const,
+    ([hasPrints, isAuth]) => {
+        if (hasPrints && isAuth) fillShippingFromUser()
+    },
+    {immediate: true}
+)
 
 // Load SumUp SDK
 function loadSumUpSDK(): Promise<void> {
@@ -428,15 +509,32 @@ async function createOrder() {
         return
     }
 
+    if (cartStore.hasPrints && !validateShipping()) {
+        error.value = 'Veuillez compléter l\'adresse de livraison pour vos tirages'
+        return
+    }
+
     isProcessing.value = true
     error.value = ''
 
     try {
+        const shippingPayload: ShippingAddress | null = cartStore.hasPrints
+            ? {
+                shipping_phone: shipping.value.shipping_phone.trim(),
+                shipping_address_line1: shipping.value.shipping_address_line1.trim(),
+                shipping_address_line2: shipping.value.shipping_address_line2?.trim() || null,
+                shipping_postal_code: shipping.value.shipping_postal_code.trim(),
+                shipping_city: shipping.value.shipping_city.trim(),
+                shipping_country: 'FR',
+            }
+            : null
+
         const orderResponse = await cartApi.createOrder(
             authStore.isAuthenticated ? undefined : form.email,
             authStore.isAuthenticated ? undefined : form.firstName,
             authStore.isAuthenticated ? undefined : form.lastName,
-            form.cgv_accepted
+            form.cgv_accepted,
+            shippingPayload,
         )
 
         if (!orderResponse.success) {
@@ -449,6 +547,11 @@ async function createOrder() {
             total: orderResponse.order.total,
         }
         checkoutId.value = orderResponse.payment.checkout_id
+
+        // Rafraîchir le user pour récupérer l'adresse tout juste sauvegardée
+        if (authStore.isAuthenticated && cartStore.hasPrints) {
+            authStore.fetchUser().catch(() => {})
+        }
 
         // Show payment widget and wait for DOM update
         showPaymentWidget.value = true

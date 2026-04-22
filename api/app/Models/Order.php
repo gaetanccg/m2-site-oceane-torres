@@ -22,8 +22,15 @@ class Order extends Model
         'guest_email',
         'guest_first_name',
         'guest_last_name',
+        'shipping_phone',
+        'shipping_address_line1',
+        'shipping_address_line2',
+        'shipping_postal_code',
+        'shipping_city',
+        'shipping_country',
         'order_number',
         'subtotal',
+        'shipping_fee',
         'total',
         'currency',
         'status',
@@ -43,6 +50,7 @@ class Order extends Model
     {
         return [
             'subtotal' => 'decimal:2',
+            'shipping_fee' => 'decimal:2',
             'total' => 'decimal:2',
             'metadata' => 'array',
             'paid_at' => 'datetime',

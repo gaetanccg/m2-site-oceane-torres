@@ -1,5 +1,5 @@
 <template>
-    <div class="pt-20">
+    <div class="pt-4">
         <!-- Prestations Cards Section -->
         <section class="py-16 px-6 lg:px-12 bg-white relative overflow-hidden">
             <div class="max-w-7xl mx-auto relative">

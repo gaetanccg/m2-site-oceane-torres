@@ -96,8 +96,19 @@
 
                 <!-- Footer -->
                 <div v-if="!cartStore.isEmpty" class="border-t border-gray-100 px-6 py-4 space-y-4">
+                    <!-- Price breakdown -->
+                    <div class="space-y-1 text-sm">
+                        <div class="flex items-center justify-between text-gray-600">
+                            <span>Sous-total</span>
+                            <span>{{ formatPrice(cartStore.subtotal) }}</span>
+                        </div>
+                        <div v-if="cartStore.shippingFee > 0" class="flex items-center justify-between text-gray-600">
+                            <span>Frais de port</span>
+                            <span>+{{ formatPrice(cartStore.shippingFee) }}</span>
+                        </div>
+                    </div>
                     <!-- Total -->
-                    <div class="flex items-center justify-between">
+                    <div class="flex items-center justify-between pt-2 border-t border-gray-100">
                         <span class="text-gray-600">Total</span>
                         <span class="text-xl font-semibold text-gray-900">
                             {{ formatPrice(cartStore.total) }}

@@ -145,6 +145,13 @@
 
             <!-- Leaf mode: photos grid -->
             <template v-else>
+                <!-- Copyright Notice -->
+                <section class="pt-6 px-4 sm:px-6 lg:px-12">
+                    <div class="max-w-5xl mx-auto">
+                        <CopyrightNotice />
+                    </div>
+                </section>
+
                 <!-- Pack Pricing Banner -->
                 <section v-if="packPricing && Object.keys(packPricing).length > 0" class="pt-6 px-4 sm:px-6 lg:px-12">
                     <div class="max-w-5xl mx-auto">
@@ -251,6 +258,7 @@ import {useRoute} from 'vue-router'
 import Lightbox from '@/components/Lightbox.vue'
 import PhotoCard from '@/components/PhotoCard.vue'
 import AddToCartButton from '@/components/cart/AddToCartButton.vue'
+import CopyrightNotice from '@/components/CopyrightNotice.vue'
 import {API_CONFIG} from '@/config/constants'
 import type {LightboxImage} from '@/types'
 
