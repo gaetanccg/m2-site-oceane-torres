@@ -5,7 +5,7 @@
             <button
                 v-for="filter in toolbarFilters"
                 :key="filter"
-                @click="activeFilter = filter"
+                @click="setFilter(filter)"
                 @mouseenter="precacheFilter(filter)"
                 :class="[
           'px-3 sm:px-6 py-2 text-xs sm:text-sm uppercase tracking-wider sm:tracking-widest font-light transition-all',
@@ -412,6 +412,34 @@ const updateColumnCount = () => {
     columnCount.value = getColumnCount(window.innerWidth)
 }
 
+// Hash-based URL sync for shareable category links
+const filterToHash = (filter: string): string => {
+    return filter.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+}
+
+const hashToFilter = (hash: string): string | null => {
+    const normalized = hash.replace('#', '').toLowerCase()
+    if (!normalized) return null
+    return toolbarFilters.value.find(f => filterToHash(f) === normalized) ?? null
+}
+
+const setFilter = (filter: string) => {
+    activeFilter.value = filter
+    const defaultFilter = props.showAllTab ? 'Tous' : props.filters[0] ?? ''
+    if (filter === defaultFilter) {
+        history.replaceState(null, '', window.location.pathname + window.location.search)
+    } else {
+        history.replaceState(null, '', '#' + filterToHash(filter))
+    }
+}
+
+const onHashChange = () => {
+    const filter = hashToFilter(window.location.hash)
+    if (filter && filter !== activeFilter.value) {
+        activeFilter.value = filter
+    }
+}
+
 const openLightbox = (index: number) => {
     currentImageIndex.value = index
     lightboxOpen.value = true
@@ -428,11 +456,20 @@ const debouncedUpdateColumnCount = () => {
 onMounted(() => {
     updateColumnCount()
     window.addEventListener('resize', debouncedUpdateColumnCount)
+    window.addEventListener('hashchange', onHashChange)
+
+    // Initialize filter from URL hash
+    const filter = hashToFilter(window.location.hash)
+    if (filter) {
+        activeFilter.value = filter
+    }
+
     preloadCurrentImages()
 })
 
 onUnmounted(() => {
     window.removeEventListener('resize', debouncedUpdateColumnCount)
+    window.removeEventListener('hashchange', onHashChange)
     if (resizeRaf) window.cancelAnimationFrame(resizeRaf)
 })
 
