@@ -427,9 +427,9 @@ const setFilter = (filter: string) => {
     activeFilter.value = filter
     const defaultFilter = props.showAllTab ? 'Tous' : props.filters[0] ?? ''
     if (filter === defaultFilter) {
-        history.replaceState(null, '', window.location.pathname + window.location.search)
+        window.history.replaceState(null, '', window.location.pathname + window.location.search)
     } else {
-        history.replaceState(null, '', '#' + filterToHash(filter))
+        window.history.replaceState(null, '', '#' + filterToHash(filter))
     }
 }
 
