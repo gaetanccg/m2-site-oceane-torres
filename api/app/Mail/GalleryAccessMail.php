@@ -18,6 +18,7 @@ class GalleryAccessMail extends Mailable
         public string $recipientName,
         public string $galleryUrl,
         public string $shareCode,
+        public bool $isDirectLink = false,
     ) {}
 
     public function envelope(): Envelope

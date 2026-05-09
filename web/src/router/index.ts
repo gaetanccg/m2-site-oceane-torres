@@ -56,6 +56,8 @@ const AdminReservations = () => import('@/views/admin/Reservations.vue')
 const AdminGiftCards = () => import('@/views/admin/GiftCards.vue')
 const AdminEventGalleries = () => import('@/views/admin/EventGalleries.vue')
 const AdminOrders = () => import('@/views/admin/Orders.vue')
+const AdminSchoolSessions = () => import('@/views/admin/SchoolSessions.vue')
+const AdminSchoolSessionDetail = () => import('@/views/admin/SchoolSessionDetail.vue')
 
 export const routes: RouteRecordRaw[] = [
     {
@@ -291,6 +293,18 @@ export const routes: RouteRecordRaw[] = [
                 name: 'admin-orders',
                 component: AdminOrders,
                 meta: {title: 'Commandes'}
+            },
+            {
+                path: 'school-sessions',
+                name: 'admin-school-sessions',
+                component: AdminSchoolSessions,
+                meta: {title: 'Photos Scolaires'}
+            },
+            {
+                path: 'school-sessions/:id',
+                name: 'admin-school-session-detail',
+                component: AdminSchoolSessionDetail,
+                meta: {title: 'Detail Shooting'}
             },
         ]
     },

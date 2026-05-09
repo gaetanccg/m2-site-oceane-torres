@@ -12,6 +12,7 @@ import { clientApi } from './admin/clientApi'
 import { prestationApi } from './admin/prestationApi'
 import { galleryApi } from './admin/galleryApi'
 import { orderApi } from './admin/orderApi'
+import { schoolSessionApi } from './admin/schoolSessionApi'
 
 export { AdminApiError } from './admin/baseAdmin'
 
@@ -92,6 +93,21 @@ export const adminApi = {
     markOrderShipped: orderApi.markOrderShipped.bind(orderApi),
     getOrderDownloadLink: orderApi.getOrderDownloadLink.bind(orderApi),
     retryOrderPayment: orderApi.retryOrderPayment.bind(orderApi),
+
+    // School Sessions
+    getSchoolSessions: schoolSessionApi.getSchoolSessions.bind(schoolSessionApi),
+    getSchoolSession: schoolSessionApi.getSchoolSession.bind(schoolSessionApi),
+    createSchoolSession: schoolSessionApi.createSchoolSession.bind(schoolSessionApi),
+    getSchoolSessionGalleries: schoolSessionApi.getSchoolSessionGalleries.bind(schoolSessionApi),
+    uploadZipChunk: schoolSessionApi.uploadZipChunk.bind(schoolSessionApi),
+    processSchoolSession: schoolSessionApi.processSchoolSession.bind(schoolSessionApi),
+    deleteSchoolSession: schoolSessionApi.deleteSchoolSession.bind(schoolSessionApi),
+    sendSchoolSessionEmails: schoolSessionApi.sendSchoolSessionEmails.bind(schoolSessionApi),
+    closeSchoolSession: schoolSessionApi.closeSchoolSession.bind(schoolSessionApi),
+    reopenSchoolSession: schoolSessionApi.reopenSchoolSession.bind(schoolSessionApi),
+    createSchoolSessionExport: schoolSessionApi.createSchoolSessionExport.bind(schoolSessionApi),
+    getLatestSchoolSessionExport: schoolSessionApi.getLatestSchoolSessionExport.bind(schoolSessionApi),
+    getSchoolSessionExportDownloadUrl: schoolSessionApi.getSchoolSessionExportDownloadUrl.bind(schoolSessionApi),
 }
 
 export default adminApi

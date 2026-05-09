@@ -4,7 +4,7 @@ namespace App\Http\Requests\Admin;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class StoreEventGalleryRequest extends FormRequest
+class StoreSchoolSessionRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -15,13 +15,8 @@ class StoreEventGalleryRequest extends FormRequest
     {
         return [
             'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
             'event_date' => ['nullable', 'date'],
-            'event_link' => ['nullable', 'url', 'max:500'],
-            'event_category_id' => ['nullable', 'exists:event_categories,id'],
-            'parent_id' => ['nullable', 'uuid', 'exists:galleries,id'],
-            'sort_order' => ['nullable', 'integer', 'min:0'],
-            'is_published' => ['nullable', 'boolean'],
+            'gallery_message' => ['nullable', 'string', 'max:2000'],
             'product_types' => ['nullable', 'array'],
             'product_types.*.product_type' => ['required_with:product_types', 'string', 'in:digital,print_10x15,print_15x20,print_scolaire'],
             'product_types.*.is_enabled' => ['required_with:product_types', 'boolean'],

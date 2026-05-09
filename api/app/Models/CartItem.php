@@ -28,6 +28,11 @@ class CartItem extends Model
             'price' => 15.00,
             'is_print' => true,
         ],
+        'print_scolaire' => [
+            'label' => 'Tirage scolaire',
+            'price' => 6.00,
+            'is_print' => true,
+        ],
     ];
 
     protected $fillable = [

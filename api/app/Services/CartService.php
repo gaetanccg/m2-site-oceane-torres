@@ -102,7 +102,13 @@ class CartService
 
         // Resolve price from gallery product config (with fallback to defaults)
         $gallery = $photo->gallery;
-        $gallery->load('galleryProductTypes');
+        $gallery->load('galleryProductTypes', 'schoolSession:id,closed_at');
+
+        // Block purchase if the gallery belongs to a closed school session
+        if ($gallery->schoolSession?->isClosed()) {
+            throw new \Exception('Cette galerie est cloturee, les commandes ne sont plus possibles.');
+        }
+
         $price = $gallery->getPriceForProductType($productType);
 
         if ($price === null) {

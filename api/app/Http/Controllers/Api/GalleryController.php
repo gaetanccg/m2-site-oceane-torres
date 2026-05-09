@@ -245,6 +245,7 @@ class GalleryController extends Controller
                 $query->ordered();
             },
             'galleryProductTypes',
+            'schoolSession:id,gallery_message,closed_at',
         ]);
 
         return response()->json([
@@ -252,6 +253,8 @@ class GalleryController extends Controller
             'mode' => 'protected',
             'available_product_types' => $gallery->getAvailableProductTypes(),
             'pack_pricing' => $gallery->getPackPricing(),
+            'school_message' => $gallery->schoolSession?->gallery_message,
+            'school_closed' => (bool) $gallery->schoolSession?->isClosed(),
         ]);
     }
 
@@ -368,6 +371,7 @@ class GalleryController extends Controller
     {
         $galleries = Gallery::with(['user:id,first_name,last_name,email', 'galleryProductTypes.packTiers'])
             ->where('type', '!=', 'event')
+            ->whereNull('school_session_id')
             ->withCount([
                 'photos',
                 'photos as downloadable_count' => function ($query) {

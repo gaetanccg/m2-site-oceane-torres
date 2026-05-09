@@ -15,7 +15,7 @@ class AddToCartRequest extends FormRequest
     {
         return [
             'photo_id' => ['required', 'uuid', 'exists:photos,id'],
-            'product_type' => ['nullable', 'string', 'in:digital,print_10x15,print_15x20'],
+            'product_type' => ['nullable', 'string', 'in:digital,print_10x15,print_15x20,print_scolaire'],
             'session_id' => ['nullable', 'string'],
         ];
     }
