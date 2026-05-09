@@ -37,8 +37,17 @@
                 </div>
             </section>
 
-            <!-- How it works -->
-            <section class="py-8 sm:py-10 px-4 sm:px-6 lg:px-12 bg-gradient-to-b from-white to-cream">
+            <!-- School session message (custom, replaces the 3-step block) -->
+            <section v-if="schoolMessage" class="py-8 sm:py-10 px-4 sm:px-6 lg:px-12 bg-gradient-to-b from-white to-cream">
+                <div class="max-w-3xl mx-auto">
+                    <div class="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-gray-100">
+                        <p class="text-gray-700 text-base leading-relaxed whitespace-pre-line">{{ schoolMessage }}</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- How it works (default, hidden for school galleries) -->
+            <section v-else class="py-8 sm:py-10 px-4 sm:px-6 lg:px-12 bg-gradient-to-b from-white to-cream">
                 <div class="max-w-5xl mx-auto">
                     <h2 class="text-xl sm:text-2xl md:text-3xl font-light text-center mb-6 sm:mb-10 text-gray-800">
                         Comment fonctionne votre galerie ?
@@ -103,6 +112,19 @@
                 </div>
             </section>
 
+            <!-- Closed banner -->
+            <section v-if="schoolClosed" class="px-4 sm:px-6 lg:px-12 mt-2">
+                <div class="max-w-5xl mx-auto bg-orange-50 border border-orange-200 rounded-xl p-4 flex items-start gap-3">
+                    <svg class="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                        <p class="font-medium text-orange-900">Galerie fermee aux commandes</p>
+                        <p class="text-sm text-orange-800 mt-0.5">La date limite de commande est passee. Les achats ne sont plus possibles. Vous pouvez toujours consulter les photos.</p>
+                    </div>
+                </div>
+            </section>
+
             <!-- Photos Gallery -->
             <section class="py-8 sm:py-12 px-4 sm:px-6 lg:px-12">
                 <div class="max-w-7xl mx-auto">
@@ -126,6 +148,7 @@
                                         @like="handleLike"
                                     />
                                     <AddToCartButton
+                                        v-if="!schoolClosed"
                                         :photo-id="photo.id"
                                         size="md"
                                         show-label
@@ -202,6 +225,8 @@ const route = useRoute()
 const gallery = ref<Gallery | null>(null)
 const availableProductTypes = ref<Record<ProductTypeKey, AvailableProductType> | null>(null)
 const packPricing = ref<Record<ProductTypeKey, PackPricingEntry> | null>(null)
+const schoolMessage = ref<string | null>(null)
+const schoolClosed = ref(false)
 const isLoading = ref(true)
 const error = ref('')
 const lightboxOpen = ref(false)
@@ -263,6 +288,12 @@ const fetchGallery = async () => {
             }
             if (data.pack_pricing && Object.keys(data.pack_pricing).length > 0) {
                 packPricing.value = data.pack_pricing
+            }
+            if (data.school_message) {
+                schoolMessage.value = data.school_message
+            }
+            if (data.school_closed) {
+                schoolClosed.value = true
             }
         } else {
             const data = await response.json()

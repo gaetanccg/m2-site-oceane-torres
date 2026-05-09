@@ -445,6 +445,87 @@ export interface AdminPaginatedResponse<T> {
 }
 
 // ============================================================================
+// School Sessions
+// ============================================================================
+
+export type SchoolSessionStatus = 'uploading' | 'extracting' | 'creating_galleries' | 'processing_photos' | 'completed' | 'failed'
+
+export interface SchoolSession {
+    id: string
+    title: string
+    event_date: string | null
+    status: SchoolSessionStatus
+    total_galleries: number
+    total_photos: number
+    processed_photos: number
+    batch_id: string | null
+    error_message: string | null
+    product_types_config: ProductTypeConfig[] | null
+    gallery_message: string | null
+    closed_at: string | null
+    created_at: string
+    updated_at: string
+    galleries_count?: number
+    batch_progress?: BatchProgress | null
+}
+
+export interface BatchProgress {
+    batch_id: string
+    found: boolean
+    total: number
+    completed: number
+    failed: number
+    processing: number
+    progress: number
+    is_complete: boolean
+}
+
+export interface ProductTypeConfig {
+    product_type: string
+    is_enabled: boolean
+    price: number | null
+    tiers?: ProductTypeTier[]
+}
+
+export interface ProductTypeTier {
+    min_quantity: number
+    unit_price: number
+}
+
+export interface SchoolSessionGallery {
+    id: string
+    title: string
+    class_name: string | null
+    photos_count: number
+    share_code: string
+    access_token: string
+    created_at: string
+}
+
+export interface SchoolSessionFormData {
+    title: string
+    event_date: string
+    gallery_message?: string
+    product_types: ProductTypeConfig[]
+}
+
+export type SchoolSessionExportStatus = 'pending' | 'processing' | 'completed' | 'failed'
+
+export interface SchoolSessionExport {
+    id: string
+    school_session_id: string
+    status: SchoolSessionExportStatus
+    include_digital: boolean
+    file_path: string | null
+    file_size_bytes: number | null
+    total_items: number
+    processed_items: number
+    error_message: string | null
+    created_at: string
+    updated_at: string
+}
+
+// ============================================================================
 // Form / Table
 // ============================================================================
 

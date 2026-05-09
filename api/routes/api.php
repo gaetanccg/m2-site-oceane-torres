@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\PhotoController;
 use App\Http\Controllers\Api\PrestationController;
 use App\Http\Controllers\Api\ReservationController;
+use App\Http\Controllers\Api\Admin\SchoolSessionController;
 use App\Http\Controllers\Api\SumUpPaymentController;
 use Illuminate\Support\Facades\Route;
 
@@ -250,6 +251,21 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
 
     // Notifications
     Route::post('/notifications', [NotificationController::class, 'store']);
+
+    // School Sessions management
+    Route::get('/school-sessions', [SchoolSessionController::class, 'index']);
+    Route::post('/school-sessions', [SchoolSessionController::class, 'store']);
+    Route::get('/school-sessions/{schoolSession}', [SchoolSessionController::class, 'show']);
+    Route::get('/school-sessions/{schoolSession}/galleries', [SchoolSessionController::class, 'galleries']);
+    Route::put('/school-sessions/{schoolSession}/upload', [SchoolSessionController::class, 'upload']);
+    Route::post('/school-sessions/{schoolSession}/process', [SchoolSessionController::class, 'process']);
+    Route::post('/school-sessions/{schoolSession}/send-emails', [SchoolSessionController::class, 'sendEmails']);
+    Route::post('/school-sessions/{schoolSession}/close', [SchoolSessionController::class, 'close']);
+    Route::post('/school-sessions/{schoolSession}/reopen', [SchoolSessionController::class, 'reopen']);
+    Route::post('/school-sessions/{schoolSession}/exports', [SchoolSessionController::class, 'createExport']);
+    Route::get('/school-sessions/{schoolSession}/exports/latest', [SchoolSessionController::class, 'latestExport']);
+    Route::get('/school-session-exports/{export}/download', [SchoolSessionController::class, 'downloadExport']);
+    Route::delete('/school-sessions/{schoolSession}', [SchoolSessionController::class, 'destroy']);
 
     // Orders management
     Route::get('/orders', [AdminOrderController::class, 'index']);
