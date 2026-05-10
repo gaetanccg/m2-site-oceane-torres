@@ -160,7 +160,11 @@ class SchoolSessionExportService
             $zip->close();
             @unlink($zipPath);
             $this->cleanupTempDir($tempDir);
-            $export->markAs('failed', 'Erreur pendant la generation: '.$e->getMessage());
+            \Illuminate\Support\Facades\Log::error('SchoolSessionExport build failed', [
+                'export_id' => $export->id,
+                'error' => $e->getMessage(),
+            ]);
+            $export->markAs('failed', "La génération de l'export a échoué. Veuillez consulter les logs serveur pour plus de détails.");
             throw $e;
         }
     }

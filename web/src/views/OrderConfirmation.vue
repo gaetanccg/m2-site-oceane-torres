@@ -375,7 +375,9 @@ async function loadOrder() {
             error.value = 'Commande non trouvée'
         }
     } catch (e) {
-        error.value = e instanceof Error ? e.message : 'Erreur lors du chargement'
+        error.value = e instanceof CartApiError
+            ? e.message
+            : "Une erreur s'est produite, veuillez réessayer plus tard. Si l'erreur persiste, n'hésitez pas à me contacter."
     } finally {
         isLoading.value = false
     }

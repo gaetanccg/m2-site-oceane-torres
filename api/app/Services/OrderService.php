@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exceptions\BusinessException;
 use App\Mail\OrderConfirmationMail;
 use App\Mail\PrintOrderNotificationMail;
 use App\Mail\SchoolOrderConfirmationMail;
@@ -38,7 +39,7 @@ class OrderService
         }
 
         if ($cart->items->isEmpty()) {
-            throw new \Exception('Le panier est vide.');
+            throw new BusinessException('Le panier est vide.', 400);
         }
 
         return DB::transaction(function () use ($cart, $user, $guestEmail, $guestFirstName, $guestLastName, $consentIp) {
@@ -48,7 +49,7 @@ class OrderService
             $validItems = $this->validateCartItems($cart, $resolvedPrices);
 
             if (empty($validItems)) {
-                throw new \Exception('Le panier ne contient aucun article valide.');
+                throw new BusinessException('Le panier ne contient aucun article valide.', 400);
             }
 
             $subtotal = collect($validItems)->sum('price');
@@ -229,7 +230,7 @@ class OrderService
     public function initiatePayment(Order $order): array
     {
         if (! $order->isPending()) {
-            throw new \Exception('Cette commande ne peut plus être payée.');
+            throw new BusinessException('Cette commande ne peut plus être payée.', 400);
         }
 
         try {
@@ -257,7 +258,7 @@ class OrderService
                     // If checkout is paid, complete the order and stop
                     if ($existingCheckout['status'] === 'PAID') {
                         $this->completeOrder($order, $existingCheckout['transaction_id'] ?? $order->sumup_checkout_id);
-                        throw new \Exception('Cette commande a déjà été payée.');
+                        throw new BusinessException('Cette commande a déjà été payée.', 409);
                     }
 
                     // If checkout failed or expired, create new one
@@ -287,7 +288,7 @@ class OrderService
                 // Guard: if order was just completed, don't create a new checkout
                 $order->refresh();
                 if ($order->isPaid()) {
-                    throw new \Exception('Cette commande a déjà été payée.');
+                    throw new BusinessException('Cette commande a déjà été payée.', 409);
                 }
             }
 
@@ -344,7 +345,7 @@ class OrderService
             }
 
             if (! $order->isPending() && ! $order->isFailed()) {
-                throw new \Exception('Commande dans un état inattendu.');
+                throw new BusinessException('Commande dans un état inattendu.', 409);
             }
 
             $order->markAsPaid($transactionId);
@@ -528,7 +529,7 @@ class OrderService
         $order = Order::with('items.photo')->findOrFail($orderId);
 
         if (! $order->isPaid()) {
-            throw new \Exception('Cette commande n\'a pas été payée.');
+            throw new BusinessException('Cette commande n\'a pas été payée.', 403);
         }
 
         // Check access: user is owner OR valid download token OR recent order
@@ -548,7 +549,7 @@ class OrderService
         }
 
         if (! $hasAccess) {
-            throw new \Exception('Accès non autorisé à cette commande.');
+            throw new BusinessException('Accès non autorisé à cette commande.', 403);
         }
 
         return $order;

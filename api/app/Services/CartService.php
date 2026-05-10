@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exceptions\BusinessException;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Photo;
@@ -97,7 +98,7 @@ class CartService
 
         // Check if photo is purchasable
         if (! $photo->is_purchasable) {
-            throw new \Exception('Cette photo n\'est pas disponible à l\'achat.');
+            throw new BusinessException('Cette photo n\'est pas disponible à l\'achat.', 400);
         }
 
         // Resolve price from gallery product config (with fallback to defaults)
@@ -106,13 +107,13 @@ class CartService
 
         // Block purchase if the gallery belongs to a closed school session
         if ($gallery->schoolSession?->isClosed()) {
-            throw new \Exception('Cette galerie est cloturee, les commandes ne sont plus possibles.');
+            throw new BusinessException('Cette galerie est cloturée, les commandes ne sont plus possibles.', 403);
         }
 
         $price = $gallery->getPriceForProductType($productType);
 
         if ($price === null) {
-            throw new \Exception('Ce type de produit n\'est pas disponible pour cette galerie.');
+            throw new BusinessException('Ce type de produit n\'est pas disponible pour cette galerie.', 400);
         }
 
         $quantity = max(1, min(50, $quantity));
@@ -169,7 +170,7 @@ class CartService
     {
         // Validate product type
         if (! array_key_exists($productType, CartItem::PRODUCT_TYPES)) {
-            throw new \Exception('Type de produit invalide.');
+            throw new BusinessException('Type de produit invalide.', 400);
         }
 
         $item = $cart->items()->with('photo.gallery.galleryProductTypes')->where('id', $itemId)->firstOrFail();
@@ -179,7 +180,7 @@ class CartService
         $price = $gallery->getPriceForProductType($productType);
 
         if ($price === null) {
-            throw new \Exception('Ce type de produit n\'est pas disponible pour cette galerie.');
+            throw new BusinessException('Ce type de produit n\'est pas disponible pour cette galerie.', 400);
         }
 
         // Check if another item with same photo and product type exists

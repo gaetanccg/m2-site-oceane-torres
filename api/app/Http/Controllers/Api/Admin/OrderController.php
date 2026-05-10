@@ -188,7 +188,12 @@ class OrderController extends Controller
                     : 'Paiement non confirme sur SumUp. Statut actuel : '.$updatedOrder->status,
                 'order' => self::formatOrder($updatedOrder->load('items.photo')),
             ]);
-        } catch (\Exception $e) {
+        } catch (\App\Exceptions\BusinessException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], $e->getHttpStatus());
+        } catch (\Throwable $e) {
             Log::error('Admin retry payment failed', [
                 'order_id' => $orderId,
                 'error' => $e->getMessage(),
@@ -196,7 +201,7 @@ class OrderController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la verification : '.$e->getMessage(),
+                'message' => "La vérification du paiement a échoué. Veuillez réessayer plus tard.",
             ], 500);
         }
     }

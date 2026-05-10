@@ -202,7 +202,7 @@ class GalleryController extends Controller
                 'success' => true,
                 'message' => 'Email envoyé avec succès à '.$validated['email'],
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             \Log::error('Failed to send gallery access email', [
                 'gallery_id' => $gallery->id,
                 'email' => $validated['email'],
@@ -211,7 +211,7 @@ class GalleryController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de l\'envoi de l\'email: '.$e->getMessage(),
+                'message' => "L'envoi de l'email a échoué. Veuillez réessayer plus tard.",
             ], 500);
         }
     }
