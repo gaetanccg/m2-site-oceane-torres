@@ -30,11 +30,24 @@ class OrderService
 
     /**
      * Create an order from a cart (or return existing pending order)
+     *
+     * @param  array<string,string|null>  $shippingData  Champs shipping_phone, shipping_address_line1/2,
+     *                                                   shipping_postal_code, shipping_city, shipping_country
      */
-    public function createFromCart(Cart $cart, ?User $user = null, ?string $guestEmail = null, ?string $guestFirstName = null, ?string $guestLastName = null, ?string $consentIp = null): Order
-    {
+    public function createFromCart(
+        Cart $cart,
+        ?User $user = null,
+        ?string $guestEmail = null,
+        ?string $guestFirstName = null,
+        ?string $guestLastName = null,
+        ?string $consentIp = null,
+        array $shippingData = []
+    ): Order {
         $existingOrder = $this->findReusablePendingOrder($cart);
         if ($existingOrder) {
+            $this->applyShippingDataToOrder($existingOrder, $shippingData);
+            $this->persistShippingAddressOnUser($user, $shippingData);
+
             return $existingOrder;
         }
 
@@ -42,7 +55,7 @@ class OrderService
             throw new BusinessException('Le panier est vide.', 400);
         }
 
-        return DB::transaction(function () use ($cart, $user, $guestEmail, $guestFirstName, $guestLastName, $consentIp) {
+        return DB::transaction(function () use ($cart, $user, $guestEmail, $guestFirstName, $guestLastName, $consentIp, $shippingData) {
             $cart->load('items.photo.gallery.galleryProductTypes.packTiers');
 
             $resolvedPrices = $this->resolvePackPrices($cart);
@@ -52,7 +65,14 @@ class OrderService
                 throw new BusinessException('Le panier ne contient aucun article valide.', 400);
             }
 
-            $subtotal = collect($validItems)->sum('price');
+            $subtotal = (float) collect($validItems)->sum('price');
+            $hasPrints = collect($validItems)->contains(fn ($item) => CartItem::isPrintType($item->product_type ?? 'digital'));
+            $shippingFee = $hasPrints ? (float) config('shop.shipping_fee_print', 0) : 0.0;
+
+            // Garde-fou serveur : validation a normalement déjà bloqué mais on défend en profondeur
+            if ($hasPrints && empty($shippingData['shipping_address_line1'])) {
+                throw new BusinessException('Adresse de livraison manquante pour une commande avec tirages.', 422);
+            }
 
             $order = Order::create([
                 'user_id' => $user?->id,
@@ -60,8 +80,15 @@ class OrderService
                 'guest_email' => $guestEmail ?? $cart->guest_email,
                 'guest_first_name' => $guestFirstName,
                 'guest_last_name' => $guestLastName,
+                'shipping_phone' => $hasPrints ? ($shippingData['shipping_phone'] ?? null) : null,
+                'shipping_address_line1' => $hasPrints ? ($shippingData['shipping_address_line1'] ?? null) : null,
+                'shipping_address_line2' => $hasPrints ? ($shippingData['shipping_address_line2'] ?? null) : null,
+                'shipping_postal_code' => $hasPrints ? ($shippingData['shipping_postal_code'] ?? null) : null,
+                'shipping_city' => $hasPrints ? ($shippingData['shipping_city'] ?? null) : null,
+                'shipping_country' => $hasPrints ? ($shippingData['shipping_country'] ?? 'FR') : null,
                 'subtotal' => $subtotal,
-                'total' => $subtotal,
+                'shipping_fee' => $shippingFee,
+                'total' => $subtotal + $shippingFee,
                 'currency' => 'EUR',
                 'status' => 'pending',
                 'cgv_accepted' => true,
@@ -82,8 +109,53 @@ class OrderService
                 ]);
             }
 
+            if ($hasPrints) {
+                $this->persistShippingAddressOnUser($user, $shippingData);
+            }
+
             return $order->load('items');
         });
+    }
+
+    /**
+     * Met à jour les champs shipping d'une commande pending réutilisée.
+     */
+    private function applyShippingDataToOrder(Order $order, array $shippingData): void
+    {
+        if ((float) $order->shipping_fee <= 0) {
+            return;
+        }
+
+        $updates = array_filter([
+            'shipping_phone' => $shippingData['shipping_phone'] ?? null,
+            'shipping_address_line1' => $shippingData['shipping_address_line1'] ?? null,
+            'shipping_address_line2' => $shippingData['shipping_address_line2'] ?? null,
+            'shipping_postal_code' => $shippingData['shipping_postal_code'] ?? null,
+            'shipping_city' => $shippingData['shipping_city'] ?? null,
+            'shipping_country' => $shippingData['shipping_country'] ?? 'FR',
+        ], fn ($v) => $v !== null);
+
+        if (! empty($updates)) {
+            $order->update($updates);
+        }
+    }
+
+    /**
+     * Sauvegarde l'adresse de livraison sur le compte user (pour réutilisation future).
+     */
+    private function persistShippingAddressOnUser(?User $user, array $shippingData): void
+    {
+        if (! $user || empty($shippingData['shipping_address_line1'])) {
+            return;
+        }
+
+        $user->update([
+            'phone' => $shippingData['shipping_phone'] ?? $user->phone,
+            'address_line1' => $shippingData['shipping_address_line1'],
+            'address_line2' => $shippingData['shipping_address_line2'] ?? null,
+            'postal_code' => $shippingData['shipping_postal_code'] ?? $user->postal_code,
+            'city' => $shippingData['shipping_city'] ?? $user->city,
+        ]);
     }
 
     /**
@@ -130,13 +202,14 @@ class OrderService
     }
 
     /**
-     * Calculate total cart price using pack pricing rules.
+     * Calculate total cart price using pack pricing rules (inclut les frais de port).
      */
     private function calculateCartTotal(Cart $cart): float
     {
         $cartService = app(CartService::class);
         $packGroups = $cartService->buildPackGroups($cart);
-        $total = 0;
+        $subtotal = 0;
+        $hasPrints = false;
 
         foreach ($packGroups as $group) {
             $first = $group['items']->first();
@@ -148,10 +221,16 @@ class OrderService
                 ?? $gallery?->getPriceForProductType($productType)
                 ?? CartItem::getPriceForType($productType);
 
-            $total += $unitPrice * $quantity;
+            $subtotal += $unitPrice * $quantity;
+
+            if (CartItem::isPrintType($productType)) {
+                $hasPrints = true;
+            }
         }
 
-        return $total;
+        $shippingFee = $hasPrints ? (float) config('shop.shipping_fee_print', 0) : 0.0;
+
+        return $subtotal + $shippingFee;
     }
 
     /**

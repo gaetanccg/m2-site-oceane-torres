@@ -11,7 +11,11 @@ export interface User {
     email: string
     first_name: string
     last_name: string
-    phone?: string
+    phone?: string | null
+    address_line1?: string | null
+    address_line2?: string | null
+    postal_code?: string | null
+    city?: string | null
     role: 'admin' | 'client'
     created_at: string
     updated_at: string
@@ -387,6 +391,7 @@ export interface AdminOrder {
     print_status: PrintStatus
     shipped_at: string | null
     subtotal: number
+    shipping_fee: number
     total: number
     currency: string
     paid_at: string | null
@@ -395,6 +400,14 @@ export interface AdminOrder {
     has_prints: boolean
     customer_email: string
     customer_name: string
+    shipping: {
+        phone: string | null
+        address_line1: string | null
+        address_line2: string | null
+        postal_code: string | null
+        city: string | null
+        country: string | null
+    } | null
     sumup_checkout_id?: string | null
     sumup_transaction_id?: string | null
     user?: {

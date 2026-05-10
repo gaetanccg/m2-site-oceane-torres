@@ -44,13 +44,23 @@ class OrderController extends Controller
                 ], 400);
             }
 
+            $shippingData = [
+                'shipping_phone' => $validated['shipping_phone'] ?? null,
+                'shipping_address_line1' => $validated['shipping_address_line1'] ?? null,
+                'shipping_address_line2' => $validated['shipping_address_line2'] ?? null,
+                'shipping_postal_code' => $validated['shipping_postal_code'] ?? null,
+                'shipping_city' => $validated['shipping_city'] ?? null,
+                'shipping_country' => $validated['shipping_country'] ?? 'FR',
+            ];
+
             $order = $this->orderService->createFromCart(
                 $cart,
                 $user,
                 $validated['guest_email'] ?? null,
                 $validated['guest_first_name'] ?? null,
                 $validated['guest_last_name'] ?? null,
-                $request->ip()
+                $request->ip(),
+                $shippingData
             );
 
             $paymentData = $this->orderService->initiatePayment($order);
@@ -61,21 +71,36 @@ class OrderController extends Controller
                 'order' => [
                     'id' => $order->id,
                     'order_number' => $order->order_number,
+                    'subtotal' => (float) $order->subtotal,
+                    'shipping_fee' => (float) $order->shipping_fee,
                     'total' => (float) $order->total,
                     'currency' => $order->currency,
                     'items_count' => $order->items->count(),
+                    'shipping' => $order->shipping_fee > 0 ? [
+                        'phone' => $order->shipping_phone,
+                        'address_line1' => $order->shipping_address_line1,
+                        'address_line2' => $order->shipping_address_line2,
+                        'postal_code' => $order->shipping_postal_code,
+                        'city' => $order->shipping_city,
+                        'country' => $order->shipping_country,
+                    ] : null,
                 ],
                 'payment' => $paymentData,
             ]);
-        } catch (\Exception $e) {
+        } catch (\App\Exceptions\BusinessException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], $e->getHttpStatus());
+        } catch (\Throwable $e) {
             Log::error('Checkout creation failed', [
                 'error' => $e->getMessage(),
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Une erreur est survenue lors de la creation de votre commande. Veuillez reessayer.',
-            ], 400);
+                'message' => "Une erreur s'est produite, veuillez réessayer plus tard. Si l'erreur persiste, n'hésitez pas à me contacter.",
+            ], 500);
         }
     }
 

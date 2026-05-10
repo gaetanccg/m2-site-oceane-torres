@@ -11,27 +11,49 @@
  */
 
 import sharp from 'sharp'
-import { readdir, mkdir, stat } from 'fs/promises'
+import { readdir, mkdir, stat, unlink } from 'fs/promises'
 import { join, extname } from 'path'
 
 const OPTIMIZED_DIR = new URL('../public/optimized', import.meta.url).pathname
 const THUMBS_DIR = join(OPTIMIZED_DIR, 'thumbs')
 const THUMB_WIDTH = 400
-const CATEGORIES = ['Portraits', 'Sport', 'Animalier', 'Automobile', 'Entreprise']
+const CATEGORIES = ['Portraits', 'Sport', 'Animalier', 'Concert', 'Automobile', 'Entreprise']
 
 async function generateThumbs() {
     let totalGenerated = 0
     let totalSkipped = 0
+    let totalDeleted = 0
     let totalSavedBytes = 0
 
     for (const category of CATEGORIES) {
         const srcDir = join(OPTIMIZED_DIR, category)
         const outDir = join(THUMBS_DIR, category)
 
+        try {
+            await stat(srcDir)
+        } catch {
+            continue
+        }
+
         await mkdir(outDir, { recursive: true })
 
         const files = await readdir(srcDir)
         const imageFiles = files.filter(f => ['.avif', '.webp'].includes(extname(f).toLowerCase()))
+
+        // Supprime les thumbs orphelins (plus de fichier source dans optimized/)
+        const sourceSet = new Set(imageFiles)
+        let existingThumbs = []
+        try {
+            existingThumbs = await readdir(outDir)
+        } catch {}
+        for (const thumb of existingThumbs) {
+            if (!['.avif', '.webp'].includes(extname(thumb).toLowerCase())) continue
+            if (!sourceSet.has(thumb)) {
+                await unlink(join(outDir, thumb))
+                console.log(`  ✗ orphelin : ${category}/${thumb}`)
+                totalDeleted++
+            }
+        }
 
         for (const file of imageFiles) {
             const srcPath = join(srcDir, file)
@@ -76,7 +98,7 @@ async function generateThumbs() {
     }
 
     console.log('')
-    console.log(`Done: ${totalGenerated} generated, ${totalSkipped} skipped`)
+    console.log(`Done: ${totalGenerated} generated, ${totalSkipped} skipped, ${totalDeleted} orphelins supprimés`)
     console.log(`Total saved: ${(totalSavedBytes / 1024 / 1024).toFixed(1)} MB`)
 }
 

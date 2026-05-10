@@ -1,5 +1,5 @@
 <template>
-    <div class="pt-20">
+    <div class="pt-4">
         <!-- Bons Cadeaux Section -->
         <section class="py-4 px-6 lg:px-12 bg-white relative overflow-hidden">
             <div class="max-w-4xl mx-auto relative">
