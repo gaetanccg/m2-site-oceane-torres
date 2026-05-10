@@ -201,7 +201,7 @@ class OrderController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => "La vérification du paiement a échoué. Veuillez réessayer plus tard.",
+                'message' => 'La vérification du paiement a échoué. Veuillez réessayer plus tard.',
             ], 500);
         }
     }

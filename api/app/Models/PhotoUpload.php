@@ -47,7 +47,7 @@ class PhotoUpload extends Model
     {
         // Aggregate counts via COUNT queries (no row hydration)
         $counts = self::where('batch_id', $batchId)
-            ->selectRaw("COUNT(*) as total")
+            ->selectRaw('COUNT(*) as total')
             ->selectRaw("COUNT(*) FILTER (WHERE status = 'completed') as completed")
             ->selectRaw("COUNT(*) FILTER (WHERE status = 'failed') as failed")
             ->selectRaw("COUNT(*) FILTER (WHERE status IN ('pending', 'uploading', 'processing')) as processing")

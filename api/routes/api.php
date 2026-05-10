@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\Admin\DashboardController;
 use App\Http\Controllers\Api\Admin\EventCategoryController;
 use App\Http\Controllers\Api\Admin\NotificationController;
 use App\Http\Controllers\Api\Admin\OrderController as AdminOrderController;
+use App\Http\Controllers\Api\Admin\SchoolSessionController;
 use App\Http\Controllers\Api\Admin\UserController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AvailabilityController;
@@ -21,7 +22,6 @@ use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\PhotoController;
 use App\Http\Controllers\Api\PrestationController;
 use App\Http\Controllers\Api\ReservationController;
-use App\Http\Controllers\Api\Admin\SchoolSessionController;
 use App\Http\Controllers\Api\SumUpPaymentController;
 use Illuminate\Support\Facades\Route;
 
