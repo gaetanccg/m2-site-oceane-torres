@@ -305,7 +305,7 @@ interface Gallery {
     parent?: ParentGallery | null
 }
 
-type ProductTypeKey = 'digital' | 'print_10x15' | 'print_15x20'
+type ProductTypeKey = 'digital' | 'print_10x15' | 'print_15x20' | 'print_scolaire'
 
 const route = useRoute()
 

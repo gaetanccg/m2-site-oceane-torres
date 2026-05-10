@@ -84,7 +84,7 @@
                                 <div style="margin-top: 40px; padding-top: 25px; border-top: 1px solid #e0e0e0;">
                                     <p style="margin: 0; color: #333333; font-size: 16px;">
                                         A tres bientot,<br>
-                                        <strong style="color: #D4AF37;">Océane</strong>
+                                        <strong style="color: #D4AF37;">Océane Torres</strong>
                                     </p>
                                 </div>
                             </td>

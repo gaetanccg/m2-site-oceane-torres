@@ -236,7 +236,7 @@ const columns: TableColumn<SchoolSession>[] = [
     { key: 'status', label: 'Statut' },
     { key: 'galleries_count', label: 'Galeries', align: 'center' },
     { key: 'event_date', label: 'Date shooting', sortable: true },
-    { key: 'created_at', label: 'Cree le', sortable: true },
+    { key: 'created_at', label: 'Crée le', sortable: true },
 ]
 
 async function fetchSessions() {

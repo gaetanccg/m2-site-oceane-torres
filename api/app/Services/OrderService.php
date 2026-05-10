@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Mail\OrderConfirmationMail;
 use App\Mail\PrintOrderNotificationMail;
+use App\Mail\SchoolOrderConfirmationMail;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Order;
@@ -73,6 +74,7 @@ class OrderService
                     'order_id' => $order->id,
                     'photo_id' => $item->photo_id,
                     'product_type' => $item->product_type ?? 'digital',
+                    'quantity' => (int) ($item->quantity ?? 1),
                     'photo_title' => $item->photo->title,
                     'gallery_title' => $item->photo->gallery?->title,
                     'price' => $item->price,
@@ -386,7 +388,9 @@ class OrderService
 
             $this->sendOrderConfirmationEmail($order, $invoice);
 
-            if ($order->hasPrintItems()) {
+            // School orders are handled separately via the school session admin view —
+            // skip the generic print notification for them.
+            if ($order->hasPrintItems() && ! $this->isSchoolOrder($order)) {
                 $this->sendPrintOrderNotification($order);
             }
         }
@@ -471,6 +475,13 @@ class OrderService
                 return;
             }
 
+            // School orders get a dedicated mail (no download section, school-specific message)
+            if ($this->isSchoolOrder($order)) {
+                Mail::to($email)->queue(new SchoolOrderConfirmationMail($order, $invoice));
+
+                return;
+            }
+
             $downloadToken = $order->metadata['download_token'] ?? null;
             $downloadUrl = config('app.frontend_url').'/commande/'.$order->id.'?token='.$downloadToken;
 
@@ -481,6 +492,12 @@ class OrderService
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    private function isSchoolOrder(Order $order): bool
+    {
+        return $order->items->isNotEmpty()
+            && $order->items->every(fn ($item) => $item->product_type === 'print_scolaire');
     }
 
     /**

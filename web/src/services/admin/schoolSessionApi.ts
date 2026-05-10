@@ -1,6 +1,7 @@
 import { BaseAdminService } from './baseAdmin'
 import type {
     AdminApiResponse,
+    AdminOrder,
     AdminPaginatedResponse,
     SchoolSession,
     SchoolSessionExport,
@@ -31,6 +32,12 @@ class SchoolSessionApiService extends BaseAdminService {
     async getSchoolSessionGalleries(id: string): Promise<AdminApiResponse<SchoolSessionGallery[]>> {
         return this.adminRequest<AdminApiResponse<SchoolSessionGallery[]>>(
             `/admin/school-sessions/${id}/galleries`,
+        )
+    }
+
+    async getSchoolSessionOrders(id: string): Promise<{ success: boolean; orders: AdminOrder[] }> {
+        return this.adminRequest<{ success: boolean; orders: AdminOrder[] }>(
+            `/admin/school-sessions/${id}/orders`,
         )
     }
 
@@ -120,13 +127,14 @@ class SchoolSessionApiService extends BaseAdminService {
         return `${this.baseUrl}/admin/school-session-exports/${exportId}/download`
     }
 
-    async sendSchoolSessionEmails(
+    async sendSchoolSessionMessages(
         sessionId: string,
-        contacts: { gallery_id: string; email: string; recipient_name: string }[],
+        channel: 'email' | 'sms',
+        contacts: { gallery_id: string; recipient_name: string; email?: string; phone?: string }[],
     ): Promise<{ success: boolean; sent: number; errors: string[]; message: string }> {
-        return this.adminRequest(`/admin/school-sessions/${sessionId}/send-emails`, {
+        return this.adminRequest(`/admin/school-sessions/${sessionId}/send-messages`, {
             method: 'POST',
-            body: JSON.stringify({ contacts }),
+            body: JSON.stringify({ channel, contacts }),
         })
     }
 }

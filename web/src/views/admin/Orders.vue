@@ -307,7 +307,7 @@
                             variant="secondary"
                             size="sm"
                             @click="copyDownloadLink"
-                            title="Copier le lien de telechargement client"
+                            title="Copier le lien de téléchargement client"
                         >
                             Copier lien
                         </Button>
@@ -482,7 +482,7 @@ async function confirmDelete(order: AdminOrder) {
     if (isPaid) {
         if (!await confirm({
             title: 'Confirmation finale',
-            message: `Supprimer definitivement la commande payee ${order.order_number} ?`,
+            message: `Supprimer definitivement la commande payée ${order.order_number} ?`,
             confirmLabel: 'Supprimer definitivement',
             variant: 'danger',
         })) {

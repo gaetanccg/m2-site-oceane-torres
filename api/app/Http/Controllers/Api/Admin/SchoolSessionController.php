@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Admin\SendSchoolSessionEmailsRequest;
+use App\Http\Requests\Admin\SendSchoolSessionMessagesRequest;
 use App\Http\Requests\Admin\StoreSchoolSessionRequest;
 use App\Jobs\GenerateSchoolSessionExportJob;
 use App\Jobs\ProcessSchoolSessionJob;
+use App\Jobs\SendSchoolSessionSmsJob;
 use App\Mail\GalleryAccessMail;
 use App\Models\Gallery;
+use App\Models\Order;
 use App\Models\PhotoUpload;
 use App\Models\SchoolSession;
 use App\Models\SchoolSessionExport;
@@ -28,8 +30,8 @@ class SchoolSessionController extends Controller
     public function index(): JsonResponse
     {
         $sessions = SchoolSession::withCount('galleries')
-            ->latest()
-            ->paginate(20);
+                                 ->latest()
+                                 ->paginate(20);
 
         return response()->json($sessions);
     }
@@ -90,24 +92,43 @@ class SchoolSessionController extends Controller
     }
 
     /**
+     * GET /admin/school-sessions/{schoolSession}/orders
+     * Lists orders that contain at least one item from a gallery in this session.
+     */
+    public function orders(SchoolSession $schoolSession): JsonResponse
+    {
+        $galleryIds = $schoolSession->galleries()->pluck('id');
+
+        $orders = Order::with(['items.photo.gallery', 'user'])
+            ->whereHas('items.photo', fn ($q) => $q->whereIn('gallery_id', $galleryIds))
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'orders' => $orders->map(fn ($order) => OrderController::formatOrder($order)),
+        ]);
+    }
+
+    /**
      * GET /admin/school-sessions/{schoolSession}/galleries
      */
     public function galleries(SchoolSession $schoolSession): JsonResponse
     {
         $galleries = $schoolSession->galleries()
-            ->withCount('photos')
-            ->orderBy('class_name')
-            ->orderBy('title')
-            ->get()
-            ->map(fn ($gallery) => [
-                'id' => $gallery->id,
-                'title' => $gallery->title,
-                'class_name' => $gallery->class_name,
-                'photos_count' => $gallery->photos_count,
-                'share_code' => $gallery->share_code,
-                'access_token' => $gallery->access_token,
-                'created_at' => $gallery->created_at,
-            ]);
+                                   ->withCount('photos')
+                                   ->orderBy('class_name')
+                                   ->orderBy('title')
+                                   ->get()
+                                   ->map(fn($gallery) => [
+                                       'id' => $gallery->id,
+                                       'title' => $gallery->title,
+                                       'class_name' => $gallery->class_name,
+                                       'photos_count' => $gallery->photos_count,
+                                       'share_code' => $gallery->share_code,
+                                       'access_token' => $gallery->access_token,
+                                       'created_at' => $gallery->created_at,
+                                   ]);
 
         return response()->json([
             'success' => true,
@@ -135,8 +156,8 @@ class SchoolSessionController extends Controller
         ]);
 
         $chunk = $request->file('chunk');
-        $chunkIndex = (int) $request->input('chunk_index');
-        $totalChunks = (int) $request->input('total_chunks');
+        $chunkIndex = (int)$request->input('chunk_index');
+        $totalChunks = (int)$request->input('total_chunks');
 
         $zipDir = 'temp/school-sessions/'.$schoolSession->id;
         $zipPath = $zipDir.'/upload.zip';
@@ -175,7 +196,7 @@ class SchoolSessionController extends Controller
             ], 422);
         }
 
-        if (! $schoolSession->zip_path || ! Storage::disk('local')->exists($schoolSession->zip_path)) {
+        if (!$schoolSession->zip_path || !Storage::disk('local')->exists($schoolSession->zip_path)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Aucun fichier ZIP trouvé. Veuillez d\'abord uploader le ZIP.',
@@ -191,11 +212,13 @@ class SchoolSessionController extends Controller
     }
 
     /**
-     * POST /admin/school-sessions/{schoolSession}/send-emails
+     * POST /admin/school-sessions/{schoolSession}/send-messages
+     * Sends gallery access via email or SMS based on the chosen channel.
      */
-    public function sendEmails(SendSchoolSessionEmailsRequest $request, SchoolSession $schoolSession): JsonResponse
+    public function sendMessages(SendSchoolSessionMessagesRequest $request, SchoolSession $schoolSession): JsonResponse
     {
         $validated = $request->validated();
+        $channel = $validated['channel'];
         $frontendUrl = config('app.frontend_url', 'https://oceanetorresphotographie.fr');
 
         $sent = 0;
@@ -203,45 +226,66 @@ class SchoolSessionController extends Controller
 
         foreach ($validated['contacts'] as $contact) {
             $gallery = Gallery::where('id', $contact['gallery_id'])
-                ->where('school_session_id', $schoolSession->id)
-                ->first();
+                              ->where('school_session_id', $schoolSession->id)
+                              ->first();
 
-            if (! $gallery) {
+            if (!$gallery) {
                 $errors[] = "Galerie introuvable pour {$contact['recipient_name']}";
 
                 continue;
             }
 
+            $directUrl = $frontendUrl.'/gallery/'.$gallery->share_code;
+
             try {
-                Mail::to($contact['email'])->queue(
-                    new GalleryAccessMail(
-                        gallery: $gallery,
-                        recipientName: $contact['recipient_name'],
-                        galleryUrl: $frontendUrl.'/gallery/'.$gallery->share_code,
-                        shareCode: $gallery->share_code,
-                        isDirectLink: true,
-                    )
-                );
+                if ($channel === 'email') {
+                    Mail::to($contact['email'])->queue(
+                        new GalleryAccessMail(
+                            gallery: $gallery,
+                            recipientName: $contact['recipient_name'],
+                            galleryUrl: $directUrl,
+                            shareCode: $gallery->share_code,
+                            isDirectLink: true,
+                        )
+                    );
+                } else {
+                    // SMS — keep content under ~160 chars, no accents (avoids unicode SMS billing)
+                    $content = sprintf(
+                        'Bonjour, les photos de %s sont disponibles ici : %s (code: %s). Oceane Torres',
+                        $this->stripAccents($gallery->title),
+                        $directUrl,
+                        $gallery->share_code,
+                    );
+                    SendSchoolSessionSmsJob::dispatch($contact['phone'], $content);
+                }
+
                 $sent++;
             } catch (\Exception $e) {
-                \Log::error('SchoolSession: failed to queue email', [
+                \Log::error('SchoolSession: failed to queue message', [
                     'session_id' => $schoolSession->id,
                     'gallery_id' => $gallery->id,
-                    'email' => $contact['email'],
+                    'channel' => $channel,
                     'error' => $e->getMessage(),
                 ]);
                 $errors[] = "Erreur pour {$contact['recipient_name']}: {$e->getMessage()}";
             }
         }
 
+        $label = $channel === 'sms' ? 'SMS' : 'email(s)';
+
         return response()->json([
             'success' => true,
             'sent' => $sent,
             'errors' => $errors,
             'message' => $sent > 0
-                ? "{$sent} email(s) mis en file d'envoi."
-                : 'Aucun email envoyé.',
+                ? "{$sent} {$label} mis en file d'envoi."
+                : "Aucun {$label} envoye.",
         ]);
+    }
+
+    private function stripAccents(string $text): string
+    {
+        return iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $text) ? : $text;
     }
 
     /**
@@ -271,7 +315,7 @@ class SchoolSessionController extends Controller
      */
     public function reopen(SchoolSession $schoolSession): JsonResponse
     {
-        if (! $schoolSession->isClosed()) {
+        if (!$schoolSession->isClosed()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Cette session n\'est pas cloturee.',
@@ -300,13 +344,13 @@ class SchoolSessionController extends Controller
         // Cleanup any previous in-progress or failed export for this session
         // (we keep completed ones to allow re-download)
         SchoolSessionExport::where('school_session_id', $schoolSession->id)
-            ->whereIn('status', ['pending', 'processing', 'failed'])
-            ->delete();
+                           ->whereIn('status', ['pending', 'processing', 'failed'])
+                           ->delete();
 
         $export = SchoolSessionExport::create([
             'school_session_id' => $schoolSession->id,
             'status' => 'pending',
-            'include_digital' => (bool) ($validated['include_digital'] ?? false),
+            'include_digital' => (bool)($validated['include_digital'] ?? false),
         ]);
 
         GenerateSchoolSessionExportJob::dispatch($export->id);
@@ -323,8 +367,8 @@ class SchoolSessionController extends Controller
     public function latestExport(SchoolSession $schoolSession): JsonResponse
     {
         $export = SchoolSessionExport::where('school_session_id', $schoolSession->id)
-            ->latest()
-            ->first();
+                                     ->latest()
+                                     ->first();
 
         return response()->json([
             'success' => true,
@@ -337,14 +381,14 @@ class SchoolSessionController extends Controller
      */
     public function downloadExport(SchoolSessionExport $export): BinaryFileResponse|JsonResponse
     {
-        if ($export->status !== 'completed' || ! $export->file_path) {
+        if ($export->status !== 'completed' || !$export->file_path) {
             return response()->json([
                 'success' => false,
                 'message' => 'Export non disponible.',
             ], 404);
         }
 
-        if (! Storage::disk('local')->exists($export->file_path)) {
+        if (!Storage::disk('local')->exists($export->file_path)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Fichier introuvable sur le serveur.',
@@ -363,8 +407,8 @@ class SchoolSessionController extends Controller
      * DELETE /admin/school-sessions/{schoolSession}
      */
     public function destroy(
-        SchoolSession $schoolSession,
-        SchoolSessionService $service,
+        SchoolSession              $schoolSession,
+        SchoolSessionService       $service,
         SchoolSessionExportService $exportService,
     ): JsonResponse {
         // Delete export ZIP files from local disk

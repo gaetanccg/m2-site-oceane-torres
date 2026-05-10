@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\CastsBooleansForPostgres;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class SchoolSessionExport extends Model
 {
-    use HasUuids;
+    use CastsBooleansForPostgres, HasUuids;
 
     const STATUSES = ['pending', 'processing', 'completed', 'failed'];
 

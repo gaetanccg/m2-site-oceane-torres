@@ -47,10 +47,11 @@ class CartController extends Controller
         $user = $request->user();
         $sessionId = $request->header('X-Cart-Session') ?? $validated['session_id'] ?? null;
         $productType = $validated['product_type'] ?? 'digital';
+        $quantity = $validated['quantity'] ?? 1;
 
         try {
             $cart = $this->cartService->getOrCreateCart($user, $sessionId);
-            $this->cartService->addItem($cart, $validated['photo_id'], $productType);
+            $this->cartService->addItem($cart, $validated['photo_id'], $productType, $quantity);
             $summary = $this->cartService->getCartSummary($cart->fresh(['items.photo']));
 
             return response()->json([
@@ -93,6 +94,38 @@ class CartController extends Controller
                 'message' => $e->getMessage(),
             ], 400);
         }
+    }
+
+    /**
+     * Update the quantity of a cart item. If quantity reaches 0, the item is removed.
+     */
+    public function updateItemQuantity(Request $request, string $itemId): JsonResponse
+    {
+        $validated = $request->validate([
+            'quantity' => ['required', 'integer', 'min:0', 'max:50'],
+        ]);
+
+        $user = $request->user();
+        $sessionId = $request->header('X-Cart-Session') ?? $request->input('session_id');
+
+        $cart = $this->cartService->getOrCreateCart($user, $sessionId);
+        $item = $cart->items()->where('id', $itemId)->first();
+
+        if (! $item) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Article non trouve dans le panier.',
+            ], 404);
+        }
+
+        $this->cartService->setItemQuantity($item, (int) $validated['quantity']);
+
+        $summary = $this->cartService->getCartSummary($cart->fresh(['items.photo']));
+
+        return response()->json([
+            'success' => true,
+            'cart' => $summary,
+        ]);
     }
 
     /**

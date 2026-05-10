@@ -31,7 +31,7 @@ class SchoolSessionExportService
         $items = $this->collectOrderItems($session, $export->include_digital);
 
         if ($items->isEmpty()) {
-            $export->markAs('failed', 'Aucune commande payee trouvee pour cette session.');
+            $export->markAs('failed', 'Aucune commande payée trouvee pour cette session.');
 
             return;
         }
@@ -100,7 +100,7 @@ class SchoolSessionExportService
                     $photoTempPaths[$photoId] = ['path' => $tempFile, 'extension' => $extension];
                 }
 
-                // Build the in-zip path: Classe/Eleve/photo.ext (with collision suffix)
+                // Build the in-zip path: Classe/Eleve/photo.ext (with collision suffix per quantity)
                 $className = $this->sanitizeFolder($gallery->class_name ?? 'Sans classe');
                 $childName = $this->sanitizeFolder($gallery->title);
                 $folder = $className.'/'.$childName;
@@ -111,23 +111,29 @@ class SchoolSessionExportService
                     $usedNames[$folder] = [];
                 }
 
-                $count = ($usedNames[$folder][$baseFilename] ?? 0) + 1;
-                $usedNames[$folder][$baseFilename] = $count;
+                // Duplicate the file once per unit ordered (quantity)
+                $itemQuantity = max(1, (int) ($item->quantity ?? 1));
 
-                $finalName = $count === 1
-                    ? $baseFilename
-                    : $this->appendSuffix($baseFilename, $count);
+                for ($q = 0; $q < $itemQuantity; $q++) {
+                    $count = ($usedNames[$folder][$baseFilename] ?? 0) + 1;
+                    $usedNames[$folder][$baseFilename] = $count;
 
-                $inZipPath = $folder.'/'.$finalName;
-                $zip->addFile($photoTempPaths[$photoId]['path'], $inZipPath);
+                    $finalName = $count === 1
+                        ? $baseFilename
+                        : $this->appendSuffix($baseFilename, $count);
 
-                // Track for index
+                    $inZipPath = $folder.'/'.$finalName;
+                    $zip->addFile($photoTempPaths[$photoId]['path'], $inZipPath);
+                }
+
+                // Track for index (one row aggregated, quantity recorded)
                 $indexRows[] = [
                     'class' => $gallery->class_name ?? '',
                     'child' => $gallery->title,
-                    'photo' => $finalName,
+                    'photo' => $baseFilename,
                     'product_type' => $item->product_type,
                     'price' => $item->price,
+                    'quantity' => $itemQuantity,
                 ];
 
                 $export->increment('processed_items');
@@ -198,7 +204,7 @@ class SchoolSessionExportService
      */
     private function buildCsvIndex(array $rows): string
     {
-        // Aggregate by (class + child + photo + type)
+        // Aggregate by (class + child + photo + type) — sum quantity from each row
         $aggregated = [];
         foreach ($rows as $row) {
             $key = $row['class'].'|'.$row['child'].'|'.$row['photo'].'|'.$row['product_type'];
@@ -212,7 +218,7 @@ class SchoolSessionExportService
                     'quantity' => 0,
                 ];
             }
-            $aggregated[$key]['quantity']++;
+            $aggregated[$key]['quantity'] += (int) ($row['quantity'] ?? 1);
         }
 
         // Sort by class, child, photo

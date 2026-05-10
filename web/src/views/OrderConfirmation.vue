@@ -459,9 +459,9 @@ async function downloadPhoto(itemId: string, photoId: string, photoTitle?: strin
         }
     } catch (e) {
         if (e instanceof CartApiError && e.apiError.status === 403) {
-            toast.error('Lien expire', 'Votre lien de telechargement a expire. Consultez votre email de confirmation pour un nouveau lien.')
+            toast.error('Lien expire', 'Votre lien de téléchargement a expire. Consultez votre email de confirmation pour un nouveau lien.')
         } else {
-            toast.error('Erreur', 'Erreur lors du telechargement')
+            toast.error('Erreur', 'Erreur lors du téléchargement')
         }
     } finally {
         downloadingItem.value = null
@@ -497,7 +497,7 @@ async function downloadAllPhotos() {
 
         if (!response.ok) {
             if (response.status === 403) {
-                toast.error('Lien expire', 'Votre lien de telechargement a expire. Consultez votre email de confirmation pour un nouveau lien.')
+                toast.error('Lien expire', 'Votre lien de téléchargement a expire. Consultez votre email de confirmation pour un nouveau lien.')
                 return
             }
             throw new Error('Erreur lors du téléchargement')
@@ -513,7 +513,7 @@ async function downloadAllPhotos() {
         document.body.removeChild(link)
         window.URL.revokeObjectURL(url)
     } catch {
-        toast.error('Erreur', 'Erreur lors du telechargement')
+        toast.error('Erreur', 'Erreur lors du téléchargement')
     } finally {
         isDownloadingAll.value = false
     }
