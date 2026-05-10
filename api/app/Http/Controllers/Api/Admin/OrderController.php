@@ -23,6 +23,7 @@ class OrderController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = Order::with('items.photo', 'user')
+            ->whereHas('items', fn ($i) => $i->where('product_type', '!=', 'print_scolaire'))
             ->orderBy('created_at', 'desc');
 
         if ($request->has('status')) {
@@ -139,7 +140,7 @@ class OrderController extends Controller
         if (! $order->isPaid()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Aucun lien disponible (commande non payee).',
+                'message' => 'Aucun lien disponible (commande non payée).',
             ], 400);
         }
 
@@ -166,7 +167,7 @@ class OrderController extends Controller
         if ($order->isPaid()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Cette commande est deja payee.',
+                'message' => 'Cette commande est deja payée.',
             ], 400);
         }
 
@@ -187,7 +188,12 @@ class OrderController extends Controller
                     : 'Paiement non confirme sur SumUp. Statut actuel : '.$updatedOrder->status,
                 'order' => self::formatOrder($updatedOrder->load('items.photo')),
             ]);
-        } catch (\Exception $e) {
+        } catch (\App\Exceptions\BusinessException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], $e->getHttpStatus());
+        } catch (\Throwable $e) {
             Log::error('Admin retry payment failed', [
                 'order_id' => $orderId,
                 'error' => $e->getMessage(),
@@ -195,7 +201,7 @@ class OrderController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la verification : '.$e->getMessage(),
+                'message' => 'La vérification du paiement a échoué. Veuillez réessayer plus tard.',
             ], 500);
         }
     }

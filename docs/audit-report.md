@@ -77,8 +77,8 @@
 
 - [x] Rattachement auto historique (commandes + reservations + galeries par email)
 - [x] Onglet "Mes achats" dans le dashboard client
-- [x] Bouton "Voir / Telecharger" sur commandes payees
-- [x] Page detail commande client `/mon-compte/commande/:id` avec telechargement individuel
+- [x] Bouton "Voir / Télécharger" sur commandes payées
+- [x] Page detail commande client `/mon-compte/commande/:id` avec téléchargement individuel
 
 ### Phase E — Cookies & consentement
 
@@ -122,7 +122,7 @@
 | Fonctionnalite | Statut |
 |----------------|--------|
 | Vues galeries | OK — `recordView()` sur toutes les methodes |
-| Telechargements (gratuits + achats) | OK — `recordDownload()` partout |
+| Téléchargements (gratuits + achats) | OK — `recordDownload()` partout |
 | GA4 e-commerce | OK — `add_to_cart`, `remove_from_cart`, `begin_checkout`, `purchase` |
 | GA4 page views | OK — avec respect du consentement |
 | Consentement | OK — Consent Mode v2, composable `useGtag.ts` |
@@ -148,7 +148,7 @@
 |---|------|--------|------|
 | 1 | **Renvoyer l'email de confirmation de commande** depuis l'admin Orders — endpoint + bouton (OrderConfirmationMail existe deja) | ~30min | Feature admin |
 | 2 | **Envoi SMS acces galerie via Brevo** — choix mail/SMS dans le modal d'envoi de Galleries.vue, API SMS Brevo | ~1-2h | Feature admin |
-| 3 | **T4 — Stats admin** : revenu par galerie / par type de produit, taux de conversion panier → commande payee | ~1h | Analytics |
+| 3 | **T4 — Stats admin** : revenu par galerie / par type de produit, taux de conversion panier → commande payée | ~1h | Analytics |
 | 4 | **R6 — Tests** : PHPUnit pour OrderService, CartService, PricingService + Vitest pour useGtag, consent store | Long terme | Qualite |
 | 5 | **Executer `npm run build:prerender`** avant deploiement | 2min | Operation |
 
@@ -176,7 +176,7 @@
 | Performance | LCP ~3.5s, CLS ~0.20 | LCP ~2.0s (estim), CLS ~0.05 (estim) |
 | Securite | SQL injection, pas de headers | Corrige (bindings, middleware, policies) |
 | RGPD | Droit oubli partiel | Export complet, retention hebdo, consentement v2 |
-| Compte client | Pas de commandes | Dashboard complet, detail commande, telechargement |
+| Compte client | Pas de commandes | Dashboard complet, detail commande, téléchargement |
 | Commandes | 1 champ nom | Nom+prenom, copier lien, retry, infos SumUp |
 | Deploiement | Copie manuelle dossier par dossier | git pull + ./deploy/deploy.sh |
 

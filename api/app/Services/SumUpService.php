@@ -65,7 +65,7 @@ class SumUpService
                 'response' => $response->json(),
             ]);
 
-            throw new \Exception('Erreur lors de la création du checkout SumUp: '.($response->json()['message'] ?? 'Unknown error'));
+            throw new \Exception('Erreur lors de la création du checkout SumUp.');
         }
 
         $data = $response->json();

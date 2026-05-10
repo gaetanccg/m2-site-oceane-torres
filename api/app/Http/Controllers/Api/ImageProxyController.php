@@ -98,7 +98,7 @@ class ImageProxyController extends Controller
 
             // Verify order is paid
             if ($order->status !== 'paid') {
-                return $this->errorResponse('Commande non payee.', 403);
+                return $this->errorResponse('Commande non payée.', 403);
             }
 
             // Verify token is valid
@@ -136,7 +136,7 @@ class ImageProxyController extends Controller
                 'error' => $e->getMessage(),
             ]);
 
-            return $this->errorResponse('Erreur lors du telechargement.', 500);
+            return $this->errorResponse('Erreur lors du téléchargement.', 500);
         }
     }
 

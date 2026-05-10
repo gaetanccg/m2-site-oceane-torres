@@ -51,7 +51,7 @@ cp deploy/.env.prod.example deploy/.env.prod
 
 ### Option B : Sans Git (via l'interface web UGREEN)
 
-1. Telecharger le repo en ZIP depuis GitHub
+1. Télécharger le repo en ZIP depuis GitHub
 2. Extraire dans `/volume1/docker/oceane-api/`
 3. Creer `deploy/.env.prod` depuis `deploy/.env.prod.example`
 4. Remplir les secrets

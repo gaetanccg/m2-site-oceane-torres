@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exceptions\BusinessException;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Photo;
@@ -84,9 +85,9 @@ class CartService
     }
 
     /**
-     * Add a photo to the cart with a specific product type
+     * Add a photo to the cart, or increment its quantity if already present.
      */
-    public function addItem(Cart $cart, string $photoId, string $productType = 'digital'): CartItem
+    public function addItem(Cart $cart, string $photoId, string $productType = 'digital', int $quantity = 1): CartItem
     {
         $photo = Photo::findOrFail($photoId);
 
@@ -97,36 +98,67 @@ class CartService
 
         // Check if photo is purchasable
         if (! $photo->is_purchasable) {
-            throw new \Exception('Cette photo n\'est pas disponible à l\'achat.');
+            throw new BusinessException('Cette photo n\'est pas disponible à l\'achat.', 400);
         }
 
         // Resolve price from gallery product config (with fallback to defaults)
         $gallery = $photo->gallery;
-        $gallery->load('galleryProductTypes');
+        $gallery->load('galleryProductTypes', 'schoolSession:id,closed_at');
+
+        // Block purchase if the gallery belongs to a closed school session
+        if ($gallery->schoolSession?->isClosed()) {
+            throw new BusinessException('Cette galerie est cloturée, les commandes ne sont plus possibles.', 403);
+        }
+
         $price = $gallery->getPriceForProductType($productType);
 
         if ($price === null) {
-            throw new \Exception('Ce type de produit n\'est pas disponible pour cette galerie.');
+            throw new BusinessException('Ce type de produit n\'est pas disponible pour cette galerie.', 400);
         }
 
-        // Check if same photo with same product type already in cart
-        $existingItem = $cart->items()
+        $quantity = max(1, min(50, $quantity));
+
+        // Find existing row for this (cart, photo, product_type) combo and increment
+        $existing = $cart->items()
             ->where('photo_id', $photoId)
             ->where('product_type', $productType)
             ->first();
 
-        if ($existingItem) {
-            return $existingItem;
+        if ($existing) {
+            $existing->increment('quantity', $quantity);
+            $existing->update(['price' => $price]);
+            $cart->unsetRelation('items');
+
+            return $existing->fresh();
         }
 
         $item = CartItem::create([
             'cart_id' => $cart->id,
             'photo_id' => $photoId,
             'product_type' => $productType,
+            'quantity' => $quantity,
             'price' => $price,
         ]);
 
         $cart->unsetRelation('items');
+
+        return $item->fresh();
+    }
+
+    /**
+     * Set the quantity of a cart item. If the new quantity is <= 0, the item is deleted.
+     */
+    public function setItemQuantity(CartItem $item, int $quantity): ?CartItem
+    {
+        $quantity = min(50, $quantity);
+
+        if ($quantity <= 0) {
+            $item->delete();
+
+            return null;
+        }
+
+        $item->update(['quantity' => $quantity]);
 
         return $item->fresh();
     }
@@ -138,7 +170,7 @@ class CartService
     {
         // Validate product type
         if (! array_key_exists($productType, CartItem::PRODUCT_TYPES)) {
-            throw new \Exception('Type de produit invalide.');
+            throw new BusinessException('Type de produit invalide.', 400);
         }
 
         $item = $cart->items()->with('photo.gallery.galleryProductTypes')->where('id', $itemId)->firstOrFail();
@@ -148,7 +180,7 @@ class CartService
         $price = $gallery->getPriceForProductType($productType);
 
         if ($price === null) {
-            throw new \Exception('Ce type de produit n\'est pas disponible pour cette galerie.');
+            throw new BusinessException('Ce type de produit n\'est pas disponible pour cette galerie.', 400);
         }
 
         // Check if another item with same photo and product type exists
@@ -294,7 +326,8 @@ class CartService
             $gallery = $item->photo->gallery;
             $availableTypes = $gallery ? $gallery->getAvailableProductTypes() : CartItem::PRODUCT_TYPES;
 
-            $quantity = $itemGroupCount[$item->id] ?? 1;
+            $packQuantity = $itemGroupCount[$item->id] ?? (int) ($item->quantity ?? 1);
+            $itemQuantity = (int) ($item->quantity ?? 1);
 
             // Determine base price for this product type
             $gpt = $gallery?->galleryProductTypes->firstWhere('product_type', $item->product_type);
@@ -316,21 +349,23 @@ class CartService
                 'product_type_label' => CartItem::getLabelForType($item->product_type ?? 'digital'),
                 'is_print' => $item->isPrint(),
                 'price' => (float) $item->price,
+                'quantity' => $itemQuantity,
+                'line_total' => (float) $item->price * $itemQuantity,
                 'base_price' => $basePrice,
                 'has_pack_discount' => $hasPackDiscount,
-                'pack_quantity' => $hasPackDiscount ? $quantity : null,
+                'pack_quantity' => $hasPackDiscount ? $packQuantity : null,
                 'available_product_types' => $availableTypes,
             ];
         });
 
-        $subtotal = (float) $items->sum('price');
+        $subtotal = (float) $items->sum('line_total');
         $hasPrints = $items->contains('is_print', true);
         $shippingFee = $hasPrints ? (float) config('shop.shipping_fee_print', 0) : 0.0;
 
         return [
             'id' => $cart->id,
             'items' => $items,
-            'items_count' => $items->count(),
+            'items_count' => $items->sum('quantity'),
             'subtotal' => $subtotal,
             'shipping_fee' => $shippingFee,
             'total' => $subtotal + $shippingFee,
@@ -377,7 +412,7 @@ class CartService
             }
 
             $groups[$key]['items']->push($item);
-            $groups[$key]['count']++;
+            $groups[$key]['count'] += (int) ($item->quantity ?? 1);
         }
 
         return collect($groups);

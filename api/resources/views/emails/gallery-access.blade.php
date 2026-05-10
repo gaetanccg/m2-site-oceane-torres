@@ -60,11 +60,20 @@
                                     <h3 style="margin: 0 0 15px 0; color: #333333; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">
                                         Comment acceder a votre galerie ?
                                     </h3>
-                                    <ol style="margin: 0; padding-left: 20px; color: #555555; font-size: 14px; line-height: 1.8;">
-                                        <li>Cliquez sur le bouton ci-dessus ou rendez-vous sur le site</li>
-                                        <li>Entrez votre code d'acces : <strong>{{ $shareCode }}</strong></li>
-                                        <li>Vous pourrez alors consultez vos photos !</li>
-                                    </ol>
+                                    @if ($isDirectLink)
+                                        <p style="margin: 0 0 10px 0; color: #555555; font-size: 14px; line-height: 1.8;">
+                                            Cliquez simplement sur le bouton ci-dessus pour acceder directement a la galerie.
+                                        </p>
+                                        <p style="margin: 0; color: #888888; font-size: 13px; line-height: 1.6;">
+                                            En cas de probleme avec le lien, vous pouvez aussi vous rendre sur le site et entrer votre code <strong>{{ $shareCode }}</strong>.
+                                        </p>
+                                    @else
+                                        <ol style="margin: 0; padding-left: 20px; color: #555555; font-size: 14px; line-height: 1.8;">
+                                            <li>Cliquez sur le bouton ci-dessus ou rendez-vous sur le site</li>
+                                            <li>Entrez votre code d'acces : <strong>{{ $shareCode }}</strong></li>
+                                            <li>Vous pourrez alors consultez vos photos !</li>
+                                        </ol>
+                                    @endif
                                 </div>
 
                                 <p style="margin: 25px 0 0 0; color: #555555; font-size: 16px; line-height: 1.7;">
@@ -75,7 +84,7 @@
                                 <div style="margin-top: 40px; padding-top: 25px; border-top: 1px solid #e0e0e0;">
                                     <p style="margin: 0; color: #333333; font-size: 16px;">
                                         A tres bientot,<br>
-                                        <strong style="color: #D4AF37;">Océane</strong>
+                                        <strong style="color: #D4AF37;">Océane Torres</strong>
                                     </p>
                                 </div>
                             </td>

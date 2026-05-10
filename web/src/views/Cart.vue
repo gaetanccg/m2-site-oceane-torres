@@ -73,7 +73,7 @@
                                         <div class="mt-2">
                                             <select
                                                 :value="item.product_type"
-                                                @change="updateItemType(item.id, ($event.target as HTMLSelectElement).value)"
+                                                @change="cartStore.updateItemType(item.id, ($event.target as HTMLSelectElement).value as ProductType)"
                                                 class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold"
                                                 :disabled="cartStore.isLoading"
                                             >
@@ -85,10 +85,13 @@
                                             </select>
                                         </div>
 
-                                        <div class="flex items-center gap-2 mt-2">
+                                        <div class="flex items-center gap-2 mt-2 flex-wrap">
                                             <p class="text-gold font-semibold">
-                                                {{ formatPrice(item.price) }}
+                                                {{ formatPrice(item.line_total ?? item.price * item.quantity) }}
                                             </p>
+                                            <span v-if="item.quantity > 1" class="text-sm text-gray-500">
+                                                ({{ item.quantity }} × {{ formatPrice(item.price) }})
+                                            </span>
                                             <template v-if="item.has_pack_discount && item.base_price">
                                                 <span class="text-gray-400 line-through text-sm">{{ formatPrice(item.base_price) }}</span>
                                                 <span class="text-xs bg-gold/10 text-gold font-medium px-1.5 py-0.5 rounded">
@@ -96,12 +99,41 @@
                                                 </span>
                                             </template>
                                         </div>
+
+                                        <!-- Quantity stepper -->
+                                        <div class="mt-3 inline-flex items-center gap-1 bg-gray-100 rounded-md py-1">
+                                            <button
+                                                type="button"
+                                                @click="cartStore.setItemQuantity(item.id, item.quantity - 1)"
+                                                :disabled="cartStore.isLoading"
+                                                class="px-2 hover:bg-gray-200 rounded-l-md disabled:opacity-50"
+                                                :title="item.quantity === 1 ? 'Retirer du panier' : 'Diminuer'"
+                                            >
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path v-if="item.quantity === 1" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
+                                                </svg>
+                                            </button>
+                                            <span class="px-3 font-medium tabular-nums min-w-[2rem] text-center">{{ item.quantity }}</span>
+                                            <button
+                                                type="button"
+                                                @click="cartStore.setItemQuantity(item.id, item.quantity + 1)"
+                                                :disabled="cartStore.isLoading"
+                                                class="px-2 hover:bg-gray-200 rounded-r-md disabled:opacity-50"
+                                                title="Ajouter une copie"
+                                            >
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                                </svg>
+                                            </button>
+                                        </div>
                                     </div>
 
-                                    <!-- Remove -->
+                                    <!-- Remove all -->
                                     <button
-                                        @click="removeItem(item.id)"
-                                        class="flex-shrink-0 p-2 text-gray-400 hover:text-red-500 transition-colors"
+                                        @click="cartStore.removeItem(item.id)"
+                                        class="flex-shrink-0 p-2 text-gray-400 hover:text-red-500 transition-colors self-start"
+                                        title="Retirer du panier"
                                     >
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -181,14 +213,12 @@ import { watch } from 'vue'
 import { useCartStore } from '@/stores/cart'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
-import { useGtag } from '@/composables/useGtag'
 import { formatPrice } from '@/utils/format'
 import type { ProductType, CartItem, AvailableProductType } from '@/services/cartApi'
 
 const cartStore = useCartStore()
 const toast = useToast()
 const { confirm } = useConfirm()
-const { trackRemoveFromCart } = useGtag()
 
 // Watch for cart errors and show as toast
 watch(() => cartStore.error, (newError) => {
@@ -201,6 +231,7 @@ const DEFAULT_TYPES: Record<ProductType, AvailableProductType> = {
     digital: { label: 'Fichier numerique', price: 13, is_print: false, is_enabled: true },
     print_10x15: { label: 'Tirage 10x15 cm', price: 10, is_print: true, is_enabled: true },
     print_15x20: { label: 'Tirage 15x20 cm', price: 15, is_print: true, is_enabled: true },
+    print_scolaire: { label: 'Tirage scolaire', price: 6, is_print: true, is_enabled: true },
 }
 
 function getAvailableTypes(item: CartItem): Record<ProductType, AvailableProductType> {
@@ -208,22 +239,6 @@ function getAvailableTypes(item: CartItem): Record<ProductType, AvailableProduct
 }
 
 // Cart init is handled by App.vue + waitForInit() in store actions
-
-async function updateItemType(itemId: string, productType: string) {
-    await cartStore.updateItemType(itemId, productType as ProductType)
-}
-
-async function removeItem(itemId: string) {
-    const item = cartStore.items.find(i => i.id === itemId)
-    const success = await cartStore.removeItem(itemId)
-    if (success && item) {
-        trackRemoveFromCart({
-            photoId: item.photo_id,
-            title: item.photo.title,
-            price: item.price,
-        })
-    }
-}
 
 async function handleClear() {
     if (await confirm('Voulez-vous vraiment vider votre panier ?')) {

@@ -41,6 +41,28 @@ export const useCartStore = defineStore('cart', () => {
         }
     })
 
+    /**
+     * Get the quantity of a (photoId, productType) pair in the cart, 0 if absent.
+     */
+    const getQuantity = computed(() => {
+        return (photoId: string, productType: ProductType): number => {
+            const item = items.value.find(
+                i => i.photo_id === photoId && i.product_type === productType
+            )
+            return item?.quantity ?? 0
+        }
+    })
+
+    /**
+     * Get the CartItem id for (photoId, productType), or null if not in cart.
+     */
+    function getItemId(photoId: string, productType: ProductType): string | null {
+        const match = items.value.find(
+            i => i.photo_id === photoId && i.product_type === productType
+        )
+        return match?.id ?? null
+    }
+
     // Actions
 
     /**
@@ -84,12 +106,12 @@ export const useCartStore = defineStore('cart', () => {
      * Does NOT wait for init — the backend creates the cart if needed (getOrCreateCart).
      * This makes "Add to cart" instant even if the cart hasn't finished loading.
      */
-    async function addItem(photoId: string, productType: ProductType = 'digital'): Promise<boolean> {
+    async function addItem(photoId: string, productType: ProductType = 'digital', quantity: number = 1): Promise<boolean> {
         isLoading.value = true
         error.value = null
 
         try {
-            const response = await cartApi.addToCart(photoId, productType)
+            const response = await cartApi.addToCart(photoId, productType, quantity)
             if (response.success) {
                 cart.value = response.cart
                 isInitialized.value = true
@@ -99,6 +121,30 @@ export const useCartStore = defineStore('cart', () => {
             return false
         } catch (e) {
             error.value = e instanceof CartApiError ? e.apiError.message : 'Erreur lors de l\'ajout au panier'
+            return false
+        } finally {
+            isLoading.value = false
+        }
+    }
+
+    /**
+     * Set quantity for a cart item. Quantity 0 removes the item.
+     */
+    async function setItemQuantity(itemId: string, quantity: number): Promise<boolean> {
+        await waitForInit()
+        isLoading.value = true
+        error.value = null
+
+        try {
+            const response = await cartApi.setItemQuantity(itemId, quantity)
+            if (response.success) {
+                cart.value = response.cart
+                return true
+            }
+            error.value = response.message ?? 'Erreur lors de la mise a jour'
+            return false
+        } catch (e) {
+            error.value = e instanceof CartApiError ? e.apiError.message : 'Erreur lors de la mise a jour'
             return false
         } finally {
             isLoading.value = false
@@ -271,9 +317,12 @@ export const useCartStore = defineStore('cart', () => {
         packSavings,
         productTypes,
         isPhotoInCart,
+        getQuantity,
+        getItemId,
         // Actions
         initialize,
         addItem,
+        setItemQuantity,
         updateItemType,
         removeItem,
         clearCart,

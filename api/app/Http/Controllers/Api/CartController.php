@@ -47,10 +47,11 @@ class CartController extends Controller
         $user = $request->user();
         $sessionId = $request->header('X-Cart-Session') ?? $validated['session_id'] ?? null;
         $productType = $validated['product_type'] ?? 'digital';
+        $quantity = $validated['quantity'] ?? 1;
 
         try {
             $cart = $this->cartService->getOrCreateCart($user, $sessionId);
-            $this->cartService->addItem($cart, $validated['photo_id'], $productType);
+            $this->cartService->addItem($cart, $validated['photo_id'], $productType, $quantity);
             $summary = $this->cartService->getCartSummary($cart->fresh(['items.photo']));
 
             return response()->json([
@@ -59,11 +60,21 @@ class CartController extends Controller
                 'cart' => $summary,
                 'session_id' => $cart->session_id,
             ]);
-        } catch (\Exception $e) {
+        } catch (\App\Exceptions\BusinessException $e) {
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
-            ], 400);
+            ], $e->getHttpStatus());
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Cart addItem failed', [
+                'photo_id' => $validated['photo_id'] ?? null,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => "Une erreur s'est produite, veuillez réessayer plus tard. Si l'erreur persiste, n'hésitez pas à me contacter.",
+            ], 500);
         }
     }
 
@@ -87,12 +98,54 @@ class CartController extends Controller
                 'message' => 'Type de produit mis à jour.',
                 'cart' => $summary,
             ]);
-        } catch (\Exception $e) {
+        } catch (\App\Exceptions\BusinessException $e) {
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
-            ], 400);
+            ], $e->getHttpStatus());
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Cart updateItemType failed', [
+                'item_id' => $itemId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => "Une erreur s'est produite, veuillez réessayer plus tard. Si l'erreur persiste, n'hésitez pas à me contacter.",
+            ], 500);
         }
+    }
+
+    /**
+     * Update the quantity of a cart item. If quantity reaches 0, the item is removed.
+     */
+    public function updateItemQuantity(Request $request, string $itemId): JsonResponse
+    {
+        $validated = $request->validate([
+            'quantity' => ['required', 'integer', 'min:0', 'max:50'],
+        ]);
+
+        $user = $request->user();
+        $sessionId = $request->header('X-Cart-Session') ?? $request->input('session_id');
+
+        $cart = $this->cartService->getOrCreateCart($user, $sessionId);
+        $item = $cart->items()->where('id', $itemId)->first();
+
+        if (! $item) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Article non trouve dans le panier.',
+            ], 404);
+        }
+
+        $this->cartService->setItemQuantity($item, (int) $validated['quantity']);
+
+        $summary = $this->cartService->getCartSummary($cart->fresh(['items.photo']));
+
+        return response()->json([
+            'success' => true,
+            'cart' => $summary,
+        ]);
     }
 
     /**
