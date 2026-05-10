@@ -34,6 +34,11 @@
                 </span>
             </div>
 
+            <!-- ETA -->
+            <p v-if="eta && !progress.isComplete" class="text-xs text-gray-500 mt-1">
+                Temps restant : {{ eta }}
+            </p>
+
             <!-- Stats -->
             <div class="flex items-center gap-4 mt-3 text-xs">
                 <span class="flex items-center gap-1 text-green-600">
@@ -135,7 +140,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
+import { useEta } from '@/composables/useEta'
 import type { UploadProgress, FileUploadState } from '@/types/upload'
 
 interface Props {
@@ -152,6 +158,13 @@ const props = withDefaults(defineProps<Props>(), {
 defineEmits<{
     cancel: []
 }>()
+
+const { eta, update: updateEta, reset: resetEta } = useEta()
+
+watch(() => props.progress, (p) => {
+    if (!p) { resetEta(); return }
+    updateEta(p.completed + p.failed, p.total)
+}, { deep: true })
 
 const progressBarClass = computed(() => {
     if (!props.progress) return 'bg-gray-400'

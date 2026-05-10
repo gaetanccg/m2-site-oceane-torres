@@ -173,6 +173,11 @@ const OrderIcon = () => h('svg', {class: 'w-5 h-5', fill: 'none', stroke: 'curre
     h('path', {'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z'})
 ])
 
+const SchoolIcon = () => h('svg', {class: 'w-5 h-5', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24'}, [
+    h('path', {'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M12 14l9-5-9-5-9 5 9 5z'}),
+    h('path', {'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z'})
+])
+
 const menuItems = [
     {path: '/admin', label: 'Tableau de bord', icon: DashboardIcon},
     {path: '/admin/reservations', label: 'Réservations', icon: CalendarIcon},
@@ -182,5 +187,6 @@ const menuItems = [
     {path: '/admin/galleries', label: 'Galeries Clients', icon: ImageIcon},
     {path: '/admin/events', label: 'Galeries Événements', icon: EventIcon},
     {path: '/admin/gift-cards', label: 'Bons Cadeaux', icon: GiftIcon},
+    {path: '/admin/school-sessions', label: 'Photos Scolaires', icon: SchoolIcon},
 ]
 </script>
