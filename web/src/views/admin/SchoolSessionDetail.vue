@@ -686,7 +686,7 @@ async function confirmClose() {
     const confirmed = await confirm({
         title: 'Cloturer ce shooting ?',
         message: 'Les parents ne pourront plus commander de photos sur les galeries de cette session. Vous pourrez la rouvrir a tout moment.',
-        variant: 'warning',
+        variant: 'default',
     })
     if (!confirmed) return
 

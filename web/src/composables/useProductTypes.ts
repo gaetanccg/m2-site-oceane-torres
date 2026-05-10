@@ -1,6 +1,9 @@
 import { ref, computed } from 'vue'
 import type { ProductType, GalleryProductTypeConfig, PackTier } from '@/types/admin'
 
+// `print_scolaire` is configured via SchoolSession, not the regular gallery admin UI
+type RegularProductType = Exclude<ProductType, 'print_scolaire'>
+
 interface TierState {
     min_quantity: number
     unit_price: number
@@ -12,13 +15,13 @@ interface ProductTypeState {
     tiers: TierState[]
 }
 
-const DEFAULT_PRODUCT_TYPES: Record<ProductType, { label: string; price: number }> = {
+const DEFAULT_PRODUCT_TYPES: Record<RegularProductType, { label: string; price: number }> = {
     digital: { label: 'Photo numerique', price: 13 },
     print_10x15: { label: 'Impression 10x15', price: 10 },
     print_15x20: { label: 'Impression 15x20', price: 15 },
 }
 
-function createDefaultState(): Record<ProductType, ProductTypeState> {
+function createDefaultState(): Record<RegularProductType, ProductTypeState> {
     return {
         digital: { is_enabled: true, price: DEFAULT_PRODUCT_TYPES.digital.price, tiers: [] },
         print_10x15: { is_enabled: true, price: DEFAULT_PRODUCT_TYPES.print_10x15.price, tiers: [] },
@@ -27,11 +30,11 @@ function createDefaultState(): Record<ProductType, ProductTypeState> {
 }
 
 export function useProductTypes() {
-    const productTypesState = ref<Record<ProductType, ProductTypeState>>(createDefaultState())
+    const productTypesState = ref<Record<RegularProductType, ProductTypeState>>(createDefaultState())
     const productTypesError = ref('')
 
     const productTypesList = computed(() =>
-        (Object.keys(DEFAULT_PRODUCT_TYPES) as ProductType[]).map(key => ({
+        (Object.keys(DEFAULT_PRODUCT_TYPES) as RegularProductType[]).map(key => ({
             key,
             label: DEFAULT_PRODUCT_TYPES[key].label,
             is_enabled: productTypesState.value[key].is_enabled,
@@ -40,12 +43,12 @@ export function useProductTypes() {
         }))
     )
 
-    function toggleProductType(key: ProductType) {
+    function toggleProductType(key: RegularProductType) {
         productTypesState.value[key].is_enabled = !productTypesState.value[key].is_enabled
         productTypesError.value = ''
     }
 
-    function updateProductPrice(key: ProductType, value: string) {
+    function updateProductPrice(key: RegularProductType, value: string) {
         const num = parseFloat(value)
         if (!isNaN(num) && num > 0) {
             productTypesState.value[key].price = num
@@ -63,8 +66,8 @@ export function useProductTypes() {
             return
         }
 
-        const state = {} as Record<ProductType, ProductTypeState>
-        for (const key of Object.keys(DEFAULT_PRODUCT_TYPES) as ProductType[]) {
+        const state = {} as Record<RegularProductType, ProductTypeState>
+        for (const key of Object.keys(DEFAULT_PRODUCT_TYPES) as RegularProductType[]) {
             const config = configs.find(c => c.product_type === key)
             const tiers: TierState[] = ((config?.pack_tiers ?? []) as PackTier[]).map(t => ({
                 min_quantity: t.min_quantity,
@@ -83,7 +86,7 @@ export function useProductTypes() {
     }
 
     function buildProductTypesPayload() {
-        return (Object.keys(productTypesState.value) as ProductType[]).map(key => ({
+        return (Object.keys(productTypesState.value) as RegularProductType[]).map(key => ({
             product_type: key,
             is_enabled: productTypesState.value[key].is_enabled,
             price: productTypesState.value[key].price !== DEFAULT_PRODUCT_TYPES[key].price
@@ -95,23 +98,23 @@ export function useProductTypes() {
         }))
     }
 
-    function addTier(key: ProductType) {
+    function addTier(key: RegularProductType) {
         if (productTypesState.value[key].tiers.length >= 3) return
         productTypesState.value[key].tiers.push({ min_quantity: 2, unit_price: 0 })
     }
 
-    function removeTier(key: ProductType, index: number) {
+    function removeTier(key: RegularProductType, index: number) {
         productTypesState.value[key].tiers.splice(index, 1)
     }
 
-    function updateTierQuantity(key: ProductType, index: number, value: string) {
+    function updateTierQuantity(key: RegularProductType, index: number, value: string) {
         const num = parseInt(value)
         if (!isNaN(num) && num >= 2) {
             productTypesState.value[key].tiers[index].min_quantity = num
         }
     }
 
-    function updateTierPrice(key: ProductType, index: number, value: string) {
+    function updateTierPrice(key: RegularProductType, index: number, value: string) {
         const num = parseFloat(value)
         if (!isNaN(num) && num > 0) {
             productTypesState.value[key].tiers[index].unit_price = num
