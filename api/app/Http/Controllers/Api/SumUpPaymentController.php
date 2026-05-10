@@ -91,7 +91,12 @@ class SumUpPaymentController extends Controller
                 'checkout_id' => $checkout['id'],
                 'order_id' => $order->id,
             ]);
-        } catch (\Exception $e) {
+        } catch (\App\Exceptions\BusinessException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], $e->getHttpStatus());
+        } catch (\Throwable $e) {
             Log::error('SumUp checkout creation failed', [
                 'order_id' => $validated['order_id'],
                 'error' => $e->getMessage(),
@@ -99,7 +104,7 @@ class SumUpPaymentController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la creation du paiement: '.$e->getMessage(),
+                'message' => "Une erreur s'est produite, veuillez réessayer plus tard. Si l'erreur persiste, n'hésitez pas à me contacter.",
             ], 500);
         }
     }
@@ -202,10 +207,20 @@ class SumUpPaymentController extends Controller
                     'status' => $order->status,
                 ],
             ]);
-        } catch (\Exception $e) {
+        } catch (\App\Exceptions\BusinessException $e) {
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
+            ], $e->getHttpStatus());
+        } catch (\Throwable $e) {
+            Log::error('SumUp verifyPayment failed', [
+                'order_id' => $validated['order_id'] ?? null,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => "Une erreur s'est produite, veuillez réessayer plus tard. Si l'erreur persiste, n'hésitez pas à me contacter.",
             ], 500);
         }
     }

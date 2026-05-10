@@ -267,7 +267,7 @@ class SchoolSessionController extends Controller
                     'channel' => $channel,
                     'error' => $e->getMessage(),
                 ]);
-                $errors[] = "Erreur pour {$contact['recipient_name']}: {$e->getMessage()}";
+                $errors[] = "Erreur pour {$contact['recipient_name']}.";
             }
         }
 

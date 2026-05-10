@@ -48,7 +48,7 @@ class GenerateSchoolSessionExportJob implements ShouldQueue
                 'export_id' => $this->exportId,
                 'error' => $e->getMessage(),
             ]);
-            $export->markAs('failed', $e->getMessage());
+            $export->markAs('failed', "La génération de l'export a échoué. Veuillez consulter les logs serveur pour plus de détails.");
         }
     }
 
@@ -62,7 +62,7 @@ class GenerateSchoolSessionExportJob implements ShouldQueue
         try {
             $export = SchoolSessionExport::find($this->exportId);
             if ($export && $export->status !== 'failed') {
-                $export->markAs('failed', 'Echec du job: '.$exception->getMessage());
+                $export->markAs('failed', "La génération de l'export a échoué. Veuillez consulter les logs serveur pour plus de détails.");
             }
         } catch (\Exception) {
             // ignore

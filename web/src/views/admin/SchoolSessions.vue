@@ -215,6 +215,7 @@ import Modal from '@/components/admin/ui/Modal.vue'
 import Button from '@/components/admin/ui/Button.vue'
 import FormField from '@/components/admin/ui/FormField.vue'
 import { adminApi } from '@/services/adminApi'
+import { AdminApiError } from '@/services/admin/baseAdmin'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 import { useEta } from '@/composables/useEta'
@@ -339,7 +340,9 @@ async function createSession() {
         router.push({ name: 'admin-school-session-detail', params: { id: session.id } })
 
     } catch (e: unknown) {
-        const msg = e instanceof Error ? e.message : 'Erreur lors de la creation'
+        const msg = e instanceof AdminApiError
+            ? e.message
+            : "Une erreur s'est produite, veuillez réessayer plus tard. Si l'erreur persiste, n'hésitez pas à me contacter."
         toast.error('Erreur', msg)
         uploadProgress.value = null
     } finally {

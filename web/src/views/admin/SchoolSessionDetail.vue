@@ -521,6 +521,7 @@ import StatusBadge from '@/components/admin/ui/StatusBadge.vue'
 import Modal from '@/components/admin/ui/Modal.vue'
 import Button from '@/components/admin/ui/Button.vue'
 import { adminApi } from '@/services/adminApi'
+import { AdminApiError } from '@/services/admin/baseAdmin'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 import { useEta } from '@/composables/useEta'
@@ -938,7 +939,9 @@ async function startExport() {
         exportRegenerate.value = false
         startExportPolling()
     } catch (e: unknown) {
-        const msg = e instanceof Error ? e.message : 'Erreur lors du lancement de l\'export'
+        const msg = e instanceof AdminApiError
+            ? e.message
+            : "Une erreur s'est produite, veuillez réessayer plus tard. Si l'erreur persiste, n'hésitez pas à me contacter."
         toast.error('Erreur', msg)
     } finally {
         isCreatingExport.value = false

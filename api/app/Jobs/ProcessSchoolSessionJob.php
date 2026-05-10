@@ -98,7 +98,7 @@ class ProcessSchoolSessionJob implements ShouldQueue
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            $session->markAs('failed', $e->getMessage());
+            $session->markAs('failed', "Le traitement a échoué. Veuillez consulter les logs serveur pour plus de détails.");
             $service->cleanupExtractedFiles($session);
         }
     }
@@ -113,7 +113,7 @@ class ProcessSchoolSessionJob implements ShouldQueue
         try {
             $session = SchoolSession::find($this->sessionId);
             if ($session && $session->status !== 'failed') {
-                $session->markAs('failed', 'Échec du traitement: '.$exception->getMessage());
+                $session->markAs('failed', "Le traitement a échoué. Veuillez consulter les logs serveur pour plus de détails.");
             }
         } catch (\Exception $e) {
             Log::error('ProcessSchoolSessionJob: failed to update session status', [
