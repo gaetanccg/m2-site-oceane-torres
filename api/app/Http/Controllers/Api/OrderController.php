@@ -87,15 +87,20 @@ class OrderController extends Controller
                 ],
                 'payment' => $paymentData,
             ]);
-        } catch (\Exception $e) {
+        } catch (\App\Exceptions\BusinessException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], $e->getHttpStatus());
+        } catch (\Throwable $e) {
             Log::error('Checkout creation failed', [
                 'error' => $e->getMessage(),
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Une erreur est survenue lors de la creation de votre commande. Veuillez reessayer.',
-            ], 400);
+                'message' => "Une erreur s'est produite, veuillez réessayer plus tard. Si l'erreur persiste, n'hésitez pas à me contacter.",
+            ], 500);
         }
     }
 
@@ -196,11 +201,22 @@ class OrderController extends Controller
                 'download_url' => $downloadUrl,
                 'filename' => basename($storagePath),
             ]);
-        } catch (\Exception $e) {
+        } catch (\App\Exceptions\BusinessException $e) {
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
-            ], 403);
+            ], $e->getHttpStatus());
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('downloadPhoto failed', [
+                'order_id' => $orderId,
+                'item_id' => $itemId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => "Une erreur s'est produite, veuillez réessayer plus tard. Si l'erreur persiste, n'hésitez pas à me contacter.",
+            ], 500);
         }
     }
 
@@ -270,7 +286,7 @@ class OrderController extends Controller
             return Response::download($zipFile, 'commande_'.$order->order_number.'.zip', [
                 'Content-Type' => 'application/zip',
             ])->deleteFileAfterSend(true);
-        } catch (\Exception $e) {
+        } catch (\App\Exceptions\BusinessException $e) {
             foreach ($tempFiles as $tempFile) {
                 if (file_exists($tempFile)) {
                     @unlink($tempFile);
@@ -280,7 +296,23 @@ class OrderController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
-            ], 403);
+            ], $e->getHttpStatus());
+        } catch (\Throwable $e) {
+            foreach ($tempFiles as $tempFile) {
+                if (file_exists($tempFile)) {
+                    @unlink($tempFile);
+                }
+            }
+
+            \Illuminate\Support\Facades\Log::error('downloadAll failed', [
+                'order_id' => $orderId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => "Une erreur s'est produite, veuillez réessayer plus tard. Si l'erreur persiste, n'hésitez pas à me contacter.",
+            ], 500);
         }
     }
 
@@ -331,11 +363,21 @@ class OrderController extends Controller
                 'download_url' => $downloadUrl,
                 'filename' => 'facture_'.$invoice->invoice_number.'.pdf',
             ]);
-        } catch (\Exception $e) {
+        } catch (\App\Exceptions\BusinessException $e) {
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
-            ], 403);
+            ], $e->getHttpStatus());
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('downloadInvoice failed', [
+                'order_id' => $orderId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => "Une erreur s'est produite, veuillez réessayer plus tard. Si l'erreur persiste, n'hésitez pas à me contacter.",
+            ], 500);
         }
     }
 }

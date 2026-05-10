@@ -36,7 +36,7 @@
                             </h1>
                             <p class="text-sm text-gray-500">
                                 {{ formatDate(order.created_at) }}
-                                <span v-if="order.paid_at"> — Payee le {{ formatDate(order.paid_at) }}</span>
+                                <span v-if="order.paid_at"> — Payée le {{ formatDate(order.paid_at) }}</span>
                             </p>
                         </div>
                         <span
@@ -120,7 +120,7 @@
                                 <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                 </svg>
-                                <span class="hidden sm:inline">{{ downloadingItemId === item.id ? '...' : 'Telecharger' }}</span>
+                                <span class="hidden sm:inline">{{ downloadingItemId === item.id ? '...' : 'Télécharger' }}</span>
                             </button>
                         </div>
                     </div>
@@ -159,7 +159,7 @@ const downloadingItemId = ref<string | null>(null)
 
 const statusLabel = computed(() => {
     switch (order.value?.status) {
-        case 'paid': return 'Payee'
+        case 'paid': return 'Payée'
         case 'pending': return 'En attente'
         case 'failed': return 'Echouee'
         case 'refunded': return 'Remboursee'
@@ -217,9 +217,9 @@ async function downloadPhoto(item: AccountOrderItem) {
         }
     } catch (e) {
         if (e instanceof CartApiError && e.apiError.status === 403) {
-            toast.error('Acces refuse', 'Le lien de telechargement a expire.')
+            toast.error('Acces refuse', 'Le lien de téléchargement a expire.')
         } else {
-            toast.error('Erreur', 'Erreur lors du telechargement')
+            toast.error('Erreur', 'Erreur lors du téléchargement')
         }
     } finally {
         downloadingItemId.value = null

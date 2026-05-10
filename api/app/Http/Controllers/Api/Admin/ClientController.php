@@ -115,7 +115,7 @@ class ClientController extends Controller
             'phone' => null,
         ]);
 
-        // Supprimer les logs de telechargement lies aux galeries du client
+        // Supprimer les logs de téléchargement lies aux galeries du client
         if ($client->user_id) {
             $galleryIds = \App\Models\Gallery::where('user_id', $client->user_id)->pluck('id');
             if ($galleryIds->isNotEmpty()) {

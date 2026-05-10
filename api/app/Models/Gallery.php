@@ -30,6 +30,8 @@ class Gallery extends Model
         'parent_id',
         'sort_order',
         'is_published',
+        'school_session_id',
+        'class_name',
     ];
 
     protected $appends = [];
@@ -87,6 +89,11 @@ class Gallery extends Model
     public function eventCategory(): BelongsTo
     {
         return $this->belongsTo(EventCategory::class);
+    }
+
+    public function schoolSession(): BelongsTo
+    {
+        return $this->belongsTo(SchoolSession::class);
     }
 
     public function parent(): BelongsTo

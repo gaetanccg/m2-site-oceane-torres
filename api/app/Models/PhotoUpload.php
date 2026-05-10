@@ -39,12 +39,21 @@ class PhotoUpload extends Model
 
     /**
      * Get the status of all uploads in a batch
+     *
+     * @param  bool  $includeUploads  Whether to include the full uploads list (heavy for 1000+ items).
+     *                                Set to false for school session polling where only counts are needed.
      */
-    public static function getBatchStatus(string $batchId): array
+    public static function getBatchStatus(string $batchId, bool $includeUploads = true): array
     {
-        $uploads = self::where('batch_id', $batchId)->get();
+        // Aggregate counts via COUNT queries (no row hydration)
+        $counts = self::where('batch_id', $batchId)
+            ->selectRaw('COUNT(*) as total')
+            ->selectRaw("COUNT(*) FILTER (WHERE status = 'completed') as completed")
+            ->selectRaw("COUNT(*) FILTER (WHERE status = 'failed') as failed")
+            ->selectRaw("COUNT(*) FILTER (WHERE status IN ('pending', 'uploading', 'processing')) as processing")
+            ->first();
 
-        if ($uploads->isEmpty()) {
+        if (! $counts || $counts->total === 0) {
             return [
                 'batch_id' => $batchId,
                 'found' => false,
@@ -52,12 +61,12 @@ class PhotoUpload extends Model
             ];
         }
 
-        $total = $uploads->count();
-        $completed = $uploads->where('status', 'completed')->count();
-        $failed = $uploads->where('status', 'failed')->count();
-        $processing = $uploads->whereIn('status', ['pending', 'uploading', 'processing'])->count();
+        $total = (int) $counts->total;
+        $completed = (int) $counts->completed;
+        $failed = (int) $counts->failed;
+        $processing = (int) $counts->processing;
 
-        return [
+        $result = [
             'batch_id' => $batchId,
             'found' => true,
             'total' => $total,
@@ -66,14 +75,22 @@ class PhotoUpload extends Model
             'processing' => $processing,
             'progress' => $total > 0 ? round((($completed + $failed) / $total) * 100) : 0,
             'is_complete' => $processing === 0,
-            'uploads' => $uploads->map(fn ($upload) => [
-                'id' => $upload->id,
-                'original_filename' => $upload->original_filename,
-                'status' => $upload->status,
-                'error_message' => $upload->error_message,
-                'photo_id' => $upload->photo_id,
-            ])->toArray(),
         ];
+
+        if ($includeUploads) {
+            $result['uploads'] = self::where('batch_id', $batchId)
+                ->get()
+                ->map(fn ($upload) => [
+                    'id' => $upload->id,
+                    'original_filename' => $upload->original_filename,
+                    'status' => $upload->status,
+                    'error_message' => $upload->error_message,
+                    'photo_id' => $upload->photo_id,
+                ])
+                ->toArray();
+        }
+
+        return $result;
     }
 
     /**

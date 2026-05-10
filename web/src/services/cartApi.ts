@@ -7,7 +7,7 @@ import { BaseApiService, ApiError as BaseApiError } from './baseApi'
 export class CartApiError extends BaseApiError {}
 
 // Types
-export type ProductType = 'digital' | 'print_10x15' | 'print_15x20'
+export type ProductType = 'digital' | 'print_10x15' | 'print_15x20' | 'print_scolaire'
 
 export interface ProductTypeInfo {
     label: string
@@ -38,6 +38,8 @@ export interface CartItem {
     product_type_label: string
     is_print: boolean
     price: number
+    quantity: number
+    line_total: number
     base_price?: number
     has_pack_discount?: boolean
     pack_quantity?: number | null
@@ -177,10 +179,10 @@ class CartApiService extends BaseApiService {
         return response
     }
 
-    async addToCart(photoId: string, productType: ProductType = 'digital'): Promise<CartResponse> {
+    async addToCart(photoId: string, productType: ProductType = 'digital', quantity: number = 1): Promise<CartResponse> {
         const response = await this.cartRequest<CartResponse>('/cart/add', {
             method: 'POST',
-            body: JSON.stringify({ photo_id: photoId, product_type: productType }),
+            body: JSON.stringify({ photo_id: photoId, product_type: productType, quantity }),
         })
         if (response.session_id) {
             this.setSessionId(response.session_id)
@@ -192,6 +194,13 @@ class CartApiService extends BaseApiService {
         return this.cartRequest<CartResponse>(`/cart/item/${itemId}/type`, {
             method: 'PUT',
             body: JSON.stringify({ product_type: productType }),
+        })
+    }
+
+    async setItemQuantity(itemId: string, quantity: number): Promise<CartResponse> {
+        return this.cartRequest<CartResponse>(`/cart/item/${itemId}/quantity`, {
+            method: 'PUT',
+            body: JSON.stringify({ quantity }),
         })
     }
 
