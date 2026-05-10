@@ -14,7 +14,7 @@ class UpdateCartItemTypeRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'product_type' => ['required', 'string', 'in:digital,print_10x15,print_15x20'],
+            'product_type' => ['required', 'string', 'in:digital,print_10x15,print_15x20,print_scolaire'],
             'session_id' => ['nullable', 'string'],
         ];
     }

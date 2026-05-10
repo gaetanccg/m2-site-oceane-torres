@@ -33,7 +33,7 @@
                                 <!-- Message Recap -->
                                 <div style="background-color: #f9f9f9; border-radius: 6px; padding: 25px; margin: 25px 0;">
                                     <h3 style="margin: 0 0 15px 0; color: #333333; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">
-                                        Recapitulatif de votre message
+                                        Récapitulatif de votre message
                                     </h3>
 
                                     <table role="presentation" style="width: 100%;">

@@ -48,6 +48,12 @@ const statusClasses: Record<string, string> = {
   draft: 'bg-gray-100 text-gray-800',
   sent: 'bg-blue-100 text-blue-800',
 
+  // School session statuses
+  uploading: 'bg-blue-100 text-blue-800',
+  extracting: 'bg-blue-100 text-blue-800',
+  creating_galleries: 'bg-blue-100 text-blue-800',
+  processing_photos: 'bg-indigo-100 text-indigo-800',
+
   // Default
   default: 'bg-gray-100 text-gray-800',
 }
@@ -75,5 +81,10 @@ const statusLabels: Record<string, string> = {
   expired: 'Expiré',
   draft: 'Brouillon',
   sent: 'Envoyé',
+  // School session statuses
+  uploading: 'Upload',
+  extracting: 'Extraction',
+  creating_galleries: 'Création',
+  processing_photos: 'Traitement',
 }
 </script>
