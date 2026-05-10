@@ -362,7 +362,7 @@ export type DetailedOrderStatus =
     | 'to_ship'
     | 'shipped'
 export type PrintStatus = 'pending' | 'shipped' | null
-export type ProductType = 'digital' | 'print_10x15' | 'print_15x20'
+export type ProductType = 'digital' | 'print_10x15' | 'print_15x20' | 'print_scolaire'
 
 export interface AdminOrderItem {
     id: string

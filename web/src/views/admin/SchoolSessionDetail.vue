@@ -139,6 +139,83 @@
                 </div>
             </div>
 
+            <!-- Orders -->
+            <div v-if="session.status === 'completed'" class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                <button
+                    @click="ordersCollapsed = !ordersCollapsed"
+                    class="w-full flex items-center justify-between px-5 py-3 border-b border-gray-200 bg-gray-50 hover:bg-gray-100 text-left"
+                    :class="{ 'border-b-0': ordersCollapsed }"
+                >
+                    <div class="flex items-center gap-2">
+                        <svg class="w-4 h-4 text-gray-500 transition-transform" :class="{ 'rotate-90': !ordersCollapsed }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                        <h3 class="text-sm font-semibold text-gray-700">
+                            Commandes
+                            <span v-if="orders.length > 0" class="text-gray-500 font-normal">({{ orders.length }})</span>
+                        </h3>
+                    </div>
+                    <span v-if="ordersLoading" class="text-xs text-gray-400">Chargement...</span>
+                    <span v-else-if="orders.length > 0" class="text-xs text-gray-500">
+                        {{ formatPrice(ordersTotal) }} au total
+                    </span>
+                </button>
+
+                <div v-show="!ordersCollapsed">
+                    <div v-if="orders.length > 0" class="px-5 py-3 border-b border-gray-200">
+                        <input
+                            v-model="orderSearch"
+                            type="text"
+                            placeholder="Rechercher par client (nom ou email)..."
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gold focus:border-gold"
+                        />
+                    </div>
+
+                    <div v-if="!ordersLoading && orders.length === 0" class="px-5 py-8 text-center text-sm text-gray-400">
+                        Aucune commande pour cette session.
+                    </div>
+                    <div v-else-if="filteredOrders.length === 0" class="px-5 py-8 text-center text-sm text-gray-400">
+                        Aucune commande ne correspond a la recherche.
+                    </div>
+                    <table v-else class="w-full text-sm">
+                        <thead class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
+                            <tr>
+                                <th class="px-5 py-2 text-left font-medium">Commande</th>
+                                <th class="px-5 py-2 text-left font-medium">Client</th>
+                                <th class="px-5 py-2 text-left font-medium">Photos</th>
+                                <th class="px-5 py-2 text-right font-medium">Total</th>
+                                <th class="px-5 py-2 text-left font-medium">Date</th>
+                                <th class="px-5 py-2"></th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            <tr v-for="order in filteredOrders" :key="order.id" class="hover:bg-gray-50">
+                                <td class="px-5 py-3">
+                                    <span class="font-mono text-xs text-gray-700">{{ order.order_number }}</span>
+                                </td>
+                                <td class="px-5 py-3">
+                                    <p class="text-gray-900">{{ order.customer_name || '—' }}</p>
+                                    <p class="text-xs text-gray-500 truncate max-w-[180px]">{{ order.customer_email }}</p>
+                                </td>
+                                <td class="px-5 py-3 text-gray-600">{{ order.items.length }}</td>
+                                <td class="px-5 py-3 text-right font-semibold text-gray-900">{{ formatPrice(order.total) }}</td>
+                                <td class="px-5 py-3 text-gray-500 text-xs">
+                                    {{ order.paid_at ? formatDate(order.paid_at) : formatDate(order.created_at) }}
+                                </td>
+                                <td class="px-5 py-3 text-right">
+                                    <button
+                                        @click="openOrderDetail(order)"
+                                        class="text-gold hover:text-gold/80 text-xs font-medium"
+                                    >
+                                        Voir
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <!-- Closure banner -->
             <div v-if="session.closed_at" class="bg-orange-50 border border-orange-200 rounded-xl p-4 flex items-start gap-3">
                 <svg class="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -152,7 +229,7 @@
 
             <!-- Footer -->
             <div class="flex items-center justify-between pt-4">
-                <p class="text-xs text-gray-400">Cree le {{ formatDate(session.created_at) }}</p>
+                <p class="text-xs text-gray-400">Crée le {{ formatDate(session.created_at) }}</p>
                 <div class="flex items-center gap-2 flex-wrap justify-end">
                     <Button
                         v-if="session.status === 'completed' && !session.closed_at"
@@ -171,7 +248,7 @@
                     <Button v-if="session.status === 'completed'" variant="secondary" @click="openExportModal">
                         Exporter les commandes
                     </Button>
-                    <Button v-if="session.status === 'completed'" @click="openEmailModal">
+                    <Button v-if="session.status === 'completed'" @click="openMessagesModal">
                         Envoyer les liens
                     </Button>
                     <Button
@@ -185,13 +262,38 @@
             </div>
         </div>
 
-        <!-- Send Emails Modal -->
-        <Modal v-model="showEmailModal" title="Envoyer les liens d'acces" size="xl">
+        <!-- Send Messages Modal -->
+        <Modal v-model="showMessagesModal" title="Envoyer les liens d'acces" size="xl">
             <div class="space-y-4">
+                <!-- Channel toggle -->
+                <div class="flex gap-2 p-1 bg-gray-100 rounded-lg">
+                    <button
+                        type="button"
+                        @click="setChannel('email')"
+                        :class="[
+                            'flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors',
+                            channel === 'email' ? 'bg-white text-gold shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                        ]"
+                    >
+                        Email
+                    </button>
+                    <button
+                        type="button"
+                        @click="setChannel('sms')"
+                        :class="[
+                            'flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors',
+                            channel === 'sms' ? 'bg-white text-gold shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                        ]"
+                    >
+                        SMS
+                    </button>
+                </div>
+
+                <!-- CSV Import -->
                 <div class="bg-gray-50 rounded-lg p-4">
                     <div class="flex items-center justify-between mb-2">
                         <label class="text-sm font-medium text-gray-700">Importer un CSV</label>
-                        <span class="text-xs text-gray-400">Format : nom;email (1 ligne par enfant)</span>
+                        <span class="text-xs text-gray-400">Format : nom;email;telephone</span>
                     </div>
                     <label class="cursor-pointer block">
                         <div class="border border-dashed border-gray-300 rounded-lg px-4 py-2 text-center text-sm text-gray-500 hover:border-gold hover:text-gold transition-colors">
@@ -199,8 +301,12 @@
                         </div>
                         <input type="file" accept=".csv,.txt" class="hidden" @change="onImportCsv" />
                     </label>
+                    <p class="text-xs text-gray-400 mt-2">
+                        Une seule colonne suffit pour le canal choisi (email pour Email, telephone pour SMS).
+                    </p>
                 </div>
 
+                <!-- Manual entry -->
                 <div class="flex gap-2">
                     <select
                         v-model="manualForm.gallery_id"
@@ -212,35 +318,46 @@
                         </option>
                     </select>
                     <input
+                        v-if="channel === 'email'"
                         v-model="manualForm.email"
                         type="email"
                         placeholder="Email parent"
                         class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gold focus:border-gold"
                     />
-                    <Button size="sm" :disabled="!manualForm.gallery_id || !manualForm.email" @click="addManualContact">
+                    <input
+                        v-else
+                        v-model="manualForm.phone"
+                        type="tel"
+                        placeholder="06 12 34 56 78"
+                        class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gold focus:border-gold"
+                    />
+                    <Button size="sm" :disabled="!canAddManual" @click="addManualContact">
                         Ajouter
                     </Button>
                 </div>
 
-                <div v-if="emailContacts.length > 0">
+                <!-- Contact list -->
+                <div v-if="contacts.length > 0">
                     <div class="flex items-center justify-between mb-2">
-                        <span class="text-sm font-medium text-gray-700">{{ emailContacts.length }} contact(s)</span>
-                        <button @click="emailContacts = []" class="text-xs text-red-500 hover:text-red-700">Tout vider</button>
+                        <span class="text-sm font-medium text-gray-700">{{ contacts.length }} contact(s)</span>
+                        <button @click="contacts = []" class="text-xs text-red-500 hover:text-red-700">Tout vider</button>
                     </div>
                     <div class="max-h-64 overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-100">
                         <div
-                            v-for="(contact, idx) in emailContacts"
+                            v-for="(contact, idx) in contacts"
                             :key="idx"
                             class="flex items-center justify-between px-3 py-2 hover:bg-gray-50"
                         >
                             <div class="flex-1 min-w-0">
                                 <p class="text-sm font-medium text-gray-900 truncate">{{ contact.recipient_name }}</p>
-                                <p class="text-xs text-gray-500 truncate">{{ contact.email }}</p>
+                                <p class="text-xs text-gray-500 truncate">
+                                    {{ channel === 'email' ? (contact.email || '—') : (contact.phone || '—') }}
+                                </p>
                             </div>
                             <div class="flex items-center gap-2 ml-2">
-                                <span v-if="contact.gallery_id" class="text-xs text-green-600">Matche</span>
-                                <span v-else class="text-xs text-red-500">Non matche</span>
-                                <button @click="emailContacts.splice(idx, 1)" class="text-gray-400 hover:text-red-500">
+                                <span v-if="isContactValid(contact)" class="text-xs text-green-600">Prêt</span>
+                                <span v-else class="text-xs text-red-500">{{ contactInvalidReason(contact) }}</span>
+                                <button @click="contacts.splice(idx, 1)" class="text-gray-400 hover:text-red-500">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                                     </svg>
@@ -250,15 +367,15 @@
                     </div>
                 </div>
 
-                <div v-if="emailContacts.length > 0 && unmatchedContacts > 0" class="text-sm text-orange-600">
-                    {{ unmatchedContacts }} contact(s) non matche(s) — ils ne recevront pas d'email.
+                <div v-if="contacts.length > 0 && invalidContactsCount > 0" class="text-sm text-orange-600">
+                    {{ invalidContactsCount }} contact(s) invalide(s) — ils ne recevront rien.
                 </div>
             </div>
 
             <template #footer>
-                <Button variant="secondary" @click="showEmailModal = false">Annuler</Button>
-                <Button :loading="isSendingEmails" :disabled="matchedContacts.length === 0" @click="sendEmails">
-                    Envoyer {{ matchedContacts.length }} email(s)
+                <Button variant="secondary" @click="showMessagesModal = false">Annuler</Button>
+                <Button :loading="isSending" :disabled="validContacts.length === 0" @click="sendMessages">
+                    Envoyer {{ validContacts.length }} {{ channel === 'sms' ? 'SMS' : 'email(s)' }}
                 </Button>
             </template>
         </Modal>
@@ -267,7 +384,7 @@
         <Modal v-model="showExportModal" title="Exporter les commandes" size="lg">
             <div class="space-y-4">
                 <p class="text-sm text-gray-600">
-                    Telecharge un ZIP contenant les photos achetees, organisees par classe puis par enfant, avec un fichier <code class="bg-gray-100 px-1 rounded text-xs">_index.csv</code> recapitulatif.
+                    Télécharge un ZIP contenant les photos achetées, organisées par classe puis par enfant, avec un fichier <code class="bg-gray-100 px-1 rounded text-xs">_index.csv</code> récapitulatif.
                 </p>
 
                 <!-- Toggle digital -->
@@ -300,7 +417,7 @@
 
                 <!-- Completed -->
                 <div v-if="latestExport?.status === 'completed'" class="bg-green-50 border border-green-200 rounded-lg p-4">
-                    <p class="text-sm font-medium text-green-800">Export pret</p>
+                    <p class="text-sm font-medium text-green-800">Export prêt</p>
                     <p class="text-xs text-green-700 mt-1">
                         {{ latestExport.total_items }} fichiers · {{ formatFileSize(latestExport.file_size_bytes ?? 0) }}
                     </p>
@@ -313,7 +430,7 @@
                     v-if="latestExport?.status === 'completed' && !exportRegenerate"
                     @click="downloadExport"
                 >
-                    Telecharger le ZIP
+                    Télécharger le ZIP
                 </Button>
                 <Button
                     v-if="latestExport?.status === 'completed' && !exportRegenerate"
@@ -331,6 +448,68 @@
                 </Button>
             </template>
         </Modal>
+
+        <!-- Order Detail Modal -->
+        <Modal v-model="showOrderModal" :title="selectedOrder ? `Commande ${selectedOrder.order_number}` : ''" size="lg">
+            <div v-if="selectedOrder" class="space-y-5">
+                <!-- Header -->
+                <div class="flex items-center justify-between bg-gray-50 rounded-xl p-4">
+                    <div class="text-sm text-gray-600">
+                        <p v-if="selectedOrder.paid_at">Payée le {{ formatDate(selectedOrder.paid_at) }}</p>
+                        <p v-else>Creee le {{ formatDate(selectedOrder.created_at) }}</p>
+                    </div>
+                    <p class="text-2xl font-bold text-gold">{{ formatPrice(selectedOrder.total) }}</p>
+                </div>
+
+                <!-- Customer -->
+                <div>
+                    <h4 class="font-medium text-gray-900 mb-2">Client</h4>
+                    <div class="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <p class="text-gray-500 text-xs">Nom</p>
+                            <p class="text-gray-900">{{ selectedOrder.customer_name || '—' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500 text-xs">Email</p>
+                            <p class="text-gray-900 break-all">{{ selectedOrder.customer_email }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Items -->
+                <div>
+                    <h4 class="font-medium text-gray-900 mb-2">Photos commandees</h4>
+                    <div class="border border-gray-200 rounded-lg divide-y divide-gray-200">
+                        <div
+                            v-for="item in selectedOrder.items"
+                            :key="item.id"
+                            class="flex items-center gap-4 p-3"
+                        >
+                            <div class="w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100">
+                                <img
+                                    v-if="item.thumbnail_url || item.display_url"
+                                    :src="item.thumbnail_url || item.display_url"
+                                    :alt="item.photo_title || 'Photo'"
+                                    class="w-full h-full object-cover"
+                                />
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="font-medium text-gray-900 truncate">{{ item.photo_title || 'Photo' }}</p>
+                                <p class="text-xs text-gray-500 truncate">{{ item.gallery_title }}</p>
+                                <span class="inline-flex items-center px-2 py-0.5 mt-1 rounded text-xs font-medium bg-amber-100 text-amber-800">
+                                    {{ item.product_type_label }}
+                                </span>
+                            </div>
+                            <p class="text-sm font-medium text-gray-900">{{ formatPrice(item.price) }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <template #footer>
+                <Button variant="secondary" @click="showOrderModal = false">Fermer</Button>
+            </template>
+        </Modal>
     </div>
 </template>
 
@@ -345,7 +524,8 @@ import { adminApi } from '@/services/adminApi'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 import { useEta } from '@/composables/useEta'
-import type { SchoolSession, SchoolSessionExport, SchoolSessionGallery } from '@/types/admin'
+import { formatPrice } from '@/utils/format'
+import type { AdminOrder, SchoolSession, SchoolSessionExport, SchoolSessionGallery } from '@/types/admin'
 
 const route = useRoute()
 const router = useRouter()
@@ -357,7 +537,31 @@ const sessionId = computed(() => route.params.id as string)
 
 const session = ref<SchoolSession | null>(null)
 const galleries = ref<SchoolSessionGallery[]>([])
+const orders = ref<AdminOrder[]>([])
+const ordersLoading = ref(false)
+const ordersCollapsed = ref(false)
+const orderSearch = ref('')
+const showOrderModal = ref(false)
+const selectedOrder = ref<AdminOrder | null>(null)
 const isLoading = ref(true)
+
+const ordersTotal = computed(() =>
+    orders.value.reduce((sum, o) => sum + Number(o.total ?? 0), 0)
+)
+
+const filteredOrders = computed(() => {
+    if (!orderSearch.value.trim()) return orders.value
+    const q = orderSearch.value.toLowerCase()
+    return orders.value.filter(o =>
+        (o.customer_name?.toLowerCase().includes(q) ?? false)
+        || o.customer_email.toLowerCase().includes(q)
+    )
+})
+
+function openOrderDetail(order: AdminOrder) {
+    selectedOrder.value = order
+    showOrderModal.value = true
+}
 const gallerySearch = ref('')
 const collapsedClasses = ref<Record<string, boolean>>({})
 let pollInterval: ReturnType<typeof setInterval> | null = null
@@ -437,6 +641,17 @@ async function fetchGalleries() {
         const { data } = await adminApi.getSchoolSessionGalleries(sessionId.value)
         galleries.value = data
     } catch { /* ignore */ }
+}
+
+async function fetchOrders() {
+    ordersLoading.value = true
+    try {
+        const { orders: list } = await adminApi.getSchoolSessionOrders(sessionId.value)
+        orders.value = list
+    } catch { /* ignore */ }
+    finally {
+        ordersLoading.value = false
+    }
 }
 
 function startPolling() {
@@ -538,25 +753,58 @@ function exportGalleriesCsv() {
     URL.revokeObjectURL(link.href)
 }
 
-// ==================== EMAIL MODAL ====================
-const showEmailModal = ref(false)
-const isSendingEmails = ref(false)
-const csvFileName = ref('')
-const emailContacts = ref<{ gallery_id: string; email: string; recipient_name: string }[]>([])
-const manualForm = ref({ gallery_id: '', email: '' })
+// ==================== MESSAGES MODAL (email or SMS) ====================
+type Channel = 'email' | 'sms'
+interface MessageContact {
+    gallery_id: string
+    recipient_name: string
+    email?: string
+    phone?: string
+}
 
-const matchedContacts = computed(() => emailContacts.value.filter(c => c.gallery_id))
-const unmatchedContacts = computed(() => emailContacts.value.filter(c => !c.gallery_id).length)
+const showMessagesModal = ref(false)
+const isSending = ref(false)
+const csvFileName = ref('')
+const channel = ref<Channel>('email')
+const contacts = ref<MessageContact[]>([])
+const manualForm = ref({ gallery_id: '', email: '', phone: '' })
+
+function isContactValid(contact: MessageContact): boolean {
+    if (!contact.gallery_id) return false
+    if (channel.value === 'email') {
+        return !!contact.email && contact.email.includes('@')
+    }
+    return !!contact.phone && /\d/.test(contact.phone)
+}
+
+function contactInvalidReason(contact: MessageContact): string {
+    if (!contact.gallery_id) return 'Non matche'
+    if (channel.value === 'email' && !contact.email) return 'Pas d\'email'
+    if (channel.value === 'sms' && !contact.phone) return 'Pas de tel'
+    return 'Invalide'
+}
+
+const validContacts = computed(() => contacts.value.filter(isContactValid))
+const invalidContactsCount = computed(() => contacts.value.length - validContacts.value.length)
 const unmatchedGalleries = computed(() => {
-    const usedIds = new Set(emailContacts.value.map(c => c.gallery_id).filter(Boolean))
+    const usedIds = new Set(contacts.value.map(c => c.gallery_id).filter(Boolean))
     return galleries.value.filter(g => !usedIds.has(g.id))
 })
 
-function openEmailModal() {
-    emailContacts.value = []
+const canAddManual = computed(() => {
+    if (!manualForm.value.gallery_id) return false
+    return channel.value === 'email' ? !!manualForm.value.email : !!manualForm.value.phone
+})
+
+function openMessagesModal() {
+    contacts.value = []
     csvFileName.value = ''
-    manualForm.value = { gallery_id: '', email: '' }
-    showEmailModal.value = true
+    manualForm.value = { gallery_id: '', email: '', phone: '' }
+    showMessagesModal.value = true
+}
+
+function setChannel(c: Channel) {
+    channel.value = c
 }
 
 function onImportCsv(e: Event) {
@@ -574,15 +822,18 @@ function onImportCsv(e: Event) {
         for (let i = start; i < lines.length; i++) {
             const parts = lines[i].split(/[;,]/).map(s => s.trim())
             if (parts.length < 2) continue
+
             const name = parts[0]
-            const email = parts[1]
-            if (!name || !email || !email.includes('@')) continue
+            const email = parts[1] || ''
+            const phone = parts[2] || ''
+            if (!name) continue
 
             const gallery = galleries.value.find(g => g.title.toLowerCase() === name.toLowerCase())
-            emailContacts.value.push({
+            contacts.value.push({
                 gallery_id: gallery?.id ?? '',
-                email,
                 recipient_name: name,
+                email: email || undefined,
+                phone: phone || undefined,
             })
         }
     }
@@ -592,29 +843,41 @@ function onImportCsv(e: Event) {
 
 function addManualContact() {
     const gallery = galleries.value.find(g => g.id === manualForm.value.gallery_id)
-    if (!gallery || !manualForm.value.email) return
-    emailContacts.value.push({
+    if (!gallery) return
+
+    contacts.value.push({
         gallery_id: gallery.id,
-        email: manualForm.value.email,
         recipient_name: gallery.title,
+        email: manualForm.value.email || undefined,
+        phone: manualForm.value.phone || undefined,
     })
-    manualForm.value = { gallery_id: '', email: '' }
+    manualForm.value = { gallery_id: '', email: '', phone: '' }
 }
 
-async function sendEmails() {
-    if (!session.value || matchedContacts.value.length === 0) return
-    isSendingEmails.value = true
+async function sendMessages() {
+    if (!session.value || validContacts.value.length === 0) return
+    isSending.value = true
     try {
-        const result = await adminApi.sendSchoolSessionEmails(session.value.id, matchedContacts.value)
-        toast.success('Emails envoyes', result.message)
+        const payload = validContacts.value.map(c => ({
+            gallery_id: c.gallery_id,
+            recipient_name: c.recipient_name,
+            email: c.email,
+            phone: c.phone,
+        }))
+        const result = await adminApi.sendSchoolSessionMessages(
+            session.value.id,
+            channel.value,
+            payload,
+        )
+        toast.success('Envoye', result.message)
         if (result.errors.length > 0) {
             toast.warning('Avertissement', `${result.errors.length} erreur(s)`)
         }
-        showEmailModal.value = false
+        showMessagesModal.value = false
     } catch {
-        toast.error('Erreur', 'Impossible d\'envoyer les emails')
+        toast.error('Erreur', 'Echec de l\'envoi')
     } finally {
-        isSendingEmails.value = false
+        isSending.value = false
     }
 }
 
@@ -689,7 +952,7 @@ function startExportPolling() {
         if (latestExport.value?.status === 'completed' || latestExport.value?.status === 'failed') {
             stopExportPolling()
             if (latestExport.value.status === 'completed') {
-                toast.success('Export pret', 'Le ZIP est disponible au telechargement.')
+                toast.success('Export prêt', 'Le ZIP est disponible au téléchargement.')
             }
         }
     }, 3000)
@@ -721,7 +984,7 @@ function downloadExport() {
             a.click()
             URL.revokeObjectURL(blobUrl)
         })
-        .catch(() => toast.error('Erreur', 'Impossible de telecharger le ZIP'))
+        .catch(() => toast.error('Erreur', 'Impossible de télécharger le ZIP'))
 }
 
 function formatFileSize(bytes: number): string {
@@ -745,6 +1008,9 @@ onMounted(async () => {
     if (session.value) {
         if (session.value.status === 'completed' || session.value.status === 'processing_photos') {
             await fetchGalleries()
+        }
+        if (session.value.status === 'completed') {
+            fetchOrders()
         }
         if (isProcessing.value) {
             startPolling()

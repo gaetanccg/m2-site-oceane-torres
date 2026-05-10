@@ -16,6 +16,7 @@ class OrderItem extends Model
         'order_id',
         'photo_id',
         'product_type',
+        'quantity',
         'photo_title',
         'gallery_title',
         'price',
@@ -27,6 +28,7 @@ class OrderItem extends Model
     {
         return [
             'price' => 'decimal:2',
+            'quantity' => 'integer',
             'is_downloaded' => 'boolean',
             'downloaded_at' => 'datetime',
         ];

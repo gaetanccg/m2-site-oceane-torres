@@ -39,6 +39,7 @@ class CartItem extends Model
         'cart_id',
         'photo_id',
         'product_type',
+        'quantity',
         'price',
     ];
 
@@ -46,6 +47,7 @@ class CartItem extends Model
     {
         return [
             'price' => 'decimal:2',
+            'quantity' => 'integer',
         ];
     }
 

@@ -27,7 +27,9 @@
             <!-- Gallery Header -->
             <section class="py-8 sm:py-12 px-4 sm:px-6 lg:px-12 bg-white border-b border-gold">
                 <div class="max-w-4xl mx-auto text-center">
-                    <h1 class="text-3xl sm:text-4xl md:text-5xl font-light mb-4">{{ gallery.title }}</h1>
+                    <h1 class="text-3xl sm:text-4xl md:text-5xl font-light mb-4">
+                        {{ gallery.class_name ? `${gallery.class_name} - ${gallery.title}` : gallery.title }}
+                    </h1>
                     <p v-if="gallery.description" class="text-gray-600 font-light text-lg max-w-2xl mx-auto mb-2">
                         {{ gallery.description }}
                     </p>
@@ -200,7 +202,7 @@ interface AvailableProductType {
     is_enabled: boolean
 }
 
-type ProductTypeKey = 'digital' | 'print_10x15' | 'print_15x20'
+type ProductTypeKey = 'digital' | 'print_10x15' | 'print_15x20' | 'print_scolaire'
 
 interface PackTierInfo {
     min_quantity: number
@@ -217,6 +219,7 @@ interface Gallery {
     id: string
     title: string
     description?: string
+    class_name?: string | null
     photos: Photo[]
 }
 

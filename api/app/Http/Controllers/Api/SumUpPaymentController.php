@@ -53,7 +53,7 @@ class SumUpPaymentController extends Controller
             if (! $order->isPending()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Cette commande ne peut plus etre payee.',
+                    'message' => 'Cette commande ne peut plus etre payée.',
                 ], 400);
             }
 

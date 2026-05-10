@@ -27,7 +27,7 @@
                                 </h2>
 
                                 <p style="margin: 0 0 20px 0; color: #555555; font-size: 16px; line-height: 1.7;">
-                                    Votre paiement a bien été reçu. Voici le récapitulatif de votre commande.
+                                    Votre paiement a bien été reçu. Voici le récapitulatif de votre commande de photos scolaires.
                                 </p>
 
                                 <!-- Order Info Box -->
@@ -47,21 +47,21 @@
                                     </h3>
                                     <table role="presentation" style="width: 100%; border-collapse: collapse;">
                                         @foreach($order->items as $item)
-                                        <tr>
-                                            <td style="padding: 10px 0; border-bottom: 1px solid #eee;">
+                                            <tr>
+                                                <td style="padding: 10px 0; border-bottom: 1px solid #eee;">
                                                 <span style="color: #555555; font-size: 14px;">
                                                     {{ $item->photo_title ?? 'Photo' }}
                                                     @if($item->gallery_title)
-                                                    <br><small style="color: #888;">{{ $item->gallery_title }}</small>
+                                                        <br><small style="color: #888;">{{ $item->gallery_title }}</small>
                                                     @endif
                                                 </span>
-                                            </td>
-                                            <td style="padding: 10px 0; border-bottom: 1px solid #eee; text-align: right;">
+                                                </td>
+                                                <td style="padding: 10px 0; border-bottom: 1px solid #eee; text-align: right;">
                                                 <span style="color: #333333; font-size: 14px; font-weight: 600;">
                                                     {{ number_format($item->price, 2, ',', ' ') }} €
                                                 </span>
-                                            </td>
-                                        </tr>
+                                                </td>
+                                            </tr>
                                         @endforeach
                                         <tr>
                                             <td style="padding: 15px 0;">
@@ -78,46 +78,17 @@
                                     </table>
                                 </div>
 
-                                @php
-                                    $hasDigital = $order->digitalItems()->isNotEmpty();
-                                    $hasPrint = $order->hasPrintItems();
-                                @endphp
-
-                                {{-- Section pour les photos numériques --}}
-                                @if($hasDigital)
-                                <div style="background-color: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 25px; margin: 25px 0;">
-                                    <h3 style="margin: 0 0 15px 0; color: #0369a1; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">
-                                        📥 Télécharger mes photos
-                                    </h3>
-                                    <table role="presentation" style="width: 100%; margin: 15px 0;">
-                                        <tr>
-                                            <td style="text-align: center;">
-                                                <a href="{{ $downloadUrl }}" style="display: inline-block; background-color: #D4AF37; color: #0a0708; padding: 16px 40px; text-decoration: none; border-radius: 4px; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">
-                                                    Télécharger mes photos
-                                                </a>
-                                            </td>
-                                        </tr>
-                                    </table>
-                                    <p style="margin: 15px 0 0 0; color: #0369a1; font-size: 13px; text-align: center; line-height: 1.6;">
-                                        Ce lien de téléchargement est valable pendant 7 jours.<br>
-                                        Merci de conserver cet email jusqu'au téléchargement complet de vos photos.
-                                    </p>
-                                </div>
-                                @endif
-
-                                {{-- Section pour les tirages papier --}}
-                                @if($hasPrint)
+                                {{-- Section livraison scolaire --}}
                                 <div style="background-color: #fffbeb; border: 1px solid #fcd34d; border-radius: 8px; padding: 25px; margin: 25px 0;">
                                     <h3 style="margin: 0 0 15px 0; color: #92400e; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">
-                                        🖨️ Commande confirmée
+                                        🎒 Commande confirmée
                                     </h3>
                                     <p style="margin: 0; color: #78350f; font-size: 14px; line-height: 1.7;">
-                                        Votre commande de photos imprimées a bien été enregistrée.<br><br>
-                                        Je vous contacterai personnellement par email pour vous informer de la préparation et de l'envoi de vos photos.<br><br>
+                                        Votre commande de photos scolaires a bien été enregistrée. Les tirages seront imprimés et remis à l'école qui se chargera de les distribuer.<br><br>
+                                        <br><br>
                                         <strong>Merci de conserver cet email jusqu'à la réception de votre commande.</strong>
                                     </p>
                                 </div>
-                                @endif
 
                                 <!-- Signature -->
                                 <div style="margin-top: 40px; padding-top: 25px; border-top: 1px solid #e0e0e0;">

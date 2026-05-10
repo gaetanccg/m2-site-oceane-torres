@@ -94,6 +94,7 @@ Route::prefix('cart')->group(function () {
     Route::get('/', [CartController::class, 'show']);
     Route::post('/add', [CartController::class, 'addItem']);
     Route::put('/item/{item}/type', [CartController::class, 'updateItemType']);
+    Route::put('/item/{item}/quantity', [CartController::class, 'updateItemQuantity']);
     Route::delete('/item/{item}', [CartController::class, 'removeItem']);
     Route::delete('/clear', [CartController::class, 'clear']);
     Route::put('/email', [CartController::class, 'updateEmail']);
@@ -257,9 +258,10 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::post('/school-sessions', [SchoolSessionController::class, 'store']);
     Route::get('/school-sessions/{schoolSession}', [SchoolSessionController::class, 'show']);
     Route::get('/school-sessions/{schoolSession}/galleries', [SchoolSessionController::class, 'galleries']);
+    Route::get('/school-sessions/{schoolSession}/orders', [SchoolSessionController::class, 'orders']);
     Route::put('/school-sessions/{schoolSession}/upload', [SchoolSessionController::class, 'upload']);
     Route::post('/school-sessions/{schoolSession}/process', [SchoolSessionController::class, 'process']);
-    Route::post('/school-sessions/{schoolSession}/send-emails', [SchoolSessionController::class, 'sendEmails']);
+    Route::post('/school-sessions/{schoolSession}/send-messages', [SchoolSessionController::class, 'sendMessages']);
     Route::post('/school-sessions/{schoolSession}/close', [SchoolSessionController::class, 'close']);
     Route::post('/school-sessions/{schoolSession}/reopen', [SchoolSessionController::class, 'reopen']);
     Route::post('/school-sessions/{schoolSession}/exports', [SchoolSessionController::class, 'createExport']);
