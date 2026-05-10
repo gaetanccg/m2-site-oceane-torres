@@ -160,7 +160,11 @@
                             <div class="space-y-3 text-sm">
                                 <div class="flex justify-between">
                                     <span class="text-gray-600">{{ cartStore.itemsCount }} article(s)</span>
-                                    <span>{{ formatPrice(cartStore.total) }}</span>
+                                    <span>{{ formatPrice(cartStore.subtotal) }}</span>
+                                </div>
+                                <div v-if="cartStore.shippingFee > 0" class="flex justify-between text-gray-600">
+                                    <span>Frais de port</span>
+                                    <span>+{{ formatPrice(cartStore.shippingFee) }}</span>
                                 </div>
                             </div>
 

@@ -53,10 +53,22 @@
                             <div>
                                 <p class="font-medium text-amber-800">Tirages papier inclus</p>
                                 <p class="text-sm text-amber-700 mt-1">
-                                    Votre commande contient des tirages papier qui seront préparés et expédiés par la photographe. Vous serez contacté(e) pour les détails de livraison.
+                                    Votre commande contient des tirages papier qui seront préparés et expédiés par la photographe.
                                 </p>
                             </div>
                         </div>
+                    </div>
+
+                    <!-- Adresse de livraison -->
+                    <div v-if="order.shipping" class="bg-white rounded-xl shadow-sm p-6 mb-6">
+                        <h2 class="font-medium text-gray-900 mb-3">Adresse de livraison</h2>
+                        <address class="not-italic text-sm text-gray-700 leading-relaxed">
+                            <div>{{ order.shipping.address_line1 }}</div>
+                            <div v-if="order.shipping.address_line2">{{ order.shipping.address_line2 }}</div>
+                            <div>{{ order.shipping.postal_code }} {{ order.shipping.city }}</div>
+                            <div class="text-gray-500">France</div>
+                            <div v-if="order.shipping.phone" class="mt-2 text-gray-500">Tél : {{ order.shipping.phone }}</div>
+                        </address>
                     </div>
 
                     <!-- Order summary -->
@@ -95,9 +107,19 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="border-t border-gray-100 mt-4 pt-4 flex justify-between">
-                            <span class="font-medium">Total payé</span>
-                            <span class="text-xl font-semibold text-gold">{{ formatPrice(order.total) }}</span>
+                        <div class="border-t border-gray-100 mt-4 pt-4 space-y-2 text-sm">
+                            <div class="flex justify-between text-gray-600">
+                                <span>Sous-total</span>
+                                <span>{{ formatPrice(order.subtotal) }}</span>
+                            </div>
+                            <div v-if="order.shipping_fee > 0" class="flex justify-between text-gray-600">
+                                <span>Frais de port</span>
+                                <span>+{{ formatPrice(order.shipping_fee) }}</span>
+                            </div>
+                            <div class="flex justify-between pt-2 border-t border-gray-100">
+                                <span class="font-medium">Total payé</span>
+                                <span class="text-xl font-semibold text-gold">{{ formatPrice(order.total) }}</span>
+                            </div>
                         </div>
                     </div>
 
