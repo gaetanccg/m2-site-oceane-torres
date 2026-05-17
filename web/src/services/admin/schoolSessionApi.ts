@@ -47,11 +47,40 @@ class SchoolSessionApiService extends BaseAdminService {
         chunkIndex: number,
         totalChunks: number,
         filename: string,
+        offset: number,
+    ): Promise<{ success: boolean; chunk_index: number; received: number; total_chunks: number; upload_complete: boolean }> {
+        const MAX_RETRIES = 3
+        const BASE_DELAY_MS = 1000
+
+        let lastError: Error | null = null
+
+        for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+            try {
+                return await this.sendChunk(sessionId, chunk, chunkIndex, totalChunks, filename, offset)
+            } catch (e) {
+                lastError = e instanceof Error ? e : new Error(String(e))
+                if (attempt < MAX_RETRIES) {
+                    await new Promise(resolve => setTimeout(resolve, BASE_DELAY_MS * 2 ** attempt))
+                }
+            }
+        }
+
+        throw lastError ?? new Error(`Echec upload chunk ${chunkIndex}`)
+    }
+
+    private async sendChunk(
+        sessionId: string,
+        chunk: Blob,
+        chunkIndex: number,
+        totalChunks: number,
+        filename: string,
+        offset: number,
     ): Promise<{ success: boolean; chunk_index: number; received: number; total_chunks: number; upload_complete: boolean }> {
         const formData = new FormData()
         formData.append('chunk', chunk, 'chunk.zip')
         formData.append('chunk_index', String(chunkIndex))
         formData.append('total_chunks', String(totalChunks))
+        formData.append('offset', String(offset))
         formData.append('filename', filename)
 
         const headers: Record<string, string> = {
