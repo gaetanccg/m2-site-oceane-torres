@@ -152,12 +152,14 @@ class SchoolSessionController extends Controller
             'chunk' => ['required', 'file', 'max:61440'],
             'chunk_index' => ['required', 'integer', 'min:0'],
             'total_chunks' => ['required', 'integer', 'min:1'],
+            'offset' => ['required', 'integer', 'min:0'],
             'filename' => ['required', 'string'],
         ]);
 
         $chunk = $request->file('chunk');
         $chunkIndex = (int) $request->input('chunk_index');
         $totalChunks = (int) $request->input('total_chunks');
+        $offset = (int) $request->input('offset');
 
         $zipDir = 'temp/school-sessions/'.$schoolSession->id;
         $zipPath = $zipDir.'/upload.zip';
@@ -165,9 +167,26 @@ class SchoolSessionController extends Controller
         Storage::disk('local')->makeDirectory($zipDir);
 
         $fullZipPath = Storage::disk('local')->path($zipPath);
-        $chunkContent = file_get_contents($chunk->getRealPath());
-        file_put_contents($fullZipPath, $chunkContent, FILE_APPEND | LOCK_EX);
-        unset($chunkContent);
+
+        // Idempotent write: seek to offset so a retried chunk overwrites itself
+        // instead of being appended a second time (which would corrupt the ZIP).
+        $handle = fopen($fullZipPath, 'c+b');
+        if ($handle === false) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Impossible d\'ouvrir le fichier de destination.',
+            ], 500);
+        }
+
+        try {
+            flock($handle, LOCK_EX);
+            fseek($handle, $offset);
+            fwrite($handle, file_get_contents($chunk->getRealPath()));
+            fflush($handle);
+            flock($handle, LOCK_UN);
+        } finally {
+            fclose($handle);
+        }
 
         $isLast = ($chunkIndex === $totalChunks - 1);
 
