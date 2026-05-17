@@ -327,7 +327,7 @@ async function createSession() {
             const end = Math.min(start + CHUNK_SIZE, file.size)
             const chunk = file.slice(start, end)
 
-            await adminApi.uploadZipChunk(session.id, chunk, i, totalChunks, file.name)
+            await adminApi.uploadZipChunk(session.id, chunk, i, totalChunks, file.name, start)
             uploadProgress.value = Math.round(((i + 1) / totalChunks) * 100)
             uploadEta.update(i + 1, totalChunks)
         }
