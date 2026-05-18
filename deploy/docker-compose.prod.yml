@@ -84,7 +84,7 @@ services:
         chmod -R 755 /var/www &&
         chmod -R 777 /var/www/storage /var/www/bootstrap/cache &&
         chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache &&
-        php artisan queue:work --sleep=3 --tries=3 --max-time=3600
+        php artisan queue:work --sleep=3 --tries=3 --max-time=3600 --timeout=3600 --memory=2048
       "
     depends_on:
       laravel:

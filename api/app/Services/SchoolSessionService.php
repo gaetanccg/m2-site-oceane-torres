@@ -224,7 +224,11 @@ class SchoolSessionService
                 'status' => 'uploading',
             ]);
 
-            $tempPath = 'temp_uploads/'.$upload->id.'_'.$filename;
+            // ASCII-only temp filename (uuid.ext) — avoids Unicode/NFD issues in queue serialization
+            // when the source filename has accented characters from macOS ZIPs.
+            // The original filename stays in PhotoUpload::original_filename for display.
+            $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION)) ?: 'jpg';
+            $tempPath = 'temp_uploads/'.$upload->id.'.'.$extension;
             $tempFullPath = Storage::disk('local')->path($tempPath);
 
             // Ensure target directory exists
