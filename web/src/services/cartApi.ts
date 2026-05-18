@@ -54,6 +54,7 @@ export interface Cart {
     shipping_fee: number
     total: number
     has_prints: boolean
+    requires_shipping: boolean
     has_pack_pricing?: boolean
     pack_savings?: number
     currency: string

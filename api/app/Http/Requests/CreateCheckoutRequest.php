@@ -28,7 +28,7 @@ class CreateCheckoutRequest extends FormRequest
             ? ['nullable', 'email']
             : ['required', 'email'];
 
-        $requiresShipping = $this->cartHasPrints();
+        $requiresShipping = $this->cartRequiresShipping();
 
         $phoneRules = ['string', 'max:20', 'regex:/^0[1-9]\d{8}$/'];
         $addressLineRules = ['string', 'max:255'];
@@ -69,10 +69,11 @@ class CreateCheckoutRequest extends FormRequest
     }
 
     /**
-     * Vérifie si le panier courant contient au moins un tirage papier.
-     * Utilisé pour rendre les champs shipping_* obligatoires.
+     * Vrai si le panier contient au moins un article nécessitant un envoi postal.
+     * Les tirages scolaires (print_scolaire) sont remis à l'école et ne déclenchent ni
+     * adresse ni frais.
      */
-    private function cartHasPrints(): bool
+    private function cartRequiresShipping(): bool
     {
         $user = Auth::guard('sanctum')->user();
         $sessionId = $this->header('X-Cart-Session') ?? $this->input('session_id');
@@ -80,7 +81,7 @@ class CreateCheckoutRequest extends FormRequest
         try {
             $cart = app(CartService::class)->getOrCreateCart($user, $sessionId);
 
-            return $cart->items->contains(fn ($item) => $item->isPrint());
+            return $cart->items->contains(fn ($item) => \App\Models\CartItem::requiresShipping($item->product_type ?? 'digital'));
         } catch (\Exception) {
             return false;
         }
