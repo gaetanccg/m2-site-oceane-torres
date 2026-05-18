@@ -219,6 +219,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::put('/galleries/{gallery}/regenerate-token', [GalleryController::class, 'regenerateToken']);
     Route::post('/galleries/{gallery}/regenerate-code', [GalleryController::class, 'regenerateShareCode']);
     Route::post('/galleries/{gallery}/send-email', [GalleryController::class, 'sendAccessEmail']);
+    Route::post('/galleries/{gallery}/send-sms', [GalleryController::class, 'sendAccessSms']);
 
     // Photos management
     Route::put('/photos/{photo}/toggle-downloadable', [PhotoController::class, 'toggleDownloadable']);
@@ -257,6 +258,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::get('/school-sessions', [SchoolSessionController::class, 'index']);
     Route::post('/school-sessions', [SchoolSessionController::class, 'store']);
     Route::get('/school-sessions/{schoolSession}', [SchoolSessionController::class, 'show']);
+    Route::put('/school-sessions/{schoolSession}', [SchoolSessionController::class, 'update']);
     Route::get('/school-sessions/{schoolSession}/galleries', [SchoolSessionController::class, 'galleries']);
     Route::get('/school-sessions/{schoolSession}/orders', [SchoolSessionController::class, 'orders']);
     Route::put('/school-sessions/{schoolSession}/upload', [SchoolSessionController::class, 'upload']);

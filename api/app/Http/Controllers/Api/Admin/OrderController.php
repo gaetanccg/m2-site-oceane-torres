@@ -184,8 +184,8 @@ class OrderController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => $updatedOrder->isPaid()
-                    ? 'Paiement confirme. Facture generee et email envoye.'
-                    : 'Paiement non confirme sur SumUp. Statut actuel : '.$updatedOrder->status,
+                    ? 'Paiement confirmé. Facture generée et email envoyé.'
+                    : 'Paiement non confirmé sur SumUp. Statut actuel : '.$updatedOrder->status,
                 'order' => self::formatOrder($updatedOrder->load('items.photo')),
             ]);
         } catch (\App\Exceptions\BusinessException $e) {

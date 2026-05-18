@@ -25,6 +25,7 @@ class UpdateEventGalleryRequest extends FormRequest
             'product_types.*.product_type' => ['required_with:product_types', 'string', 'in:digital,print_10x15,print_15x20,print_scolaire'],
             'product_types.*.is_enabled' => ['required_with:product_types', 'boolean'],
             'product_types.*.price' => ['nullable', 'numeric', 'min:0.01'],
+            'product_types.*.requires_shipping' => ['nullable', 'boolean'],
             'product_types.*.tiers' => ['nullable', 'array', 'max:3'],
             'product_types.*.tiers.*.min_quantity' => ['required', 'integer', 'min:2'],
             'product_types.*.tiers.*.unit_price' => ['required', 'numeric', 'min:0.01'],

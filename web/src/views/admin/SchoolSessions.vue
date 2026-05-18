@@ -142,6 +142,9 @@
                     <p class="text-xs text-gray-400 mt-1">Affiche en haut de chaque galerie d'enfant a la place du bloc d'explication standard.</p>
                 </div>
 
+                <!-- SMS Template -->
+                <SmsTemplateField v-model="createForm.sms_template" />
+
                 <!-- ZIP Upload -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Fichier ZIP</label>
@@ -214,6 +217,7 @@ import StatusBadge from '@/components/admin/ui/StatusBadge.vue'
 import Modal from '@/components/admin/ui/Modal.vue'
 import Button from '@/components/admin/ui/Button.vue'
 import FormField from '@/components/admin/ui/FormField.vue'
+import SmsTemplateField from '@/components/admin/SmsTemplateField.vue'
 import { adminApi } from '@/services/adminApi'
 import { AdminApiError } from '@/services/admin/baseAdmin'
 import { useToast } from '@/composables/useToast'
@@ -267,13 +271,22 @@ const createForm = ref({
     title: '',
     event_date: '',
     gallery_message: '',
+    sms_template: '',
     price1: 6,
     price3: 15,
     price5: 22,
 })
 
 function openCreateModal() {
-    createForm.value = { title: '', event_date: '', gallery_message: '', price1: 6, price3: 15, price5: 22 }
+    createForm.value = {
+        title: '',
+        event_date: '',
+        gallery_message: '',
+        sms_template: '',
+        price1: 6,
+        price3: 15,
+        price5: 22,
+    }
     zipFile.value = null
     uploadProgress.value = null
     uploadEta.reset()
@@ -305,6 +318,7 @@ async function createSession() {
             title: createForm.value.title,
             event_date: createForm.value.event_date,
             gallery_message: createForm.value.gallery_message || undefined,
+            sms_template: createForm.value.sms_template?.trim() ? createForm.value.sms_template.trim() : null,
             product_types: [{
                 product_type: 'print_scolaire',
                 is_enabled: true,
