@@ -5,10 +5,10 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\SendSchoolSessionMessagesRequest;
 use App\Http\Requests\Admin\StoreSchoolSessionRequest;
+use App\Jobs\DispatchSmsBatchJob;
 use App\Jobs\GenerateSchoolSessionExportJob;
 use App\Jobs\ProcessPhotoJob;
 use App\Jobs\ProcessSchoolSessionJob;
-use App\Jobs\SendSchoolSessionSmsJob;
 use App\Mail\GalleryAccessMail;
 use App\Models\Gallery;
 use App\Models\Order;
@@ -326,13 +326,19 @@ class SchoolSessionController extends Controller
         $channel = $validated['channel'];
         $frontendUrl = config('app.frontend_url', 'https://oceanetorresphotographie.fr');
 
+        // Pré-charge toutes les galeries en une seule query (évite N+1 sur 100+ contacts)
+        $galleryIds = collect($validated['contacts'])->pluck('gallery_id')->unique();
+        $galleries = Gallery::whereIn('id', $galleryIds)
+            ->where('school_session_id', $schoolSession->id)
+            ->get()
+            ->keyBy('id');
+
         $sent = 0;
         $errors = [];
+        $smsBatch = [];
 
         foreach ($validated['contacts'] as $contact) {
-            $gallery = Gallery::where('id', $contact['gallery_id'])
-                ->where('school_session_id', $schoolSession->id)
-                ->first();
+            $gallery = $galleries->get($contact['gallery_id']);
 
             if (! $gallery) {
                 $errors[] = "Galerie introuvable pour {$contact['recipient_name']}";
@@ -361,7 +367,9 @@ class SchoolSessionController extends Controller
                         $gallery->share_code,
                         $gallery->share_code,
                     );
-                    SendSchoolSessionSmsJob::dispatch($contact['phone'], $content);
+                    // Accumulate then dispatch as a single batch job — keeps the HTTP
+                    // response fast and lets the orchestrator throttle Brevo calls.
+                    $smsBatch[] = ['phone' => $contact['phone'], 'content' => $content];
                 }
 
                 $sent++;
@@ -374,6 +382,10 @@ class SchoolSessionController extends Controller
                 ]);
                 $errors[] = "Erreur pour {$contact['recipient_name']}.";
             }
+        }
+
+        if (! empty($smsBatch)) {
+            DispatchSmsBatchJob::dispatch($smsBatch);
         }
 
         $label = $channel === 'sms' ? 'SMS' : 'email(s)';

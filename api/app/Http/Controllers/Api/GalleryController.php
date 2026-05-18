@@ -235,7 +235,7 @@ class GalleryController extends Controller
         // Brevo non-unicode SMS: strip accents to keep cost predictable and stay under 160 chars
         $title = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $gallery->title) ?: $gallery->title;
         $content = sprintf(
-            'Bonjour, vos photos %s sont disponibles ici : %s (code: %s). Oceane Torres',
+            'Bonjour, vos photos de classes sont disponibles ici : %s (code: %s). Oceane Torres',
             $title,
             $directUrl,
             $gallery->share_code,
