@@ -69,6 +69,23 @@
                 <p v-if="session.error_message" class="text-sm text-red-600 mt-1">{{ session.error_message }}</p>
             </div>
 
+            <!-- Failed photos retry -->
+            <div v-if="failedPhotosCount > 0 && !isProcessing" class="bg-orange-50 border border-orange-200 rounded-xl p-5">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-orange-800">
+                            {{ failedPhotosCount }} photo(s) en echec
+                        </p>
+                        <p class="text-xs text-orange-600 mt-1">
+                            Certaines photos n'ont pas pu etre traitees. Relancez le traitement pour reessayer.
+                        </p>
+                    </div>
+                    <Button :loading="isRetrying" variant="secondary" @click="retryFailedPhotos">
+                        Relancer les photos
+                    </Button>
+                </div>
+            </div>
+
             <!-- Galleries -->
             <div v-if="galleries.length > 0" class="bg-white border border-gray-200 rounded-xl overflow-hidden">
                 <div class="flex items-center justify-between px-5 py-3 border-b border-gray-200 bg-gray-50">
@@ -514,7 +531,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AdminHeader from '@/components/admin/AdminHeader.vue'
 import StatusBadge from '@/components/admin/ui/StatusBadge.vue'
@@ -575,17 +592,21 @@ const subtitleText = computed(() => {
 
 const isProcessing = computed(() => {
     const s = session.value?.status
-    return s === 'extracting' || s === 'creating_galleries' || s === 'processing_photos'
+    return s === 'uploading' || s === 'extracting' || s === 'creating_galleries' || s === 'processing_photos'
 })
 
 const processingPhaseLabel = computed(() => {
     switch (session.value?.status) {
+        case 'uploading': return 'En attente du traitement...'
         case 'extracting': return 'Extraction du ZIP...'
         case 'creating_galleries': return 'Creation des galeries...'
         case 'processing_photos': return 'Traitement des photos...'
         default: return ''
     }
 })
+
+const failedPhotosCount = computed(() => session.value?.batch_progress?.failed ?? 0)
+const isRetrying = ref(false)
 
 const processingProgress = computed(() => {
     const bp = session.value?.batch_progress
@@ -658,7 +679,12 @@ async function fetchOrders() {
 function startPolling() {
     stopPolling()
     pollInterval = setInterval(async () => {
+        const previousGalleryCount = galleries.value.length
         await fetchSession()
+
+        if (session.value?.status === 'processing_photos' && previousGalleryCount === 0) {
+            await fetchGalleries()
+        }
 
         if (session.value?.status === 'completed' || session.value?.status === 'failed') {
             stopPolling()
@@ -667,13 +693,30 @@ function startPolling() {
                 await fetchGalleries()
             }
         }
-    }, 5000)
+    }, 3000)
 }
 
 function stopPolling() {
     if (pollInterval) {
         clearInterval(pollInterval)
         pollInterval = null
+    }
+}
+
+async function retryFailedPhotos() {
+    if (!session.value || isRetrying.value) return
+    isRetrying.value = true
+    try {
+        const result = await adminApi.retryFailedPhotos(session.value.id)
+        toast.success('Relance', result.message)
+        await fetchSession()
+        if (!pollInterval && isProcessing.value) {
+            startPolling()
+        }
+    } catch {
+        toast.error('Erreur', 'Impossible de relancer les photos en echec')
+    } finally {
+        isRetrying.value = false
     }
 }
 
@@ -1006,6 +1049,14 @@ function formatDate(dateStr: string): string {
 }
 
 // ==================== LIFECYCLE ====================
+watch(isProcessing, (active) => {
+    if (active && !pollInterval) {
+        startPolling()
+    } else if (!active && pollInterval) {
+        stopPolling()
+    }
+})
+
 onMounted(async () => {
     await fetchSession()
     if (session.value) {
