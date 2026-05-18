@@ -239,7 +239,7 @@ class SchoolSessionController extends Controller
      */
     public function retryFailedPhotos(SchoolSession $schoolSession): JsonResponse
     {
-        if (! $schoolSession->batch_id) {
+        if (!$schoolSession->batch_id) {
             return response()->json([
                 'success' => false,
                 'message' => 'Aucun lot de photos à relancer.',
@@ -247,8 +247,8 @@ class SchoolSessionController extends Controller
         }
 
         $failedUploads = PhotoUpload::where('batch_id', $schoolSession->batch_id)
-            ->where('status', 'failed')
-            ->get();
+                                    ->where('status', 'failed')
+                                    ->get();
 
         if ($failedUploads->isEmpty()) {
             return response()->json([
@@ -265,7 +265,7 @@ class SchoolSessionController extends Controller
 
         foreach ($failedUploads as $upload) {
             // Preferred (new) ASCII-only path
-            $extension = strtolower(pathinfo($upload->original_filename, PATHINFO_EXTENSION)) ?: 'jpg';
+            $extension = strtolower(pathinfo($upload->original_filename, PATHINFO_EXTENSION)) ? : 'jpg';
             $newTempPath = 'temp_uploads/'.$upload->id.'.'.$extension;
             $legacyTempPath = 'temp_uploads/'.$upload->id.'_'.$upload->original_filename;
 
@@ -280,6 +280,7 @@ class SchoolSessionController extends Controller
 
             if ($tempPath === null) {
                 $skipped++;
+
                 continue;
             }
 
@@ -290,7 +291,7 @@ class SchoolSessionController extends Controller
             ]);
 
             $fullPath = $disk->path($tempPath);
-            $mimeType = mime_content_type($fullPath) ?: 'image/jpeg';
+            $mimeType = mime_content_type($fullPath) ? : 'image/jpeg';
 
             ProcessPhotoJob::dispatch(
                 $upload->id,
