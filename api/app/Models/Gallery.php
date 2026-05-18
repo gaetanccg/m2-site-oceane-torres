@@ -24,6 +24,7 @@ class Gallery extends Model
         'type',
         'access_token',
         'share_code',
+        'sms_template',
         'last_viewed_at',
         'views_count',
         'event_category_id',

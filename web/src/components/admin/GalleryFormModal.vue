@@ -135,6 +135,11 @@
                 </div>
                 <p v-if="productTypesError" class="text-xs text-red-500 mt-2">{{ productTypesError }}</p>
             </div>
+
+            <!-- SMS Template Configuration -->
+            <div class="border-t border-gray-200 pt-4 mt-4">
+                <SmsTemplateField v-model="form.sms_template" />
+            </div>
         </form>
 
         <template #footer>
@@ -151,6 +156,7 @@ import { ref, reactive, computed, watch } from 'vue'
 import Modal from '@/components/admin/ui/Modal.vue'
 import Button from '@/components/admin/ui/Button.vue'
 import FormField from '@/components/admin/ui/FormField.vue'
+import SmsTemplateField from '@/components/admin/SmsTemplateField.vue'
 import { adminApi } from '@/services/adminApi'
 import { useToast } from '@/composables/useToast'
 import { useProductTypes } from '@/composables/useProductTypes'
@@ -182,6 +188,7 @@ const form = reactive<GalleryFormData>({
     description: '',
     client_id: '',
     assigned_email: '',
+    sms_template: '',
 })
 
 const visible = computed({
@@ -198,6 +205,7 @@ function resetForm() {
     form.description = ''
     form.client_id = ''
     form.assigned_email = ''
+    form.sms_template = ''
     resetProductTypes()
 }
 
@@ -209,6 +217,7 @@ watch(() => props.modelValue, (isOpen) => {
         form.description = props.gallery.description || ''
         form.client_id = props.gallery.client_id || ''
         form.assigned_email = props.gallery.assigned_email || ''
+        form.sms_template = props.gallery.sms_template || ''
         loadProductTypesFromGallery(props.gallery.gallery_product_types)
     } else {
         resetForm()
@@ -224,8 +233,10 @@ async function saveGallery() {
 
     isSaving.value = true
     try {
+        // Normalize empty template to null so backend treats it as "use default"
         const payload = {
             ...form,
+            sms_template: form.sms_template?.trim() ? form.sms_template.trim() : null,
             product_types: buildProductTypesPayload(),
         }
         if (props.gallery) {

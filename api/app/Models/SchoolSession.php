@@ -31,6 +31,7 @@ class SchoolSession extends Model
         'error_message',
         'product_types_config',
         'gallery_message',
+        'sms_template',
         'closed_at',
     ];
 
