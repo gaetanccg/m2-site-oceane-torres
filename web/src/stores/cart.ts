@@ -27,6 +27,7 @@ export const useCartStore = defineStore('cart', () => {
     const currency = computed(() => cart.value?.currency ?? 'EUR')
     const isEmpty = computed(() => itemsCount.value === 0)
     const hasPrints = computed(() => cart.value?.has_prints ?? false)
+    const requiresShipping = computed(() => cart.value?.requires_shipping ?? false)
     const hasPackPricing = computed(() => cart.value?.has_pack_pricing ?? false)
     const packSavings = computed(() => cart.value?.pack_savings ?? 0)
     const productTypes = computed(() => cart.value?.product_types ?? {
@@ -313,6 +314,7 @@ export const useCartStore = defineStore('cart', () => {
         currency,
         isEmpty,
         hasPrints,
+        requiresShipping,
         hasPackPricing,
         packSavings,
         productTypes,

@@ -84,7 +84,7 @@
                                 </form>
 
                                 <!-- Bloc shipping (si au moins un tirage dans le panier) -->
-                                <div v-if="cartStore.hasPrints" class="mt-6 pt-6 border-t border-gray-100">
+                                <div v-if="cartStore.requiresShipping" class="mt-6 pt-6 border-t border-gray-100">
                                     <ShippingAddressFields
                                         v-model="shipping"
                                         :errors="shippingErrors"
@@ -386,9 +386,9 @@ function fillShippingFromUser(): void {
 }
 
 watch(
-    () => [cartStore.hasPrints, authStore.isAuthenticated] as const,
-    ([hasPrints, isAuth]) => {
-        if (hasPrints && isAuth) fillShippingFromUser()
+    () => [cartStore.requiresShipping, authStore.isAuthenticated] as const,
+    ([requiresShipping, isAuth]) => {
+        if (requiresShipping && isAuth) fillShippingFromUser()
     },
     {immediate: true}
 )
@@ -509,7 +509,7 @@ async function createOrder() {
         return
     }
 
-    if (cartStore.hasPrints && !validateShipping()) {
+    if (cartStore.requiresShipping && !validateShipping()) {
         error.value = 'Veuillez compléter l\'adresse de livraison pour vos tirages'
         return
     }
@@ -518,7 +518,7 @@ async function createOrder() {
     error.value = ''
 
     try {
-        const shippingPayload: ShippingAddress | null = cartStore.hasPrints
+        const shippingPayload: ShippingAddress | null = cartStore.requiresShipping
             ? {
                 shipping_phone: shipping.value.shipping_phone.trim(),
                 shipping_address_line1: shipping.value.shipping_address_line1.trim(),
@@ -549,7 +549,7 @@ async function createOrder() {
         checkoutId.value = orderResponse.payment.checkout_id
 
         // Rafraîchir le user pour récupérer l'adresse tout juste sauvegardée
-        if (authStore.isAuthenticated && cartStore.hasPrints) {
+        if (authStore.isAuthenticated && cartStore.requiresShipping) {
             authStore.fetchUser().catch(() => {})
         }
 
