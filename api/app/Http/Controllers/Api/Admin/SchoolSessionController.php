@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\SendSchoolSessionMessagesRequest;
 use App\Http\Requests\Admin\StoreSchoolSessionRequest;
 use App\Jobs\GenerateSchoolSessionExportJob;
+use App\Jobs\ProcessPhotoJob;
 use App\Jobs\ProcessSchoolSessionJob;
 use App\Jobs\SendSchoolSessionSmsJob;
 use App\Mail\GalleryAccessMail;
@@ -231,6 +232,91 @@ class SchoolSessionController extends Controller
     }
 
     /**
+     * POST /admin/school-sessions/{schoolSession}/retry-failed-photos
+     *
+     * Re-dispatches ProcessPhotoJob for every PhotoUpload of this session's batch
+     * still in `failed` status, if the temp file is still on disk.
+     */
+    public function retryFailedPhotos(SchoolSession $schoolSession): JsonResponse
+    {
+        if (! $schoolSession->batch_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Aucun lot de photos à relancer.',
+            ], 422);
+        }
+
+        $failedUploads = PhotoUpload::where('batch_id', $schoolSession->batch_id)
+            ->where('status', 'failed')
+            ->get();
+
+        if ($failedUploads->isEmpty()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Aucune photo en échec à relancer.',
+                'redispatched' => 0,
+                'skipped' => 0,
+            ]);
+        }
+
+        $redispatched = 0;
+        $skipped = 0;
+        $disk = Storage::disk('local');
+
+        foreach ($failedUploads as $upload) {
+            // Preferred (new) ASCII-only path
+            $extension = strtolower(pathinfo($upload->original_filename, PATHINFO_EXTENSION)) ?: 'jpg';
+            $newTempPath = 'temp_uploads/'.$upload->id.'.'.$extension;
+            $legacyTempPath = 'temp_uploads/'.$upload->id.'_'.$upload->original_filename;
+
+            $tempPath = null;
+            if ($disk->exists($newTempPath)) {
+                $tempPath = $newTempPath;
+            } elseif ($disk->exists($legacyTempPath)) {
+                // Migrate legacy path (with accented chars) → ASCII-only path
+                @rename($disk->path($legacyTempPath), $disk->path($newTempPath));
+                $tempPath = $disk->exists($newTempPath) ? $newTempPath : $legacyTempPath;
+            }
+
+            if ($tempPath === null) {
+                $skipped++;
+
+                continue;
+            }
+
+            $upload->update([
+                'status' => 'pending',
+                'error_message' => null,
+                'completed_at' => null,
+            ]);
+
+            $fullPath = $disk->path($tempPath);
+            $mimeType = mime_content_type($fullPath) ?: 'image/jpeg';
+
+            ProcessPhotoJob::dispatch(
+                $upload->id,
+                $upload->gallery_id,
+                $tempPath,
+                $upload->original_filename,
+                $mimeType,
+            );
+
+            $redispatched++;
+        }
+
+        if ($redispatched > 0 && $schoolSession->status === 'completed') {
+            $schoolSession->update(['status' => 'processing_photos']);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "{$redispatched} photo(s) relancée(s)".($skipped > 0 ? ", {$skipped} ignorée(s) (fichier temp absent)" : ''),
+            'redispatched' => $redispatched,
+            'skipped' => $skipped,
+        ]);
+    }
+
+    /**
      * POST /admin/school-sessions/{schoolSession}/send-messages
      * Sends gallery access via email or SMS based on the chosen channel.
      */
@@ -270,7 +356,7 @@ class SchoolSessionController extends Controller
                 } else {
                     // SMS — keep content under ~160 chars, no accents (avoids unicode SMS billing)
                     $content = sprintf(
-                        'Bonjour, les photos de %s sont disponibles ici : %s (code: %s). Oceane Torres',
+                        'Bonjour, les photos de classe de %s sont disponibles ici : %s (code: %s). Oceane Torres',
                         $this->stripAccents($gallery->title),
                         $directUrl,
                         $gallery->share_code,
