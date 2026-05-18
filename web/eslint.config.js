@@ -47,6 +47,7 @@ export default tseslint.config(
                 // DOM types
                 HTMLElement: 'readonly',
                 HTMLInputElement: 'readonly',
+                HTMLTextAreaElement: 'readonly',
                 HTMLImageElement: 'readonly',
                 HTMLVideoElement: 'readonly',
                 HTMLCanvasElement: 'readonly',
