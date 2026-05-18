@@ -110,6 +110,17 @@ class SchoolSessionApiService extends BaseAdminService {
         )
     }
 
+    async retryFailedPhotos(id: string): Promise<{
+        success: boolean
+        message: string
+        redispatched: number
+        skipped: number
+    }> {
+        return this.adminRequest(`/admin/school-sessions/${id}/retry-failed-photos`, {
+            method: 'POST',
+        })
+    }
+
     async deleteSchoolSession(id: string): Promise<AdminApiResponse<null>> {
         return this.adminRequest<AdminApiResponse<null>>(
             `/admin/school-sessions/${id}`,

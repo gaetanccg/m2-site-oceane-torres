@@ -46,15 +46,18 @@ class ProcessPhotoJob implements ShouldQueue
             return;
         }
 
+        // Check if temp file exists — outside try/catch so the exception propagates
+        // to Laravel's queue worker, triggering automatic retry with backoff.
+        // This handles filesystem race conditions (e.g. bind mount cache lag).
+        if (! Storage::disk('local')->exists($this->tempFilePath)) {
+            clearstatcache(true, Storage::disk('local')->path($this->tempFilePath));
+            if (! Storage::disk('local')->exists($this->tempFilePath)) {
+                throw new \RuntimeException('Fichier temporaire non trouvé: '.$this->tempFilePath);
+            }
+        }
+
         try {
             $upload->markAsProcessing();
-
-            // Check if temp file exists
-            if (! Storage::disk('local')->exists($this->tempFilePath)) {
-                $upload->markAsFailed('Fichier temporaire non trouvé');
-
-                return;
-            }
 
             $isVideo = str_starts_with($this->mimeType, 'video/');
 
