@@ -80,8 +80,16 @@ class CreateCheckoutRequest extends FormRequest
 
         try {
             $cart = app(CartService::class)->getOrCreateCart($user, $sessionId);
+            $cart->loadMissing('items.photo.gallery.galleryProductTypes');
 
-            return $cart->items->contains(fn ($item) => \App\Models\CartItem::requiresShipping($item->product_type ?? 'digital'));
+            return $cart->items->contains(function ($item) {
+                $gallery = $item->photo?->gallery;
+                $productType = $item->product_type ?? 'digital';
+
+                return $gallery
+                    ? $gallery->getRequiresShippingForProductType($productType)
+                    : \App\Models\CartItem::requiresShipping($productType);
+            });
         } catch (\Exception) {
             return false;
         }

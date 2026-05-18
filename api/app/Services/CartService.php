@@ -360,7 +360,14 @@ class CartService
 
         $subtotal = (float) $items->sum('line_total');
         $hasPrints = $items->contains('is_print', true);
-        $requiresShipping = $items->contains(fn ($item) => CartItem::requiresShipping($item['product_type']));
+        $requiresShipping = $cart->items->contains(function ($cartItem) {
+            $gallery = $cartItem->photo?->gallery;
+            $productType = $cartItem->product_type ?? 'digital';
+
+            return $gallery
+                ? $gallery->getRequiresShippingForProductType($productType)
+                : CartItem::requiresShipping($productType);
+        });
         $shippingFee = $requiresShipping ? (float) config('shop.shipping_fee_print', 0) : 0.0;
 
         return [

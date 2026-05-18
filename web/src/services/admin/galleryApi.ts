@@ -53,6 +53,13 @@ class GalleryApiService extends BaseAdminService {
         })
     }
 
+    async sendGalleryAccessSms(galleryId: string, phone: string, recipientName: string): Promise<AdminApiResponse<{ message: string }>> {
+        return this.adminRequest<AdminApiResponse<{ message: string }>>(`/admin/galleries/${galleryId}/send-sms`, {
+            method: 'POST',
+            body: JSON.stringify({ phone, recipient_name: recipientName }),
+        })
+    }
+
     async togglePhotoDownloadable(id: string): Promise<AdminApiResponse<{ is_downloadable: boolean }>> {
         return this.adminRequest<AdminApiResponse<{ is_downloadable: boolean }>>(`/admin/photos/${id}/toggle-downloadable`, { method: 'PUT' })
     }

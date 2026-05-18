@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\SendAccessEmailRequest;
+use App\Http\Requests\Admin\SendAccessSmsRequest;
 use App\Http\Requests\Admin\StoreGalleryRequest;
 use App\Http\Requests\Admin\UpdateGalleryRequest;
+use App\Jobs\SendSchoolSessionSmsJob;
 use App\Mail\GalleryAccessMail;
 use App\Models\Client;
 use App\Models\Gallery;
@@ -214,6 +216,37 @@ class GalleryController extends Controller
                 'message' => "L'envoi de l'email a échoué. Veuillez réessayer plus tard.",
             ], 500);
         }
+    }
+
+    public function sendAccessSms(SendAccessSmsRequest $request, Gallery $gallery): JsonResponse
+    {
+        $validated = $request->validated();
+
+        if (! $gallery->share_code) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cette galerie n\'a pas de code de partage.',
+            ], 400);
+        }
+
+        $frontendUrl = config('app.frontend_url', 'https://oceanetorresphotographie.fr');
+        $directUrl = $frontendUrl.'/gallery/'.$gallery->share_code;
+
+        // Brevo non-unicode SMS: strip accents to keep cost predictable and stay under 160 chars
+        $title = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $gallery->title) ?: $gallery->title;
+        $content = sprintf(
+            'Bonjour, vos photos %s sont disponibles ici : %s (code: %s). Oceane Torres',
+            $title,
+            $directUrl,
+            $gallery->share_code,
+        );
+
+        SendSchoolSessionSmsJob::dispatch($validated['phone'], $content);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'SMS mis en file d\'envoi pour '.$validated['phone'],
+        ]);
     }
 
     public function regenerateToken(Gallery $gallery): JsonResponse
