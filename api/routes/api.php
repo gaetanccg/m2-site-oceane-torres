@@ -258,6 +258,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::get('/school-sessions', [SchoolSessionController::class, 'index']);
     Route::post('/school-sessions', [SchoolSessionController::class, 'store']);
     Route::get('/school-sessions/{schoolSession}', [SchoolSessionController::class, 'show']);
+    Route::put('/school-sessions/{schoolSession}', [SchoolSessionController::class, 'update']);
     Route::get('/school-sessions/{schoolSession}/galleries', [SchoolSessionController::class, 'galleries']);
     Route::get('/school-sessions/{schoolSession}/orders', [SchoolSessionController::class, 'orders']);
     Route::put('/school-sessions/{schoolSession}/upload', [SchoolSessionController::class, 'upload']);

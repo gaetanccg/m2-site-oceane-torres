@@ -233,6 +233,26 @@
                 </div>
             </div>
 
+            <!-- SMS Template -->
+            <div v-if="session.status === 'completed'" class="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <h3 class="font-medium text-gray-900">Modèle de SMS d'accès</h3>
+                        <p class="text-sm text-gray-500 mt-0.5">
+                            Utilisé pour tous les envois SMS de cette session. Laissez vide pour le message par défaut.
+                        </p>
+                    </div>
+                    <Button
+                        v-if="smsTemplateDirty"
+                        :loading="isSavingSmsTemplate"
+                        @click="saveSmsTemplate"
+                    >
+                        Enregistrer
+                    </Button>
+                </div>
+                <SmsTemplateField v-model="smsTemplateInput" />
+            </div>
+
             <!-- Closure banner -->
             <div v-if="session.closed_at" class="bg-orange-50 border border-orange-200 rounded-xl p-4 flex items-start gap-3">
                 <svg class="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -537,6 +557,7 @@ import AdminHeader from '@/components/admin/AdminHeader.vue'
 import StatusBadge from '@/components/admin/ui/StatusBadge.vue'
 import Modal from '@/components/admin/ui/Modal.vue'
 import Button from '@/components/admin/ui/Button.vue'
+import SmsTemplateField from '@/components/admin/SmsTemplateField.vue'
 import { adminApi } from '@/services/adminApi'
 import { AdminApiError } from '@/services/admin/baseAdmin'
 import { useToast } from '@/composables/useToast'
@@ -583,6 +604,30 @@ function openOrderDetail(order: AdminOrder) {
 const gallerySearch = ref('')
 const collapsedClasses = ref<Record<string, boolean>>({})
 let pollInterval: ReturnType<typeof setInterval> | null = null
+
+// SMS template editor — local buffer so user can edit without saving immediately
+const smsTemplateInput = ref('')
+const isSavingSmsTemplate = ref(false)
+const smsTemplateDirty = computed(() => (smsTemplateInput.value ?? '') !== (session.value?.sms_template ?? ''))
+
+async function saveSmsTemplate() {
+    if (!session.value) return
+    isSavingSmsTemplate.value = true
+    try {
+        const value = smsTemplateInput.value.trim()
+        const { data } = await adminApi.updateSchoolSession(session.value.id, {
+            sms_template: value === '' ? null : value,
+        })
+        session.value = { ...session.value, ...data }
+        smsTemplateInput.value = data.sms_template ?? ''
+        toast.success('Modèle SMS enregistré')
+    } catch (e) {
+        const msg = e instanceof AdminApiError ? e.message : 'Impossible d\'enregistrer le modèle SMS'
+        toast.error('Erreur', msg)
+    } finally {
+        isSavingSmsTemplate.value = false
+    }
+}
 
 const subtitleText = computed(() => {
     if (!session.value) return ''
@@ -646,6 +691,11 @@ async function fetchSession() {
     try {
         const { data } = await adminApi.getSchoolSession(sessionId.value)
         session.value = data
+
+        // Only seed the editor on initial load or when not dirty — never clobber unsaved edits
+        if (!smsTemplateDirty.value) {
+            smsTemplateInput.value = data.sms_template ?? ''
+        }
 
         if (data.batch_progress?.found) {
             processingEta.update(

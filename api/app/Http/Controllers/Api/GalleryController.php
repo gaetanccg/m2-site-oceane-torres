@@ -12,6 +12,7 @@ use App\Mail\GalleryAccessMail;
 use App\Models\Client;
 use App\Models\Gallery;
 use App\Services\MinioStorageService;
+use App\Services\SmsTemplateService;
 use App\Traits\SyncsProductTypes;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -218,7 +219,7 @@ class GalleryController extends Controller
         }
     }
 
-    public function sendAccessSms(SendAccessSmsRequest $request, Gallery $gallery): JsonResponse
+    public function sendAccessSms(SendAccessSmsRequest $request, Gallery $gallery, SmsTemplateService $smsTemplate): JsonResponse
     {
         $validated = $request->validated();
 
@@ -232,11 +233,13 @@ class GalleryController extends Controller
         $frontendUrl = config('app.frontend_url', 'https://oceanetorresphotographie.fr');
         $directUrl = $frontendUrl.'/gallery/'.$gallery->share_code;
 
-        // Brevo non-unicode SMS: strip accents to keep cost predictable and stay under 160 chars
-        $title = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $gallery->title) ?: $gallery->title;
-        $content = sprintf(
-            'Bonjour, vos photos de classes sont disponibles ici : %s (code: %s). Oceane Torres',
-            $title,
+        // School session galleries inherit the session template; standalone galleries use their own.
+        $gallery->loadMissing('schoolSession:id,sms_template');
+        $template = $gallery->schoolSession?->sms_template ?? $gallery->sms_template;
+
+        $content = $smsTemplate->build(
+            $template,
+            $validated['recipient_name'],
             $directUrl,
             $gallery->share_code,
         );

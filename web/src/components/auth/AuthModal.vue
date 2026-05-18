@@ -177,7 +177,7 @@
                                         'w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-gold/50 focus:border-gold transition-colors',
                                         authStore.fieldErrors.password ? 'border-red-300 bg-red-50' : 'border-gray-300'
                                     ]"
-                                    placeholder="Minimum 8 caracteres"
+                                    placeholder="Minimum 8 caractères"
                                 />
                                 <p v-if="authStore.fieldErrors.password" class="mt-1 text-sm text-red-600">{{ authStore.fieldErrors.password }}</p>
                             </div>

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Rules\SmsTemplateRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreSchoolSessionRequest extends FormRequest
@@ -17,10 +18,12 @@ class StoreSchoolSessionRequest extends FormRequest
             'title' => ['required', 'string', 'max:255'],
             'event_date' => ['nullable', 'date'],
             'gallery_message' => ['nullable', 'string', 'max:2000'],
+            'sms_template' => ['nullable', 'string', 'max:320', new SmsTemplateRule],
             'product_types' => ['nullable', 'array'],
             'product_types.*.product_type' => ['required_with:product_types', 'string', 'in:digital,print_10x15,print_15x20,print_scolaire'],
             'product_types.*.is_enabled' => ['required_with:product_types', 'boolean'],
             'product_types.*.price' => ['nullable', 'numeric', 'min:0.01'],
+            'product_types.*.requires_shipping' => ['nullable', 'boolean'],
             'product_types.*.tiers' => ['nullable', 'array', 'max:3'],
             'product_types.*.tiers.*.min_quantity' => ['required', 'integer', 'min:2'],
             'product_types.*.tiers.*.unit_price' => ['required', 'numeric', 'min:0.01'],
