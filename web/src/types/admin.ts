@@ -249,6 +249,7 @@ export interface GalleryProductTypeConfig {
     product_type: ProductType
     is_enabled: boolean
     price: number | null
+    requires_shipping?: boolean | null
     pack_tiers?: PackTier[]
 }
 
@@ -280,6 +281,7 @@ export interface AdminGallery {
     assigned_email?: string
     access_token?: string
     share_code?: string
+    sms_template?: string | null
     event_category_id?: string
     event_category?: EventCategory
     parent_id?: string | null
@@ -330,6 +332,7 @@ export interface GalleryFormData {
     description: string
     client_id: string
     assigned_email: string
+    sms_template?: string | null
     product_types?: GalleryProductTypeConfig[]
 }
 
@@ -475,6 +478,7 @@ export interface SchoolSession {
     error_message: string | null
     product_types_config: ProductTypeConfig[] | null
     gallery_message: string | null
+    sms_template: string | null
     closed_at: string | null
     created_at: string
     updated_at: string
@@ -519,7 +523,15 @@ export interface SchoolSessionFormData {
     title: string
     event_date: string
     gallery_message?: string
+    sms_template?: string | null
     product_types: ProductTypeConfig[]
+}
+
+export interface SchoolSessionUpdateData {
+    title?: string
+    event_date?: string | null
+    gallery_message?: string | null
+    sms_template?: string | null
 }
 
 export type SchoolSessionExportStatus = 'pending' | 'processing' | 'completed' | 'failed'

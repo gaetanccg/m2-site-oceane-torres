@@ -52,7 +52,7 @@
                         class="p-3 rounded-lg border transition-colors"
                         :class="pt.is_enabled ? 'border-gold/30 bg-gold/5' : 'border-gray-200 bg-gray-50'"
                     >
-                        <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-3 flex-wrap">
                             <label class="flex items-center gap-2 cursor-pointer flex-shrink-0">
                                 <input
                                     type="checkbox"
@@ -77,6 +77,20 @@
                                 />
                                 <span class="text-sm text-gray-500">&euro;</span>
                             </div>
+                            <label
+                                class="flex items-center gap-1.5 cursor-pointer w-full sm:w-auto"
+                                :class="pt.is_enabled ? 'text-gray-700' : 'text-gray-400 cursor-not-allowed'"
+                                :title="pt.is_enabled ? 'Cocher pour appliquer des frais de port (2&euro;) au panier si ce produit est commandé' : ''"
+                            >
+                                <input
+                                    type="checkbox"
+                                    :checked="pt.requires_shipping"
+                                    :disabled="!pt.is_enabled"
+                                    @change="toggleRequiresShipping(pt.key)"
+                                    class="w-4 h-4 text-gold border-gray-300 rounded focus:ring-gold disabled:opacity-40"
+                                />
+                                <span class="text-xs">Frais de port</span>
+                            </label>
                         </div>
                         <!-- Pack Tiers -->
                         <div v-if="pt.is_enabled" class="mt-3 ml-6 space-y-2">
@@ -121,6 +135,11 @@
                 </div>
                 <p v-if="productTypesError" class="text-xs text-red-500 mt-2">{{ productTypesError }}</p>
             </div>
+
+            <!-- SMS Template Configuration -->
+            <div class="border-t border-gray-200 pt-4 mt-4">
+                <SmsTemplateField v-model="form.sms_template" />
+            </div>
         </form>
 
         <template #footer>
@@ -137,6 +156,7 @@ import { ref, reactive, computed, watch } from 'vue'
 import Modal from '@/components/admin/ui/Modal.vue'
 import Button from '@/components/admin/ui/Button.vue'
 import FormField from '@/components/admin/ui/FormField.vue'
+import SmsTemplateField from '@/components/admin/SmsTemplateField.vue'
 import { adminApi } from '@/services/adminApi'
 import { useToast } from '@/composables/useToast'
 import { useProductTypes } from '@/composables/useProductTypes'
@@ -158,7 +178,7 @@ const isSaving = ref(false)
 
 const {
     productTypesState, productTypesError, productTypesList,
-    toggleProductType, updateProductPrice, resetProductTypes,
+    toggleProductType, updateProductPrice, toggleRequiresShipping, resetProductTypes,
     loadProductTypesFromGallery, buildProductTypesPayload,
     addTier, removeTier, updateTierQuantity, updateTierPrice,
 } = useProductTypes()
@@ -168,6 +188,7 @@ const form = reactive<GalleryFormData>({
     description: '',
     client_id: '',
     assigned_email: '',
+    sms_template: '',
 })
 
 const visible = computed({
@@ -184,6 +205,7 @@ function resetForm() {
     form.description = ''
     form.client_id = ''
     form.assigned_email = ''
+    form.sms_template = ''
     resetProductTypes()
 }
 
@@ -195,6 +217,7 @@ watch(() => props.modelValue, (isOpen) => {
         form.description = props.gallery.description || ''
         form.client_id = props.gallery.client_id || ''
         form.assigned_email = props.gallery.assigned_email || ''
+        form.sms_template = props.gallery.sms_template || ''
         loadProductTypesFromGallery(props.gallery.gallery_product_types)
     } else {
         resetForm()
@@ -210,8 +233,10 @@ async function saveGallery() {
 
     isSaving.value = true
     try {
+        // Normalize empty template to null so backend treats it as "use default"
         const payload = {
             ...form,
+            sms_template: form.sms_template?.trim() ? form.sms_template.trim() : null,
             product_types: buildProductTypesPayload(),
         }
         if (props.gallery) {

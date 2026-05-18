@@ -171,6 +171,15 @@
                                             </svg>
                                         </button>
                                         <button
+                                            @click="openSmsModal(gallery)"
+                                            class="p-1.5 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded transition-colors"
+                                            title="Envoyer par SMS"
+                                        >
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                                            </svg>
+                                        </button>
+                                        <button
                                             @click="openGallery(gallery)"
                                             class="p-1.5 text-gold hover:bg-gold/10 rounded transition-colors"
                                             title="Gerer les photos"
@@ -269,6 +278,53 @@
             </template>
         </Modal>
 
+        <!-- Send SMS Modal -->
+        <Modal v-model="showSmsModal" title="Envoyer la galerie par SMS" size="sm">
+            <div class="space-y-4">
+                <p class="text-gray-600 text-sm">
+                    Envoyez un SMS au client avec le lien et le code d'acces pour la galerie
+                    <strong class="text-gold">{{ galleryForSms?.title }}</strong>.
+                </p>
+
+                <div class="bg-gold/10 rounded-lg p-3 text-center">
+                    <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Code d'acces</p>
+                    <p class="text-2xl font-mono font-bold text-gold tracking-widest">{{ galleryForSms?.share_code }}</p>
+                </div>
+
+                <FormField
+                    v-model="smsForm.recipientName"
+                    label="Nom du destinataire"
+                    required
+                    placeholder="Ex: Marie Dupont"
+                />
+
+                <FormField
+                    v-model="smsForm.phone"
+                    type="text"
+                    label="Numero de telephone"
+                    required
+                    placeholder="06 12 34 56 78"
+                />
+                <p class="text-xs text-gray-500 -mt-2">
+                    Numero francais (mobile ou fixe). Format accepte : 06XX..., +33XXX...
+                </p>
+            </div>
+
+            <template #footer>
+                <Button variant="secondary" @click="showSmsModal = false">Annuler</Button>
+                <Button
+                    :loading="isSendingSms"
+                    :disabled="!smsForm.phone || !smsForm.recipientName"
+                    @click="sendGallerySms"
+                >
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                    </svg>
+                    Envoyer
+                </Button>
+            </template>
+        </Modal>
+
         <!-- Send Email Modal -->
         <Modal v-model="showEmailModal" title="Envoyer la galerie par email" size="sm">
             <div class="space-y-4">
@@ -346,6 +402,13 @@ const galleryForEmail = ref<AdminGallery | null>(null)
 const isSendingEmail = ref(false)
 const emailForm = reactive({
     email: '',
+    recipientName: '',
+})
+const showSmsModal = ref(false)
+const galleryForSms = ref<AdminGallery | null>(null)
+const isSendingSms = ref(false)
+const smsForm = reactive({
+    phone: '',
     recipientName: '',
 })
 
@@ -461,6 +524,35 @@ async function sendGalleryEmail() {
         toast.error('Erreur', 'Impossible d\'envoyer l\'email')
     } finally {
         isSendingEmail.value = false
+    }
+}
+
+function openSmsModal(gallery: AdminGallery) {
+    galleryForSms.value = gallery
+    smsForm.phone = gallery.user?.phone || ''
+    smsForm.recipientName = gallery.user?.name || ''
+    showSmsModal.value = true
+}
+
+async function sendGallerySms() {
+    if (!galleryForSms.value || !smsForm.phone || !smsForm.recipientName) return
+
+    isSendingSms.value = true
+    try {
+        await adminApi.sendGalleryAccessSms(
+            galleryForSms.value.id,
+            smsForm.phone,
+            smsForm.recipientName
+        )
+        showSmsModal.value = false
+        galleryForSms.value = null
+        smsForm.phone = ''
+        smsForm.recipientName = ''
+        toast.success('SMS envoyé', 'Le client va recevoir le lien de la galerie')
+    } catch {
+        toast.error('Erreur', 'Impossible d\'envoyer le SMS')
+    } finally {
+        isSendingSms.value = false
     }
 }
 

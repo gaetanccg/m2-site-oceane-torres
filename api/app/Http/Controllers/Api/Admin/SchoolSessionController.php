@@ -5,10 +5,11 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\SendSchoolSessionMessagesRequest;
 use App\Http\Requests\Admin\StoreSchoolSessionRequest;
+use App\Http\Requests\Admin\UpdateSchoolSessionRequest;
+use App\Jobs\DispatchSmsBatchJob;
 use App\Jobs\GenerateSchoolSessionExportJob;
 use App\Jobs\ProcessPhotoJob;
 use App\Jobs\ProcessSchoolSessionJob;
-use App\Jobs\SendSchoolSessionSmsJob;
 use App\Mail\GalleryAccessMail;
 use App\Models\Gallery;
 use App\Models\Order;
@@ -17,6 +18,7 @@ use App\Models\SchoolSession;
 use App\Models\SchoolSessionExport;
 use App\Services\SchoolSessionExportService;
 use App\Services\SchoolSessionService;
+use App\Services\SmsTemplateService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
@@ -320,19 +322,25 @@ class SchoolSessionController extends Controller
      * POST /admin/school-sessions/{schoolSession}/send-messages
      * Sends gallery access via email or SMS based on the chosen channel.
      */
-    public function sendMessages(SendSchoolSessionMessagesRequest $request, SchoolSession $schoolSession): JsonResponse
+    public function sendMessages(SendSchoolSessionMessagesRequest $request, SchoolSession $schoolSession, SmsTemplateService $smsTemplate): JsonResponse
     {
         $validated = $request->validated();
         $channel = $validated['channel'];
         $frontendUrl = config('app.frontend_url', 'https://oceanetorresphotographie.fr');
 
+        // Pré-charge toutes les galeries en une seule query (évite N+1 sur 100+ contacts)
+        $galleryIds = collect($validated['contacts'])->pluck('gallery_id')->unique();
+        $galleries = Gallery::whereIn('id', $galleryIds)
+            ->where('school_session_id', $schoolSession->id)
+            ->get()
+            ->keyBy('id');
+
         $sent = 0;
         $errors = [];
+        $smsBatch = [];
 
         foreach ($validated['contacts'] as $contact) {
-            $gallery = Gallery::where('id', $contact['gallery_id'])
-                ->where('school_session_id', $schoolSession->id)
-                ->first();
+            $gallery = $galleries->get($contact['gallery_id']);
 
             if (! $gallery) {
                 $errors[] = "Galerie introuvable pour {$contact['recipient_name']}";
@@ -354,14 +362,15 @@ class SchoolSessionController extends Controller
                         )
                     );
                 } else {
-                    // SMS — keep content under ~160 chars, no accents (avoids unicode SMS billing)
-                    $content = sprintf(
-                        'Bonjour, les photos de classe de %s sont disponibles ici : https://oceanetorresphotographie.fr/gallery/%s  (code: %s). Oceane Torres',
-                        $this->stripAccents($gallery->title),
-                        $gallery->share_code,
+                    // SMS — accumulate then dispatch as a single batch job. The orchestrator
+                    // throttles Brevo calls. Template substitution + accent stripping is in the service.
+                    $content = $smsTemplate->build(
+                        $schoolSession->sms_template,
+                        $contact['recipient_name'],
+                        $directUrl,
                         $gallery->share_code,
                     );
-                    SendSchoolSessionSmsJob::dispatch($contact['phone'], $content);
+                    $smsBatch[] = ['phone' => $contact['phone'], 'content' => $content];
                 }
 
                 $sent++;
@@ -376,6 +385,10 @@ class SchoolSessionController extends Controller
             }
         }
 
+        if (! empty($smsBatch)) {
+            DispatchSmsBatchJob::dispatch($smsBatch);
+        }
+
         $label = $channel === 'sms' ? 'SMS' : 'email(s)';
 
         return response()->json([
@@ -384,13 +397,23 @@ class SchoolSessionController extends Controller
             'errors' => $errors,
             'message' => $sent > 0
                 ? "{$sent} {$label} mis en file d'envoi."
-                : "Aucun {$label} envoye.",
+                : "Aucun {$label} envoyé.",
         ]);
     }
 
-    private function stripAccents(string $text): string
+    /**
+     * PUT /admin/school-sessions/{schoolSession}
+     * Updates editable session fields (title, gallery_message, sms_template, event_date).
+     */
+    public function update(UpdateSchoolSessionRequest $request, SchoolSession $schoolSession): JsonResponse
     {
-        return iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $text) ?: $text;
+        $schoolSession->update($request->validated());
+
+        return response()->json([
+            'success' => true,
+            'data' => $schoolSession->fresh(),
+            'message' => 'Session mise à jour.',
+        ]);
     }
 
     /**

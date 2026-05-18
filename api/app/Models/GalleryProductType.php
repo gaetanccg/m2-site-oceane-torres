@@ -17,6 +17,7 @@ class GalleryProductType extends Model
         'product_type',
         'is_enabled',
         'price',
+        'requires_shipping',
     ];
 
     protected function casts(): array
@@ -24,7 +25,16 @@ class GalleryProductType extends Model
         return [
             'is_enabled' => 'boolean',
             'price' => 'decimal:2',
+            'requires_shipping' => 'boolean',
         ];
+    }
+
+    /**
+     * Returns the effective shipping rule: explicit override (true/false) or static fallback.
+     */
+    public function effectiveRequiresShipping(): bool
+    {
+        return $this->requires_shipping ?? CartItem::requiresShipping($this->product_type);
     }
 
     public function gallery(): BelongsTo
