@@ -66,7 +66,14 @@ class OrderService
             }
 
             $subtotal = (float) collect($validItems)->sum('price');
-            $requiresShipping = collect($validItems)->contains(fn ($item) => CartItem::requiresShipping($item->product_type ?? 'digital'));
+            $requiresShipping = collect($validItems)->contains(function ($item) {
+                $gallery = $item->photo?->gallery;
+                $productType = $item->product_type ?? 'digital';
+
+                return $gallery
+                    ? $gallery->getRequiresShippingForProductType($productType)
+                    : CartItem::requiresShipping($productType);
+            });
             $shippingFee = $requiresShipping ? (float) config('shop.shipping_fee_print', 0) : 0.0;
 
             // Garde-fou serveur : validation a normalement déjà bloqué mais on défend en profondeur
@@ -223,7 +230,11 @@ class OrderService
 
             $subtotal += $unitPrice * $quantity;
 
-            if (CartItem::requiresShipping($productType)) {
+            $itemRequiresShipping = $gallery
+                ? $gallery->getRequiresShippingForProductType($productType)
+                : CartItem::requiresShipping($productType);
+
+            if ($itemRequiresShipping) {
                 $requiresShipping = true;
             }
         }

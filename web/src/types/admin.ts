@@ -249,6 +249,7 @@ export interface GalleryProductTypeConfig {
     product_type: ProductType
     is_enabled: boolean
     price: number | null
+    requires_shipping?: boolean | null
     pack_tiers?: PackTier[]
 }
 
