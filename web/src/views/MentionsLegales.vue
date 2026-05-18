@@ -63,13 +63,13 @@
         </section>
 
         <section class="mb-6">
-            <h2 class="text-xl font-medium mb-2">6. Protection des donnees personnelles</h2>
+            <h2 class="text-xl font-medium mb-2">6. Protection des données personnelles</h2>
             <p class="mb-2">
-                Conformement au Reglement General sur la Protection des Donnees (RGPD), vous disposez de droits sur vos donnees personnelles
+                Conformement au Reglement General sur la Protection des Données (RGPD), vous disposez de droits sur vos données personnelles
                 (acces, rectification, effacement, portabilite, opposition).
             </p>
             <p>
-                Pour exercer ces droits ou pour toute question relative a vos donnees, contactez :
+                Pour exercer ces droits ou pour toute question relative a vos données, contactez :
                 <a href="mailto:oceanetorresphotographie@gmail.com" class="text-gold hover:underline">
                     oceanetorresphotographie@gmail.com
                 </a>

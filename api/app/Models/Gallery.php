@@ -24,6 +24,7 @@ class Gallery extends Model
         'type',
         'access_token',
         'share_code',
+        'sms_template',
         'last_viewed_at',
         'views_count',
         'event_category_id',
@@ -231,6 +232,19 @@ class Gallery extends Model
     public function getPriceForProductType(string $productType): ?float
     {
         return app(\App\Services\PricingService::class)->getPriceForProductType($this, $productType);
+    }
+
+    /**
+     * Resolve whether a product type triggers shipping for this gallery.
+     * Per-gallery override on GalleryProductType takes precedence; fallback to static rule.
+     */
+    public function getRequiresShippingForProductType(string $productType): bool
+    {
+        $gpt = $this->galleryProductTypes->firstWhere('product_type', $productType);
+
+        return $gpt
+            ? $gpt->effectiveRequiresShipping()
+            : CartItem::requiresShipping($productType);
     }
 
     /**

@@ -118,7 +118,7 @@
                     <tr>
                         <td style="background-color: #f5f5f5; padding: 25px 40px; text-align: center; border-top: 1px solid #e0e0e0;">
                             <p style="margin: 0; color: #999999; font-size: 12px;">
-                                Cette demande a ete envoyee depuis le formulaire de reservation du site<br>
+                                Cette demande a été envoyée depuis le formulaire de reservation du site<br>
                                 <a href="https://oceanetorresphotographie.fr" style="color: #D4AF37; text-decoration: none;">oceanetorresphotographie.fr</a>
                             </p>
                         </td>

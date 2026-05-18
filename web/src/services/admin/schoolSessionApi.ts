@@ -7,6 +7,7 @@ import type {
     SchoolSessionExport,
     SchoolSessionFormData,
     SchoolSessionGallery,
+    SchoolSessionUpdateData,
 } from '@/types/admin'
 
 class SchoolSessionApiService extends BaseAdminService {
@@ -25,6 +26,13 @@ class SchoolSessionApiService extends BaseAdminService {
     async createSchoolSession(data: SchoolSessionFormData): Promise<AdminApiResponse<SchoolSession>> {
         return this.adminRequest<AdminApiResponse<SchoolSession>>('/admin/school-sessions', {
             method: 'POST',
+            body: JSON.stringify(data),
+        })
+    }
+
+    async updateSchoolSession(id: string, data: SchoolSessionUpdateData): Promise<AdminApiResponse<SchoolSession>> {
+        return this.adminRequest<AdminApiResponse<SchoolSession>>(`/admin/school-sessions/${id}`, {
+            method: 'PUT',
             body: JSON.stringify(data),
         })
     }
