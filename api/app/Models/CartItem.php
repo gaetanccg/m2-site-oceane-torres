@@ -92,4 +92,12 @@ class CartItem extends Model
     {
         return self::isPrintType($this->product_type);
     }
+
+    /**
+     * Tirages scolaires sont remis à l'école : pas d'envoi postal donc pas de frais ni d'adresse.
+     */
+    public static function requiresShipping(string $productType): bool
+    {
+        return self::isPrintType($productType) && $productType !== 'print_scolaire';
+    }
 }

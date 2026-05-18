@@ -356,9 +356,9 @@ class SchoolSessionController extends Controller
                 } else {
                     // SMS — keep content under ~160 chars, no accents (avoids unicode SMS billing)
                     $content = sprintf(
-                        'Bonjour, les photos de classe de %s sont disponibles ici : %s (code: %s). Oceane Torres',
+                        'Bonjour, les photos de classe de %s sont disponibles ici : https://oceanetorresphotographie.fr/gallery/%s  (code: %s). Oceane Torres',
                         $this->stripAccents($gallery->title),
-                        $directUrl,
+                        $gallery->share_code,
                         $gallery->share_code,
                     );
                     SendSchoolSessionSmsJob::dispatch($contact['phone'], $content);
