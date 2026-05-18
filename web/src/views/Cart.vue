@@ -184,7 +184,7 @@
                             </div>
 
                             <!-- Print notice -->
-                            <div v-if="cartStore.hasPrints" class="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                            <div v-if="cartStore.requiresShipping" class="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                                 <p class="text-xs text-amber-800">
                                     <strong>Tirages papier</strong> : votre commande contient des tirages qui seront préparés et expédiés par la photographe.
                                 </p>

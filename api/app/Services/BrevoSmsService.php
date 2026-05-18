@@ -12,10 +12,20 @@ class BrevoSmsService
     public function send(string $recipient, string $content): bool
     {
         $apiKey = config('services.brevo.api_key');
-        $sender = config('services.brevo.sms_sender', 'OceanePhoto');
+        $sender = trim((string) config('services.brevo.sms_sender', 'OceanePhoto'));
 
         if (! $apiKey) {
             Log::error('BrevoSmsService: BREVO_API_KEY not configured');
+
+            return false;
+        }
+
+        // Brevo requires alphanumeric sender ≤ 11 chars. Fail-fast to avoid wasted API calls and retries.
+        if (strlen($sender) > 11 || ! preg_match('/^[A-Za-z0-9]+$/', $sender)) {
+            Log::error('BrevoSmsService: invalid sender name', [
+                'sender' => $sender,
+                'length' => strlen($sender),
+            ]);
 
             return false;
         }
@@ -43,6 +53,7 @@ class BrevoSmsService
             if (! $response->successful()) {
                 Log::error('BrevoSmsService: send failed', [
                     'recipient' => $normalized,
+                    'sender' => $sender,
                     'status' => $response->status(),
                     'body' => $response->body(),
                 ]);
