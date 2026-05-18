@@ -102,6 +102,7 @@ export const adminApi = {
     getSchoolSessionOrders: schoolSessionApi.getSchoolSessionOrders.bind(schoolSessionApi),
     uploadZipChunk: schoolSessionApi.uploadZipChunk.bind(schoolSessionApi),
     processSchoolSession: schoolSessionApi.processSchoolSession.bind(schoolSessionApi),
+    retryFailedPhotos: schoolSessionApi.retryFailedPhotos.bind(schoolSessionApi),
     deleteSchoolSession: schoolSessionApi.deleteSchoolSession.bind(schoolSessionApi),
     sendSchoolSessionMessages: schoolSessionApi.sendSchoolSessionMessages.bind(schoolSessionApi),
     closeSchoolSession: schoolSessionApi.closeSchoolSession.bind(schoolSessionApi),
