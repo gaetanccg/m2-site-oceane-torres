@@ -66,11 +66,11 @@ class OrderService
             }
 
             $subtotal = (float) collect($validItems)->sum('price');
-            $hasPrints = collect($validItems)->contains(fn ($item) => CartItem::isPrintType($item->product_type ?? 'digital'));
-            $shippingFee = $hasPrints ? (float) config('shop.shipping_fee_print', 0) : 0.0;
+            $requiresShipping = collect($validItems)->contains(fn ($item) => CartItem::requiresShipping($item->product_type ?? 'digital'));
+            $shippingFee = $requiresShipping ? (float) config('shop.shipping_fee_print', 0) : 0.0;
 
             // Garde-fou serveur : validation a normalement déjà bloqué mais on défend en profondeur
-            if ($hasPrints && empty($shippingData['shipping_address_line1'])) {
+            if ($requiresShipping && empty($shippingData['shipping_address_line1'])) {
                 throw new BusinessException('Adresse de livraison manquante pour une commande avec tirages.', 422);
             }
 
@@ -80,12 +80,12 @@ class OrderService
                 'guest_email' => $guestEmail ?? $cart->guest_email,
                 'guest_first_name' => $guestFirstName,
                 'guest_last_name' => $guestLastName,
-                'shipping_phone' => $hasPrints ? ($shippingData['shipping_phone'] ?? null) : null,
-                'shipping_address_line1' => $hasPrints ? ($shippingData['shipping_address_line1'] ?? null) : null,
-                'shipping_address_line2' => $hasPrints ? ($shippingData['shipping_address_line2'] ?? null) : null,
-                'shipping_postal_code' => $hasPrints ? ($shippingData['shipping_postal_code'] ?? null) : null,
-                'shipping_city' => $hasPrints ? ($shippingData['shipping_city'] ?? null) : null,
-                'shipping_country' => $hasPrints ? ($shippingData['shipping_country'] ?? 'FR') : null,
+                'shipping_phone' => $requiresShipping ? ($shippingData['shipping_phone'] ?? null) : null,
+                'shipping_address_line1' => $requiresShipping ? ($shippingData['shipping_address_line1'] ?? null) : null,
+                'shipping_address_line2' => $requiresShipping ? ($shippingData['shipping_address_line2'] ?? null) : null,
+                'shipping_postal_code' => $requiresShipping ? ($shippingData['shipping_postal_code'] ?? null) : null,
+                'shipping_city' => $requiresShipping ? ($shippingData['shipping_city'] ?? null) : null,
+                'shipping_country' => $requiresShipping ? ($shippingData['shipping_country'] ?? 'FR') : null,
                 'subtotal' => $subtotal,
                 'shipping_fee' => $shippingFee,
                 'total' => $subtotal + $shippingFee,
@@ -109,7 +109,7 @@ class OrderService
                 ]);
             }
 
-            if ($hasPrints) {
+            if ($requiresShipping) {
                 $this->persistShippingAddressOnUser($user, $shippingData);
             }
 
@@ -209,7 +209,7 @@ class OrderService
         $cartService = app(CartService::class);
         $packGroups = $cartService->buildPackGroups($cart);
         $subtotal = 0;
-        $hasPrints = false;
+        $requiresShipping = false;
 
         foreach ($packGroups as $group) {
             $first = $group['items']->first();
@@ -223,12 +223,12 @@ class OrderService
 
             $subtotal += $unitPrice * $quantity;
 
-            if (CartItem::isPrintType($productType)) {
-                $hasPrints = true;
+            if (CartItem::requiresShipping($productType)) {
+                $requiresShipping = true;
             }
         }
 
-        $shippingFee = $hasPrints ? (float) config('shop.shipping_fee_print', 0) : 0.0;
+        $shippingFee = $requiresShipping ? (float) config('shop.shipping_fee_print', 0) : 0.0;
 
         return $subtotal + $shippingFee;
     }

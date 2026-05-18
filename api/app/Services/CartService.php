@@ -360,7 +360,8 @@ class CartService
 
         $subtotal = (float) $items->sum('line_total');
         $hasPrints = $items->contains('is_print', true);
-        $shippingFee = $hasPrints ? (float) config('shop.shipping_fee_print', 0) : 0.0;
+        $requiresShipping = $items->contains(fn ($item) => CartItem::requiresShipping($item['product_type']));
+        $shippingFee = $requiresShipping ? (float) config('shop.shipping_fee_print', 0) : 0.0;
 
         return [
             'id' => $cart->id,
@@ -370,6 +371,7 @@ class CartService
             'shipping_fee' => $shippingFee,
             'total' => $subtotal + $shippingFee,
             'has_prints' => $hasPrints,
+            'requires_shipping' => $requiresShipping,
             'has_pack_pricing' => $totalSavings > 0,
             'pack_savings' => $totalSavings,
             'currency' => 'EUR',
