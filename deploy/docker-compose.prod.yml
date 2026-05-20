@@ -20,6 +20,12 @@ services:
       - 8.8.8.8
       - 8.8.4.4
       - 1.1.1.1
+    # P3.2 — Bypass du tunnel Cloudflare pour rejoindre MinIO sur le host.
+    # MinIO tourne dans un docker-compose séparé sur le NAS et publie les ports 9000/9001.
+    # `host.docker.internal:host-gateway` mappe le hostname vers la gateway du host,
+    # permettant à Laravel d'accéder à MinIO en local sans passer par Cloudflare.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./api:/var/www
       - ./deploy/docker/php.ini:/usr/local/etc/php/conf.d/custom.ini
@@ -68,6 +74,9 @@ services:
       - 8.8.8.8
       - 8.8.4.4
       - 1.1.1.1
+    # P3.2 — Voir laravel service pour le détail.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./api:/var/www
       - ./deploy/docker/php.ini:/usr/local/etc/php/conf.d/custom.ini
@@ -105,6 +114,9 @@ services:
       - 8.8.8.8
       - 8.8.4.4
       - 1.1.1.1
+    # P3.2 — Voir laravel service pour le détail.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./api:/var/www
       - ./deploy/docker/php.ini:/usr/local/etc/php/conf.d/custom.ini

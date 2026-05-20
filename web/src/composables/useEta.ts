@@ -7,7 +7,7 @@ interface DataPoint {
 
 const WINDOW_MS = 30_000    // sliding window: 30 seconds
 const MIN_POINTS = 2        // minimum data points before showing ETA
-const MIN_ELAPSED_MS = 3000 // don't show ETA before 3s of data
+const MIN_ELAPSED_MS = 1500 // don't show ETA before 1.5s of data (audit P4.2 lite — was 3s, but batches typically finish in <60s)
 
 export interface UseEtaReturn {
     /** Formatted ETA string: "~3 min", "~1h 20min", "< 1 min", null if not enough data */
@@ -77,7 +77,10 @@ export function useEta(): UseEtaReturn {
 function formatDuration(ms: number): string {
     const seconds = Math.ceil(ms / 1000)
 
-    if (seconds < 60) return '< 1 min'
+    // Audit P4.2 — for short durations (typical batch < 1 min after sync pivot + Imagick),
+    // show seconds precisely. "< 1 min" was too vague when most batches finish in 15-50s.
+    if (seconds <= 5) return '~quelques secondes'
+    if (seconds < 60) return `~${seconds} s`
 
     const minutes = Math.floor(seconds / 60)
     const hours = Math.floor(minutes / 60)

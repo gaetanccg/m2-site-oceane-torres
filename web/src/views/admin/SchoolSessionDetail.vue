@@ -1092,26 +1092,37 @@ function stopExportPolling() {
     }
 }
 
-function downloadExport() {
+async function downloadExport() {
     if (!latestExport.value) return
     const url = adminApi.getSchoolSessionExportDownloadUrl(latestExport.value.id)
-    // Open download in a new tab using the auth token via a temporary link
-    // The fetch + blob approach to inject auth headers
     const token = localStorage.getItem('auth_token')
-    fetch(url, { headers: token ? { 'Authorization': `Bearer ${token}` } : {} })
-        .then(res => {
-            if (!res.ok) throw new Error('Download failed')
-            return res.blob()
-        })
-        .then(blob => {
-            const blobUrl = URL.createObjectURL(blob)
-            const a = document.createElement('a')
-            a.href = blobUrl
-            a.download = session.value ? `${session.value.title.replace(/\s+/g, '_')}_commandes.zip` : 'export.zip'
-            a.click()
-            URL.revokeObjectURL(blobUrl)
-        })
-        .catch(() => toast.error('Erreur', 'Impossible de télécharger le ZIP'))
+
+    try {
+        const res = await fetch(url, { headers: token ? { 'Authorization': `Bearer ${token}` } : {} })
+
+        if (!res.ok) {
+            // Le backend a marqué l'export comme `failed` si le fichier n'est plus disponible
+            // (410 Gone, cf. SchoolSessionController::downloadExport). On rafraîchit l'état
+            // pour que le bouton "Réessayer" apparaisse naturellement.
+            if (res.status === 410) {
+                await fetchLatestExport()
+                toast.error("Fichier expiré", "Le ZIP n'est plus disponible. Cliquez sur « Réessayer » pour le régénérer.")
+            } else {
+                toast.error('Erreur', 'Impossible de télécharger le ZIP')
+            }
+            return
+        }
+
+        const blob = await res.blob()
+        const blobUrl = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = blobUrl
+        a.download = session.value ? `${session.value.title.replace(/\s+/g, '_')}_commandes.zip` : 'export.zip'
+        a.click()
+        URL.revokeObjectURL(blobUrl)
+    } catch {
+        toast.error('Erreur', 'Impossible de télécharger le ZIP')
+    }
 }
 
 function formatFileSize(bytes: number): string {

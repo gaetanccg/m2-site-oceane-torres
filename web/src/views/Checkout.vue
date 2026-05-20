@@ -412,7 +412,6 @@ function validateShipping(): boolean {
     return Object.keys(errors).length === 0
 }
 
-// Pré-remplissage depuis le profil user authentifié
 function fillShippingFromUser(): void {
     const u = authStore.user
     if (!u) return
@@ -434,7 +433,6 @@ watch(
     {immediate: true}
 )
 
-// Load SumUp SDK
 function loadSumUpSDK(): Promise<void> {
     return new Promise((resolve, reject) => {
         if (window.SumUpCard) {
@@ -451,7 +449,6 @@ function loadSumUpSDK(): Promise<void> {
     })
 }
 
-// Initialize the payment widget
 async function initPaymentWidget() {
     if (!checkoutId.value) return
 
@@ -560,7 +557,7 @@ async function pollPaymentStatus(attempts = 0) {
     if (isUnmounted || !currentOrder.value) return
 
     if (attempts >= 10) {
-        // Redirect to order page — do NOT clear cart (payment may have failed)
+        // Redirect mais NE PAS clear le cart : le paiement peut avoir failed.
         isPaymentProcessing.value = false
         toast.info('Vérification en cours', 'Redirection vers votre commande...')
         router.push(`/commande/${currentOrder.value.id}`)
@@ -575,8 +572,7 @@ async function pollPaymentStatus(attempts = 0) {
             await cartStore.clearCart()
             router.push(`/commande/${currentOrder.value.id}`)
         } else {
-            // Continue polling — status may be 'failed' temporarily
-            // if a previous attempt failed but a retry is in progress
+            // On continue : un 'failed' transitoire est possible le temps qu'un retry passe.
             pollTimeoutId = setTimeout(() => pollPaymentStatus(attempts + 1), 2000)
         }
     } catch {
@@ -585,7 +581,6 @@ async function pollPaymentStatus(attempts = 0) {
     }
 }
 
-// Create order and show payment widget
 async function createOrder() {
     if (isProcessing.value) return
     if (!authStore.isAuthenticated && !form.email) {
@@ -648,6 +643,17 @@ async function createOrder() {
             throw new Error('Erreur lors de la creation de la commande')
         }
 
+        // Garde-fou critique : si le total renvoyé par le serveur diffère du panier affiché
+        // (cart modifié dans un autre onglet entre le refresh et le POST), on refuse de monter
+        // le widget — sinon l'utilisateur verrait un montant et serait facturé d'un autre.
+        if (Math.abs(orderResponse.order.total - cartStore.total) > 0.01) {
+            cartApi.cancelCheckout(orderResponse.order.id).catch(() => { /* best-effort */ })
+            await cartStore.refresh()
+            error.value = "Votre panier a été modifié pendant la création de la commande. Vérifiez les montants puis recliquez sur « Continuer »."
+            toast.error('Panier modifié', "Vérifiez les montants puis recliquez sur « Continuer ».")
+            return
+        }
+
         currentOrder.value = {
             id: orderResponse.order.id,
             order_number: orderResponse.order.order_number,
@@ -655,12 +661,10 @@ async function createOrder() {
         }
         checkoutId.value = orderResponse.payment.checkout_id
 
-        // Rafraîchir le user pour récupérer l'adresse tout juste sauvegardée
         if (authStore.isAuthenticated && cartStore.requiresShipping) {
             authStore.fetchUser().catch(() => {})
         }
 
-        // Show payment widget and wait for DOM update
         showPaymentWidget.value = true
         await nextTick()
         initPaymentWidget()
@@ -674,7 +678,6 @@ async function createOrder() {
     }
 }
 
-// Reset to info form and cancel existing checkout
 async function resetPayment() {
     if (sumupWidget) {
         sumupWidget.unmount()
@@ -685,12 +688,11 @@ async function resetPayment() {
         authStuckTimerId = null
     }
 
-    // Cancel the SumUp checkout on the backend
     if (currentOrder.value) {
         try {
             await cartApi.cancelCheckout(currentOrder.value.id)
         } catch {
-            // Best-effort: don't block the UI
+            // best-effort
         }
     }
 

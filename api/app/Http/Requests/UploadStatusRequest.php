@@ -15,6 +15,7 @@ class UploadStatusRequest extends FormRequest
     {
         return [
             'batch_id' => ['required', 'string'],
+            'include_uploads' => ['nullable', 'boolean'],
         ];
     }
 }

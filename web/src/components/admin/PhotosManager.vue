@@ -32,11 +32,13 @@
 
             <!-- Upload Progress -->
             <UploadProgress
-                v-if="isUploading || (uploadProgress && !uploadProgress.isComplete)"
+                v-if="isUploading || uploadProgress"
                 :progress="uploadProgress"
                 :show-file-list="true"
                 :show-cancel-button="true"
+                :show-retry-button="true"
                 @cancel="handleCancelUpload"
+                @retry="handleRetryFailed"
             />
 
             <!-- Loading State for Photos -->
@@ -170,9 +172,11 @@
                     @click="selectionMode ? togglePhotoSelection(photo.id) : openLightbox(index)"
                 >
                     <img
-                        :src="photo.preview_url || photo.display_url || photo.file_path"
+                        :src="photo.thumbnail_url || photo.preview_url || photo.file_path"
                         :alt="photo.title"
                         class="w-full h-full object-cover"
+                        loading="lazy"
+                        decoding="async"
                     />
 
                     <!-- Selection checkbox -->
@@ -404,9 +408,7 @@ const props = withDefaults(defineProps<{
     galleryId: string | null
     galleryTitle: string
     isEventGallery?: boolean
-    /** Hide the upload zone (e.g. parent event galleries) */
     hideUpload?: boolean
-    /** Current thumbnail photo id (event galleries) */
     thumbnailPhotoId?: string | null
 }>(), {
     isEventGallery: false,
@@ -422,13 +424,11 @@ const emit = defineEmits<{
 
 const toast = useToast()
 
-// Visibility v-model
 const visible = computed({
     get: () => props.modelValue,
     set: (v: boolean) => emit('update:modelValue', v),
 })
 
-// Upload
 const {
     isUploading,
     progress: uploadProgress,
@@ -440,28 +440,23 @@ const {
 const fileInput = ref<HTMLInputElement | null>(null)
 const isDragging = ref(false)
 
-// Photos state
 const galleryPhotos = ref<AdminPhoto[]>([])
 const isLoadingPhotos = ref(false)
 const photoFilter = ref<'all' | 'liked' | 'downloadable'>('all')
 
-// Selection
 const selectionMode = ref(false)
 const selectedPhotos = ref<string[]>([])
 const isBulkProcessing = ref(false)
 const showBulkDeleteModal = ref(false)
 const bulkDeleteConfirmInput = ref('')
 
-// Single photo delete
 const showDeletePhotoModal = ref(false)
 const photoToDelete = ref<AdminPhoto | null>(null)
 const isDeletingPhoto = ref(false)
 
-// Lightbox
 const lightboxOpen = ref(false)
 const lightboxIndex = ref(0)
 
-// Computed
 const likedPhotos = computed(() => galleryPhotos.value.filter(p => p.is_liked))
 const downloadablePhotos = computed(() => galleryPhotos.value.filter(p => p.is_downloadable))
 
@@ -477,7 +472,6 @@ const filteredPhotos = computed(() => {
     }
 })
 
-/** The photos currently displayed (filtered for client galleries, all for event galleries) */
 const displayedPhotos = computed(() => filteredPhotos.value)
 
 const currentLightboxPhoto = computed(() => displayedPhotos.value[lightboxIndex.value] || null)
@@ -486,7 +480,6 @@ const bulkDeleteConfirmMatches = computed(() => {
     return bulkDeleteConfirmInput.value.trim() === String(selectedPhotos.value.length)
 })
 
-// Load photos when modal opens
 watch(() => props.modelValue, async (open) => {
     if (open && props.galleryId) {
         galleryPhotos.value = []
@@ -508,14 +501,13 @@ watch(() => props.modelValue, async (open) => {
                 }
             }
         } catch {
-            // Failed to load photos
+            // ignore
         } finally {
             isLoadingPhotos.value = false
         }
     }
 })
 
-// Upload functions
 function triggerFileInput() {
     fileInput.value?.click()
 }
@@ -535,28 +527,40 @@ function handleFileSelect(event: Event) {
 async function uploadPhotos(files: File[]) {
     if (!props.galleryId || files.length === 0) return
 
+    let hadFailures = false
     try {
         const uploadOptions = props.isEventGallery ? {} : {endpoint: 'galleries' as const}
         const result = await chunkedUpload(props.galleryId, files, uploadOptions)
+        hadFailures = result.failed > 0
 
-        if (props.isEventGallery) {
-            if (result.completed > 0) {
-                await refreshPhotos()
-            }
-        } else {
-            // Reload photos after upload
+        if (result.completed > 0) {
             await refreshPhotos()
-            toast.success('Photos ajoutées', `${files.length} photo(s) uploadée(s)`)
+        }
+
+        if (!props.isEventGallery && result.completed > 0) {
+            toast.success('Photos ajoutées', `${result.completed} photo(s) uploadée(s)`)
+        }
+        if (hadFailures) {
+            toast.error('Échecs partiels', `${result.failed} photo(s) n'ont pas pu être uploadées — utilise « Réessayer ».`)
         }
     } catch {
+        hadFailures = true
         toast.error('Erreur', 'Échec de l\'upload')
     } finally {
-        setTimeout(() => {
-            resetUpload()
-        }, 2000)
+        // En cas d'échecs : on garde le panneau visible pour le bouton « Réessayer ».
+        if (!hadFailures) {
+            setTimeout(() => {
+                resetUpload()
+            }, 2000)
+        }
     }
 
     emit('photos-changed')
+}
+
+async function handleRetryFailed(files: File[]) {
+    if (files.length === 0) return
+    await uploadPhotos(files)
 }
 
 async function refreshPhotos() {
@@ -584,7 +588,6 @@ function handleCancelUpload() {
     resetUpload()
 }
 
-// Downloadable toggle (client galleries)
 async function toggleDownloadable(photo: AdminPhoto) {
     try {
         const response = await adminApi.togglePhotoDownloadable(photo.id)
@@ -613,7 +616,6 @@ async function makeAllLikedDownloadable() {
     toast.success(`${count} photo(s) rendues téléchargeables`)
 }
 
-// Thumbnail (event galleries)
 async function setAsThumbnail(photoId: string) {
     if (!props.galleryId) return
 
@@ -629,7 +631,6 @@ async function setAsThumbnail(photoId: string) {
     }
 }
 
-// Delete single photo
 function confirmDeletePhoto(photoId: string) {
     photoToDelete.value = galleryPhotos.value.find(p => p.id === photoId) || null
     showDeletePhotoModal.value = true
@@ -653,7 +654,6 @@ async function deletePhoto() {
     }
 }
 
-// Selection mode
 function toggleSelectionMode() {
     selectionMode.value = !selectionMode.value
     if (!selectionMode.value) {
@@ -683,7 +683,6 @@ function openLightbox(index: number) {
     lightboxOpen.value = true
 }
 
-// Bulk actions
 async function bulkSetDownloadable(downloadable: boolean) {
     if (selectedPhotos.value.length === 0) return
     isBulkProcessing.value = true

@@ -272,32 +272,39 @@ class EventGalleryController extends Controller
         }
 
         $galleryId = $gallery->id;
+        // Capturer les IDs des sous-galeries AVANT le delete cascade.
+        $childIds = $gallery->children->pluck('id')->all();
 
-        try {
+        // Suppression DB d'abord (rapide). Le cleanup MinIO peut être très lent pour
+        // une galerie événement avec plusieurs sous-galeries × N photos chacune
+        // (>10 s via Cloudflare tunnel) — on le défère après envoi de la réponse pour
+        // éviter le timeout côté client.
+        $gallery->delete();
+        $this->clearEventGalleriesCache();
+
+        app()->terminating(function () use ($galleryId, $childIds) {
             $storageService = app(MinioStorageService::class);
 
-            foreach ($gallery->children as $child) {
+            foreach ($childIds as $childId) {
                 try {
-                    $storageService->deleteGalleryFolder($child->id);
+                    $storageService->deleteGalleryFolder($childId);
                 } catch (\Exception $e) {
                     \Log::warning('Failed to cleanup child gallery files from storage', [
-                        'child_gallery_id' => $child->id,
+                        'child_gallery_id' => $childId,
                         'error' => $e->getMessage(),
                     ]);
                 }
             }
 
-            $storageService->deleteGalleryFolder($galleryId);
-        } catch (\Exception $e) {
-            \Log::warning('Failed to cleanup event gallery files from storage', [
-                'gallery_id' => $galleryId,
-                'error' => $e->getMessage(),
-            ]);
-        }
-
-        $gallery->delete();
-
-        $this->clearEventGalleriesCache();
+            try {
+                $storageService->deleteGalleryFolder($galleryId);
+            } catch (\Exception $e) {
+                \Log::warning('Failed to cleanup event gallery files from storage', [
+                    'gallery_id' => $galleryId,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        });
 
         return response()->json([
             'message' => 'Galerie événement supprimée avec succès.',
