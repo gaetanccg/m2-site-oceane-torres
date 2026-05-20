@@ -249,26 +249,40 @@ class CartService
     {
         $userCart = $this->getOrCreateCart($user);
 
-        // Move items from guest cart to user cart
+        // Move items from guest cart to user cart, ADDITIONNANT les quantités si la même
+        // photo+type existe déjà dans les deux paniers. Avant ce fix, la quantité du panier
+        // invité était silencieusement perdue (champ non transféré au CartItem::create), et
+        // si l'item existait déjà côté user le guest était juste ignoré → impossible de
+        // retrouver les bonnes quantités après login.
         foreach ($guestCart->items as $item) {
-            // Check if same photo with same product type exists
-            $exists = $userCart->items()
+            $existing = $userCart->items()
                 ->where('photo_id', $item->photo_id)
                 ->where('product_type', $item->product_type ?? 'digital')
-                ->exists();
+                ->first();
 
-            if (! $exists) {
+            $guestQuantity = (int) ($item->quantity ?? 1);
+
+            if ($existing) {
+                $existing->update([
+                    'quantity' => (int) $existing->quantity + $guestQuantity,
+                ]);
+            } else {
                 CartItem::create([
                     'cart_id' => $userCart->id,
                     'photo_id' => $item->photo_id,
                     'product_type' => $item->product_type ?? 'digital',
                     'price' => $item->price,
+                    'quantity' => $guestQuantity,
                 ]);
             }
         }
 
         // Mark guest cart as expired
         $guestCart->markAsExpired();
+
+        // Recalcule les prix de palier après merge (quantités cumulées ont pu changer).
+        $userCart->refresh()->load('items.photo.gallery.galleryProductTypes.packTiers');
+        $this->recalculatePackPrices($userCart);
 
         return $userCart->load('items.photo');
     }
