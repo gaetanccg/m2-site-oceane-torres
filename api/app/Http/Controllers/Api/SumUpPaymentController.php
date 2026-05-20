@@ -281,7 +281,12 @@ class SumUpPaymentController extends Controller
     }
 
     /**
-     * Cancel/deactivate a SumUp checkout for an order
+     * Cancel a checkout for an order : deactivate SumUp side AND mark the order as expired.
+     *
+     * Cela évite que la commande pending soit réutilisée par `findReusablePendingOrder`
+     * quand l'utilisateur quitte la page de paiement ou retourne au formulaire « Modifier
+     * mes informations ». Chaque nouvelle tentative de paiement repart donc d'une commande
+     * fraîche, alignée sur l'état actuel du panier (et de l'utilisateur connecté).
      */
     public function cancelCheckout(OrderIdRequest $request): JsonResponse
     {
@@ -290,15 +295,30 @@ class SumUpPaymentController extends Controller
         try {
             $order = Order::findOrFail($validated['order_id']);
 
-            if (! $order->isPending() || ! $order->sumup_checkout_id) {
+            if (! $order->isPending()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Pas de checkout actif pour cette commande.',
+                    'message' => "Cette commande n'est plus en attente de paiement.",
                 ], 400);
             }
 
-            $this->sumUpService->deactivateCheckout($order->sumup_checkout_id);
-            $order->update(['sumup_checkout_id' => null]);
+            if ($order->sumup_checkout_id) {
+                try {
+                    $this->sumUpService->deactivateCheckout($order->sumup_checkout_id);
+                } catch (\Exception $e) {
+                    // SumUp peut renvoyer une erreur si le checkout est déjà désactivé.
+                    // On log et on continue — l'objectif principal est de fermer l'ordre côté DB.
+                    Log::warning('SumUp deactivateCheckout failed (continuing with order expiration)', [
+                        'order_id' => $order->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
+            $order->update([
+                'sumup_checkout_id' => null,
+                'status' => 'expired',
+            ]);
 
             return response()->json(['success' => true]);
         } catch (\Exception $e) {
