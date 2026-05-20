@@ -380,6 +380,7 @@ export interface AdminOrderItem {
     photo_title: string | null
     gallery_title: string | null
     price: number
+    quantity: number
     is_downloaded: boolean
     display_url?: string
     preview_url?: string
