@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Gallery;
 use App\Models\Photo;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class CleanOrphanFiles extends Command
@@ -69,8 +70,10 @@ class CleanOrphanFiles extends Command
         $orphanGalleryFiles = []; // all files in orphan galleries
         $totalOrphanSize = 0;
 
-        // Non-gallery folders to ignore (invoices, etc.)
-        $ignoredPrefixes = ['invoices'];
+        // Top-level MinIO folders qui ne sont PAS des galeries — ne jamais les flagger comme orphelins.
+        // - invoices/        : PDFs de factures (cf. InvoiceService)
+        // - school-sessions/ : photos partagées entre commandes photo scolaire (cf. SchoolSessionService)
+        $ignoredPrefixes = ['invoices', 'school-sessions'];
 
         foreach ($files as $file) {
             // Extract gallery ID (first path segment)
@@ -88,7 +91,7 @@ class CleanOrphanFiles extends Command
                 try {
                     $totalOrphanSize += $disk->size($file);
                 } catch (\Exception $e) {
-                    //
+                    Log::warning('CleanOrphanFiles: could not read file size', ['path' => $file, 'error' => $e->getMessage()]);
                 }
             } elseif (! $referencedPaths->has($file)) {
                 // File is in an existing gallery but not referenced by any photo
@@ -96,7 +99,7 @@ class CleanOrphanFiles extends Command
                 try {
                     $totalOrphanSize += $disk->size($file);
                 } catch (\Exception $e) {
-                    //
+                    Log::warning('CleanOrphanFiles: could not read file size', ['path' => $file, 'error' => $e->getMessage()]);
                 }
             }
         }
@@ -173,7 +176,7 @@ class CleanOrphanFiles extends Command
                     try {
                         $disk->deleteDirectory($galleryId);
                     } catch (\Exception $e) {
-                        //
+                        Log::warning('CleanOrphanFiles: could not delete empty directory', ['gallery_id' => $galleryId, 'error' => $e->getMessage()]);
                     }
                 }
                 $this->info('Cleaned up '.count($orphanGalleries).' empty gallery directories.');

@@ -1,12 +1,3 @@
-/**
- * Chunked Upload Service
- * Orchestrates large batch uploads with progress tracking, retry, and polling.
- *
- * Internal modules:
- *   upload/uploadUtils.ts   — pure functions (buildChunks, buildProgress)
- *   upload/chunkUploader.ts — XHR upload with progress and retry
- */
-
 import { API_CONFIG, UPLOAD_CONFIG } from '@/config/constants'
 import { buildChunks, buildProgress, findFileState, generateBatchId } from './upload/uploadUtils'
 import { uploadChunkWithRetry } from './upload/chunkUploader'
@@ -45,9 +36,6 @@ export class ChunkedUploadService {
         }
     }
 
-    /**
-     * Upload files in chunks with real progress tracking and parallel uploads
-     */
     async uploadChunked(
         galleryId: string,
         files: File[],
@@ -70,7 +58,6 @@ export class ChunkedUploadService {
 
         const batchId = generateBatchId()
 
-        // Initialize file states
         const fileStates: Map<string, FileUploadState> = new Map()
         files.forEach((file, index) => {
             const id = `local_${index}`
@@ -89,13 +76,11 @@ export class ChunkedUploadService {
         const uploadedIds: Set<string> = new Set()
 
         try {
-            // Upload chunks in parallel batches
             for (let batchIndex = 0; batchIndex < chunks.length; batchIndex += concurrentChunks) {
                 if (this.isCancelled) break
 
                 const parallelChunks = chunks.slice(batchIndex, batchIndex + concurrentChunks)
 
-                // Mark files as uploading
                 parallelChunks.forEach((chunk) => {
                     chunk.forEach((file) => {
                         const state = findFileState(fileStates, file.name)
@@ -107,7 +92,6 @@ export class ChunkedUploadService {
                 })
                 this.notifyProgress(fileStates, callbacks)
 
-                // Upload all chunks in parallel
                 const uploadPromises = parallelChunks.map((chunk) =>
                     uploadChunkWithRetry(
                         this.uploaderConfig,
@@ -140,25 +124,38 @@ export class ChunkedUploadService {
 
                 const responses = await Promise.all(uploadPromises)
 
-                // Update file states with server IDs
+                // Sync pivot : le serveur renvoie déjà `completed` → on fait confiance au statut
+                // (sinon le compteur completed reste à 0 et casse l'ETA et la barre de progression).
                 responses.forEach((response) => {
                     if (response) {
                         response.uploads.forEach((upload) => {
                             const state = findFileState(fileStates, upload.original_filename)
-                            if (state) {
-                                state.id = upload.id
-                                state.status = upload.status === 'failed' ? 'failed' : 'processing'
-                                state.progress = upload.status === 'failed' ? 100 : 50
-                                state.errorMessage = upload.error_message
-                                uploadedIds.add(upload.id)
+                            if (!state) return
+
+                            const previousStatus = state.status
+                            state.id = upload.id
+                            state.status = upload.status
+                            state.errorMessage = upload.error_message
+                            state.photoId = upload.photo_id
+
+                            if (upload.status === 'completed') {
+                                state.progress = 100
+                                if (previousStatus !== 'completed') callbacks.onFileComplete?.(state)
+                            } else if (upload.status === 'failed') {
+                                state.progress = 100
+                                if (previousStatus !== 'failed') callbacks.onFileError?.(state, upload.error_message || 'Unknown error')
+                            } else {
+                                // pending/processing : le polling finalisera.
+                                state.progress = 50
                             }
+
+                            uploadedIds.add(upload.id)
                         })
                     }
                 })
                 this.notifyProgress(fileStates, callbacks)
             }
 
-            // Poll for processing completion
             if (!this.isCancelled && uploadedIds.size > 0) {
                 await this.pollUntilComplete(batchId, fileStates, callbacks, pollInterval)
             }
@@ -185,37 +182,40 @@ export class ChunkedUploadService {
         callbacks: UploadCallbacks,
         pollInterval: number
     ): Promise<void> {
+        // Gros batches : on skip la liste per-file pendant le polling (payload). Les compteurs
+        // agrégés suffisent pour la barre de progression ; le détail per-file arrive en un seul
+        // fetch final quand `is_complete`.
+        const LARGE_BATCH_THRESHOLD = 50
+        const useLightPolling = fileStates.size > LARGE_BATCH_THRESHOLD
+
         return new Promise((resolve, reject) => {
             const poll = async () => {
                 if (this.isCancelled) { resolve(); return }
 
                 try {
-                    const status = await this.fetchBatchStatus(batchId)
+                    const status = await this.fetchBatchStatus(batchId, !useLightPolling)
 
-                    if (status.found && status.uploads) {
-                        status.uploads.forEach((upload) => {
-                            const state = Array.from(fileStates.values()).find((s) => s.id === upload.id)
-                            if (state) {
-                                const previousStatus = state.status
-                                state.status = upload.status
-                                state.errorMessage = upload.error_message
-                                state.photoId = upload.photo_id
-
-                                if (upload.status === 'completed') {
-                                    state.progress = 100
-                                    if (previousStatus !== 'completed') callbacks.onFileComplete?.(state)
-                                } else if (upload.status === 'failed') {
-                                    state.progress = 100
-                                    if (previousStatus !== 'failed') callbacks.onFileError?.(state, upload.error_message || 'Unknown error')
-                                } else if (upload.status === 'processing') {
-                                    if (state.progress < 90) state.progress = Math.min(90, state.progress + 5)
-                                }
-                            }
-                        })
+                    if (status.found) {
+                        if (status.uploads) {
+                            this.applyUploadDetails(fileStates, status.uploads, callbacks)
+                        } else if (useLightPolling) {
+                            this.nudgeProcessingStates(fileStates)
+                        }
 
                         this.notifyProgress(fileStates, callbacks)
 
                         if (status.is_complete) {
+                            if (useLightPolling) {
+                                try {
+                                    const finalStatus = await this.fetchBatchStatus(batchId, true)
+                                    if (finalStatus.uploads) {
+                                        this.applyUploadDetails(fileStates, finalStatus.uploads, callbacks)
+                                        this.notifyProgress(fileStates, callbacks)
+                                    }
+                                } catch {
+                                    // ignore
+                                }
+                            }
                             callbacks.onBatchComplete?.(buildProgress(fileStates))
                             resolve()
                             return
@@ -233,7 +233,42 @@ export class ChunkedUploadService {
         })
     }
 
-    private async fetchBatchStatus(batchId: string): Promise<BatchUploadStatus> {
+    private applyUploadDetails(
+        fileStates: Map<string, FileUploadState>,
+        uploads: NonNullable<BatchUploadStatus['uploads']>,
+        callbacks: UploadCallbacks
+    ): void {
+        uploads.forEach((upload) => {
+            const state = Array.from(fileStates.values()).find((s) => s.id === upload.id)
+            if (!state) return
+
+            const previousStatus = state.status
+            state.status = upload.status
+            state.errorMessage = upload.error_message
+            state.photoId = upload.photo_id
+
+            if (upload.status === 'completed') {
+                state.progress = 100
+                if (previousStatus !== 'completed') callbacks.onFileComplete?.(state)
+            } else if (upload.status === 'failed') {
+                state.progress = 100
+                if (previousStatus !== 'failed') callbacks.onFileError?.(state, upload.error_message || 'Unknown error')
+            } else if (upload.status === 'processing') {
+                if (state.progress < 90) state.progress = Math.min(90, state.progress + 5)
+            }
+        })
+    }
+
+    private nudgeProcessingStates(fileStates: Map<string, FileUploadState>): void {
+        for (const state of fileStates.values()) {
+            if (state.status === 'uploading' || state.status === 'processing') {
+                state.status = 'processing'
+                if (state.progress < 90) state.progress = Math.min(90, state.progress + 2)
+            }
+        }
+    }
+
+    private async fetchBatchStatus(batchId: string, includeUploads = true): Promise<BatchUploadStatus> {
         const token = this.getToken()
         const headers: Record<string, string> = {
             Accept: 'application/json',
@@ -241,8 +276,12 @@ export class ChunkedUploadService {
         }
         if (token) headers['Authorization'] = `Bearer ${token}`
 
+        // Laravel `boolean` rule accepte "0"/"1"/true/false mais pas "true"/"false".
+        const params = new URLSearchParams({ batch_id: batchId })
+        if (!includeUploads) params.set('include_uploads', '0')
+
         const response = await fetch(
-            `${this.baseUrl}/admin/upload-status?batch_id=${encodeURIComponent(batchId)}`,
+            `${this.baseUrl}/admin/upload-status?${params.toString()}`,
             { headers, credentials: 'include' }
         )
 

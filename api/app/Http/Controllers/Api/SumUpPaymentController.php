@@ -18,9 +18,6 @@ class SumUpPaymentController extends Controller
         private OrderService $orderService,
     ) {}
 
-    /**
-     * Verify payment status (polling endpoint for frontend)
-     */
     public function verifyPayment(OrderIdRequest $request): JsonResponse
     {
         $validated = $request->validated();
@@ -48,7 +45,6 @@ class SumUpPaymentController extends Controller
                 ]);
             }
 
-            // Verify with SumUp
             $order = $this->orderService->verifyAndUpdateOrder($order->sumup_checkout_id);
 
             return response()->json([
@@ -186,12 +182,10 @@ class SumUpPaymentController extends Controller
                 return response()->json(['received' => true]);
             }
 
-            // Already paid — idempotent
             if ($order->isPaid()) {
                 return response()->json(['received' => true]);
             }
 
-            // Verify actual status with SumUp API (never trust the payload)
             $checkout = $this->sumUpService->getCheckout($checkoutId);
             $verifiedStatus = $checkout['status'] ?? null;
             $transactionId = $checkout['transaction_id'] ?? null;
@@ -223,14 +217,6 @@ class SumUpPaymentController extends Controller
         }
     }
 
-    /**
-     * Cancel a checkout for an order : deactivate SumUp side AND mark the order as expired.
-     *
-     * Cela évite que la commande pending soit réutilisée par `findReusablePendingOrder`
-     * quand l'utilisateur quitte la page de paiement ou retourne au formulaire « Modifier
-     * mes informations ». Chaque nouvelle tentative de paiement repart donc d'une commande
-     * fraîche, alignée sur l'état actuel du panier (et de l'utilisateur connecté).
-     */
     public function cancelCheckout(OrderIdRequest $request): JsonResponse
     {
         $validated = $request->validated();

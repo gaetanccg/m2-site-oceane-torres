@@ -66,7 +66,14 @@ return [
             'secret' => env('MINIO_SECRET_KEY'),
             'region' => env('MINIO_REGION', 'us-east-1'),
             'bucket' => env('MINIO_BUCKET', 'galleries'),
+            // Server-side endpoint: Laravel utilise cette URL pour les API calls (put/get/list).
+            // En prod sur le NAS, pointer vers http://host.docker.internal:9000 pour bypass
+            // le tunnel Cloudflare (Laravel et MinIO tournent sur la même machine).
             'endpoint' => env('MINIO_ENDPOINT'),
+            // Public URL pour les signed URLs renvoyées au navigateur (videos, downloads).
+            // Laravel utilise `temporary_url` pour remplacer le host de l'URL pré-signée par
+            // l'URL publique (audit P3.2). Si non défini, fallback sur `endpoint`.
+            'temporary_url' => env('MINIO_PUBLIC_URL'),
             'use_path_style_endpoint' => env('MINIO_USE_PATH_STYLE', true),
             'throw' => false,
             'report' => false,
