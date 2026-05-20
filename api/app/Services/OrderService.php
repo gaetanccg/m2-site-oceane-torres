@@ -43,13 +43,12 @@ class OrderService
         ?string $consentIp = null,
         array $shippingData = []
     ): Order {
-        $existingOrder = $this->findReusablePendingOrder($cart);
-        if ($existingOrder) {
-            $this->applyShippingDataToOrder($existingOrder, $shippingData);
-            $this->persistShippingAddressOnUser($user, $shippingData);
-
-            return $existingOrder;
-        }
+        // Politique : chaque tentative de checkout crée un NOUVEL order et un NOUVEAU SumUp
+        // checkout. Plus de réutilisation de l'order/checkout précédent — ça évite tous les
+        // cas de stale state (widget figé sur ancien prix, cart modifié entre temps, etc.).
+        // Toutes les pending orders existantes pour ce user/cart sont expirées et leurs
+        // checkouts SumUp désactivés.
+        $this->expireAllPendingOrders($cart, $user);
 
         if ($cart->items->isEmpty()) {
             throw new BusinessException('Le panier est vide.', 400);
@@ -65,7 +64,12 @@ class OrderService
                 throw new BusinessException('Le panier ne contient aucun article valide.', 400);
             }
 
-            $subtotal = (float) collect($validItems)->sum('price');
+            // Bug critique : `sum('price')` ignorait la quantité — pour 5 lignes panier dont 3
+            // à quantity=2 (8 photos au total), le subtotal était calculé sur 5 × unit_price
+            // au lieu de Σ(unit_price × quantity). Conséquence : sous-facturation côté SumUp.
+            $subtotal = collect($validItems)->sum(
+                fn ($item) => (float) $item->price * (int) ($item->quantity ?? 1)
+            );
             $requiresShipping = collect($validItems)->contains(function ($item) {
                 $gallery = $item->photo?->gallery;
                 $productType = $item->product_type ?? 'digital';
@@ -92,7 +96,9 @@ class OrderService
                 'shipping_address_line2' => $requiresShipping ? ($shippingData['shipping_address_line2'] ?? null) : null,
                 'shipping_postal_code' => $requiresShipping ? ($shippingData['shipping_postal_code'] ?? null) : null,
                 'shipping_city' => $requiresShipping ? ($shippingData['shipping_city'] ?? null) : null,
-                'shipping_country' => $requiresShipping ? ($shippingData['shipping_country'] ?? 'FR') : null,
+                // shipping_country est NOT NULL en DB (defaut 'FR'). On garde 'FR' même pour
+                // les commandes 100 % digitales — c'est inoffensif et évite la violation de contrainte.
+                'shipping_country' => $shippingData['shipping_country'] ?? 'FR',
                 'subtotal' => $subtotal,
                 'shipping_fee' => $shippingFee,
                 'total' => $subtotal + $shippingFee,
@@ -166,46 +172,53 @@ class OrderService
     }
 
     /**
-     * Find an existing pending order that still matches the cart, or expire stale ones.
+     * Expire toutes les pending orders de cet utilisateur (ou cart guest), AVEC désactivation
+     * des checkouts SumUp associés. Appelé au début de chaque tentative de checkout pour
+     * garantir qu'aucun ancien widget/checkout ne puisse être payé après évolution du panier.
      */
-    private function findReusablePendingOrder(Cart $cart): ?Order
+    private function expireAllPendingOrders(Cart $cart, ?User $user): void
     {
-        $existingOrder = Order::where('cart_id', $cart->id)
-            ->where('status', 'pending')
-            ->with('items')
-            ->first();
+        $query = Order::where('status', 'pending');
 
-        if (! $existingOrder) {
-            return null;
+        if ($user) {
+            $query->where('user_id', $user->id);
+        } else {
+            // Guest : isolation par session_id du cart
+            $query->whereIn('cart_id', Cart::where('session_id', $cart->session_id)
+                ->pluck('id'));
         }
 
-        $cart->load('items.photo.gallery.galleryProductTypes.packTiers');
+        $pendingOrders = $query->get(['id', 'sumup_checkout_id']);
 
-        $currentCartTotal = $this->calculateCartTotal($cart);
-        $cartPhotoIds = $cart->items->pluck('photo_id')->sort()->values()->toArray();
-        $orderPhotoIds = $existingOrder->items->pluck('photo_id')->sort()->values()->toArray();
-
-        $cartChanged = $cart->items->count() !== $existingOrder->items->count()
-            || $cartPhotoIds !== $orderPhotoIds
-            || abs((float) $existingOrder->total - $currentCartTotal) > 0.01;
-
-        if ($cartChanged) {
-            Log::info('Cart changed since order creation, cancelling stale order', [
-                'order_id' => $existingOrder->id,
-                'order_total' => $existingOrder->total,
-                'cart_total' => $currentCartTotal,
-            ]);
-            $existingOrder->update(['status' => 'expired']);
-
-            return null;
+        if ($pendingOrders->isEmpty()) {
+            return;
         }
 
-        Log::info('Returning existing pending order', [
-            'order_id' => $existingOrder->id,
-            'cart_id' => $cart->id,
+        $sumUpService = app(\App\Services\SumUpService::class);
+
+        foreach ($pendingOrders as $order) {
+            if ($order->sumup_checkout_id) {
+                try {
+                    $sumUpService->deactivateCheckout($order->sumup_checkout_id);
+                } catch (\Exception $e) {
+                    Log::warning('SumUp deactivateCheckout failed during expiration', [
+                        'order_id' => $order->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+        }
+
+        Order::whereIn('id', $pendingOrders->pluck('id'))->update([
+            'status' => 'expired',
+            'sumup_checkout_id' => null,
         ]);
 
-        return $existingOrder;
+        Log::info('Expired all pending orders before new checkout', [
+            'cart_id' => $cart->id,
+            'user_id' => $user?->id,
+            'expired_count' => $pendingOrders->count(),
+        ]);
     }
 
     /**

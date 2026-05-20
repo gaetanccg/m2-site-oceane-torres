@@ -225,8 +225,14 @@
                                         />
                                     </div>
                                     <div class="flex-1 min-w-0">
-                                        <p class="text-sm truncate">{{ item.photo.title || 'Photo' }}</p>
-                                        <p class="text-sm text-gold">{{ formatPrice(item.price) }}</p>
+                                        <p class="text-sm truncate">
+                                            {{ item.photo.title || 'Photo' }}
+                                            <span v-if="item.quantity > 1" class="text-gray-500 text-xs">× {{ item.quantity }}</span>
+                                        </p>
+                                        <p class="text-sm text-gold">
+                                            {{ formatPrice(item.line_total ?? item.price * item.quantity) }}
+                                            <span v-if="item.quantity > 1" class="text-gray-400 text-xs ml-1">({{ item.quantity }} × {{ formatPrice(item.price) }})</span>
+                                        </p>
                                     </div>
                                 </div>
                             </div>
@@ -242,7 +248,9 @@
                                 </div>
                                 <div class="flex justify-between text-lg font-semibold pt-2 border-t border-gray-100">
                                     <span>Total</span>
-                                    <span class="text-gold">{{ formatPrice(currentOrder?.total ?? cartStore.total) }}</span>
+                                    <!-- Toujours afficher le total live du panier, jamais celui d'une order
+                                         précédente (qui pourrait être périmé si l'utilisateur a modifié son panier). -->
+                                    <span class="text-gold">{{ formatPrice(cartStore.total) }}</span>
                                 </div>
                             </div>
 
@@ -303,7 +311,13 @@ const showPaymentWidget = ref(false)
 const currentOrder = ref<{ id: string; order_number: string; total: number } | null>(null)
 const checkoutId = ref('')
 
-onMounted(() => {
+onMounted(async () => {
+    // CRITIQUE : sync forcée du cart depuis le backend pour garantir que ce que l'utilisateur
+    // voit ici correspond EXACTEMENT à ce qui sera facturé. Sans ça, un Pinia state stale
+    // (issu d'un précédent test, d'un autre onglet, ou d'un merge guest→user incomplet)
+    // peut afficher des items différents de ceux que la commande chargera.
+    await cartStore.refresh()
+
     if (!cartStore.isEmpty) {
         trackBeginCheckout(
             cartStore.items.map(item => ({
@@ -311,7 +325,7 @@ onMounted(() => {
                 item_name: item.photo.title || 'Photo',
                 item_category: item.photo.gallery_title || undefined,
                 price: item.price,
-                quantity: 1,
+                quantity: item.quantity,
             })),
             cartStore.total
         )
@@ -518,6 +532,21 @@ async function createOrder() {
     error.value = ''
 
     try {
+        // Refresh dernière chance — garantir que cartStore reflète l'état serveur réel
+        // avant de créer l'order. Si le panier a changé (autre onglet, merge tardif, etc.)
+        // on bloque la création et on demande à l'utilisateur de revoir son panier.
+        const previousTotal = cartStore.total
+        await cartStore.refresh()
+        if (Math.abs(cartStore.total - previousTotal) > 0.01) {
+            error.value = "Votre panier a été mis à jour, vérifiez les montants avant de continuer."
+            toast.error('Panier mis à jour', "Vérifiez les montants avant de continuer.")
+            return
+        }
+        if (cartStore.isEmpty) {
+            error.value = 'Votre panier est vide.'
+            return
+        }
+
         const shippingPayload: ShippingAddress | null = cartStore.requiresShipping
             ? {
                 shipping_phone: shipping.value.shipping_phone.trim(),
@@ -589,6 +618,20 @@ async function resetPayment() {
     paymentError.value = ''
 }
 
+// Quand le widget SumUp est chargé (showPaymentWidget=true) et que le panier change
+// sous-jacent (ajout/retrait/modif de quantité dans un autre onglet ou via cartStore),
+// on invalide automatiquement l'order en cours et on revient au formulaire. Sans ça,
+// le widget reste figé sur l'ancien montant alors que le panier a évolué.
+// `cartStore.subtotal` est un nombre qui résume tout le panier (somme price × qty).
+watch(() => cartStore.subtotal, (newSubtotal, oldSubtotal) => {
+    if (!showPaymentWidget.value || !currentOrder.value) return
+    if (isPaymentProcessing.value) return  // ne pas interrompre un paiement en cours
+    if (newSubtotal === oldSubtotal) return  // changement trivial (ex: refresh, prix identique)
+
+    // Le panier a changé — l'order actuel ne reflète plus le panier. On nettoie tout.
+    resetPayment().catch(() => { /* best-effort */ })
+})
+
 onUnmounted(() => {
     isUnmounted = true
     if (pollTimeoutId) {
@@ -598,6 +641,13 @@ onUnmounted(() => {
     if (sumupWidget) {
         sumupWidget.unmount()
         sumupWidget = null
+    }
+
+    // Si l'utilisateur quitte la page de paiement avec un order pending non payé,
+    // on annule le checkout SumUp côté serveur (best-effort, fire-and-forget) pour
+    // éviter qu'au retour le widget reprenne un ancien order avec l'ancien prix.
+    if (currentOrder.value && !isPaymentProcessing.value) {
+        cartApi.cancelCheckout(currentOrder.value.id).catch(() => { /* best-effort */ })
     }
 })
 </script>
