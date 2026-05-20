@@ -18,6 +18,7 @@ class OrderItemResource extends JsonResource
             'photo_title' => $this->photo_title,
             'gallery_title' => $this->gallery_title,
             'price' => (float) $this->price,
+            'quantity' => (int) ($this->quantity ?? 1),
             'is_downloaded' => $this->is_downloaded,
             'display_url' => $this->whenLoaded('photo', fn () => $this->photo?->display_url),
             'preview_url' => $this->whenLoaded('photo', fn () => $this->photo?->preview_url),
