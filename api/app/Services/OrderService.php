@@ -88,9 +88,9 @@ class OrderService
             $order = Order::create([
                 'user_id' => $user?->id,
                 'cart_id' => $cart->id,
-                'guest_email' => $guestEmail ?? $cart->guest_email,
-                'guest_first_name' => $guestFirstName,
-                'guest_last_name' => $guestLastName,
+                'guest_email' => $guestEmail ?? $user?->email ?? $cart->guest_email,
+                'guest_first_name' => $guestFirstName ?? $user?->first_name,
+                'guest_last_name' => $guestLastName ?? $user?->last_name,
                 'shipping_phone' => $requiresShipping ? ($shippingData['shipping_phone'] ?? null) : null,
                 'shipping_address_line1' => $requiresShipping ? ($shippingData['shipping_address_line1'] ?? null) : null,
                 'shipping_address_line2' => $requiresShipping ? ($shippingData['shipping_address_line2'] ?? null) : null,

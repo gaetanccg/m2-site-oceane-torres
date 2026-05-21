@@ -323,7 +323,12 @@
                                 </div>
                             </div>
                             <div class="text-right">
-                                <p class="font-medium text-gray-900">{{ formatCurrency(item.price) }}</p>
+                                <p class="font-medium text-gray-900">
+                                    {{ formatCurrency(item.price * (item.quantity || 1)) }}
+                                </p>
+                                <p v-if="(item.quantity || 1) > 1" class="text-xs text-gray-500">
+                                    {{ formatCurrency(item.price) }} × {{ item.quantity }}
+                                </p>
                             </div>
                         </div>
                     </div>
