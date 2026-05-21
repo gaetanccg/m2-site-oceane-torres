@@ -223,7 +223,7 @@
                                     <p class="text-gray-900">{{ order.customer_name || '—' }}</p>
                                     <p class="text-xs text-gray-500 truncate max-w-[180px]">{{ order.customer_email }}</p>
                                 </td>
-                                <td class="px-5 py-3 text-gray-600">{{ order.items.length }}</td>
+                                <td class="px-5 py-3 text-gray-600">{{ totalPhotos(order) }}</td>
                                 <td class="px-5 py-3 text-right font-semibold text-gray-900">{{ formatPrice(order.total) }}</td>
                                 <td class="px-5 py-3 text-gray-500 text-xs">
                                     {{ order.paid_at ? formatDate(order.paid_at) : formatDate(order.created_at) }}
@@ -546,7 +546,10 @@
                                     {{ item.product_type_label }}
                                 </span>
                             </div>
-                            <p class="text-sm font-medium text-gray-900">{{ formatPrice(item.price) }}</p>
+                            <div class="text-right">
+                                <p v-if="item.quantity > 1" class="text-xs text-gray-500">× {{ item.quantity }}</p>
+                                <p class="text-sm font-medium text-gray-900">{{ formatPrice(item.price) }}</p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -617,6 +620,10 @@ const filteredOrders = computed(() => {
 function openOrderDetail(order: AdminOrder) {
     selectedOrder.value = order
     showOrderModal.value = true
+}
+
+function totalPhotos(order: AdminOrder): number {
+    return order.items.reduce((sum, item) => sum + (item.quantity ?? 1), 0)
 }
 const gallerySearch = ref('')
 const collapsedClasses = ref<Record<string, boolean>>({})
