@@ -142,20 +142,31 @@
                                 @click="openLightbox(index)"
                             >
                                 <template #actions>
-                                    <LikeButton
-                                        :photo-id="photo.id"
-                                        :liked="photo.is_liked"
-                                        size="lg"
-                                        show-label
-                                        @like="handleLike"
-                                    />
-                                    <AddToCartButton
-                                        v-if="!schoolClosed"
-                                        :photo-id="photo.id"
-                                        size="md"
-                                        show-label
-                                        :available-product-types="availableProductTypes"
-                                    />
+                                    <div class="w-full flex flex-col items-center gap-2">
+                                        <div class="flex items-center justify-center gap-3">
+                                            <LikeButton
+                                                :photo-id="photo.id"
+                                                :liked="photo.is_liked"
+                                                size="lg"
+                                                show-label
+                                                @like="handleLike"
+                                            />
+                                            <AddToCartButton
+                                                v-if="!schoolClosed"
+                                                :photo-id="photo.id"
+                                                size="md"
+                                                show-label
+                                                :available-product-types="availableProductTypes"
+                                            />
+                                        </div>
+                                        <p
+                                            v-if="photo.title"
+                                            class="text-sm text-gray-600 text-center truncate w-full"
+                                            :title="photo.title"
+                                        >
+                                            {{ photo.title }}
+                                        </p>
+                                    </div>
                                 </template>
                             </PhotoCard>
                         </div>
@@ -250,7 +261,8 @@ const lightboxImages = computed<LightboxImage[]>(() => {
     return sortedPhotos.value.map(photo => ({
         url: photo.preview_url || photo.display_url || photo.file_path,
         alt: photo.title || 'Photo',
-        type: 'image' as const
+        type: 'image' as const,
+        title: photo.title
     }))
 })
 
