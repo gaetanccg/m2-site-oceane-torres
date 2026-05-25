@@ -23,7 +23,7 @@ class OrderController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = Order::with('items.photo', 'user')
-            ->whereHas('items', fn ($i) => $i->where('product_type', '!=', 'print_scolaire'))
+            ->whereDoesntHave('items.photo.gallery', fn ($g) => $g->whereNotNull('school_session_id'))
             ->orderBy('created_at', 'desc');
 
         if ($request->has('status')) {

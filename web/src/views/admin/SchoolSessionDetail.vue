@@ -141,6 +141,15 @@
                                         {{ gallery.share_code }}
                                     </span>
                                     <button
+                                        @click="openPhotosManager(gallery)"
+                                        class="p-1.5 text-gray-400 hover:text-gold rounded"
+                                        title="Modifier les photos"
+                                    >
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                    </button>
+                                    <button
                                         @click="copyGalleryLink(gallery)"
                                         class="p-1.5 text-gray-400 hover:text-gold rounded"
                                         title="Copier le lien"
@@ -550,6 +559,13 @@
                 <Button variant="secondary" @click="showOrderModal = false">Fermer</Button>
             </template>
         </Modal>
+
+        <PhotosManager
+            v-model="showPhotosModal"
+            :gallery-id="photosManagerGallery?.id || null"
+            :gallery-title="photosManagerGallery?.title || 'Photos'"
+            @photos-changed="fetchGalleries"
+        />
     </div>
 </template>
 
@@ -561,6 +577,7 @@ import StatusBadge from '@/components/admin/ui/StatusBadge.vue'
 import Modal from '@/components/admin/ui/Modal.vue'
 import Button from '@/components/admin/ui/Button.vue'
 import SmsTemplateField from '@/components/admin/SmsTemplateField.vue'
+import PhotosManager from '@/components/admin/PhotosManager.vue'
 import { adminApi } from '@/services/adminApi'
 import { AdminApiError } from '@/services/admin/baseAdmin'
 import { useToast } from '@/composables/useToast'
@@ -610,6 +627,13 @@ function totalPhotos(order: AdminOrder): number {
 }
 const gallerySearch = ref('')
 const collapsedClasses = ref<Record<string, boolean>>({})
+const showPhotosModal = ref(false)
+const photosManagerGallery = ref<SchoolSessionGallery | null>(null)
+
+function openPhotosManager(gallery: SchoolSessionGallery) {
+    photosManagerGallery.value = gallery
+    showPhotosModal.value = true
+}
 let pollInterval: ReturnType<typeof setInterval> | null = null
 
 // SMS template editor — local buffer so user can edit without saving immediately

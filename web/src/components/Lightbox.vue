@@ -28,7 +28,7 @@
                 </button>
 
                 <!-- Media container -->
-                <div class="media-container" @click.stop>
+                <div class="media-container" :class="{ 'has-caption': images[currentIndex]?.title }" @click.stop>
                     <div class="media-wrapper">
                         <img
                             v-if="images[currentIndex]?.type === 'image'"
@@ -81,6 +81,9 @@
                             <div class="watermark-center">©Oceane Torres</div>
                         </div>
                     </div>
+                    <p v-if="images[currentIndex]?.title" class="media-caption">
+                        {{ images[currentIndex].title }}
+                    </p>
                 </div>
 
                 <!-- Next button -->
@@ -224,11 +227,23 @@ onUnmounted(() => {
 <style scoped>
 .media-container{
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: 10px;
     max-width: calc(100vw - 120px);
     max-height: calc(100vh - 160px);
     padding: 0 20px;
+}
+
+.media-caption{
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.9rem;
+    text-align: center;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .media-wrapper{
@@ -241,6 +256,10 @@ onUnmounted(() => {
     max-width: calc(100vw - 160px);
     max-height: calc(100vh - 180px);
     object-fit: contain;
+}
+
+.media-container.has-caption .media-content{
+    max-height: calc(100vh - 220px);
 }
 
 .youtube-iframe{
@@ -398,6 +417,11 @@ onUnmounted(() => {
         max-width: calc(100vw - 16px);
         max-height: calc(100vh - 150px);
         max-height: calc(100dvh - 150px);
+    }
+
+    .media-container.has-caption .media-content{
+        max-height: calc(100vh - 190px);
+        max-height: calc(100dvh - 190px);
     }
 
     .youtube-iframe{
