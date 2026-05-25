@@ -9,10 +9,19 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Cache;
 
 class Photo extends Model
 {
     use CastsBooleansForPostgres, HasFactory, HasUuids;
+
+    protected static function booted(): void
+    {
+        // Invalidate ImageProxyController metadata cache when photo changes
+        // (upload processing flips is_processed, admin edits title/price, etc.).
+        static::saved(fn (self $photo) => Cache::forget("photo_meta_{$photo->id}"));
+        static::deleted(fn (self $photo) => Cache::forget("photo_meta_{$photo->id}"));
+    }
 
     protected $fillable = [
         'gallery_id',
