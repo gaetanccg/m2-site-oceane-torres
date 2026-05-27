@@ -283,6 +283,30 @@
                 </div>
             </section>
         </template>
+
+        <!-- Fallback : ne jamais laisser une page totalement vide si aucun state ci-dessus
+             n'est actif (ex. order=null, error vide, loading=false suite à un cas exotique).
+             Garantit qu'on offre toujours une porte de sortie à la cliente. -->
+        <section v-else class="py-12 px-6 lg:px-12">
+            <div class="max-w-xl mx-auto text-center">
+                <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.452 1.827v.5M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5h.01" />
+                    </svg>
+                </div>
+                <h1 class="text-3xl font-light mb-4">Impossible d'afficher la commande</h1>
+                <p class="text-gray-600 mb-6">
+                    Si vous venez d'effectuer un paiement, patientez quelques instants puis réessayez.
+                    Si le problème persiste, consultez votre email de confirmation ou contactez-nous.
+                </p>
+                <button
+                    @click="loadOrder"
+                    class="px-6 py-2 bg-gold text-white rounded-lg hover:bg-gold/90 transition-colors"
+                >
+                    Réessayer
+                </button>
+            </div>
+        </section>
     </div>
 </template>
 

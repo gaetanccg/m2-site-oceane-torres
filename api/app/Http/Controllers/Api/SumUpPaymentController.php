@@ -226,10 +226,83 @@ class SumUpPaymentController extends Controller
     }
 
     /**
+     * Handle the SumUp browser redirect after 3DS (GET on return_url).
+     *
+     * Flow :
+     *  1. SumUp redirige le navigateur sur cette URL avec ?checkout_id=… (et notre
+     *     propre ?order=… ajouté lors du createCheckout).
+     *  2. On vérifie le statut auprès de SumUp côté serveur (idempotent).
+     *  3. On redirige le navigateur vers la page de confirmation du SPA.
+     *
+     * Comme le statut est mis à jour AVANT la redirection, la cliente arrive sur
+     * une page de confirmation qui voit l'order déjà en `paid` (ou `failed`),
+     * même si le SDK n'a jamais déclenché `onResponse` côté navigateur.
+     */
+    public function browserReturn(Request $request)
+    {
+        $checkoutId = $request->input('checkout_id');
+        $orderId = $request->input('order');
+        $frontendUrl = config('app.frontend_url', 'https://oceanetorresphotographie.fr');
+
+        Log::info('SumUp browser return', [
+            'order_id' => $orderId,
+            'checkout_id' => $checkoutId,
+        ]);
+
+        try {
+            $order = null;
+            if ($orderId) {
+                $order = Order::find($orderId);
+            }
+            if (! $order && $checkoutId) {
+                $order = Order::where('sumup_checkout_id', $checkoutId)->first();
+            }
+
+            if (! $order) {
+                Log::warning('SumUp browser return: order not found', [
+                    'order_id' => $orderId,
+                    'checkout_id' => $checkoutId,
+                ]);
+
+                return redirect($frontendUrl);
+            }
+
+            // Idempotent : si l'order n'est pas déjà finalisé on synchronise avec SumUp.
+            if (! $order->isPaid() && $order->sumup_checkout_id) {
+                try {
+                    $order = $this->orderService->verifyAndUpdateOrder($order->sumup_checkout_id);
+                } catch (\Exception $e) {
+                    Log::error('SumUp browser return: verify failed', [
+                        'order_id' => $order->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                    // On continue malgré tout : la page de confirmation a son
+                    // propre polling et finira par afficher le bon état.
+                }
+            }
+
+            return redirect($frontendUrl.'/commande/'.$order->id);
+        } catch (\Throwable $e) {
+            Log::error('SumUp browser return error', [
+                'order_id' => $orderId,
+                'checkout_id' => $checkoutId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect($frontendUrl);
+        }
+    }
+
+    /**
      * Handle SumUp webhook notifications
      *
      * Security: Never trust the webhook payload. Always verify the actual
      * checkout status by calling the SumUp API directly.
+     *
+     * Cf. https://developer.sumup.com/online-payments/webhooks :
+     *   - POST envoyé sur le `return_url` du checkout
+     *   - Payload : { "event_type": "CHECKOUT_STATUS_CHANGED", "id": "<checkout_id>" }
+     *   - On doit répondre 2xx pour éviter les retries (1min, 5min, 20min, 2h).
      */
     public function webhook(Request $request): JsonResponse
     {
