@@ -110,7 +110,6 @@ Route::post('/orders/by-email', [OrderController::class, 'getByEmail']);
 
 // SumUp Payment (public)
 Route::prefix('payments/sumup')->group(function () {
-    Route::get('/callback', [SumUpPaymentController::class, 'callback']);
     Route::post('/verify', [SumUpPaymentController::class, 'verifyPayment']);
     Route::post('/cancel-checkout', [SumUpPaymentController::class, 'cancelCheckout']);
 

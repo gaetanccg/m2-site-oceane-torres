@@ -194,12 +194,10 @@ class OrderService
             return;
         }
 
-        $sumUpService = app(\App\Services\SumUpService::class);
-
         foreach ($pendingOrders as $order) {
             if ($order->sumup_checkout_id) {
                 try {
-                    $sumUpService->deactivateCheckout($order->sumup_checkout_id);
+                    $this->sumUpService->deactivateCheckout($order->sumup_checkout_id);
                 } catch (\Exception $e) {
                     Log::warning('SumUp deactivateCheckout failed during expiration', [
                         'order_id' => $order->id,

@@ -382,15 +382,9 @@ async function loadOrder() {
     }
 
     try {
-        // First check with SumUp callback if we have checkout data
-        if (route.query.checkout_id || route.query.order) {
-            await cartApi.handleSumUpCallback(
-                route.query.checkout_id as string,
-                route.query.order as string
-            )
-        }
-
-        // Then get order details
+        // Depuis le commit 8f1e5b9, le backend (browserReturn) synchronise l'order
+        // avec SumUp avant de rediriger vers /commande/{id} — la page arrive donc
+        // déjà alignée. Le polling ci-dessous gère les cas où la sync prend du temps.
         const response = await cartApi.getOrder(orderId, token)
         if (response.success) {
             order.value = response.order
