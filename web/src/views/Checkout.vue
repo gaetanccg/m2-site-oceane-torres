@@ -301,7 +301,6 @@ declare global {
                 id: string
                 checkoutId: string
                 onResponse: (type: string, body: unknown) => void
-                onLoad?: () => void
                 showSubmitButton?: boolean
                 showFooter?: boolean
                 showEmail?: boolean
@@ -467,9 +466,6 @@ async function initPaymentWidget() {
             showFooter: true,
             showEmail: false,
             showInstallments: false,
-            onLoad: () => {
-                // Widget loaded
-            },
             onResponse: async (type: string, body: unknown) => {
                 // Events réels exposés par le SDK SumUp (vérifiés dans le bundle sdk.js) :
                 //   loaded · sent · invalid · auth-screen · success · fail · error
@@ -503,7 +499,7 @@ async function initPaymentWidget() {
 
                     try {
                         const result = await cartApi.verifySumUpPayment(currentOrder.value!.id)
-                        if (result.status === 'paid' || result.status === 'PAID') {
+                        if (result.status === 'paid') {
                             await cartStore.clearCart()
                             router.push(`/commande/${currentOrder.value!.id}`)
                         } else {
@@ -549,7 +545,7 @@ async function manualVerifyPayment() {
 
     try {
         const result = await cartApi.verifySumUpPayment(currentOrder.value.id)
-        if (result.status === 'paid' || result.status === 'PAID') {
+        if (result.status === 'paid') {
             await cartStore.clearCart()
         }
         router.push(`/commande/${currentOrder.value.id}`)
@@ -575,7 +571,7 @@ async function pollPaymentStatus(attempts = 0) {
         const result = await cartApi.verifySumUpPayment(currentOrder.value.id)
         if (isUnmounted || !currentOrder.value) return
 
-        if (result.status === 'paid' || result.status === 'PAID') {
+        if (result.status === 'paid') {
             await cartStore.clearCart()
             router.push(`/commande/${currentOrder.value.id}`)
         } else {

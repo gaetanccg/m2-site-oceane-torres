@@ -277,13 +277,6 @@ class CartApiService extends BaseApiService {
         })
     }
 
-    async handleSumUpCallback(checkoutId?: string, orderId?: string): Promise<{ success: boolean; order: { id: string; order_number: string; status: string; total: number; currency: string } }> {
-        const params = new URLSearchParams()
-        if (checkoutId) params.append('checkout_id', checkoutId)
-        if (orderId) params.append('order', orderId)
-        return this.cartRequest(`/payments/sumup/callback?${params.toString()}`)
-    }
-
     async cancelCheckout(orderId: string): Promise<{ success: boolean }> {
         return this.cartRequest('/payments/sumup/cancel-checkout', {
             method: 'POST',
