@@ -546,9 +546,82 @@ class OrderService
 
             default:
                 // Don't mark as failed here — the widget may still allow retries.
-                // Only the webhook should mark orders as definitively failed.
+                // Only the webhook (or reconcilePendingOrders) should mark orders
+                // as definitively failed.
                 return $order;
         }
+    }
+
+    /**
+     * Réconciliation périodique des orders pending : filet de sécurité au cas où
+     * le webhook SumUp serait perdu (5xx persistant côté nous épuisant les retries,
+     * webhook non envoyé, etc.).
+     *
+     * On regarde les orders `pending` avec un `sumup_checkout_id`, créées il y a :
+     *  - assez longtemps pour avoir laissé le webhook + ses retries arriver
+     *    naturellement (>= $minMinutesAgo) — évite de bruiter le flux normal ;
+     *  - pas trop longtemps pour ne pas ratisser des historiques abandonnés
+     *    (<= $maxHoursAgo) — `console.php` les passe à `expired` à 24 h de toute façon.
+     */
+    public function reconcilePendingOrders(int $minMinutesAgo = 15, int $maxHoursAgo = 24): array
+    {
+        $cutoffNew = now()->subMinutes($minMinutesAgo);
+        $cutoffOld = now()->subHours($maxHoursAgo);
+
+        $candidates = Order::where('status', 'pending')
+            ->whereNotNull('sumup_checkout_id')
+            ->where('created_at', '<', $cutoffNew)
+            ->where('created_at', '>', $cutoffOld)
+            ->get(['id', 'sumup_checkout_id']);
+
+        $stats = [
+            'candidates' => $candidates->count(),
+            'paid' => 0,
+            'failed' => 0,
+            'still_pending' => 0,
+            'errors' => 0,
+        ];
+
+        if ($candidates->isEmpty()) {
+            return $stats;
+        }
+
+        foreach ($candidates as $candidate) {
+            try {
+                $checkout = $this->sumUpService->getCheckout($candidate->sumup_checkout_id);
+                $verifiedStatus = $checkout['status'] ?? null;
+
+                if ($verifiedStatus === 'PAID') {
+                    // Recharge frais (lockForUpdate dans completeOrder gère les races)
+                    $order = Order::find($candidate->id);
+                    if ($order) {
+                        $this->completeOrder($order, $checkout['transaction_id'] ?? $candidate->sumup_checkout_id);
+                        $stats['paid']++;
+                    }
+                } elseif ($verifiedStatus === 'FAILED') {
+                    $order = Order::find($candidate->id);
+                    if ($order && $order->isPending()) {
+                        $this->handleFailedPayment($order);
+                        $stats['failed']++;
+                    }
+                } else {
+                    // PENDING ou EXPIRED côté SumUp — on n'agit pas, le cleanup
+                    // quotidien (console.php) se chargera des vraiment vieilles.
+                    $stats['still_pending']++;
+                }
+            } catch (\Throwable $e) {
+                $stats['errors']++;
+                Log::warning('Reconciliation failed for order', [
+                    'order_id' => $candidate->id,
+                    'checkout_id' => $candidate->sumup_checkout_id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        Log::info('Reconciliation completed', $stats);
+
+        return $stats;
     }
 
     /**
