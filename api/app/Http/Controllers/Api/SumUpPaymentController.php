@@ -388,10 +388,33 @@ class SumUpPaymentController extends Controller
                 }
             }
 
-            $order->update([
-                'sumup_checkout_id' => null,
-                'status' => 'expired',
-            ]);
+            // Garde-fou contre la race : entre `findOrFail` et cet `update`, un webhook
+            // SumUp peut avoir validé le paiement (`deactivateCheckout` ci-dessus fait un
+            // round-trip réseau qui ouvre une fenêtre de quelques centaines de ms). Sans
+            // la clause `where('status', 'pending')`, on écraserait un `paid` valide.
+            $affected = Order::where('id', $order->id)
+                ->where('status', 'pending')
+                ->update([
+                    'sumup_checkout_id' => null,
+                    'status' => 'expired',
+                ]);
+
+            if ($affected === 0) {
+                $order->refresh();
+                if ($order->isPaid()) {
+                    return response()->json([
+                        'success' => false,
+                        'already_paid' => true,
+                        'message' => 'Votre paiement vient d\'être validé.',
+                        'order_id' => $order->id,
+                    ], 409);
+                }
+
+                return response()->json([
+                    'success' => false,
+                    'message' => "Cette commande n'est plus en attente de paiement.",
+                ], 400);
+            }
 
             return response()->json(['success' => true]);
         } catch (\Exception $e) {

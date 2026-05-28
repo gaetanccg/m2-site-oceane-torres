@@ -209,15 +209,22 @@ class OrderService
             }
         }
 
-        Order::whereIn('id', $pendingOrders->pluck('id'))->update([
-            'status' => 'expired',
-            'sumup_checkout_id' => null,
-        ]);
+        // Garde-fou contre la race : entre le `get()` ci-dessus et cet `update()`,
+        // un webhook SumUp peut être arrivé et avoir fait passer un order à `paid`.
+        // Sans la clause `where('status', 'pending')`, on écraserait silencieusement
+        // un paiement valide en `expired`.
+        $affected = Order::whereIn('id', $pendingOrders->pluck('id'))
+            ->where('status', 'pending')
+            ->update([
+                'status' => 'expired',
+                'sumup_checkout_id' => null,
+            ]);
 
         Log::info('Expired all pending orders before new checkout', [
             'cart_id' => $cart->id,
             'user_id' => $user?->id,
-            'expired_count' => $pendingOrders->count(),
+            'candidates' => $pendingOrders->count(),
+            'expired_count' => $affected,
         ]);
     }
 
