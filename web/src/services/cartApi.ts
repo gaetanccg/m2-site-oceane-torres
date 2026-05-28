@@ -142,14 +142,6 @@ export interface CheckoutResponse {
     }
 }
 
-export interface SumUpConfig {
-    public_key: string
-    merchant_code: string
-    environment: string
-    currency: string
-    locale: string
-}
-
 class CartApiService extends BaseApiService {
     private getSessionId(): string | null {
         return localStorage.getItem('cart_session_id')
@@ -277,17 +269,6 @@ class CartApiService extends BaseApiService {
     // ============================================================================
     // SumUp Payment
     // ============================================================================
-
-    async getSumUpConfig(): Promise<{ success: boolean; config: SumUpConfig }> {
-        return this.cartRequest('/payments/sumup/config')
-    }
-
-    async createSumUpCheckout(orderId: string): Promise<{ success: boolean; checkout_id: string; order_id: string }> {
-        return this.cartRequest('/payments/sumup/create-checkout', {
-            method: 'POST',
-            body: JSON.stringify({ order_id: orderId }),
-        })
-    }
 
     async verifySumUpPayment(orderId: string): Promise<{ success: boolean; status: string; order?: { id: string; order_number: string; status: string } }> {
         return this.cartRequest('/payments/sumup/verify', {
