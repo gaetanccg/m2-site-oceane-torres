@@ -313,13 +313,20 @@ class SumUpPaymentController extends Controller
         $payload = $request->all();
         $checkoutId = $payload['id'] ?? $payload['checkout_id'] ?? null;
 
+        // Payload malformé ou nouveau type d'event sans `id` : pas retry-able, on ack
+        // pour éviter le spam (la doc SumUp annonce « New events may be introduced
+        // at any time, without prior notice »).
         if (! $checkoutId) {
+            Log::warning('SumUp webhook: missing checkout id', ['payload' => $payload]);
+
             return response()->json(['received' => true]);
         }
 
         try {
             $order = Order::where('sumup_checkout_id', $checkoutId)->first();
 
+            // Order disparue (cancelCheckout, expireAllPendingOrders, suppression
+            // admin…) — pas retry-able, on ack.
             if (! $order) {
                 Log::warning('SumUp webhook: order not found', ['checkout_id' => $checkoutId]);
 
@@ -341,15 +348,25 @@ class SumUpPaymentController extends Controller
             } elseif ($verifiedStatus === 'FAILED') {
                 $this->orderService->handleFailedPayment($order);
             }
+            // PENDING / EXPIRED / autres : on ne touche pas à l'order ici. Le job
+            // de réconciliation périodique s'en charge si besoin.
 
             return response()->json(['received' => true]);
-        } catch (\Exception $e) {
-            Log::error('SumUp webhook processing error', [
+        } catch (\Throwable $e) {
+            // Erreur présumée transient (timeout API SumUp, deadlock DB, etc.).
+            // On retourne 503 pour bénéficier des retries SumUp (1 min / 5 min /
+            // 20 min / 2 h). Si l'erreur est réellement permanente, les retries
+            // s'épuiseront en ~2 h et le log permettra d'investiguer.
+            Log::error('SumUp webhook processing error — returning 503 for retry', [
                 'checkout_id' => $checkoutId,
+                'exception' => $e::class,
                 'error' => $e->getMessage(),
             ]);
 
-            return response()->json(['received' => true]);
+            return response()->json([
+                'received' => false,
+                'error' => 'transient',
+            ], 503);
         }
     }
 

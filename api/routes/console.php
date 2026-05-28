@@ -8,6 +8,19 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schedule;
 
+// Reconcile pending orders every 10 minutes — filet de sécurité au cas où
+// le webhook SumUp serait perdu (cf. SumUpPaymentController::webhook qui
+// retourne 503 sur erreur transient pour profiter des retries SumUp, mais qui
+// peut quand même rater définitivement après 1m / 5m / 20m / 2h).
+Schedule::call(function () {
+    /** @var \App\Services\OrderService $service */
+    $service = app(\App\Services\OrderService::class);
+    $service->reconcilePendingOrders();
+})
+    ->everyTenMinutes()
+    ->withoutOverlapping(10)
+    ->name('reconcile-pending-orders');
+
 // Daily cleanup: expire stale carts and abandoned orders
 Schedule::call(function () {
     // Expire active carts older than 7 days
