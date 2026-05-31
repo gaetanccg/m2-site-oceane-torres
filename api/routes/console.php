@@ -18,8 +18,8 @@ Schedule::call(function () {
     $service->reconcilePendingOrders();
 })
     ->everyTenMinutes()
-    ->withoutOverlapping(10)
-    ->name('reconcile-pending-orders');
+    ->name('reconcile-pending-orders')
+    ->withoutOverlapping(10);
 
 // Daily cleanup: expire stale carts and abandoned orders
 Schedule::call(function () {
