@@ -121,8 +121,8 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <div>
-                        <p class="font-medium text-orange-900">Galerie fermee aux commandes</p>
-                        <p class="text-sm text-orange-800 mt-0.5">La date limite de commande est passee. Les achats ne sont plus possibles. Vous pouvez toujours consulter les photos.</p>
+                        <p class="font-medium text-orange-900">Galerie fermée aux commandes</p>
+                        <p class="text-sm text-orange-800 mt-0.5">La date limite de commande est passée. Les achats ne sont plus possibles. Vous pouvez toujours consulter les photos.</p>
                     </div>
                 </div>
             </section>
