@@ -6,10 +6,8 @@ use App\Helpers\MimeTypes;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\BulkToggleDownloadableRequest;
 use App\Http\Requests\StoreAsyncPhotoRequest;
-use App\Http\Requests\StorePhotoRequest;
 use App\Http\Requests\UpdateSortOrderRequest;
 use App\Http\Requests\UploadStatusRequest;
-use App\Jobs\ProcessPhotoJob;
 use App\Models\Gallery;
 use App\Models\Photo;
 use App\Models\PhotoUpload;
@@ -18,8 +16,7 @@ use App\Services\MinioStorageService;
 use App\Traits\ClearsEventGalleriesCache;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
 class PhotoController extends Controller
 {
@@ -32,111 +29,16 @@ class PhotoController extends Controller
         ]);
     }
 
-    public function store(StorePhotoRequest $request, Gallery $gallery): JsonResponse
-    {
-        // Block upload on parent galleries (galleries with children)
-        if ($gallery->children()->exists()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Impossible d\'ajouter des photos à une galerie parent. Ajoutez-les dans une sous-galerie.',
-            ], 422);
-        }
-
-        $validated = $request->validated();
-
-        $imageProcessingService = new ImageProcessingService;
-        $uploadedPhotos = [];
-        $errors = [];
-
-        foreach ($request->file('photos') as $file) {
-            try {
-                $mimeType = $file->getMimeType();
-                $isVideo = str_starts_with($mimeType, 'video/');
-
-                if ($isVideo) {
-                    // Videos: upload directly without processing
-                    $storageService = app(MinioStorageService::class);
-                    $result = $storageService->uploadPhoto($file, $gallery->id);
-
-                    if ($result) {
-                        $photo = $gallery->photos()->create([
-                            'file_path' => $result['path'],
-                            'title' => pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME),
-                            'is_video' => true,
-                            'is_downloadable' => false,
-                            'is_processed' => true,
-                            'metadata' => [
-                                'original_filename' => $file->getClientOriginalName(),
-                                'size' => $file->getSize(),
-                                'mime_type' => $mimeType,
-                                'storage_path' => $result['path'],
-                            ],
-                        ]);
-                        $uploadedPhotos[] = $photo;
-                    } else {
-                        $errors[] = "Erreur lors de l'upload de {$file->getClientOriginalName()}";
-                    }
-                } else {
-                    // Images: process with watermarks and create versions
-                    $result = $imageProcessingService->processUploadedPhoto($file, $gallery->id);
-
-                    if ($result) {
-                        $photo = $gallery->photos()->create([
-                            'file_path' => $result['hd_path'],
-                            'file_path_hd' => $result['hd_path'],
-                            'file_path_preview' => $result['preview_path'],
-                            'file_path_thumbnail' => $result['thumbnail_path'],
-                            'is_processed' => true,
-                            'title' => pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME),
-                            'is_downloadable' => false,
-                            'metadata' => [
-                                'original_filename' => $file->getClientOriginalName(),
-                                'size' => $file->getSize(),
-                                'mime_type' => $mimeType,
-                                'storage_path' => $result['hd_path'],
-                                'width' => $result['width'] ?? null,
-                                'height' => $result['height'] ?? null,
-                            ],
-                        ]);
-                        $uploadedPhotos[] = $photo;
-                    } else {
-                        $errors[] = "Erreur lors du traitement de {$file->getClientOriginalName()}";
-                    }
-                }
-            } catch (\Exception $e) {
-                $errors[] = "Erreur: {$file->getClientOriginalName()} - {$e->getMessage()}";
-            }
-        }
-
-        // Clear event galleries cache if this is an event gallery
-        if ($gallery->type === 'event' && count($uploadedPhotos) > 0) {
-            $this->clearEventGalleriesCache();
-        }
-
-        return response()->json([
-            'success' => count($uploadedPhotos) > 0,
-            'data' => $uploadedPhotos,
-            'errors' => $errors,
-            'message' => count($uploadedPhotos).' photo(s) uploadée(s) avec succès.',
-        ], 201);
-    }
-
     public function destroy(Photo $photo): JsonResponse
     {
-        // Check if this is an event gallery photo before deleting
         $isEventGallery = $photo->gallery?->type === 'event';
 
-        // Delete all versions from MinIO storage (original, preview, thumbnail)
         $storageService = app(MinioStorageService::class);
 
-        // Collect all file paths to delete
         $pathsToDelete = array_filter([
             $photo->resolved_storage_path,
-            // Preview path
             $photo->file_path_preview,
-            // Thumbnail path
             $photo->file_path_thumbnail,
-            // HD path if different
             $photo->file_path_hd,
         ]);
 
@@ -148,7 +50,6 @@ class PhotoController extends Controller
 
         $photo->delete();
 
-        // Clear event galleries cache if needed
         if ($isEventGallery) {
             $this->clearEventGalleriesCache();
         }
@@ -189,13 +90,12 @@ class PhotoController extends Controller
         $storageService = app(MinioStorageService::class);
         $storagePath = $photo->resolved_storage_path;
 
-        // Track the download
         $photo->recordDownload(
             $request->ip(),
             $request->userAgent()
         );
 
-        // Direct file streaming for WebView compatibility
+        // Streaming direct pour compat WebView (le mode signed URL ne fonctionne pas dans certaines WebView).
         if ($request->query('direct')) {
             $content = $storageService->getFileContent($storagePath);
             if (! $content) {
@@ -217,7 +117,6 @@ class PhotoController extends Controller
             ]);
         }
 
-        // Existing JSON response with signed URL
         $signedUrl = $storageService->getSignedUrl($storagePath, 300);
 
         if (! $signedUrl) {
@@ -288,12 +187,21 @@ class PhotoController extends Controller
     }
 
     /**
-     * Store photos asynchronously via job queue
-     * Accepts chunks of up to 15 photos at a time
+     * Reçoit un chunk et le traite inline (synchrone, dans le même worker PHP-FPM).
+     *
+     * Le nom "Async" est historique : l'endpoint dispatch-ait un queue job. Le traitement
+     * synchrone élimine la race cross-container temp-file (qui coûtait 30-60% des uploads
+     * en local macOS / virtio-fs) et les soucis de workers queue avec classes stale.
+     *
+     * Tailles : 30 workers PHP-FPM, max_execution_time=120s, ~3-6s/photo avec Imagick,
+     * memory peak ~200-300 Mo (limit 2 Go).
      */
-    public function storeAsync(StoreAsyncPhotoRequest $request, Gallery $gallery): JsonResponse
-    {
-        // Block upload on parent galleries (galleries with children)
+    public function storeAsync(
+        StoreAsyncPhotoRequest $request,
+        Gallery $gallery,
+        ImageProcessingService $imageProcessing,
+        MinioStorageService $storage,
+    ): JsonResponse {
         if ($gallery->children()->exists()) {
             return response()->json([
                 'success' => false,
@@ -302,52 +210,61 @@ class PhotoController extends Controller
         }
 
         $validated = $request->validated();
-
         $batchId = $validated['batch_id'];
         $uploads = [];
+        $hasCompletedPhoto = false;
 
         foreach ($request->file('photos') as $file) {
+            $upload = null;
+            $started = microtime(true);
             try {
-                // Create PhotoUpload record
                 $upload = PhotoUpload::create([
                     'batch_id' => $batchId,
                     'gallery_id' => $gallery->id,
                     'original_filename' => $file->getClientOriginalName(),
-                    'status' => 'uploading',
+                    'status' => 'processing',
                 ]);
 
-                // Save file to temp storage
-                $tempPath = 'temp_uploads/'.$upload->id.'_'.$file->getClientOriginalName();
-                Storage::disk('local')->put($tempPath, file_get_contents($file->getRealPath()));
+                $photo = $this->processSinglePhoto($file, $gallery, $imageProcessing, $storage);
 
-                // Update status to pending and dispatch job
-                $upload->update(['status' => 'pending']);
-
-                ProcessPhotoJob::dispatch(
-                    $upload->id,
-                    $gallery->id,
-                    $tempPath,
-                    $file->getClientOriginalName(),
-                    $file->getMimeType()
-                );
+                $upload->markAsCompleted($photo->id);
+                $hasCompletedPhoto = true;
 
                 $uploads[] = [
                     'id' => $upload->id,
                     'original_filename' => $upload->original_filename,
-                    'status' => $upload->status,
+                    'status' => 'completed',
+                    'photo_id' => $photo->id,
                 ];
-            } catch (\Exception $e) {
-                // If upload fails, mark as failed
-                if (isset($upload)) {
-                    $upload->markAsFailed($e->getMessage());
+
+                Log::info('storeAsync: photo processed', [
+                    'upload_id' => $upload->id,
+                    'gallery_id' => $gallery->id,
+                    'duration_ms' => (int) ((microtime(true) - $started) * 1000),
+                ]);
+            } catch (\Throwable $e) {
+                // Message technique en logs, message actionnable côté user (humanizeUploadError).
+                Log::error('storeAsync: inline processing failed', [
+                    'gallery_id' => $gallery->id,
+                    'filename' => $file->getClientOriginalName(),
+                    'error' => $e->getMessage(),
+                    'duration_ms' => (int) ((microtime(true) - $started) * 1000),
+                ]);
+                if ($upload) {
+                    $friendlyMessage = $this->humanizeUploadError($e);
+                    $upload->markAsFailed($friendlyMessage);
                     $uploads[] = [
                         'id' => $upload->id,
                         'original_filename' => $upload->original_filename,
                         'status' => 'failed',
-                        'error_message' => $e->getMessage(),
+                        'error_message' => $friendlyMessage,
                     ];
                 }
             }
+        }
+
+        if ($gallery->type === 'event' && $hasCompletedPhoto) {
+            $this->clearEventGalleriesCache();
         }
 
         return response()->json([
@@ -357,14 +274,85 @@ class PhotoController extends Controller
         ]);
     }
 
-    /**
-     * Get upload status for a batch
-     */
+    /** Mappe l'exception technique en message court et actionnable côté UI. */
+    private function humanizeUploadError(\Throwable $e): string
+    {
+        $msg = $e->getMessage();
+        $lower = mb_strtolower($msg);
+
+        return match (true) {
+            str_contains($lower, 'memory') || str_contains($lower, 'allowed memory size') => 'Image trop volumineuse pour être traitée. Essaie un format compressé.',
+            str_contains($lower, 'minio') || str_contains($lower, 's3') || str_contains($lower, 'curl') => 'Stockage temporairement indisponible. Clique sur « Réessayer ».',
+            str_contains($lower, 'mime') || str_contains($lower, 'format') || str_contains($lower, 'mimes') => 'Format non supporté. Formats acceptés : JPEG, PNG, WEBP, MP4.',
+            str_contains($lower, 'decode') || str_contains($lower, 'décodage') || str_contains($lower, 'corrupt') => 'Image corrompue ou illisible.',
+            str_contains($lower, 'galerie non trouvée') || str_contains($lower, 'gallery') => 'Galerie introuvable, recharge la page.',
+            str_contains($lower, 'permission') || str_contains($lower, 'denied') => 'Accès refusé au stockage. Contacter l\'administrateur.',
+            default => 'Erreur lors du traitement. Clique sur « Réessayer ».',
+        };
+    }
+
+    private function processSinglePhoto(
+        \Illuminate\Http\UploadedFile $file,
+        Gallery $gallery,
+        ImageProcessingService $imageProcessing,
+        MinioStorageService $storage,
+    ): Photo {
+        $isVideo = str_starts_with($file->getMimeType(), 'video/');
+
+        if ($isVideo) {
+            $result = $storage->uploadPhoto($file, $gallery->id);
+            if (! $result) {
+                throw new \RuntimeException("Échec de l'upload vidéo vers MinIO");
+            }
+
+            return $gallery->photos()->create([
+                'file_path' => $result['path'],
+                'title' => pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME),
+                'is_video' => true,
+                'is_downloadable' => false,
+                'is_processed' => true,
+                'metadata' => [
+                    'original_filename' => $file->getClientOriginalName(),
+                    'size' => $file->getSize(),
+                    'mime_type' => $file->getMimeType(),
+                    'storage_path' => $result['path'],
+                ],
+            ]);
+        }
+
+        $result = $imageProcessing->processUploadedPhoto($file, $gallery->id);
+        if (! $result) {
+            throw new \RuntimeException("Échec du traitement de l'image");
+        }
+
+        return $gallery->photos()->create([
+            'file_path' => $result['hd_path'],
+            'file_path_hd' => $result['hd_path'],
+            'file_path_preview' => $result['preview_path'],
+            'file_path_thumbnail' => $result['thumbnail_path'],
+            'is_processed' => true,
+            'title' => pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME),
+            'is_downloadable' => false,
+            'metadata' => [
+                'original_filename' => $file->getClientOriginalName(),
+                'size' => $file->getSize(),
+                'mime_type' => $file->getMimeType(),
+                'storage_path' => $result['hd_path'],
+                'width' => $result['width'] ?? null,
+                'height' => $result['height'] ?? null,
+            ],
+        ]);
+    }
+
+    /** `include_uploads=false` retourne uniquement les compteurs agrégés (gros batches). */
     public function uploadStatus(UploadStatusRequest $request): JsonResponse
     {
         $validated = $request->validated();
 
-        $status = PhotoUpload::getBatchStatus($validated['batch_id']);
+        $status = PhotoUpload::getBatchStatus(
+            $validated['batch_id'],
+            $validated['include_uploads'] ?? true
+        );
 
         return response()->json($status);
     }

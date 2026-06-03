@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Intervention\Image\Drivers\Gd\Driver as GdDriver;
+use Intervention\Image\Drivers\Imagick\Driver as ImagickDriver;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Interfaces\ImageInterface;
 use Intervention\Image\Modifiers\AlignRotationModifier;
@@ -20,41 +21,50 @@ class ImageProcessingService
 
     private string $disk = 'minio';
 
-    // Image dimensions
-    private const PREVIEW_MAX_WIDTH = 2560; // QHD for high-quality gallery viewing
+    private const PREVIEW_MAX_WIDTH = 2560;
 
-    private const THUMBNAIL_MAX_WIDTH = 600; // Larger thumbnails for better grid display
+    private const THUMBNAIL_MAX_WIDTH = 600;
 
-    // Quality settings (kept high for better gallery display)
-    private const PREVIEW_QUALITY = 95;
+    private const PREVIEW_QUALITY = 93;
 
     private const THUMBNAIL_QUALITY = 90;
 
-    // Watermark settings
     private const WATERMARK_TEXT = '©Oceane Torres';
 
-    // Central big text opacities
     private const PREVIEW_CENTRAL_OPACITY = 0.5;
 
     private const THUMBNAIL_CENTRAL_OPACITY = 0.5;
 
-    // Diagonal grid text opacities
     private const PREVIEW_GRID_OPACITY = 0.8;
 
     private const THUMBNAIL_GRID_OPACITY = 0.7;
 
-    // Font path for watermark (TTF required for custom sizes)
     private const WATERMARK_FONT = 'fonts/Amsterdam.ttf';
+
+    private const USE_IMAGICK_DRIVER = true;
+
+    /**
+     * Pre-render the watermark as a transparent layer once per (width, height, opacities)
+     * and re-use it across photos. Disabled: GD's transparent-canvas behavior is unreliable;
+     * enable once visual output has been validated.
+     */
+    private const USE_WATERMARK_LAYER_CACHE = false;
+
+    private const WATERMARK_LAYER_CACHE_LIMIT = 8;
+
+    /** @var array<string, ImageInterface> */
+    private static array $watermarkLayerCache = [];
 
     public function __construct(?MinioStorageService $storageService = null)
     {
-        $this->rawManager = new ImageManager(new GdDriver, autoOrientation: false);
+        $driver = self::USE_IMAGICK_DRIVER && class_exists(\Imagick::class)
+            ? new ImagickDriver
+            : new GdDriver;
+
+        $this->rawManager = new ImageManager($driver, autoOrientation: false);
         $this->storageService = $storageService ?? new MinioStorageService;
     }
 
-    /**
-     * Process an uploaded photo and create all versions (original, preview, thumbnail)
-     */
     public function processUploadedPhoto(UploadedFile $file, string $galleryId): ?array
     {
         $extension = strtolower($file->getClientOriginalExtension());
@@ -66,27 +76,14 @@ class ImageProcessingService
             $previewPath = "{$galleryId}/preview/{$filename}";
             $thumbnailPath = "{$galleryId}/thumbnail/{$filename}";
 
-            // 1. Upload original file as-is (no re-encoding, preserves 100% quality)
-            $originalContent = file_get_contents($file->getRealPath());
-            $this->uploadContent($originalPath, $originalContent, $file->getMimeType());
-            unset($originalContent);
+            $realPath = $file->getRealPath();
+            $mimeType = $file->getMimeType();
 
-            // Get oriented dimensions without loading full image into GD
-            [$originalWidth, $originalHeight] = $this->getOrientedDimensions($file->getRealPath());
+            $this->uploadOriginalStream($file, $originalPath);
 
-            // 2. Create and upload preview (2560px + watermark)
-            $preview = $this->readScaledOriented($file->getRealPath(), self::PREVIEW_MAX_WIDTH);
-            $this->applyWatermark($preview, self::PREVIEW_CENTRAL_OPACITY, self::PREVIEW_GRID_OPACITY);
-            $previewContent = $this->encodeImage($preview, $extension, self::PREVIEW_QUALITY);
-            $this->uploadContent($previewPath, $previewContent, $file->getMimeType());
-            unset($preview, $previewContent);
+            [$originalWidth, $originalHeight] = $this->getOrientedDimensions($realPath);
 
-            // 3. Create and upload thumbnail (600px + strong watermark)
-            $thumbnail = $this->readScaledOriented($file->getRealPath(), self::THUMBNAIL_MAX_WIDTH);
-            $this->applyWatermark($thumbnail, self::THUMBNAIL_CENTRAL_OPACITY, self::THUMBNAIL_GRID_OPACITY);
-            $thumbnailContent = $this->encodeImage($thumbnail, $extension, self::THUMBNAIL_QUALITY);
-            $this->uploadContent($thumbnailPath, $thumbnailContent, $file->getMimeType());
-            unset($thumbnail, $thumbnailContent);
+            $this->generatePreviewAndThumbnail($realPath, $extension, $mimeType, $previewPath, $thumbnailPath);
 
             return [
                 'hd_path' => $originalPath,
@@ -107,13 +104,9 @@ class ImageProcessingService
         }
     }
 
-    /**
-     * Process an existing photo from storage
-     */
     public function processExistingPhoto(string $originalPath, string $galleryId): ?array
     {
         try {
-            // Get the original file content
             $content = $this->storageService->getFileContent($originalPath);
             if (! $content) {
                 Log::error('Could not retrieve original file', ['path' => $originalPath]);
@@ -121,37 +114,20 @@ class ImageProcessingService
                 return null;
             }
 
-            // Get extension from path
             $extension = strtolower(pathinfo($originalPath, PATHINFO_EXTENSION)) ?: 'jpg';
             $uuid = (string) Str::uuid();
             $filename = "{$uuid}.{$extension}";
 
-            // Get mime type
             $mimeType = MimeTypes::fromExtension($extension);
 
-            // Define paths
             $newOriginalPath = "{$galleryId}/original/{$filename}";
             $previewPath = "{$galleryId}/preview/{$filename}";
             $thumbnailPath = "{$galleryId}/thumbnail/{$filename}";
 
-            // 1. Upload original as-is (no re-encoding)
             $this->uploadContent($newOriginalPath, $content, $mimeType);
 
-            // 2. Create and upload preview
-            $preview = $this->readScaledOriented($content, self::PREVIEW_MAX_WIDTH);
-            $this->applyWatermark($preview, self::PREVIEW_CENTRAL_OPACITY, self::PREVIEW_GRID_OPACITY);
-            $previewContent = $this->encodeImage($preview, $extension, self::PREVIEW_QUALITY);
-            $this->uploadContent($previewPath, $previewContent, $mimeType);
-            unset($preview, $previewContent);
+            $this->generatePreviewAndThumbnail($content, $extension, $mimeType, $previewPath, $thumbnailPath);
 
-            // 3. Create and upload thumbnail
-            $thumbnail = $this->readScaledOriented($content, self::THUMBNAIL_MAX_WIDTH);
-            $this->applyWatermark($thumbnail, self::THUMBNAIL_CENTRAL_OPACITY, self::THUMBNAIL_GRID_OPACITY);
-            $thumbnailContent = $this->encodeImage($thumbnail, $extension, self::THUMBNAIL_QUALITY);
-            $this->uploadContent($thumbnailPath, $thumbnailContent, $mimeType);
-            unset($thumbnail, $thumbnailContent);
-
-            // Free source content
             unset($content);
 
             return [
@@ -171,9 +147,6 @@ class ImageProcessingService
         }
     }
 
-    /**
-     * Generate preview version on-the-fly (for fallback)
-     */
     public function generatePreviewOnTheFly(string $originalPath): ?string
     {
         try {
@@ -183,7 +156,9 @@ class ImageProcessingService
             }
 
             $extension = strtolower(pathinfo($originalPath, PATHINFO_EXTENSION)) ?: 'jpg';
-            $image = $this->readScaledOriented($content, self::PREVIEW_MAX_WIDTH);
+            $image = $this->rawManager->read($content);
+            $this->scaleDownPreservingOrientation($image, self::PREVIEW_MAX_WIDTH);
+            $image->modify(new AlignRotationModifier);
             $this->applyWatermark($image, self::PREVIEW_CENTRAL_OPACITY, self::PREVIEW_GRID_OPACITY);
 
             return $this->encodeImage($image, $extension, self::PREVIEW_QUALITY);
@@ -197,9 +172,6 @@ class ImageProcessingService
         }
     }
 
-    /**
-     * Generate thumbnail version on-the-fly (for fallback)
-     */
     public function generateThumbnailOnTheFly(string $originalPath): ?string
     {
         try {
@@ -209,7 +181,9 @@ class ImageProcessingService
             }
 
             $extension = strtolower(pathinfo($originalPath, PATHINFO_EXTENSION)) ?: 'jpg';
-            $image = $this->readScaledOriented($content, self::THUMBNAIL_MAX_WIDTH);
+            $image = $this->rawManager->read($content);
+            $this->scaleDownPreservingOrientation($image, self::THUMBNAIL_MAX_WIDTH);
+            $image->modify(new AlignRotationModifier);
             $this->applyWatermark($image, self::THUMBNAIL_CENTRAL_OPACITY, self::THUMBNAIL_GRID_OPACITY);
 
             return $this->encodeImage($image, $extension, self::THUMBNAIL_QUALITY);
@@ -223,9 +197,7 @@ class ImageProcessingService
         }
     }
 
-    /**
-     * Generate clean preview version on-the-fly (no watermark, for downloadable galleries)
-     */
+    /** Preview without watermark, used for downloadable galleries. */
     public function generateCleanPreviewOnTheFly(string $originalPath): ?string
     {
         try {
@@ -235,7 +207,9 @@ class ImageProcessingService
             }
 
             $extension = strtolower(pathinfo($originalPath, PATHINFO_EXTENSION)) ?: 'jpg';
-            $image = $this->readScaledOriented($content, self::PREVIEW_MAX_WIDTH);
+            $image = $this->rawManager->read($content);
+            $this->scaleDownPreservingOrientation($image, self::PREVIEW_MAX_WIDTH);
+            $image->modify(new AlignRotationModifier);
 
             return $this->encodeImage($image, $extension, self::PREVIEW_QUALITY);
         } catch (\Exception $e) {
@@ -249,22 +223,60 @@ class ImageProcessingService
     }
 
     /**
-     * Read image, scale down, then apply EXIF orientation. Memory-safe for large portraits.
-     *
-     * GD auto-orientation rotates BEFORE scaling, which requires 3x full-size buffers
-     * and causes OOM on large portrait images. This method scales FIRST (small buffer),
-     * then rotates (safe on the already-small image).
+     * Decode the source once, derive preview + thumbnail from a single scaled buffer.
+     * Memory peak per photo ~17 MB instead of ~260 MB on a 7000×4600 source (was decoding twice).
      */
-    private function readScaledOriented(mixed $source, int $maxWidth): ImageInterface
-    {
-        $image = $this->rawManager->read($source);
+    private function generatePreviewAndThumbnail(
+        mixed $source,
+        string $extension,
+        string $mimeType,
+        string $previewPath,
+        string $thumbnailPath,
+    ): void {
+        $preview = $this->rawManager->read($source);
+        $this->scaleDownPreservingOrientation($preview, self::PREVIEW_MAX_WIDTH);
+        $preview->modify(new AlignRotationModifier);
 
-        // Check if EXIF orientation will swap width/height (90° or 270° rotation)
+        // Branch BEFORE watermarking — sinon le watermark dimensionné pour 2560px se réduit
+        // à ~150px sur le thumbnail et devient illisible.
+        $thumbnail = clone $preview;
+        $thumbnail->scaleDown(width: self::THUMBNAIL_MAX_WIDTH);
+
+        $this->applyWatermark($preview, self::PREVIEW_CENTRAL_OPACITY, self::PREVIEW_GRID_OPACITY);
+        $previewContent = $this->encodeImage($preview, $extension, self::PREVIEW_QUALITY);
+        $this->uploadContent($previewPath, $previewContent, $mimeType);
+        unset($preview, $previewContent);
+
+        $this->applyWatermark($thumbnail, self::THUMBNAIL_CENTRAL_OPACITY, self::THUMBNAIL_GRID_OPACITY);
+        $thumbnailContent = $this->encodeImage($thumbnail, $extension, self::THUMBNAIL_QUALITY);
+        $this->uploadContent($thumbnailPath, $thumbnailContent, $mimeType);
+        unset($thumbnail, $thumbnailContent);
+    }
+
+    /**
+     * Stream-upload via putFileAs : évite de charger les 20-35 MB en mémoire PHP.
+     * Multipart S3 au-delà de 5 MB.
+     */
+    private function uploadOriginalStream(UploadedFile $file, string $originalPath): void
+    {
+        Storage::disk($this->disk)->putFileAs(
+            dirname($originalPath),
+            $file,
+            basename($originalPath),
+            ['ContentType' => $file->getMimeType()]
+        );
+    }
+
+    /**
+     * Scale first (small buffer), then rotate — l'inverse force GD à allouer 3× le full-size
+     * et déclenche OOM sur les portraits.
+     */
+    private function scaleDownPreservingOrientation(ImageInterface $image, int $maxWidth): void
+    {
         $orientation = $image->exif('IFD0.Orientation');
         $willTranspose = in_array($orientation, [5, 6, 7, 8]);
 
         if ($willTranspose) {
-            // After rotation, raw height becomes width → scale raw height to target
             if ($image->height() > $maxWidth) {
                 $image->scaleDown(height: $maxWidth);
             }
@@ -273,17 +285,10 @@ class ImageProcessingService
                 $image->scaleDown(width: $maxWidth);
             }
         }
-
-        // Now safe to orient — image is already small
-        $image->modify(new AlignRotationModifier);
-
-        return $image;
     }
 
     /**
-     * Get oriented dimensions using native PHP functions (no GD memory needed)
-     *
-     * @return array{0: int, 1: int} [width, height] after EXIF orientation
+     * @return array{0: int, 1: int} [width, height] après application de l'orientation EXIF
      */
     private function getOrientedDimensions(string $filePath): array
     {
@@ -294,7 +299,7 @@ class ImageProcessingService
         $exif = @exif_read_data($filePath);
         $orientation = $exif['Orientation'] ?? 1;
 
-        // Orientations 5-8 involve 90°/270° rotation which swaps dimensions
+        // Orientations 5-8 : rotation 90°/270° → dimensions inversées.
         if (in_array($orientation, [5, 6, 7, 8])) {
             return [$rawHeight, $rawWidth];
         }
@@ -302,19 +307,60 @@ class ImageProcessingService
         return [$rawWidth, $rawHeight];
     }
 
-    /**
-     * Apply two-layer watermark: dense diagonal grid + large central text
-     */
     private function applyWatermark(ImageInterface $image, float $centralOpacity, float $gridOpacity): void
     {
         $width = $image->width();
         $height = $image->height();
-        $minDim = min($width, $height);
 
+        if (self::USE_WATERMARK_LAYER_CACHE) {
+            try {
+                $layer = $this->getOrBuildWatermarkLayer($width, $height, $gridOpacity, $centralOpacity);
+                $image->place($layer, 'top-left', 0, 0);
+
+                return;
+            } catch (\Throwable $e) {
+                Log::warning('Watermark layer caching failed, falling back to inline drawing', [
+                    'error' => $e->getMessage(),
+                    'width' => $width,
+                    'height' => $height,
+                ]);
+            }
+        }
+
+        $this->drawWatermarkOn($image, $width, $height, $gridOpacity, $centralOpacity);
+    }
+
+    private function getOrBuildWatermarkLayer(int $width, int $height, float $gridOpacity, float $centralOpacity): ImageInterface
+    {
+        $key = "{$width}x{$height}_g{$gridOpacity}_c{$centralOpacity}";
+
+        if (! isset(self::$watermarkLayerCache[$key])) {
+            // FIFO eviction : empêche un worker qui voit beaucoup de ratios différents de fuir.
+            if (count(self::$watermarkLayerCache) >= self::WATERMARK_LAYER_CACHE_LIMIT) {
+                self::$watermarkLayerCache = array_slice(self::$watermarkLayerCache, 1, null, true);
+            }
+            self::$watermarkLayerCache[$key] = $this->buildWatermarkLayer($width, $height, $gridOpacity, $centralOpacity);
+        }
+
+        // Clone : le cache ne doit pas être muté par place() côté appelant.
+        return clone self::$watermarkLayerCache[$key];
+    }
+
+    private function buildWatermarkLayer(int $width, int $height, float $gridOpacity, float $centralOpacity): ImageInterface
+    {
+        $layer = $this->rawManager->create($width, $height)->fill('rgba(0, 0, 0, 0)');
+
+        $this->drawWatermarkOn($layer, $width, $height, $gridOpacity, $centralOpacity);
+
+        return $layer;
+    }
+
+    private function drawWatermarkOn(ImageInterface $image, int $width, int $height, float $gridOpacity, float $centralOpacity): void
+    {
+        $minDim = min($width, $height);
         $watermarkText = self::WATERMARK_TEXT;
         $fontPath = $this->getFontPath();
 
-        // --- Layer 1: Dense diagonal grid of small texts ---
         $gridFontSize = (int) ($minDim * 0.04);
         $gridFontSize = max($gridFontSize, 10);
         $gridColor = "rgba(50, 50, 50, $gridOpacity)";
@@ -342,9 +388,8 @@ class ImageProcessingService
             }
         }
 
-        // --- Layer 2: Large central text ---
         $centralFontSize = (int) ($minDim * 0.15);
-        // Cap font size so text doesn't overflow image width (~0.6 * fontSize * charCount ≈ text width)
+        // Cap pour éviter que le texte déborde : ~0.6 × fontSize × charCount ≈ largeur texte.
         $maxFontForWidth = (int) ($width * 0.80 / (0.6 * mb_strlen($watermarkText)));
         $centralFontSize = min($centralFontSize, $maxFontForWidth);
         $centralFontSize = max($centralFontSize, 24);
@@ -365,22 +410,15 @@ class ImageProcessingService
         });
     }
 
-    /**
-     * Get the path to the watermark font file
-     */
     private function getFontPath(): ?string
     {
-        // Try custom font in storage
         $customFont = storage_path('app/'.self::WATERMARK_FONT);
         if (file_exists($customFont)) {
-            Log::info('Watermark font found', ['path' => $customFont]);
-
             return $customFont;
         }
 
-        // Try system fonts (Alpine/Linux/Ubuntu/Docker)
         $systemFonts = [
-            // Alpine Linux (ttf-dejavu package)
+            // Alpine Linux (ttf-dejavu)
             '/usr/share/fonts/ttf-dejavu/DejaVuSans.ttf',
             '/usr/share/fonts/ttf-dejavu/DejaVuSans-Bold.ttf',
             // Debian/Ubuntu
@@ -390,20 +428,18 @@ class ImageProcessingService
             '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf',
             '/usr/share/fonts/truetype/freefont/FreeSans.ttf',
             '/usr/share/fonts/truetype/freefont/FreeSansBold.ttf',
-            // Other Linux
+            // Autres Linux
             '/usr/share/fonts/TTF/DejaVuSans.ttf',
             '/usr/share/fonts/dejavu/DejaVuSans.ttf',
         ];
 
         foreach ($systemFonts as $font) {
             if (file_exists($font)) {
-                Log::info('Watermark system font found', ['path' => $font]);
-
                 return $font;
             }
         }
 
-        // macOS system fonts
+        // macOS
         $macFonts = [
             '/Library/Fonts/Arial.ttf',
             '/System/Library/Fonts/Supplemental/Arial.ttf',
@@ -412,8 +448,6 @@ class ImageProcessingService
 
         foreach ($macFonts as $font) {
             if (file_exists($font)) {
-                Log::info('Watermark macOS font found', ['path' => $font]);
-
                 return $font;
             }
         }
@@ -423,9 +457,6 @@ class ImageProcessingService
         return null;
     }
 
-    /**
-     * Encode image to string based on extension
-     */
     private function encodeImage(ImageInterface $image, string $extension, int $quality): string
     {
         return match ($extension) {
@@ -436,9 +467,6 @@ class ImageProcessingService
         };
     }
 
-    /**
-     * Upload content to MinIO
-     */
     private function uploadContent(string $path, string $content, string $mimeType): void
     {
         Storage::disk($this->disk)->put($path, $content, [
@@ -446,9 +474,6 @@ class ImageProcessingService
         ]);
     }
 
-    /**
-     * Delete all versions of a photo
-     */
     public function deletePhotoVersions(string $galleryId, string $hdPath, ?string $previewPath, ?string $thumbnailPath): void
     {
         $paths = array_filter([$hdPath, $previewPath, $thumbnailPath]);

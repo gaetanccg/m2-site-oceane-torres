@@ -27,21 +27,15 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class SchoolSessionController extends Controller
 {
-    /**
-     * GET /admin/school-sessions
-     */
     public function index(): JsonResponse
     {
         $sessions = SchoolSession::withCount('galleries')
-                                 ->latest()
-                                 ->paginate(20);
+            ->latest()
+            ->paginate(20);
 
         return response()->json($sessions);
     }
 
-    /**
-     * POST /admin/school-sessions
-     */
     public function store(StoreSchoolSessionRequest $request): JsonResponse
     {
         $validated = $request->validated();
@@ -60,20 +54,15 @@ class SchoolSessionController extends Controller
         ], 201);
     }
 
-    /**
-     * GET /admin/school-sessions/{schoolSession}
-     */
     public function show(SchoolSession $schoolSession): JsonResponse
     {
         $data = $schoolSession->toArray();
         $data['galleries_count'] = $schoolSession->galleries()->count();
 
-        // Live progress from PhotoUpload batch (counts only, no upload list — scaling)
         if ($schoolSession->batch_id) {
             $batchStatus = PhotoUpload::getBatchStatus($schoolSession->batch_id, includeUploads: false);
             $data['batch_progress'] = $batchStatus;
 
-            // Auto-transition: processing_photos -> completed
             if (
                 $schoolSession->status === 'processing_photos'
                 && $batchStatus['found']
@@ -94,45 +83,39 @@ class SchoolSessionController extends Controller
         ]);
     }
 
-    /**
-     * GET /admin/school-sessions/{schoolSession}/orders
-     * Lists orders that contain at least one item from a gallery in this session.
-     */
+    /** Orders paid contenant au moins un item issu d'une galerie de cette session. */
     public function orders(SchoolSession $schoolSession): JsonResponse
     {
         $galleryIds = $schoolSession->galleries()->pluck('id');
 
         $orders = Order::with(['items.photo.gallery', 'user'])
-                       ->where("status", "paid")
-                       ->whereHas('items.photo', fn($q) => $q->whereIn('gallery_id', $galleryIds))
-                       ->orderBy('created_at', 'desc')
-                       ->get();
+            ->paid()
+            ->whereHas('items.photo', fn ($q) => $q->whereIn('gallery_id', $galleryIds))
+            ->orderBy('created_at', 'desc')
+            ->get();
 
         return response()->json([
             'success' => true,
-            'orders' => $orders->map(fn($order) => OrderController::formatOrder($order)),
+            'orders' => $orders->map(fn ($order) => OrderController::formatOrder($order)),
         ]);
     }
 
-    /**
-     * GET /admin/school-sessions/{schoolSession}/galleries
-     */
     public function galleries(SchoolSession $schoolSession): JsonResponse
     {
         $galleries = $schoolSession->galleries()
-                                   ->withCount('photos')
-                                   ->orderBy('class_name')
-                                   ->orderBy('title')
-                                   ->get()
-                                   ->map(fn($gallery) => [
-                                       'id' => $gallery->id,
-                                       'title' => $gallery->title,
-                                       'class_name' => $gallery->class_name,
-                                       'photos_count' => $gallery->photos_count,
-                                       'share_code' => $gallery->share_code,
-                                       'access_token' => $gallery->access_token,
-                                       'created_at' => $gallery->created_at,
-                                   ]);
+            ->withCount('photos')
+            ->orderBy('class_name')
+            ->orderBy('title')
+            ->get()
+            ->map(fn ($gallery) => [
+                'id' => $gallery->id,
+                'title' => $gallery->title,
+                'class_name' => $gallery->class_name,
+                'photos_count' => $gallery->photos_count,
+                'share_code' => $gallery->share_code,
+                'access_token' => $gallery->access_token,
+                'created_at' => $gallery->created_at,
+            ]);
 
         return response()->json([
             'success' => true,
@@ -140,9 +123,6 @@ class SchoolSessionController extends Controller
         ]);
     }
 
-    /**
-     * PUT /admin/school-sessions/{schoolSession}/upload
-     */
     public function upload(Request $request, SchoolSession $schoolSession): JsonResponse
     {
         if ($schoolSession->status !== 'uploading') {
@@ -161,9 +141,9 @@ class SchoolSessionController extends Controller
         ]);
 
         $chunk = $request->file('chunk');
-        $chunkIndex = (int)$request->input('chunk_index');
-        $totalChunks = (int)$request->input('total_chunks');
-        $offset = (int)$request->input('offset');
+        $chunkIndex = (int) $request->input('chunk_index');
+        $totalChunks = (int) $request->input('total_chunks');
+        $offset = (int) $request->input('offset');
 
         $zipDir = 'temp/school-sessions/'.$schoolSession->id;
         $zipPath = $zipDir.'/upload.zip';
@@ -172,8 +152,8 @@ class SchoolSessionController extends Controller
 
         $fullZipPath = Storage::disk('local')->path($zipPath);
 
-        // Idempotent write: seek to offset so a retried chunk overwrites itself
-        // instead of being appended a second time (which would corrupt the ZIP).
+        // Idempotent : seek+write à offset → un retry réécrit au même endroit au lieu
+        // d'append (qui corromprait le ZIP).
         $handle = fopen($fullZipPath, 'c+b');
         if ($handle === false) {
             return response()->json([
@@ -207,9 +187,6 @@ class SchoolSessionController extends Controller
         ]);
     }
 
-    /**
-     * POST /admin/school-sessions/{schoolSession}/process
-     */
     public function process(SchoolSession $schoolSession): JsonResponse
     {
         if ($schoolSession->status !== 'uploading') {
@@ -219,7 +196,7 @@ class SchoolSessionController extends Controller
             ], 422);
         }
 
-        if (!$schoolSession->zip_path || !Storage::disk('local')->exists($schoolSession->zip_path)) {
+        if (! $schoolSession->zip_path || ! Storage::disk('local')->exists($schoolSession->zip_path)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Aucun fichier ZIP trouvé. Veuillez d\'abord uploader le ZIP.',
@@ -234,15 +211,10 @@ class SchoolSessionController extends Controller
         ]);
     }
 
-    /**
-     * POST /admin/school-sessions/{schoolSession}/retry-failed-photos
-     *
-     * Re-dispatches ProcessPhotoJob for every PhotoUpload of this session's batch
-     * still in `failed` status, if the temp file is still on disk.
-     */
+    /** Re-dispatch ProcessPhotoJob pour chaque PhotoUpload failed dont le temp file existe. */
     public function retryFailedPhotos(SchoolSession $schoolSession): JsonResponse
     {
-        if (!$schoolSession->batch_id) {
+        if (! $schoolSession->batch_id) {
             return response()->json([
                 'success' => false,
                 'message' => 'Aucun lot de photos à relancer.',
@@ -250,8 +222,8 @@ class SchoolSessionController extends Controller
         }
 
         $failedUploads = PhotoUpload::where('batch_id', $schoolSession->batch_id)
-                                    ->where('status', 'failed')
-                                    ->get();
+            ->where('status', 'failed')
+            ->get();
 
         if ($failedUploads->isEmpty()) {
             return response()->json([
@@ -267,8 +239,7 @@ class SchoolSessionController extends Controller
         $disk = Storage::disk('local');
 
         foreach ($failedUploads as $upload) {
-            // Preferred (new) ASCII-only path
-            $extension = strtolower(pathinfo($upload->original_filename, PATHINFO_EXTENSION)) ? : 'jpg';
+            $extension = strtolower(pathinfo($upload->original_filename, PATHINFO_EXTENSION)) ?: 'jpg';
             $newTempPath = 'temp_uploads/'.$upload->id.'.'.$extension;
             $legacyTempPath = 'temp_uploads/'.$upload->id.'_'.$upload->original_filename;
 
@@ -276,7 +247,7 @@ class SchoolSessionController extends Controller
             if ($disk->exists($newTempPath)) {
                 $tempPath = $newTempPath;
             } elseif ($disk->exists($legacyTempPath)) {
-                // Migrate legacy path (with accented chars) → ASCII-only path
+                // Migration legacy (filenames accentués) → ASCII-only.
                 @rename($disk->path($legacyTempPath), $disk->path($newTempPath));
                 $tempPath = $disk->exists($newTempPath) ? $newTempPath : $legacyTempPath;
             }
@@ -294,7 +265,7 @@ class SchoolSessionController extends Controller
             ]);
 
             $fullPath = $disk->path($tempPath);
-            $mimeType = mime_content_type($fullPath) ? : 'image/jpeg';
+            $mimeType = mime_content_type($fullPath) ?: 'image/jpeg';
 
             ProcessPhotoJob::dispatch(
                 $upload->id,
@@ -319,22 +290,18 @@ class SchoolSessionController extends Controller
         ]);
     }
 
-    /**
-     * POST /admin/school-sessions/{schoolSession}/send-messages
-     * Sends gallery access via email or SMS based on the chosen channel.
-     */
     public function sendMessages(SendSchoolSessionMessagesRequest $request, SchoolSession $schoolSession, SmsTemplateService $smsTemplate): JsonResponse
     {
         $validated = $request->validated();
         $channel = $validated['channel'];
         $frontendUrl = config('app.frontend_url', 'https://oceanetorresphotographie.fr');
 
-        // Pré-charge toutes les galeries en une seule query (évite N+1 sur 100+ contacts)
+        // Pré-charge en une query (évite N+1 sur 100+ contacts).
         $galleryIds = collect($validated['contacts'])->pluck('gallery_id')->unique();
         $galleries = Gallery::whereIn('id', $galleryIds)
-                            ->where('school_session_id', $schoolSession->id)
-                            ->get()
-                            ->keyBy('id');
+            ->where('school_session_id', $schoolSession->id)
+            ->get()
+            ->keyBy('id');
 
         $sent = 0;
         $errors = [];
@@ -343,7 +310,7 @@ class SchoolSessionController extends Controller
         foreach ($validated['contacts'] as $contact) {
             $gallery = $galleries->get($contact['gallery_id']);
 
-            if (!$gallery) {
+            if (! $gallery) {
                 $errors[] = "Galerie introuvable pour {$contact['recipient_name']}";
 
                 continue;
@@ -363,8 +330,7 @@ class SchoolSessionController extends Controller
                         )
                     );
                 } else {
-                    // SMS — accumulate then dispatch as a single batch job. The orchestrator
-                    // throttles Brevo calls. Template substitution + accent stripping is in the service.
+                    // SMS : accumulés puis dispatch en un seul batch job (throttle Brevo côté orchestrateur).
                     $content = $smsTemplate->build(
                         $schoolSession->sms_template,
                         $contact['recipient_name'],
@@ -386,7 +352,7 @@ class SchoolSessionController extends Controller
             }
         }
 
-        if (!empty($smsBatch)) {
+        if (! empty($smsBatch)) {
             DispatchSmsBatchJob::dispatch($smsBatch);
         }
 
@@ -402,10 +368,6 @@ class SchoolSessionController extends Controller
         ]);
     }
 
-    /**
-     * PUT /admin/school-sessions/{schoolSession}
-     * Updates editable session fields (title, gallery_message, sms_template, event_date).
-     */
     public function update(UpdateSchoolSessionRequest $request, SchoolSession $schoolSession): JsonResponse
     {
         $schoolSession->update($request->validated());
@@ -417,10 +379,7 @@ class SchoolSessionController extends Controller
         ]);
     }
 
-    /**
-     * POST /admin/school-sessions/{schoolSession}/close
-     * Closes the session: parents can no longer add to cart on its galleries.
-     */
+    /** Clôture la session : les parents ne peuvent plus add-to-cart sur ses galeries. */
     public function close(SchoolSession $schoolSession): JsonResponse
     {
         if ($schoolSession->isClosed()) {
@@ -439,12 +398,9 @@ class SchoolSessionController extends Controller
         ]);
     }
 
-    /**
-     * POST /admin/school-sessions/{schoolSession}/reopen
-     */
     public function reopen(SchoolSession $schoolSession): JsonResponse
     {
-        if (!$schoolSession->isClosed()) {
+        if (! $schoolSession->isClosed()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Cette session n\'est pas cloturee.',
@@ -460,26 +416,21 @@ class SchoolSessionController extends Controller
         ]);
     }
 
-    /**
-     * POST /admin/school-sessions/{schoolSession}/exports
-     * Creates a new export and dispatches the generation job.
-     */
     public function createExport(Request $request, SchoolSession $schoolSession): JsonResponse
     {
         $validated = $request->validate([
             'include_digital' => ['nullable', 'boolean'],
         ]);
 
-        // Cleanup any previous in-progress or failed export for this session
-        // (we keep completed ones to allow re-download)
+        // On garde les exports `completed` (re-download possible), on nettoie le reste.
         SchoolSessionExport::where('school_session_id', $schoolSession->id)
-                           ->whereIn('status', ['pending', 'processing', 'failed'])
-                           ->delete();
+            ->whereIn('status', ['pending', 'processing', 'failed'])
+            ->delete();
 
         $export = SchoolSessionExport::create([
             'school_session_id' => $schoolSession->id,
             'status' => 'pending',
-            'include_digital' => (bool)($validated['include_digital'] ?? false),
+            'include_digital' => (bool) ($validated['include_digital'] ?? false),
         ]);
 
         GenerateSchoolSessionExportJob::dispatch($export->id);
@@ -490,14 +441,11 @@ class SchoolSessionController extends Controller
         ], 201);
     }
 
-    /**
-     * GET /admin/school-sessions/{schoolSession}/exports/latest
-     */
     public function latestExport(SchoolSession $schoolSession): JsonResponse
     {
         $export = SchoolSessionExport::where('school_session_id', $schoolSession->id)
-                                     ->latest()
-                                     ->first();
+            ->latest()
+            ->first();
 
         return response()->json([
             'success' => true,
@@ -505,53 +453,50 @@ class SchoolSessionController extends Controller
         ]);
     }
 
-    /**
-     * GET /admin/school-session-exports/{export}/download
-     */
     public function downloadExport(SchoolSessionExport $export): BinaryFileResponse|JsonResponse
     {
-        if ($export->status !== 'completed' || !$export->file_path) {
+        if ($export->status !== 'completed' || ! $export->file_path) {
             return response()->json([
                 'success' => false,
                 'message' => 'Export non disponible.',
             ], 404);
         }
 
-        if (!Storage::disk('local')->exists($export->file_path)) {
+        if (! Storage::disk('local')->exists($export->file_path)) {
+            // Self-healing : ZIP référencé en DB mais disparu du disque (rebuild container,
+            // volume reset, cleanup manuel) → on bascule l'export en `failed` pour que le
+            // frontend propose « Réessayer » via le polling de latestExport.
+            $export->markAs('failed', "Le fichier ZIP n'est plus disponible sur le serveur. Cliquez sur « Réessayer » pour le régénérer.");
+
             return response()->json([
                 'success' => false,
-                'message' => 'Fichier introuvable sur le serveur.',
-            ], 404);
+                'message' => "Le fichier ZIP n'est plus disponible. L'export a été marqué comme à régénérer.",
+                'requires_regenerate' => true,
+            ], 410);
         }
 
         $fullPath = Storage::disk('local')->path($export->file_path);
         $downloadName = basename($fullPath);
-        // Strip the leading "{export_id}_" so the user sees a clean name
+        // Retire le préfixe "{export_id}_" pour donner un nom propre côté user.
         $cleanName = preg_replace('/^[a-f0-9-]+_/', '', $downloadName);
 
         return response()->download($fullPath, $cleanName);
     }
 
-    /**
-     * DELETE /admin/school-sessions/{schoolSession}
-     */
     public function destroy(
-        SchoolSession              $schoolSession,
-        SchoolSessionService       $service,
+        SchoolSession $schoolSession,
+        SchoolSessionService $service,
         SchoolSessionExportService $exportService,
     ): JsonResponse {
-        // Delete export ZIP files from local disk
         foreach ($schoolSession->exports as $export) {
             $exportService->deleteExportFile($export);
         }
 
-        // Clean MinIO files BEFORE cascade delete (need gallery UUIDs)
+        // Clean MinIO AVANT le cascade delete : on a besoin des gallery UUIDs.
         $service->deleteSessionFiles($schoolSession);
 
-        // Clean local temp files
         $service->cleanupExtractedFiles($schoolSession);
 
-        // Cascade: school_session -> galleries -> photos, photo_uploads, gallery_product_types, exports
         $schoolSession->delete();
 
         return response()->json([

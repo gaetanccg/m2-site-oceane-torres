@@ -60,5 +60,12 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('downloads', function (Request $request) {
             return Limit::perMinute(60)->by($request->ip());
         });
+
+        // Rate limit pour le webhook SumUp (endpoint public, non signé).
+        // SumUp légitime envoie quelques requêtes par checkout (notification +
+        // retries espacés). 60/min/IP couvre largement et bloque le spam.
+        RateLimiter::for('sumup-webhook', function (Request $request) {
+            return Limit::perMinute(60)->by($request->ip());
+        });
     }
 }
