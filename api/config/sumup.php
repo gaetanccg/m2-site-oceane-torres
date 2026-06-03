@@ -46,6 +46,17 @@ return [
     'checkout' => [
         'currency' => 'EUR',
         'locale' => 'fr-FR',
-        'return_url' => env('FRONTEND_URL', 'http://localhost:5173').'/commande/confirmation',
+
+        /*
+        | IMPORTANT : SumUp utilise UNE SEULE URL pour DEUX usages distincts
+        | (cf. https://developer.sumup.com/online-payments/webhooks) :
+        |   - GET → redirection navigateur après 3DS (avec ?checkout_id=…)
+        |   - POST → webhook CHECKOUT_STATUS_CHANGED ({event_type, id})
+        | L'URL doit donc pointer vers le backend Laravel, surtout pas le SPA
+        | statique (qui swallowait silencieusement le POST en renvoyant 200/HTML
+        | et laissait les commandes en pending si le navigateur de la cliente
+        | n'arrivait pas à compléter le callback côté SDK).
+        */
+        'return_url' => env('APP_URL', 'http://localhost:8000').'/api/payments/sumup/return',
     ],
 ];
