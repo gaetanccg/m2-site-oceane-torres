@@ -220,7 +220,6 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::get('/galleries', [GalleryController::class, 'adminIndex']);
     Route::get('/galleries/{gallery}', [GalleryController::class, 'adminShow']);
     Route::apiResource('galleries', GalleryController::class)->except(['index', 'show']);
-    Route::post('/galleries/{gallery}/photos', [PhotoController::class, 'store']);
     Route::post('/galleries/{gallery}/photos/async', [PhotoController::class, 'storeAsync']);
     Route::delete('/photos/{photo}', [PhotoController::class, 'destroy']);
     Route::put('/galleries/{gallery}/regenerate-token', [GalleryController::class, 'regenerateToken']);
@@ -248,7 +247,6 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::delete('/events/{gallery}', [EventGalleryController::class, 'destroy']);
     Route::put('/events/{gallery}/thumbnail', [EventGalleryController::class, 'setThumbnail']);
     Route::get('/events/{gallery}/children', [EventGalleryController::class, 'children']);
-    Route::post('/events/{gallery}/photos', [PhotoController::class, 'store']);
     Route::post('/events/{gallery}/photos/async', [PhotoController::class, 'storeAsync']);
 
     // Upload status (for polling)

@@ -127,10 +127,20 @@
             </div>
         </div>
 
-        <!-- Cancel Button -->
-        <div v-if="!progress.isComplete && showCancelButton" class="flex justify-end">
+        <!-- Action buttons (retry + cancel) -->
+        <div class="flex justify-end gap-2">
+            <!-- Retry failed (P4.1) — visible quand l'upload est terminé et qu'il reste des échecs -->
             <button
-                @click="$emit('cancel')"
+                v-if="progress.isComplete && failedFiles.length > 0 && showRetryButton"
+                @click="emit('retry', failedFiles.map(f => f.file))"
+                class="px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+            >
+                Réessayer les {{ failedFiles.length }} échouée{{ failedFiles.length > 1 ? 's' : '' }}
+            </button>
+            <!-- Cancel — visible uniquement pendant l'upload -->
+            <button
+                v-if="!progress.isComplete && showCancelButton"
+                @click="emit('cancel')"
                 class="px-4 py-2 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
             >
                 Annuler l'upload
@@ -148,16 +158,27 @@ interface Props {
     progress: UploadProgress | null
     showFileList?: boolean
     showCancelButton?: boolean
+    showRetryButton?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
     showFileList: true,
     showCancelButton: true,
+    showRetryButton: true,
 })
 
-defineEmits<{
+const emit = defineEmits<{
     cancel: []
+    retry: [files: File[]]
 }>()
+
+// Audit P4.1 — fichiers en échec dont on garde la référence File DOM, pour permettre un retry
+// en un clic sans re-glisser-déposer. La modale doit rester ouverte (sinon le state est reset).
+const failedFiles = computed(() =>
+    (props.progress?.files ?? []).filter((f): f is FileUploadState & { file: File } =>
+        f.status === 'failed' && f.file instanceof File
+    )
+)
 
 const { eta, update: updateEta, reset: resetEta } = useEta()
 

@@ -17,9 +17,9 @@ class ProcessPhotoJob implements ShouldQueue
 
     public int $tries = 3;
 
-    public int $timeout = 300; // 5 minutes for large images (7000x4600)
+    public int $timeout = 300;
 
-    public array $backoff = [5, 15, 30]; // Wait 5s, 15s, 30s between retries
+    public array $backoff = [10, 30, 60];
 
     public function __construct(
         public string $uploadId,
@@ -46,40 +46,34 @@ class ProcessPhotoJob implements ShouldQueue
             return;
         }
 
-        // Check if temp file exists — outside try/catch so the exception propagates
-        // to Laravel's queue worker, triggering automatic retry with backoff.
-        // This handles filesystem race conditions (e.g. bind mount cache lag).
-        if (! Storage::disk('local')->exists($this->tempFilePath)) {
-            clearstatcache(true, Storage::disk('local')->path($this->tempFilePath));
-            if (! Storage::disk('local')->exists($this->tempFilePath)) {
-                throw new \RuntimeException('Fichier temporaire non trouvé: '.$this->tempFilePath);
-            }
-        }
+        // Prod (NAS FS natif) : sync immédiate cross-container. Local (macOS virtio-fs) : marge.
+        $waitSeconds = app()->environment('local') ? 30 : 3;
+        $this->waitForTempFile(maxSeconds: $waitSeconds, pollIntervalSeconds: 1);
 
         try {
             $upload->markAsProcessing();
 
             $isVideo = str_starts_with($this->mimeType, 'video/');
+            $photo = $isVideo ? $this->processVideo($gallery) : $this->processImage($gallery);
 
-            if ($isVideo) {
-                $photo = $this->processVideo($gallery);
-            } else {
-                $photo = $this->processImage($gallery);
+            if (! $photo) {
+                // ImageProcessingService a retourné null (impossible de distinguer transient
+                // de permanent) → on relance via le mécanisme de retry.
+                throw new \RuntimeException("Échec du traitement de la photo {$this->originalFilename}");
             }
 
-            if ($photo) {
-                $upload->markAsCompleted($photo->id);
-            } else {
-                $upload->markAsFailed('Erreur lors du traitement de l\'image');
-            }
-        } catch (\Exception $e) {
-            Log::error('ProcessPhotoJob: Processing failed', [
+            $upload->markAsCompleted($photo->id);
+            $this->cleanupTempFile();
+        } catch (\Throwable $e) {
+            // NE PAS cleanup le temp file : la queue va retry. NE PAS markAsFailed :
+            // seul failed() le fait, après épuisement des retries.
+            Log::warning('ProcessPhotoJob: attempt failed, will retry if attempts remain', [
                 'upload_id' => $this->uploadId,
+                'attempt' => $this->attempts(),
+                'max_tries' => $this->tries,
                 'error' => $e->getMessage(),
             ]);
-            $upload->markAsFailed($e->getMessage());
-        } finally {
-            $this->cleanupTempFile();
+            throw $e;
         }
     }
 
@@ -87,16 +81,15 @@ class ProcessPhotoJob implements ShouldQueue
     {
         $imageProcessingService = app(ImageProcessingService::class);
 
-        // Get the full path to the temp file
         $fullPath = Storage::disk('local')->path($this->tempFilePath);
 
-        // Create an UploadedFile instance from the temp file
+        // `test=true` pour skip la validation interne (le fichier n'est pas un vrai upload HTTP).
         $tempFile = new \Illuminate\Http\UploadedFile(
             $fullPath,
             $this->originalFilename,
             $this->mimeType,
             null,
-            true // Mark as test to skip validation
+            true
         );
 
         $result = $imageProcessingService->processUploadedPhoto($tempFile, $gallery->id);
@@ -125,16 +118,14 @@ class ProcessPhotoJob implements ShouldQueue
     {
         $storageService = app(MinioStorageService::class);
 
-        // Get the full path to the temp file
         $fullPath = Storage::disk('local')->path($this->tempFilePath);
 
-        // Create an UploadedFile instance from the temp file
         $tempFile = new \Illuminate\Http\UploadedFile(
             $fullPath,
             $this->originalFilename,
             $this->mimeType,
             null,
-            true // Mark as test to skip validation
+            true
         );
 
         $result = $storageService->uploadPhoto($tempFile, $gallery->id);
@@ -155,6 +146,28 @@ class ProcessPhotoJob implements ShouldQueue
                 'storage_path' => $result['path'],
             ],
         ]);
+    }
+
+    private function waitForTempFile(int $maxSeconds, int $pollIntervalSeconds): void
+    {
+        $disk = Storage::disk('local');
+        $fullPath = $disk->path($this->tempFilePath);
+        $deadline = time() + $maxSeconds;
+
+        do {
+            clearstatcache(true, $fullPath);
+            if ($disk->exists($this->tempFilePath)) {
+                return;
+            }
+            if (time() >= $deadline) {
+                break;
+            }
+            sleep($pollIntervalSeconds);
+        } while (true);
+
+        throw new \RuntimeException(
+            "Fichier temporaire non trouvé après {$maxSeconds}s d'attente: {$this->tempFilePath}"
+        );
     }
 
     private function cleanupTempFile(): void

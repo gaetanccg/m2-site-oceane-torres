@@ -23,26 +23,41 @@ class ImageProxyController extends Controller
     /**
      * Stream preview version of a photo
      */
-    public function preview(Photo $photo): Response
+    public function preview(string $photo): Response
     {
-        return $this->streamImage($photo, 'preview');
+        $model = $this->findPhotoCached($photo);
+        if (! $model) {
+            return $this->errorResponse('Photo non trouvée.', 404);
+        }
+
+        return $this->streamImage($model, 'preview');
     }
 
     /**
      * Stream thumbnail version of a photo
      */
-    public function thumbnail(Photo $photo): Response
+    public function thumbnail(string $photo): Response
     {
-        return $this->streamImage($photo, 'thumbnail');
+        $model = $this->findPhotoCached($photo);
+        if (! $model) {
+            return $this->errorResponse('Photo non trouvée.', 404);
+        }
+
+        return $this->streamImage($model, 'thumbnail');
     }
 
     /**
      * Stream clean version (no watermark) for downloadable galleries
      */
-    public function clean(Request $request, Photo $photo): Response
+    public function clean(Request $request, string $photo): Response
     {
+        $model = $this->findPhotoCached($photo);
+        if (! $model) {
+            return $this->errorResponse('Photo non trouvée.', 404);
+        }
+
         $token = $request->query('token');
-        $gallery = $photo->gallery;
+        $gallery = $model->gallery;
 
         // Verify access via gallery token
         if (! $gallery || ! $gallery->isAccessible($token)) {
@@ -50,11 +65,24 @@ class ImageProxyController extends Controller
         }
 
         // Only allow for downloadable photos
-        if (! $photo->is_downloadable) {
+        if (! $model->is_downloadable) {
             return $this->errorResponse('Photo non téléchargeable.', 403);
         }
 
-        return $this->streamCleanImage($photo);
+        return $this->streamCleanImage($model);
+    }
+
+    /**
+     * Cached lookup with eager-loaded gallery — avoids hammering the DB pool
+     * when many photos load in parallel from a gallery view.
+     */
+    private function findPhotoCached(string $photoId): ?Photo
+    {
+        return Cache::remember(
+            "photo_meta_{$photoId}",
+            3600,
+            fn () => Photo::with('gallery')->find($photoId)
+        );
     }
 
     /**

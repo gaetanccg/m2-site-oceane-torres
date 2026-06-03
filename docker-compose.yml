@@ -143,7 +143,10 @@ services:
       - MAIL_ENCRYPTION=${MAIL_ENCRYPTION}
       - MAIL_FROM_ADDRESS=${MAIL_FROM_ADDRESS}
       - MAIL_FROM_NAME=${MAIL_FROM_NAME}
-    command: php artisan queue:work --sleep=3 --tries=3 --max-time=3600
+    # max-time=300 forces the worker to exit every 5min so Docker restarts it
+    # (restart: unless-stopped). This auto-reloads job class code after any edit,
+    # which a long-running `queue:work` would otherwise keep cached in memory.
+    command: php artisan queue:work --sleep=3 --tries=3 --max-time=300
     depends_on:
       - laravel
     networks:

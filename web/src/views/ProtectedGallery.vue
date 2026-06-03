@@ -33,8 +33,15 @@
                     <p v-if="gallery.description" class="text-gray-600 font-light text-lg max-w-2xl mx-auto mb-2">
                         {{ gallery.description }}
                     </p>
-                    <p class="text-sm text-gray-400">
-                        {{ gallery.photos?.length || 0 }} photo(s)
+                    <p class="text-sm text-gray-400 flex items-center justify-center gap-2">
+                        <span>{{ gallery.photos?.length || 0 }} photo(s)</span>
+                        <span v-if="likedCount > 0" class="inline-flex items-center gap-1 text-red-400" :title="`${likedCount} coup(s) de cœur`">
+                            <span aria-hidden="true">·</span>
+                            <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                            </svg>
+                            <span>{{ likedCount }}</span>
+                        </span>
                     </p>
                 </div>
             </section>
@@ -247,6 +254,8 @@ const lightboxOpen = ref(false)
 const lightboxIndex = ref(0)
 
 // Natural sort for photo titles (handles "photo 1", "photo 2", ..., "photo 10" correctly)
+const likedCount = computed(() => gallery.value?.photos?.filter(p => p.is_liked).length ?? 0)
+
 const sortedPhotos = computed<Photo[]>(() => {
     if (!gallery.value?.photos) return []
     return [...gallery.value.photos].sort((a, b) => {

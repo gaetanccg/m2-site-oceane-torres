@@ -12,56 +12,53 @@ use Illuminate\Support\Str;
 
 class CartService
 {
+    private const MAX_ITEM_QUANTITY = 50;
+
     /**
-     * Get or create a cart for the given user/session
+     * Garantit EXACTEMENT UN cart actif par user : merge le cart guest correspondant
+     * (matching session_id) et expire les doublons. Sans ça, le user peut avoir 2-3 carts
+     * en parallèle et payer un montant ≠ de ce qu'il voit dans l'UI.
      */
     public function getOrCreateCart(?User $user, ?string $sessionId = null): Cart
     {
-        // If user is logged in, try to find their cart
         if ($user) {
-            // Get the most recently updated active cart for this user
-            $cart = Cart::active()
+            $userCart = Cart::active()
                 ->forUser($user->id)
                 ->with('items.photo')
                 ->latest('updated_at')
                 ->first();
 
-            // Expire any other active carts for this user (prevent duplicates)
-            if ($cart) {
-                Cart::active()
-                    ->forUser($user->id)
-                    ->where('id', '!=', $cart->id)
-                    ->update(['status' => 'expired']);
-
-                return $cart;
-            }
-
-            // If there's a session cart, claim it for the user
+            $guestCart = null;
             if ($sessionId) {
-                $sessionCart = Cart::active()
+                $guestCart = Cart::active()
                     ->forSession($sessionId)
                     ->whereNull('user_id')
+                    ->with('items')
                     ->first();
-
-                if ($sessionCart) {
-                    // Expire any stale active carts for this user before claiming
-                    Cart::active()->forUser($user->id)->update(['status' => 'expired']);
-
-                    $sessionCart->update(['user_id' => $user->id, 'session_id' => null]);
-
-                    return $sessionCart->load('items.photo');
-                }
             }
 
-            // Create new cart for user
-            return Cart::create([
-                'user_id' => $user->id,
-                'status' => 'active',
-                'expires_at' => now()->addDays(7),
-            ]);
+            if ($userCart && $guestCart) {
+                $this->mergeGuestCart($guestCart, $user);
+                $userCart->refresh()->load('items.photo');
+            } elseif (! $userCart && $guestCart) {
+                $guestCart->update(['user_id' => $user->id, 'session_id' => null]);
+                $userCart = $guestCart->load('items.photo');
+            } elseif (! $userCart) {
+                $userCart = Cart::create([
+                    'user_id' => $user->id,
+                    'status' => 'active',
+                    'expires_at' => now()->addDays(7),
+                ]);
+            }
+
+            Cart::active()
+                ->forUser($user->id)
+                ->where('id', '!=', $userCart->id)
+                ->update(['status' => 'expired']);
+
+            return $userCart;
         }
 
-        // Guest cart by session
         if ($sessionId) {
             $cart = Cart::active()
                 ->forSession($sessionId)
@@ -74,7 +71,6 @@ class CartService
             }
         }
 
-        // Create new guest cart
         $newSessionId = $sessionId ?? Str::uuid()->toString();
 
         return Cart::create([
@@ -84,28 +80,21 @@ class CartService
         ]);
     }
 
-    /**
-     * Add a photo to the cart, or increment its quantity if already present.
-     */
     public function addItem(Cart $cart, string $photoId, string $productType = 'digital', int $quantity = 1): CartItem
     {
         $photo = Photo::findOrFail($photoId);
 
-        // Validate product type
         if (! array_key_exists($productType, CartItem::PRODUCT_TYPES)) {
             $productType = 'digital';
         }
 
-        // Check if photo is purchasable
         if (! $photo->is_purchasable) {
             throw new BusinessException('Cette photo n\'est pas disponible à l\'achat.', 400);
         }
 
-        // Resolve price from gallery product config (with fallback to defaults)
         $gallery = $photo->gallery;
         $gallery->load('galleryProductTypes', 'schoolSession:id,closed_at');
 
-        // Block purchase if the gallery belongs to a closed school session
         if ($gallery->schoolSession?->isClosed()) {
             throw new BusinessException('Cette galerie est cloturée, les commandes ne sont plus possibles.', 403);
         }
@@ -116,9 +105,8 @@ class CartService
             throw new BusinessException('Ce type de produit n\'est pas disponible pour cette galerie.', 400);
         }
 
-        $quantity = max(1, min(50, $quantity));
+        $quantity = max(1, min(self::MAX_ITEM_QUANTITY, $quantity));
 
-        // Find existing row for this (cart, photo, product_type) combo and increment
         $existing = $cart->items()
             ->where('photo_id', $photoId)
             ->where('product_type', $productType)
@@ -145,12 +133,10 @@ class CartService
         return $item->fresh();
     }
 
-    /**
-     * Set the quantity of a cart item. If the new quantity is <= 0, the item is deleted.
-     */
+    /** Si quantity <= 0 l'item est supprimé. */
     public function setItemQuantity(CartItem $item, int $quantity): ?CartItem
     {
-        $quantity = min(50, $quantity);
+        $quantity = min(self::MAX_ITEM_QUANTITY, $quantity);
 
         if ($quantity <= 0) {
             $item->delete();
@@ -163,19 +149,14 @@ class CartService
         return $item->fresh();
     }
 
-    /**
-     * Update product type for a cart item
-     */
     public function updateItemType(Cart $cart, string $itemId, string $productType): CartItem
     {
-        // Validate product type
         if (! array_key_exists($productType, CartItem::PRODUCT_TYPES)) {
             throw new BusinessException('Type de produit invalide.', 400);
         }
 
         $item = $cart->items()->with('photo.gallery.galleryProductTypes')->where('id', $itemId)->firstOrFail();
 
-        // Resolve price from gallery product config
         $gallery = $item->photo->gallery;
         $price = $gallery->getPriceForProductType($productType);
 
@@ -183,7 +164,7 @@ class CartService
             throw new BusinessException('Ce type de produit n\'est pas disponible pour cette galerie.', 400);
         }
 
-        // Check if another item with same photo and product type exists
+        // Si un autre item a déjà cette photo + ce product_type → on fusionne.
         $existingItem = $cart->items()
             ->where('photo_id', $item->photo_id)
             ->where('product_type', $productType)
@@ -191,13 +172,11 @@ class CartService
             ->first();
 
         if ($existingItem) {
-            // Delete current item and return existing
             $item->delete();
 
             return $existingItem;
         }
 
-        // Update product type and price
         $item->update([
             'product_type' => $productType,
             'price' => $price,
@@ -208,9 +187,6 @@ class CartService
         return $item->fresh();
     }
 
-    /**
-     * Remove an item from the cart by item ID
-     */
     public function removeItem(Cart $cart, string $itemId): bool
     {
         $deleted = $cart->items()->where('id', $itemId)->delete() > 0;
@@ -221,9 +197,6 @@ class CartService
         return $deleted;
     }
 
-    /**
-     * Remove a photo from the cart (all product types)
-     */
     public function removePhoto(Cart $cart, string $photoId): bool
     {
         $deleted = $cart->items()->where('photo_id', $photoId)->delete() > 0;
@@ -234,26 +207,17 @@ class CartService
         return $deleted;
     }
 
-    /**
-     * Clear all items from the cart
-     */
     public function clearCart(Cart $cart): bool
     {
         return $cart->items()->delete() > 0;
     }
 
-    /**
-     * Merge a guest cart into a user cart
-     */
     public function mergeGuestCart(Cart $guestCart, User $user): Cart
     {
         $userCart = $this->getOrCreateCart($user);
 
-        // Move items from guest cart to user cart, ADDITIONNANT les quantités si la même
-        // photo+type existe déjà dans les deux paniers. Avant ce fix, la quantité du panier
-        // invité était silencieusement perdue (champ non transféré au CartItem::create), et
-        // si l'item existait déjà côté user le guest était juste ignoré → impossible de
-        // retrouver les bonnes quantités après login.
+        // Si la même photo+type existe côté user, on ADDITIONNE les quantités
+        // (sinon la quantité du panier invité serait silencieusement perdue au login).
         foreach ($guestCart->items as $item) {
             $existing = $userCart->items()
                 ->where('photo_id', $item->photo_id)
@@ -277,7 +241,6 @@ class CartService
             }
         }
 
-        // Mark guest cart as expired
         $guestCart->markAsExpired();
 
         // Recalcule les prix de palier après merge (quantités cumulées ont pu changer).
@@ -287,9 +250,6 @@ class CartService
         return $userCart->load('items.photo');
     }
 
-    /**
-     * Update guest email on cart
-     */
     public function setGuestEmail(Cart $cart, string $email): Cart
     {
         $cart->update(['guest_email' => $email]);
@@ -297,18 +257,13 @@ class CartService
         return $cart;
     }
 
-    /**
-     * Get cart summary
-     */
     public function getCartSummary(Cart $cart): array
     {
-        // Load relations once upfront — recalculatePackPrices and buildPackGroups use loadMissing
         $cart->load('items.photo.gallery.galleryProductTypes.packTiers');
         $this->recalculatePackPrices($cart);
 
         $groups = $this->buildPackGroups($cart);
 
-        // Build a map: item_id → group count (cumulative quantity)
         $itemGroupCount = [];
         foreach ($groups as $group) {
             foreach ($group['items'] as $item) {
@@ -316,7 +271,6 @@ class CartService
             }
         }
 
-        // Compute total savings across cumulative groups
         $totalSavings = 0;
         foreach ($groups as $group) {
             $first = $group['items']->first();
@@ -343,7 +297,6 @@ class CartService
             $packQuantity = $itemGroupCount[$item->id] ?? (int) ($item->quantity ?? 1);
             $itemQuantity = (int) ($item->quantity ?? 1);
 
-            // Determine base price for this product type
             $gpt = $gallery?->galleryProductTypes->firstWhere('product_type', $item->product_type);
             $basePrice = $gpt ? $gpt->effective_price : (float) $item->price;
             $hasPackDiscount = (float) $item->price < $basePrice;
@@ -401,11 +354,8 @@ class CartService
     }
 
     /**
-     * Build pack groups for cumulative cross-gallery pricing.
-     *
-     * Items with the same offer signature (same product_type, base price, and pack tiers)
-     * are grouped together even if they belong to different galleries.
-     * Items without a signature fall back to per-gallery grouping.
+     * Groupe les items pour le pricing cumulatif cross-galerie : même offer signature
+     * (product_type + prix + tiers) = même groupe, même si galeries différentes.
      *
      * @return Collection<string, array{items: Collection, count: int, gpt: \App\Models\GalleryProductType|null}>
      */
@@ -441,10 +391,6 @@ class CartService
         return collect($groups);
     }
 
-    /**
-     * Recalculate prices for all items in the cart.
-     * Always syncs with current gallery prices, then applies pack tier discounts.
-     */
     public function recalculatePackPrices(Cart $cart): void
     {
         $cart->loadMissing('items.photo.gallery.galleryProductTypes.packTiers');
@@ -456,7 +402,6 @@ class CartService
             $productType = $first->product_type;
             $quantity = $group['count'];
 
-            // First try pack price, then fall back to current gallery base price
             $unitPrice = $gallery?->resolvePackPrice($productType, $quantity)
                 ?? $gallery?->getPriceForProductType($productType)
                 ?? CartItem::getPriceForType($productType);
@@ -469,9 +414,6 @@ class CartService
         }
     }
 
-    /**
-     * Clean up expired carts
-     */
     public function cleanupExpiredCarts(): int
     {
         return Cart::where('status', 'active')
