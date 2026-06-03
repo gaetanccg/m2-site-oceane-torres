@@ -29,10 +29,7 @@ class OrderService
     }
 
     /**
-     * Create an order from a cart (or return existing pending order)
-     *
-     * @param  array<string,string|null>  $shippingData  Champs shipping_phone, shipping_address_line1/2,
-     *                                                   shipping_postal_code, shipping_city, shipping_country
+     * @param  array<string,string|null>  $shippingData
      */
     public function createFromCart(
         Cart $cart,
@@ -43,11 +40,8 @@ class OrderService
         ?string $consentIp = null,
         array $shippingData = []
     ): Order {
-        // Politique : chaque tentative de checkout crée un NOUVEL order et un NOUVEAU SumUp
-        // checkout. Plus de réutilisation de l'order/checkout précédent — ça évite tous les
-        // cas de stale state (widget figé sur ancien prix, cart modifié entre temps, etc.).
-        // Toutes les pending orders existantes pour ce user/cart sont expirées et leurs
-        // checkouts SumUp désactivés.
+        // Politique : chaque tentative de checkout repart d'un order vierge — pas de réutilisation
+        // pour éviter les stale states (widget figé sur ancien prix, cart modifié entre temps).
         $this->expireAllPendingOrders($cart, $user);
 
         if ($cart->items->isEmpty()) {
@@ -64,9 +58,7 @@ class OrderService
                 throw new BusinessException('Le panier ne contient aucun article valide.', 400);
             }
 
-            // Bug critique : `sum('price')` ignorait la quantité — pour 5 lignes panier dont 3
-            // à quantity=2 (8 photos au total), le subtotal était calculé sur 5 × unit_price
-            // au lieu de Σ(unit_price × quantity). Conséquence : sous-facturation côté SumUp.
+            // sum('price') ignorait la quantité → sous-facturation SumUp.
             $subtotal = collect($validItems)->sum(
                 fn ($item) => (float) $item->price * (int) ($item->quantity ?? 1)
             );
@@ -80,7 +72,7 @@ class OrderService
             });
             $shippingFee = $requiresShipping ? (float) config('shop.shipping_fee_print', 0) : 0.0;
 
-            // Garde-fou serveur : validation a normalement déjà bloqué mais on défend en profondeur
+            // Garde-fou : la FormRequest valide déjà, defense in depth.
             if ($requiresShipping && empty($shippingData['shipping_address_line1'])) {
                 throw new BusinessException('Adresse de livraison manquante pour une commande avec tirages.', 422);
             }
@@ -96,8 +88,7 @@ class OrderService
                 'shipping_address_line2' => $requiresShipping ? ($shippingData['shipping_address_line2'] ?? null) : null,
                 'shipping_postal_code' => $requiresShipping ? ($shippingData['shipping_postal_code'] ?? null) : null,
                 'shipping_city' => $requiresShipping ? ($shippingData['shipping_city'] ?? null) : null,
-                // shipping_country est NOT NULL en DB (defaut 'FR'). On garde 'FR' même pour
-                // les commandes 100 % digitales — c'est inoffensif et évite la violation de contrainte.
+                // shipping_country est NOT NULL en DB → 'FR' par défaut (inoffensif sur commandes digitales).
                 'shipping_country' => $shippingData['shipping_country'] ?? 'FR',
                 'subtotal' => $subtotal,
                 'shipping_fee' => $shippingFee,
@@ -130,32 +121,6 @@ class OrderService
         });
     }
 
-    /**
-     * Met à jour les champs shipping d'une commande pending réutilisée.
-     */
-    private function applyShippingDataToOrder(Order $order, array $shippingData): void
-    {
-        if ((float) $order->shipping_fee <= 0) {
-            return;
-        }
-
-        $updates = array_filter([
-            'shipping_phone' => $shippingData['shipping_phone'] ?? null,
-            'shipping_address_line1' => $shippingData['shipping_address_line1'] ?? null,
-            'shipping_address_line2' => $shippingData['shipping_address_line2'] ?? null,
-            'shipping_postal_code' => $shippingData['shipping_postal_code'] ?? null,
-            'shipping_city' => $shippingData['shipping_city'] ?? null,
-            'shipping_country' => $shippingData['shipping_country'] ?? 'FR',
-        ], fn ($v) => $v !== null);
-
-        if (! empty($updates)) {
-            $order->update($updates);
-        }
-    }
-
-    /**
-     * Sauvegarde l'adresse de livraison sur le compte user (pour réutilisation future).
-     */
     private function persistShippingAddressOnUser(?User $user, array $shippingData): void
     {
         if (! $user || empty($shippingData['shipping_address_line1'])) {
@@ -172,9 +137,8 @@ class OrderService
     }
 
     /**
-     * Expire toutes les pending orders de cet utilisateur (ou cart guest), AVEC désactivation
-     * des checkouts SumUp associés. Appelé au début de chaque tentative de checkout pour
-     * garantir qu'aucun ancien widget/checkout ne puisse être payé après évolution du panier.
+     * Garantit qu'aucun ancien widget SumUp ne puisse être payé après évolution du panier :
+     * désactive les checkouts SumUp et passe les orders en `expired`.
      */
     private function expireAllPendingOrders(Cart $cart, ?User $user): void
     {
@@ -183,7 +147,6 @@ class OrderService
         if ($user) {
             $query->where('user_id', $user->id);
         } else {
-            // Guest : isolation par session_id du cart
             $query->whereIn('cart_id', Cart::where('session_id', $cart->session_id)
                 ->pluck('id'));
         }
@@ -194,12 +157,10 @@ class OrderService
             return;
         }
 
-        $sumUpService = app(\App\Services\SumUpService::class);
-
         foreach ($pendingOrders as $order) {
             if ($order->sumup_checkout_id) {
                 try {
-                    $sumUpService->deactivateCheckout($order->sumup_checkout_id);
+                    $this->sumUpService->deactivateCheckout($order->sumup_checkout_id);
                 } catch (\Exception $e) {
                     Log::warning('SumUp deactivateCheckout failed during expiration', [
                         'order_id' => $order->id,
@@ -209,57 +170,26 @@ class OrderService
             }
         }
 
-        Order::whereIn('id', $pendingOrders->pluck('id'))->update([
-            'status' => 'expired',
-            'sumup_checkout_id' => null,
-        ]);
+        // Garde-fou contre la race : entre le `get()` ci-dessus et cet `update()`,
+        // un webhook SumUp peut être arrivé et avoir fait passer un order à `paid`.
+        // Sans la clause `where('status', 'pending')`, on écraserait silencieusement
+        // un paiement valide en `expired`.
+        $affected = Order::whereIn('id', $pendingOrders->pluck('id'))
+            ->where('status', 'pending')
+            ->update([
+                'status' => 'expired',
+                'sumup_checkout_id' => null,
+            ]);
 
         Log::info('Expired all pending orders before new checkout', [
             'cart_id' => $cart->id,
             'user_id' => $user?->id,
-            'expired_count' => $pendingOrders->count(),
+            'candidates' => $pendingOrders->count(),
+            'expired_count' => $affected,
         ]);
     }
 
-    /**
-     * Calculate total cart price using pack pricing rules (inclut les frais de port).
-     */
-    private function calculateCartTotal(Cart $cart): float
-    {
-        $cartService = app(CartService::class);
-        $packGroups = $cartService->buildPackGroups($cart);
-        $subtotal = 0;
-        $requiresShipping = false;
-
-        foreach ($packGroups as $group) {
-            $first = $group['items']->first();
-            $gallery = $first->photo->gallery;
-            $productType = $first->product_type;
-            $quantity = $group['count'];
-
-            $unitPrice = $gallery?->resolvePackPrice($productType, $quantity)
-                ?? $gallery?->getPriceForProductType($productType)
-                ?? CartItem::getPriceForType($productType);
-
-            $subtotal += $unitPrice * $quantity;
-
-            $itemRequiresShipping = $gallery
-                ? $gallery->getRequiresShippingForProductType($productType)
-                : CartItem::requiresShipping($productType);
-
-            if ($itemRequiresShipping) {
-                $requiresShipping = true;
-            }
-        }
-
-        $shippingFee = $requiresShipping ? (float) config('shop.shipping_fee_print', 0) : 0.0;
-
-        return $subtotal + $shippingFee;
-    }
-
-    /**
-     * Build a map of item_id → resolved unit price using cumulative pack quantities.
-     */
+    /** @return array<string,float> item_id → unit price (applies pack tiers). */
     private function resolvePackPrices(Cart $cart): array
     {
         $cartService = app(CartService::class);
@@ -284,9 +214,6 @@ class OrderService
         return $resolvedPrices;
     }
 
-    /**
-     * Validate cart items and update prices. Returns only valid items.
-     */
     private function validateCartItems(Cart $cart, array $resolvedPrices): array
     {
         $validItems = [];
@@ -327,9 +254,6 @@ class OrderService
         return $validItems;
     }
 
-    /**
-     * Initiate payment for an order
-     */
     public function initiatePayment(Order $order): array
     {
         if (! $order->isPending()) {
@@ -337,14 +261,12 @@ class OrderService
         }
 
         try {
-            // If order already has a checkout, verify it's still valid and reuse it
             if ($order->sumup_checkout_id) {
                 $shouldCreateNew = false;
 
                 try {
                     $existingCheckout = $this->sumUpService->getCheckout($order->sumup_checkout_id);
 
-                    // If checkout is still pending, reuse it
                     if (in_array($existingCheckout['status'] ?? '', ['PENDING', 'NEW'])) {
                         Log::info('Reusing existing SumUp checkout', [
                             'order_id' => $order->id,
@@ -358,27 +280,23 @@ class OrderService
                         ];
                     }
 
-                    // If checkout is paid, complete the order and stop
                     if ($existingCheckout['status'] === 'PAID') {
                         $this->completeOrder($order, $existingCheckout['transaction_id'] ?? $order->sumup_checkout_id);
                         throw new BusinessException('Cette commande a déjà été payée.', 409);
                     }
 
-                    // If checkout failed or expired, create new one
                     $shouldCreateNew = true;
                     try {
                         $this->sumUpService->deactivateCheckout($order->sumup_checkout_id);
                     } catch (\Exception) {
-                        // Deactivation may fail on FAILED checkouts, that's fine
+                        // deactivate échoue sur un checkout FAILED — acceptable
                     }
                     $order->update(['sumup_checkout_id' => null]);
                 } catch (\Exception $e) {
-                    // Re-throw "already paid" — don't swallow it
                     if (str_contains($e->getMessage(), 'déjà été payée')) {
                         throw $e;
                     }
 
-                    // For other errors (API timeout, etc.), create a new checkout
                     Log::warning('Could not reuse existing checkout, creating new one', [
                         'order_id' => $order->id,
                         'checkout_id' => $order->sumup_checkout_id,
@@ -388,7 +306,6 @@ class OrderService
                     $order->update(['sumup_checkout_id' => null]);
                 }
 
-                // Guard: if order was just completed, don't create a new checkout
                 $order->refresh();
                 if ($order->isPaid()) {
                     throw new BusinessException('Cette commande a déjà été payée.', 409);
@@ -397,7 +314,6 @@ class OrderService
 
             $checkout = $this->sumUpService->createCheckout($order);
 
-            // Create or update payment record
             $existingPayment = Payment::where('order_id', $order->id)->first();
             if ($existingPayment) {
                 $existingPayment->update([
@@ -431,20 +347,16 @@ class OrderService
         }
     }
 
-    /**
-     * Complete an order after successful payment
-     */
     public function completeOrder(Order $order, string $transactionId): Order
     {
-        // DB transaction: atomic state changes only
         $justCompleted = false;
 
         $order = DB::transaction(function () use ($order, $transactionId, &$justCompleted) {
-            // Lock order to prevent concurrent completion (webhook + polling race)
+            // Lock pour empêcher complétion concurrente (race webhook + polling).
             $order = Order::lockForUpdate()->find($order->id);
 
             if ($order->isPaid()) {
-                return $order->load('items.photo'); // Idempotent: already completed
+                return $order->load('items.photo');
             }
 
             if (! $order->isPending() && ! $order->isFailed()) {
@@ -453,20 +365,17 @@ class OrderService
 
             $order->markAsPaid($transactionId);
 
-            // Lock and update payment record
             $payment = Payment::where('order_id', $order->id)->lockForUpdate()->first();
             $payment?->update([
                 'status' => 'completed',
                 'provider_payment_id' => $transactionId,
             ]);
 
-            // Mark the cart as converted (payment successful)
             if ($order->cart_id) {
                 $cart = Cart::find($order->cart_id);
                 $cart?->markAsConverted();
             }
 
-            // Generate download token
             $order->generateDownloadToken();
 
             $justCompleted = true;
@@ -474,12 +383,11 @@ class OrderService
             return $order->fresh(['items.photo']);
         });
 
-        // Side-effects outside transaction — only if THIS request completed the order
-        // Prevents duplicate emails when webhook + polling race
+        // Side-effects hors transaction, et uniquement si CE request a complété l'order
+        // (sinon double email quand webhook + polling se déclenchent ensemble).
         if ($justCompleted && $order->isPaid()) {
             $order->load('items');
 
-            // Generate invoice PDF (idempotent)
             $invoice = null;
             try {
                 $invoice = $this->invoiceService->generateForOrder($order);
@@ -492,8 +400,7 @@ class OrderService
 
             $this->sendOrderConfirmationEmail($order, $invoice);
 
-            // School orders are handled separately via the school session admin view —
-            // skip the generic print notification for them.
+            // Les school orders ont leur propre vue admin → on skip la notif print générique.
             if ($order->hasPrintItems() && ! $this->isSchoolOrder($order)) {
                 $this->sendPrintOrderNotification($order);
             }
@@ -502,9 +409,6 @@ class OrderService
         return $order;
     }
 
-    /**
-     * Handle failed payment
-     */
     public function handleFailedPayment(Order $order): Order
     {
         $order->markAsFailed();
@@ -514,9 +418,6 @@ class OrderService
         return $order;
     }
 
-    /**
-     * Verify checkout status and update order accordingly
-     */
     public function verifyAndUpdateOrder(string $checkoutId): Order
     {
         $order = Order::where('sumup_checkout_id', $checkoutId)->firstOrFail();
@@ -525,8 +426,8 @@ class OrderService
             return $order;
         }
 
-        // Sandbox: auto-complete since SumUp sandbox never transitions to PAID
-        // Double-check app environment to prevent accidental free orders in production
+        // Sandbox SumUp ne passe jamais en PAID → auto-complete. Double-check env pour
+        // ne pas finaliser des commandes gratuites en prod.
         if (config('sumup.environment') === 'sandbox' && app()->environment('local', 'testing')) {
             return $this->completeOrder($order, 'sandbox_'.time());
         }
@@ -539,9 +440,82 @@ class OrderService
 
             default:
                 // Don't mark as failed here — the widget may still allow retries.
-                // Only the webhook should mark orders as definitively failed.
+                // Only the webhook (or reconcilePendingOrders) should mark orders
+                // as definitively failed.
                 return $order;
         }
+    }
+
+    /**
+     * Réconciliation périodique des orders pending : filet de sécurité au cas où
+     * le webhook SumUp serait perdu (5xx persistant côté nous épuisant les retries,
+     * webhook non envoyé, etc.).
+     *
+     * On regarde les orders `pending` avec un `sumup_checkout_id`, créées il y a :
+     *  - assez longtemps pour avoir laissé le webhook + ses retries arriver
+     *    naturellement (>= $minMinutesAgo) — évite de bruiter le flux normal ;
+     *  - pas trop longtemps pour ne pas ratisser des historiques abandonnés
+     *    (<= $maxHoursAgo) — `console.php` les passe à `expired` à 24 h de toute façon.
+     */
+    public function reconcilePendingOrders(int $minMinutesAgo = 15, int $maxHoursAgo = 24): array
+    {
+        $cutoffNew = now()->subMinutes($minMinutesAgo);
+        $cutoffOld = now()->subHours($maxHoursAgo);
+
+        $candidates = Order::where('status', 'pending')
+            ->whereNotNull('sumup_checkout_id')
+            ->where('created_at', '<', $cutoffNew)
+            ->where('created_at', '>', $cutoffOld)
+            ->get(['id', 'sumup_checkout_id']);
+
+        $stats = [
+            'candidates' => $candidates->count(),
+            'paid' => 0,
+            'failed' => 0,
+            'still_pending' => 0,
+            'errors' => 0,
+        ];
+
+        if ($candidates->isEmpty()) {
+            return $stats;
+        }
+
+        foreach ($candidates as $candidate) {
+            try {
+                $checkout = $this->sumUpService->getCheckout($candidate->sumup_checkout_id);
+                $verifiedStatus = $checkout['status'] ?? null;
+
+                if ($verifiedStatus === 'PAID') {
+                    // Recharge frais (lockForUpdate dans completeOrder gère les races)
+                    $order = Order::find($candidate->id);
+                    if ($order) {
+                        $this->completeOrder($order, $checkout['transaction_id'] ?? $candidate->sumup_checkout_id);
+                        $stats['paid']++;
+                    }
+                } elseif ($verifiedStatus === 'FAILED') {
+                    $order = Order::find($candidate->id);
+                    if ($order && $order->isPending()) {
+                        $this->handleFailedPayment($order);
+                        $stats['failed']++;
+                    }
+                } else {
+                    // PENDING ou EXPIRED côté SumUp — on n'agit pas, le cleanup
+                    // quotidien (console.php) se chargera des vraiment vieilles.
+                    $stats['still_pending']++;
+                }
+            } catch (\Throwable $e) {
+                $stats['errors']++;
+                Log::warning('Reconciliation failed for order', [
+                    'order_id' => $candidate->id,
+                    'checkout_id' => $candidate->sumup_checkout_id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        Log::info('Reconciliation completed', $stats);
+
+        return $stats;
     }
 
     /**
@@ -556,9 +530,6 @@ class OrderService
             ->get();
     }
 
-    /**
-     * Get orders for a guest email
-     */
     public function getOrdersForEmail(string $email): \Illuminate\Database\Eloquent\Collection
     {
         return Order::forEmail($email)
@@ -568,9 +539,6 @@ class OrderService
             ->get();
     }
 
-    /**
-     * Send order confirmation email (queued with retries)
-     */
     private function sendOrderConfirmationEmail(Order $order, $invoice = null): void
     {
         try {
@@ -579,7 +547,6 @@ class OrderService
                 return;
             }
 
-            // School orders get a dedicated mail (no download section, school-specific message)
             if ($this->isSchoolOrder($order)) {
                 Mail::to($email)->queue(new SchoolOrderConfirmationMail($order, $invoice));
 
@@ -604,9 +571,6 @@ class OrderService
             && $order->items->every(fn ($item) => $item->product_type === 'print_scolaire');
     }
 
-    /**
-     * Send notification to admin for print orders (queued with retries)
-     */
     private function sendPrintOrderNotification(Order $order): void
     {
         try {
@@ -624,9 +588,6 @@ class OrderService
         }
     }
 
-    /**
-     * Get order with download access validation
-     */
     public function getOrderForDownload(string $orderId, ?string $token = null, ?User $user = null): Order
     {
         $order = Order::with('items.photo')->findOrFail($orderId);
@@ -635,19 +596,15 @@ class OrderService
             throw new BusinessException('Cette commande n\'a pas été payée.', 403);
         }
 
-        // Check access: user is owner OR valid download token OR recent order
+        // Accès si : owner authentifié, token download valide, ou paid_at < 30 min
+        // (fenêtre courte pour permettre le download immédiat post-paiement).
         $hasAccess = false;
 
-        // 1. Authenticated user owns the order
         if ($user && $order->user_id === $user->id) {
             $hasAccess = true;
-        }
-        // 2. Valid download token
-        elseif ($token && $order->isDownloadTokenValid($token)) {
+        } elseif ($token && $order->isDownloadTokenValid($token)) {
             $hasAccess = true;
-        }
-        // 3. Order was paid recently (within 30 minutes) - allows immediate download after payment
-        elseif ($order->paid_at && $order->paid_at->diffInMinutes(now()) < 30) {
+        } elseif ($order->paid_at && $order->paid_at->diffInMinutes(now()) < 30) {
             $hasAccess = true;
         }
 

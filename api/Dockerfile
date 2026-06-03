@@ -25,6 +25,18 @@ RUN apk add --no-cache ttf-dejavu || echo "Font installation skipped"
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
     && docker-php-ext-install pdo pdo_pgsql pgsql mbstring exif pcntl bcmath gd zip intl opcache
 
+# Install Imagick (audit P2.4) — 2-3× faster than GD on large JPEGs.
+# Runtime driver is selected at app boot via ImageProcessingService::USE_IMAGICK_DRIVER (default: GD).
+# Build deps (autoconf, g++, make) are needed by phpize/pecl and removed after install
+# to keep the image lean. If install fails the build continues — GD remains active.
+RUN (apk add --no-cache --virtual .build-deps autoconf g++ make \
+    && apk add --no-cache imagemagick imagemagick-dev \
+    && yes '' | pecl install imagick \
+    && docker-php-ext-enable imagick \
+    && pecl clear-cache \
+    && apk del .build-deps) \
+    || echo "Imagick installation skipped (GD driver remains the default)"
+
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
@@ -86,6 +98,18 @@ RUN apk add --no-cache ttf-dejavu || echo "Font installation skipped"
 # Install PHP extensions
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
     && docker-php-ext-install pdo pdo_pgsql pgsql mbstring exif pcntl bcmath gd zip intl opcache
+
+# Install Imagick (audit P2.4) — 2-3× faster than GD on large JPEGs.
+# Runtime driver is selected at app boot via ImageProcessingService::USE_IMAGICK_DRIVER (default: GD).
+# Build deps (autoconf, g++, make) are needed by phpize/pecl and removed after install
+# to keep the image lean. If install fails the build continues — GD remains active.
+RUN (apk add --no-cache --virtual .build-deps autoconf g++ make \
+    && apk add --no-cache imagemagick imagemagick-dev \
+    && yes '' | pecl install imagick \
+    && docker-php-ext-enable imagick \
+    && pecl clear-cache \
+    && apk del .build-deps) \
+    || echo "Imagick installation skipped (GD driver remains the default)"
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
