@@ -42,6 +42,7 @@ export interface ChunkUploadResponse {
         original_filename: string
         status: UploadStatus
         error_message?: string
+        photo_id?: string
     }>
 }
 
