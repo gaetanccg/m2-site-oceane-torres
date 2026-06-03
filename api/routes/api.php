@@ -110,11 +110,18 @@ Route::post('/orders/by-email', [OrderController::class, 'getByEmail']);
 
 // SumUp Payment (public)
 Route::prefix('payments/sumup')->group(function () {
-    Route::get('/config', [SumUpPaymentController::class, 'getConfig']);
-    Route::post('/create-checkout', [SumUpPaymentController::class, 'createCheckout']);
-    Route::get('/callback', [SumUpPaymentController::class, 'callback']);
     Route::post('/verify', [SumUpPaymentController::class, 'verifyPayment']);
     Route::post('/cancel-checkout', [SumUpPaymentController::class, 'cancelCheckout']);
+
+    // URL unique appelée par SumUp comme return_url :
+    //   - GET  → redirection navigateur après 3DS (avec ?checkout_id=…)
+    //   - POST → webhook CHECKOUT_STATUS_CHANGED
+    // Rate-limit le webhook : SumUp envoie au max 1 webhook par checkout + retries
+    // espacés (1m/5m/20m/2h). 60/min/IP est très large pour le légitime et défend
+    // contre le spam par checkout id aléatoire (cf. webhook non signé).
+    Route::get('/return', [SumUpPaymentController::class, 'browserReturn']);
+    Route::middleware('throttle:sumup-webhook')
+        ->post('/return', [SumUpPaymentController::class, 'webhook']);
 });
 
 /*
@@ -286,8 +293,9 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
 |--------------------------------------------------------------------------
 | Webhooks
 |--------------------------------------------------------------------------
+|
+| Note : SumUp ne propose PAS de webhook configurable côté dashboard. Le
+| webhook CHECKOUT_STATUS_CHANGED est envoyé en POST sur le `return_url`
+| fourni à la création du checkout. La route correspondante vit donc dans
+| le groupe `payments/sumup/` (voir POST /payments/sumup/return ci-dessus).
 */
-
-Route::prefix('webhooks')->group(function () {
-    Route::post('/sumup', [SumUpPaymentController::class, 'webhook']);
-});

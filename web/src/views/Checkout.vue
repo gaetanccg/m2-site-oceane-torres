@@ -201,6 +201,21 @@
                                     </svg>
                                     <span>Traitement du paiement en cours...</span>
                                 </div>
+
+                                <!-- Safety net : si la cliente a validé son 3DS mais que le widget reste figé
+                                     (postMessage cross-origin échoué, in-app browser, etc.), elle peut forcer
+                                     la vérification serveur depuis ici. -->
+                                <div v-if="showManualVerify && !isPaymentProcessing" class="mt-6 pt-4 border-t border-gray-100 text-center">
+                                    <p class="text-xs text-gray-500 mb-2">
+                                        La page ne se met pas à jour après votre paiement ?
+                                    </p>
+                                    <button
+                                        @click="manualVerifyPayment"
+                                        class="text-sm text-gold hover:underline"
+                                    >
+                                        Vérifier le statut de mon paiement
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -286,7 +301,6 @@ declare global {
                 id: string
                 checkoutId: string
                 onResponse: (type: string, body: unknown) => void
-                onLoad?: () => void
                 showSubmitButton?: boolean
                 showFooter?: boolean
                 showEmail?: boolean
@@ -308,6 +322,7 @@ const isPaymentProcessing = ref(false)
 const error = ref('')
 const paymentError = ref('')
 const showPaymentWidget = ref(false)
+const showManualVerify = ref(false)
 const currentOrder = ref<{ id: string; order_number: string; total: number } | null>(null)
 const checkoutId = ref('')
 
@@ -334,7 +349,19 @@ onMounted(async () => {
 
 let sumupWidget: { unmount: () => void } | null = null
 let pollTimeoutId: ReturnType<typeof setTimeout> | null = null
+let manualVerifyTimerId: ReturnType<typeof setTimeout> | null = null
+let authStuckTimerId: ReturnType<typeof setTimeout> | null = null
 let isUnmounted = false
+
+// Délai avant d'afficher le lien "vérifier mon paiement" sous le widget — laisse à la
+// cliente le temps de remplir la carte sans la perturber, mais reste accessible si
+// elle est bloquée après un 3DS qui n'a pas posté de message au parent.
+const MANUAL_VERIFY_DELAY_MS = 20_000
+
+// Délai après lequel on poll automatiquement le statut serveur si un écran 3DS a été
+// affiché et qu'aucun onResponse de fin n'arrive — couvre les cas postMessage cassé
+// (in-app browsers, certains Samsung Internet, popups bloquées).
+const AUTH_STUCK_TIMEOUT_MS = 45_000
 
 const form = reactive({
     firstName: '',
@@ -439,41 +466,92 @@ async function initPaymentWidget() {
             showFooter: true,
             showEmail: false,
             showInstallments: false,
-            onLoad: () => {
-                // Widget loaded
-            },
             onResponse: async (type: string, body: unknown) => {
-                void body // unused
+                // Events réels exposés par le SDK SumUp (vérifiés dans le bundle sdk.js) :
+                //   loaded · sent · invalid · auth-screen · success · fail · error
+                // ⚠️ Le nom est `auth-screen` (pas `auth-screen-displayed`).
+
+                // Watchdog : armé dès qu'un 3DS s'affiche OU que la carte est envoyée.
+                // Si aucune réponse finale n'arrive dans le délai, on synchronise côté
+                // serveur pour ne pas laisser la cliente bloquée (postMessage cassé,
+                // in-app browser, popup fermée, etc.).
+                if (type === 'auth-screen' || type === 'sent') {
+                    if (authStuckTimerId) clearTimeout(authStuckTimerId)
+                    authStuckTimerId = setTimeout(() => {
+                        if (isUnmounted || !currentOrder.value) return
+                        if (isPaymentProcessing.value) return
+                        manualVerifyPayment()
+                    }, AUTH_STUCK_TIMEOUT_MS)
+                    return
+                }
+
+                // Réponse finale reçue — on désarme le watchdog.
+                if (authStuckTimerId) {
+                    clearTimeout(authStuckTimerId)
+                    authStuckTimerId = null
+                }
 
                 if (type === 'success') {
+                    // La doc SumUp précise que `success` ne garantit PAS que la
+                    // transaction est PAID — on revérifie côté serveur.
                     isPaymentProcessing.value = true
                     paymentError.value = ''
 
-                    // Verify payment and redirect
                     try {
                         const result = await cartApi.verifySumUpPayment(currentOrder.value!.id)
-                        if (result.status === 'paid' || result.status === 'PAID') {
-                            // Clear cart and redirect to confirmation
+                        if (result.status === 'paid') {
                             await cartStore.clearCart()
                             router.push(`/commande/${currentOrder.value!.id}`)
                         } else {
-                            paymentError.value = 'Le paiement est en cours de verification. Veuillez patienter...'
-                            // Poll for status
+                            paymentError.value = 'Le paiement est en cours de vérification. Veuillez patienter...'
                             pollPaymentStatus()
                         }
                     } catch {
-                        paymentError.value = 'Erreur lors de la verification du paiement'
+                        paymentError.value = 'Erreur lors de la vérification du paiement'
                         isPaymentProcessing.value = false
                     }
+                } else if (type === 'fail') {
+                    // Annulation utilisateur, timeout SumUp, ou échec côté checkout.
+                    // Le widget reste monté : la cliente peut corriger et re-soumettre
+                    // sans recharger la page.
+                    const failBody = body as { message?: string } | undefined
+                    paymentError.value = failBody?.message
+                        || "Le paiement n'a pas abouti. Veuillez réessayer ou utiliser une autre carte."
+                    isPaymentProcessing.value = false
                 } else if (type === 'error') {
                     const errorBody = body as { message?: string }
-                    paymentError.value = errorBody?.message || 'Erreur lors du paiement. Veuillez reessayer.'
+                    paymentError.value = errorBody?.message || 'Erreur lors du paiement. Veuillez réessayer.'
+                    isPaymentProcessing.value = false
+                } else if (type === 'invalid') {
+                    // Validation locale du SDK (carte/CVV invalide). Le widget affiche
+                    // déjà son erreur inline ; on relâche juste isPaymentProcessing.
                     isPaymentProcessing.value = false
                 }
             }
         })
     } catch {
         paymentError.value = 'Erreur lors du chargement du module de paiement'
+    }
+}
+
+// Filet de sécurité : la cliente peut forcer une vérification serveur si le widget
+// SumUp reste figé après un 3DS validé. On reroute vers la page de commande qui
+// possède déjà sa propre logique de polling/affichage (paid / pending / failed).
+async function manualVerifyPayment() {
+    if (!currentOrder.value || isPaymentProcessing.value) return
+
+    isPaymentProcessing.value = true
+    paymentError.value = ''
+
+    try {
+        const result = await cartApi.verifySumUpPayment(currentOrder.value.id)
+        if (result.status === 'paid') {
+            await cartStore.clearCart()
+        }
+        router.push(`/commande/${currentOrder.value.id}`)
+    } catch {
+        paymentError.value = "Impossible de vérifier le paiement pour le moment. Réessayez dans un instant."
+        isPaymentProcessing.value = false
     }
 }
 
@@ -493,7 +571,7 @@ async function pollPaymentStatus(attempts = 0) {
         const result = await cartApi.verifySumUpPayment(currentOrder.value.id)
         if (isUnmounted || !currentOrder.value) return
 
-        if (result.status === 'paid' || result.status === 'PAID') {
+        if (result.status === 'paid') {
             await cartStore.clearCart()
             router.push(`/commande/${currentOrder.value.id}`)
         } else {
@@ -602,6 +680,10 @@ async function resetPayment() {
         sumupWidget.unmount()
         sumupWidget = null
     }
+    if (authStuckTimerId) {
+        clearTimeout(authStuckTimerId)
+        authStuckTimerId = null
+    }
 
     // Cancel the SumUp checkout on the backend
     if (currentOrder.value) {
@@ -617,6 +699,23 @@ async function resetPayment() {
     checkoutId.value = ''
     paymentError.value = ''
 }
+
+// Affiche le lien "Vérifier le statut de mon paiement" après quelques secondes une fois
+// le widget visible. On garde la première phase silencieuse pour ne pas distraire la
+// cliente pendant la saisie, mais le filet reste accessible si elle se retrouve bloquée.
+watch(showPaymentWidget, (visible) => {
+    if (manualVerifyTimerId) {
+        clearTimeout(manualVerifyTimerId)
+        manualVerifyTimerId = null
+    }
+    showManualVerify.value = false
+
+    if (visible) {
+        manualVerifyTimerId = setTimeout(() => {
+            showManualVerify.value = true
+        }, MANUAL_VERIFY_DELAY_MS)
+    }
+})
 
 // Quand le widget SumUp est chargé (showPaymentWidget=true) et que le panier change
 // sous-jacent (ajout/retrait/modif de quantité dans un autre onglet ou via cartStore),
@@ -637,6 +736,14 @@ onUnmounted(() => {
     if (pollTimeoutId) {
         clearTimeout(pollTimeoutId)
         pollTimeoutId = null
+    }
+    if (manualVerifyTimerId) {
+        clearTimeout(manualVerifyTimerId)
+        manualVerifyTimerId = null
+    }
+    if (authStuckTimerId) {
+        clearTimeout(authStuckTimerId)
+        authStuckTimerId = null
     }
     if (sumupWidget) {
         sumupWidget.unmount()

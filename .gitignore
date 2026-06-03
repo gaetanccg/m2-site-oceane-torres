@@ -116,3 +116,4 @@ PROJECT_REFERENCE_MVP.md
 
 .claude
 *.tar.gz
+/docs
