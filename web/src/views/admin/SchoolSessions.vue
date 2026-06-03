@@ -107,7 +107,8 @@
                             <label class="block text-xs text-gray-500 mb-1">1 photo</label>
                             <div class="relative">
                                 <input v-model.number="createForm.price1" type="number" step="0.5" min="0"
-                                    class="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gold focus:border-gold" />
+                                    class="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gold focus:border-gold"
+/>
                                 <span class="absolute right-3 top-2.5 text-xs text-gray-400">EUR</span>
                             </div>
                         </div>
@@ -115,7 +116,8 @@
                             <label class="block text-xs text-gray-500 mb-1">3 photos</label>
                             <div class="relative">
                                 <input v-model.number="createForm.price3" type="number" step="0.5" min="0"
-                                    class="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gold focus:border-gold" />
+                                    class="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gold focus:border-gold"
+/>
                                 <span class="absolute right-3 top-2.5 text-xs text-gray-400">EUR</span>
                             </div>
                         </div>
@@ -123,7 +125,8 @@
                             <label class="block text-xs text-gray-500 mb-1">5 photos</label>
                             <div class="relative">
                                 <input v-model.number="createForm.price5" type="number" step="0.5" min="0"
-                                    class="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gold focus:border-gold" />
+                                    class="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gold focus:border-gold"
+/>
                                 <span class="absolute right-3 top-2.5 text-xs text-gray-400">EUR</span>
                             </div>
                         </div>

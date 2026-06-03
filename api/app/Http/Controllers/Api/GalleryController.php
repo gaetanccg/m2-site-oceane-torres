@@ -161,17 +161,21 @@ class GalleryController extends Controller
     {
         $galleryId = $gallery->id;
 
-        try {
-            $storageService = app(MinioStorageService::class);
-            $storageService->deleteGalleryFolder($galleryId);
-        } catch (\Exception $e) {
-            \Log::warning('Failed to cleanup gallery files from storage', [
-                'gallery_id' => $galleryId,
-                'error' => $e->getMessage(),
-            ]);
-        }
-
+        // Suppression DB d'abord (rapide, < 100 ms). Le cleanup MinIO peut être lent
+        // (5-30 s pour une grosse galerie via Cloudflare tunnel) — on le défère après
+        // l'envoi de la réponse pour éviter le timeout côté client.
         $gallery->delete();
+
+        app()->terminating(function () use ($galleryId) {
+            try {
+                app(MinioStorageService::class)->deleteGalleryFolder($galleryId);
+            } catch (\Exception $e) {
+                \Log::warning('Failed to cleanup gallery files from storage', [
+                    'gallery_id' => $galleryId,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        });
 
         return response()->json([
             'message' => 'Galerie supprimée avec succès.',
