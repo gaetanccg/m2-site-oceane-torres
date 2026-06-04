@@ -84,10 +84,8 @@ class OrderController extends Controller
                 ] : null,
             ];
 
-            // Commande gratuite (code promo couvrant tout le panier) : pas de checkout SumUp.
-            // La commande reste `pending` — elle sera finalisée par la confirmation explicite
-            // de l'utilisateur (POST /checkout/confirm-free). Tant que non confirmée : le
-            // panier n'est pas converti et le code promo n'est pas consommé (quota = paid).
+            // Total couvert par le code promo : pas de checkout SumUp. La commande reste
+            // `pending` jusqu'à la confirmation explicite (POST /checkout/confirm-free).
             if ((float) $order->total <= 0.0) {
                 Log::info('Free order awaiting user confirmation (gift code covers full cart)', [
                     'order_id' => $order->id,
@@ -132,11 +130,7 @@ class OrderController extends Controller
         }
     }
 
-    /**
-     * Confirm a free order (total = 0, fully covered by a gift code).
-     * Étape de double confirmation : la commande créée par /checkout reste `pending`
-     * jusqu'à cet appel explicite. Idempotent (un retry/double-clic renvoie succès).
-     */
+    /** Finalise une commande gratuite (total 0 €) restée `pending`. Idempotent. */
     public function confirmFreeOrder(OrderIdRequest $request): JsonResponse
     {
         $validated = $request->validated();
@@ -159,8 +153,6 @@ class OrderController extends Controller
                 ], 400);
             }
 
-            // completeFreeOrder revérifie total <= 0 (refuse toute commande payante)
-            // et finalise sous lock (paid, panier converti, facture, email).
             $this->orderService->completeFreeOrder($order);
 
             return response()->json([

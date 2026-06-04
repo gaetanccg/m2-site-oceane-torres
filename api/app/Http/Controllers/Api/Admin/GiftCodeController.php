@@ -11,9 +11,6 @@ use Illuminate\Http\Request;
 
 class GiftCodeController extends Controller
 {
-    /**
-     * Liste paginée des codes promo avec recherche et filtre de statut.
-     */
     public function index(Request $request): JsonResponse
     {
         $query = GiftCode::query()
@@ -37,9 +34,6 @@ class GiftCodeController extends Controller
         return response()->json($codes);
     }
 
-    /**
-     * Détail d'un code + commandes l'ayant consommé (tracking « utilisé »).
-     */
     public function show(GiftCode $giftCode): JsonResponse
     {
         $orders = $giftCode->orders()
@@ -84,9 +78,6 @@ class GiftCodeController extends Controller
         ]);
     }
 
-    /**
-     * Activer / désactiver un code (interrupteur).
-     */
     public function toggle(GiftCode $giftCode): JsonResponse
     {
         $giftCode->update(['is_active' => ! $giftCode->is_active]);
@@ -97,10 +88,7 @@ class GiftCodeController extends Controller
         ]);
     }
 
-    /**
-     * Suppression en deux temps : on ne peut supprimer qu'un code désactivé.
-     * Les commandes passées restent intactes (FK nullOnDelete + snapshot du code).
-     */
+    /** Suppression en deux temps : uniquement sur un code déjà désactivé. */
     public function destroy(GiftCode $giftCode): JsonResponse
     {
         if ($giftCode->is_active) {
@@ -118,9 +106,6 @@ class GiftCodeController extends Controller
         ]);
     }
 
-    /**
-     * Génère un code unique non persisté (pour pré-remplir le formulaire de création).
-     */
     public function generateCode(): JsonResponse
     {
         return response()->json([
@@ -128,9 +113,6 @@ class GiftCodeController extends Controller
         ]);
     }
 
-    /**
-     * Format API d'un code avec statut calculé et compteurs d'utilisation.
-     */
     private function formatGiftCode(GiftCode $code): array
     {
         $pending = $code->pending_count ?? $code->pendingCount();

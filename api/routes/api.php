@@ -100,7 +100,6 @@ Route::prefix('cart')->group(function () {
     Route::delete('/clear', [CartController::class, 'clear']);
     Route::put('/email', [CartController::class, 'updateEmail']);
 
-    // Code promo : rate-limité contre le brute-force d'énumération de codes.
     Route::middleware('throttle:gift-code')->group(function () {
         Route::post('/gift-code', [CartController::class, 'applyGiftCode']);
     });

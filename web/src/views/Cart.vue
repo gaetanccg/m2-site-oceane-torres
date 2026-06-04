@@ -199,9 +199,8 @@
                                                 @keyup.enter="handleApplyPromo"
                                                 class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 pr-9 uppercase focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold"
                                             />
-                                            <!-- Wrapper flex pour centrer SANS transform : animate-spin anime
-                                                 `transform`, un -translate-y-1/2 sur le même élément écrase la
-                                                 rotation (interpolation de matrices) et le spinner fige. -->
+                                            <!-- Centrage via wrapper flex, jamais par translate : animate-spin
+                                                 anime `transform`, un translate sur le même élément fige la rotation. -->
                                             <span
                                                 v-if="promoLoading"
                                                 class="absolute inset-y-0 right-3 flex items-center pointer-events-none"
@@ -294,7 +293,7 @@ async function handleApplyPromo() {
             toast.success('Code promo', 'Code appliqué.')
             promoInput.value = ''
         }
-        // En cas d'échec, le message d'erreur est affiché via le watcher cartStore.error.
+        // Échec : le message serveur remonte via le watcher cartStore.error → toast.
     } finally {
         promoLoading.value = false
     }

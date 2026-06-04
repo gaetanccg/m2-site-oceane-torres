@@ -242,8 +242,7 @@ class CartService
             }
         }
 
-        // Reporte le code promo appliqué au panier invité s'il n'y en a pas déjà un côté user
-        // (sinon le code saisi avant login serait silencieusement perdu).
+        // Sans ce report, le code promo saisi avant login serait silencieusement perdu.
         if ($guestCart->gift_code_id && ! $userCart->gift_code_id) {
             $userCart->update(['gift_code_id' => $guestCart->gift_code_id]);
         }
@@ -365,8 +364,7 @@ class CartService
     }
 
     /**
-     * Résout le code promo appliqué au panier pour le sous-total courant.
-     * Auto-nettoyage : un code devenu invalide est retiré silencieusement.
+     * Auto-nettoyage : un code devenu invalide est retiré silencieusement du panier.
      *
      * @return array{0: float, 1: array{code: string, type: string, value: float}|null}
      */
@@ -383,13 +381,12 @@ class CartService
                 $code->effectiveDiscount($subtotal),
                 [
                     'code' => $code->code,
-                    'type' => $code->type,            // 'fixed' | 'percent'
-                    'value' => (float) $code->value,  // euros ou %
+                    'type' => $code->type,
+                    'value' => (float) $code->value,
                 ],
             ];
         }
 
-        // Code invalide/expiré/épuisé → on le retire du panier.
         $cart->update(['gift_code_id' => null]);
 
         return [0.0, null];

@@ -68,9 +68,7 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(60)->by($request->ip());
         });
 
-        // Rate limit pour l'application d'un code promo (endpoint public).
-        // Les codes générés font 6 caractères → devinables : on borne l'énumération
-        // par brute-force. 20/min/IP est large pour un usage légitime.
+        // Codes promo : 6 caractères → devinables, on borne le brute-force d'énumération.
         RateLimiter::for('gift-code', function (Request $request) {
             return Limit::perMinute(20)->by($request->ip());
         });

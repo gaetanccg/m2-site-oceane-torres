@@ -254,7 +254,7 @@
                         <router-link
                             v-for="order in detailOrders"
                             :key="order.id"
-                            :to="`/admin/orders`"
+                            :to="{ path: '/admin/orders', query: { search: order.order_number } }"
                             class="flex items-center justify-between px-3 py-2.5 hover:bg-gray-50"
                         >
                             <div class="min-w-0">
