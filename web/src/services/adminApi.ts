@@ -11,6 +11,7 @@ import { reservationApi } from './admin/reservationApi'
 import { clientApi } from './admin/clientApi'
 import { prestationApi } from './admin/prestationApi'
 import { galleryApi } from './admin/galleryApi'
+import { giftCodeApi } from './admin/giftCodeApi'
 import { orderApi } from './admin/orderApi'
 import { schoolSessionApi } from './admin/schoolSessionApi'
 
@@ -86,6 +87,15 @@ export const adminApi = {
     // Gift Cards
     getGiftCards: galleryApi.getGiftCards.bind(galleryApi),
     updateGiftCard: galleryApi.updateGiftCard.bind(galleryApi),
+
+    // Gift Codes (Codes Promo)
+    getGiftCodes: giftCodeApi.getGiftCodes.bind(giftCodeApi),
+    getGiftCode: giftCodeApi.getGiftCode.bind(giftCodeApi),
+    createGiftCode: giftCodeApi.createGiftCode.bind(giftCodeApi),
+    updateGiftCode: giftCodeApi.updateGiftCode.bind(giftCodeApi),
+    toggleGiftCode: giftCodeApi.toggleGiftCode.bind(giftCodeApi),
+    deleteGiftCode: giftCodeApi.deleteGiftCode.bind(giftCodeApi),
+    generateGiftCode: giftCodeApi.generateCode.bind(giftCodeApi),
 
     // Orders
     getOrders: orderApi.getOrders.bind(orderApi),

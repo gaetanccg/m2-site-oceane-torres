@@ -356,6 +356,54 @@ export interface AdminGiftCard {
 }
 
 // ============================================================================
+// Gift Codes (Codes Promo) — distinct des Bons Cadeaux (AdminGiftCard)
+// ============================================================================
+
+export type GiftCodeType = 'fixed' | 'percent'
+export type GiftCodeStatus = 'active' | 'inactive' | 'scheduled' | 'expired' | 'used_up'
+
+export interface GiftCodeOrder {
+    id: string
+    order_number: string
+    status: OrderStatus
+    total: number
+    discount_amount: number
+    customer_email: string
+    customer_name: string
+    created_at: string
+}
+
+export interface AdminGiftCode {
+    id: string
+    code: string
+    type: GiftCodeType
+    value: number
+    max_discount_amount: number | null
+    valid_from: string | null
+    valid_until: string | null
+    max_uses: number | null
+    is_active: boolean
+    note: string | null
+    pending_count: number
+    paid_count: number
+    status: GiftCodeStatus
+    created_at: string
+    orders?: GiftCodeOrder[]
+}
+
+export interface GiftCodeFormData {
+    code?: string
+    type: GiftCodeType
+    value: number
+    max_discount_amount?: number | null
+    valid_from?: string | null
+    valid_until?: string | null
+    max_uses?: number | null
+    is_active?: boolean
+    note?: string | null
+}
+
+// ============================================================================
 // Orders
 // ============================================================================
 

@@ -173,10 +173,10 @@
                                 </div>
                             </div>
 
-                            <!-- Step 2: Payment widget -->
+                            <!-- Step 2: Payment widget OR free order confirmation -->
                             <div v-else>
                                 <div class="flex items-center justify-between mb-6">
-                                    <h2 class="text-lg font-medium">Paiement sécurisé</h2>
+                                    <h2 class="text-lg font-medium">{{ isFreeOrder ? 'Confirmer votre commande' : 'Paiement sécurisé' }}</h2>
                                     <button
                                         @click="resetPayment"
                                         class="text-sm text-gray-500 hover:text-gold"
@@ -185,16 +185,39 @@
                                     </button>
                                 </div>
 
+                                <!-- Commande gratuite : double confirmation, pas de widget SumUp -->
+                                <div v-if="isFreeOrder">
+                                    <div class="p-4 bg-green-50 border border-green-200 rounded-lg">
+                                        <p class="text-sm text-green-800 font-medium">
+                                            Votre code promo couvre l'intégralité de la commande.
+                                        </p>
+                                        <p class="text-sm text-green-700 mt-1">
+                                            Montant à payer : <strong>0,00 €</strong> — aucun paiement ne vous sera demandé.
+                                        </p>
+                                    </div>
+                                    <button
+                                        @click="confirmFreeOrder"
+                                        :disabled="isPaymentProcessing"
+                                        class="w-full mt-6 py-3 bg-gold text-white font-medium rounded-lg hover:bg-gold/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                                    >
+                                        <svg v-if="isPaymentProcessing" class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                        </svg>
+                                        <span>{{ isPaymentProcessing ? 'Confirmation...' : 'Confirmer ma commande' }}</span>
+                                    </button>
+                                </div>
+
                                 <!-- SumUp Card Widget container -->
-                                <div id="sumup-card" class="min-h-[300px]"></div>
+                                <div v-else id="sumup-card" class="min-h-[300px]"></div>
 
                                 <!-- Error message -->
                                 <div v-if="paymentError" class="mt-4 p-4 bg-red-50 text-red-600 rounded-lg text-sm">
                                     {{ paymentError }}
                                 </div>
 
-                                <!-- Payment processing indicator -->
-                                <div v-if="isPaymentProcessing" class="mt-4 flex items-center justify-center gap-2 text-gray-600">
+                                <!-- Payment processing indicator (SumUp uniquement, le bouton gratuit a son propre spinner) -->
+                                <div v-if="isPaymentProcessing && !isFreeOrder" class="mt-4 flex items-center justify-center gap-2 text-gray-600">
                                     <svg class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
                                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
                                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
@@ -205,7 +228,7 @@
                                 <!-- Safety net : si la cliente a validé son 3DS mais que le widget reste figé
                                      (postMessage cross-origin échoué, in-app browser, etc.), elle peut forcer
                                      la vérification serveur depuis ici. -->
-                                <div v-if="showManualVerify && !isPaymentProcessing" class="mt-6 pt-4 border-t border-gray-100 text-center">
+                                <div v-if="showManualVerify && !isPaymentProcessing && !isFreeOrder" class="mt-6 pt-4 border-t border-gray-100 text-center">
                                     <p class="text-xs text-gray-500 mb-2">
                                         La page ne se met pas à jour après votre paiement ?
                                     </p>
@@ -257,6 +280,10 @@
                                     <span>Sous-total</span>
                                     <span>{{ formatPrice(cartStore.subtotal) }}</span>
                                 </div>
+                                <div v-if="cartStore.discount > 0" class="flex justify-between text-green-700 font-medium">
+                                    <span>Remise<template v-if="cartStore.appliedCode"> ({{ cartStore.appliedCode.code }})</template></span>
+                                    <span>-{{ formatPrice(cartStore.discount) }}</span>
+                                </div>
                                 <div v-if="cartStore.shippingFee > 0" class="flex justify-between text-gray-600">
                                     <span>Frais de port</span>
                                     <span>+{{ formatPrice(cartStore.shippingFee) }}</span>
@@ -288,7 +315,7 @@ import {ref, reactive, nextTick, onMounted, onUnmounted, watch} from 'vue'
 import {useRouter} from 'vue-router'
 import {useCartStore} from '@/stores/cart'
 import {useAuthStore} from '@/stores/auth'
-import {cartApi, type ShippingAddress} from '@/services/cartApi'
+import {cartApi, CartApiError, type ShippingAddress} from '@/services/cartApi'
 import {useToast} from '@/composables/useToast'
 import {useGtag} from '@/composables/useGtag'
 import {formatPrice} from '@/utils/format'
@@ -322,6 +349,7 @@ const isPaymentProcessing = ref(false)
 const error = ref('')
 const paymentError = ref('')
 const showPaymentWidget = ref(false)
+const isFreeOrder = ref(false)
 const showManualVerify = ref(false)
 const currentOrder = ref<{ id: string; order_number: string; total: number } | null>(null)
 const checkoutId = ref('')
@@ -531,6 +559,40 @@ async function initPaymentWidget() {
     }
 }
 
+// Double confirmation d'une commande gratuite (total 0 €, couverte par un code promo).
+// La commande est `pending` côté serveur ; ce clic la finalise (paid + facture + email).
+async function confirmFreeOrder() {
+    if (!currentOrder.value || isPaymentProcessing.value) return
+
+    isPaymentProcessing.value = true
+    paymentError.value = ''
+
+    try {
+        const result = await cartApi.confirmFreeOrder(currentOrder.value.id)
+
+        if (result.success) {
+            toast.success('Commande confirmée', 'Votre commande a été validée, aucun paiement requis.')
+            try {
+                await cartStore.clearCart()
+            } catch {
+                // Best-effort : ne jamais bloquer la redirection vers la confirmation.
+            }
+            // isPaymentProcessing reste true → onUnmounted ne tentera pas d'annuler
+            // la commande désormais payée (même pattern que le flux SumUp).
+            router.push(`/commande/${currentOrder.value.id}`)
+            return
+        }
+
+        paymentError.value = result.message ?? 'La confirmation a échoué. Veuillez réessayer.'
+        isPaymentProcessing.value = false
+    } catch (e) {
+        paymentError.value = e instanceof CartApiError
+            ? e.apiError.message
+            : 'La confirmation a échoué. Veuillez réessayer.'
+        isPaymentProcessing.value = false
+    }
+}
+
 // Filet de sécurité : la cliente peut forcer une vérification serveur si le widget
 // SumUp reste figé après un 3DS validé. On reroute vers la page de commande qui
 // possède déjà sa propre logique de polling/affichage (paid / pending / failed).
@@ -643,9 +705,26 @@ async function createOrder() {
             throw new Error('Erreur lors de la creation de la commande')
         }
 
-        // Garde-fou critique : si le total renvoyé par le serveur diffère du panier affiché
-        // (cart modifié dans un autre onglet entre le refresh et le POST), on refuse de monter
-        // le widget — sinon l'utilisateur verrait un montant et serait facturé d'un autre.
+        // Commande gratuite (code promo couvrant 100 % du panier) : la commande est créée
+        // en `pending` côté serveur — rien n'est finalisé tant que l'utilisateur n'a pas
+        // explicitement confirmé (étape de double confirmation, pas de widget SumUp).
+        // Le garde-fou de totaux ne s'applique pas : l'écran de confirmation affiche
+        // lui-même le montant (0 €) avant toute validation.
+        if (orderResponse.payment.free) {
+            currentOrder.value = {
+                id: orderResponse.order.id,
+                order_number: orderResponse.order.order_number,
+                total: orderResponse.order.total,
+            }
+            isFreeOrder.value = true
+            showPaymentWidget.value = true
+            return
+        }
+
+        // Garde-fou critique (commandes payantes uniquement) : si le total renvoyé par le
+        // serveur diffère du panier affiché (cart modifié dans un autre onglet entre le
+        // refresh et le POST), on refuse de monter le widget — sinon l'utilisateur verrait
+        // un montant et serait facturé d'un autre.
         if (Math.abs(orderResponse.order.total - cartStore.total) > 0.01) {
             cartApi.cancelCheckout(orderResponse.order.id).catch(() => { /* best-effort */ })
             await cartStore.refresh()
@@ -659,7 +738,7 @@ async function createOrder() {
             order_number: orderResponse.order.order_number,
             total: orderResponse.order.total,
         }
-        checkoutId.value = orderResponse.payment.checkout_id
+        checkoutId.value = orderResponse.payment.checkout_id ?? ''
 
         if (authStore.isAuthenticated && cartStore.requiresShipping) {
             authStore.fetchUser().catch(() => {})
@@ -697,6 +776,7 @@ async function resetPayment() {
     }
 
     showPaymentWidget.value = false
+    isFreeOrder.value = false
     currentOrder.value = null
     checkoutId.value = ''
     paymentError.value = ''

@@ -4,19 +4,49 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AddToCartRequest;
+use App\Http\Requests\ApplyGiftCodeRequest;
 use App\Http\Requests\UpdateCartEmailRequest;
 use App\Http\Requests\UpdateCartItemTypeRequest;
 use App\Services\CartService;
+use App\Services\GiftCodeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\RateLimiter;
 
 class CartController extends Controller
 {
+    /**
+     * Anti brute-force codes promo : nombre max de tentatives ÉCHOUÉES par IP
+     * avant blocage temporaire. Seuls les échecs comptent (un client légitime
+     * qui applique son code du premier coup n'est jamais pénalisé).
+     */
+    private const GIFT_CODE_MAX_FAILURES = 10;
+
+    /** Durée du blocage / d'expiration du compteur d'échecs, en secondes. */
+    private const GIFT_CODE_FAILURE_DECAY = 600;
+
     private CartService $cartService;
 
-    public function __construct(CartService $cartService)
+    private GiftCodeService $giftCodeService;
+
+    public function __construct(CartService $cartService, GiftCodeService $giftCodeService)
     {
         $this->cartService = $cartService;
+        $this->giftCodeService = $giftCodeService;
+    }
+
+    /**
+     * Résout l'utilisateur même sur ces routes publiques (sans middleware auth) :
+     * `$request->user()` s'appuie sur le guard par défaut (`web`) et IGNORE le Bearer
+     * token. Le checkout (OrderController) résout lui via le guard sanctum. Sans cette
+     * symétrie, un client connecté manipule un panier invité (session) que le checkout
+     * fusionne ensuite dans son panier utilisateur → totaux divergents et panier
+     * « perdu » côté front après la fusion.
+     */
+    private function resolveUser(Request $request): ?\App\Models\User
+    {
+        return $request->user() ?? Auth::guard('sanctum')->user();
     }
 
     /**
@@ -24,7 +54,7 @@ class CartController extends Controller
      */
     public function show(Request $request): JsonResponse
     {
-        $user = $request->user();
+        $user = $this->resolveUser($request);
         $sessionId = $request->header('X-Cart-Session') ?? $request->input('session_id');
 
         $cart = $this->cartService->getOrCreateCart($user, $sessionId);
@@ -44,7 +74,7 @@ class CartController extends Controller
     {
         $validated = $request->validated();
 
-        $user = $request->user();
+        $user = $this->resolveUser($request);
         $sessionId = $request->header('X-Cart-Session') ?? $validated['session_id'] ?? null;
         $productType = $validated['product_type'] ?? 'digital';
         $quantity = $validated['quantity'] ?? 1;
@@ -85,7 +115,7 @@ class CartController extends Controller
     {
         $validated = $request->validated();
 
-        $user = $request->user();
+        $user = $this->resolveUser($request);
         $sessionId = $request->header('X-Cart-Session') ?? $validated['session_id'] ?? null;
 
         try {
@@ -125,7 +155,7 @@ class CartController extends Controller
             'quantity' => ['required', 'integer', 'min:0', 'max:50'],
         ]);
 
-        $user = $request->user();
+        $user = $this->resolveUser($request);
         $sessionId = $request->header('X-Cart-Session') ?? $request->input('session_id');
 
         $cart = $this->cartService->getOrCreateCart($user, $sessionId);
@@ -153,7 +183,7 @@ class CartController extends Controller
      */
     public function removeItem(Request $request, string $itemId): JsonResponse
     {
-        $user = $request->user();
+        $user = $this->resolveUser($request);
         $sessionId = $request->header('X-Cart-Session') ?? $request->input('session_id');
 
         $cart = $this->cartService->getOrCreateCart($user, $sessionId);
@@ -180,7 +210,7 @@ class CartController extends Controller
      */
     public function clear(Request $request): JsonResponse
     {
-        $user = $request->user();
+        $user = $this->resolveUser($request);
         $sessionId = $request->header('X-Cart-Session') ?? $request->input('session_id');
 
         $cart = $this->cartService->getOrCreateCart($user, $sessionId);
@@ -206,7 +236,7 @@ class CartController extends Controller
     {
         $validated = $request->validated();
 
-        $user = $request->user();
+        $user = $this->resolveUser($request);
         $sessionId = $request->header('X-Cart-Session') ?? $validated['session_id'] ?? null;
 
         $cart = $this->cartService->getOrCreateCart($user, $sessionId);
@@ -219,11 +249,100 @@ class CartController extends Controller
     }
 
     /**
+     * Apply a promo / gift code to the current cart.
+     * The code reference is stored server-side on the cart; the discount itself
+     * is always computed server-side (the client never sends an amount).
+     */
+    public function applyGiftCode(ApplyGiftCodeRequest $request): JsonResponse
+    {
+        $validated = $request->validated();
+
+        $user = $this->resolveUser($request);
+        $sessionId = $request->header('X-Cart-Session') ?? $request->input('session_id');
+
+        // Anti brute-force (2e couche, en plus du throttle:gift-code de la route) :
+        // compteur d'ÉCHECS par IP. Au-delà du seuil → 429 temporaire. Le compteur
+        // est remis à zéro dès qu'un code valide est appliqué.
+        $throttleKey = 'gift-code-failures:'.sha1((string) $request->ip());
+
+        if (RateLimiter::tooManyAttempts($throttleKey, self::GIFT_CODE_MAX_FAILURES)) {
+            \Illuminate\Support\Facades\Log::warning('Gift code brute-force lockout', [
+                'ip' => $request->ip(),
+            ]);
+
+            $minutes = (int) ceil(RateLimiter::availableIn($throttleKey) / 60);
+
+            return response()->json([
+                'success' => false,
+                'message' => "Trop de tentatives. Veuillez réessayer dans {$minutes} minute(s).",
+            ], 429);
+        }
+
+        try {
+            $cart = $this->cartService->getOrCreateCart($user, $sessionId);
+
+            $code = $this->giftCodeService->resolve($validated['code']);
+            if (! $code) {
+                RateLimiter::hit($throttleKey, self::GIFT_CODE_FAILURE_DECAY);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => "Ce code promo n'existe pas.",
+                ], 404);
+            }
+
+            $summary = $this->cartService->getCartSummary($cart->fresh(['items.photo']));
+            $preview = $this->giftCodeService->preview($code, (float) $summary['subtotal']);
+
+            if (! $preview['valid']) {
+                RateLimiter::hit($throttleKey, self::GIFT_CODE_FAILURE_DECAY);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => $preview['reason'],
+                ], 422);
+            }
+
+            $cart->update(['gift_code_id' => $code->id]);
+            RateLimiter::clear($throttleKey);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Code promo appliqué.',
+                'cart' => $this->cartService->getCartSummary($cart->fresh(['items.photo'])),
+            ]);
+        } catch (\App\Exceptions\BusinessException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], $e->getHttpStatus());
+        }
+    }
+
+    /**
+     * Remove the applied promo / gift code from the current cart.
+     */
+    public function removeGiftCode(Request $request): JsonResponse
+    {
+        $user = $this->resolveUser($request);
+        $sessionId = $request->header('X-Cart-Session') ?? $request->input('session_id');
+
+        $cart = $this->cartService->getOrCreateCart($user, $sessionId);
+        $cart->update(['gift_code_id' => null]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Code promo retiré.',
+            'cart' => $this->cartService->getCartSummary($cart->fresh(['items.photo'])),
+        ]);
+    }
+
+    /**
      * Merge guest cart with authenticated user cart (called after login)
      */
     public function merge(Request $request): JsonResponse
     {
-        $user = $request->user();
+        $user = $this->resolveUser($request);
         if (! $user) {
             return response()->json([
                 'success' => false,

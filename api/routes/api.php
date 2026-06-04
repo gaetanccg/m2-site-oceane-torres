@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\Admin\ClientController;
 use App\Http\Controllers\Api\Admin\DashboardController;
 use App\Http\Controllers\Api\Admin\EventCategoryController;
+use App\Http\Controllers\Api\Admin\GiftCodeController;
 use App\Http\Controllers\Api\Admin\NotificationController;
 use App\Http\Controllers\Api\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Api\Admin\SchoolSessionController;
@@ -98,10 +99,17 @@ Route::prefix('cart')->group(function () {
     Route::delete('/item/{item}', [CartController::class, 'removeItem']);
     Route::delete('/clear', [CartController::class, 'clear']);
     Route::put('/email', [CartController::class, 'updateEmail']);
+
+    // Code promo : rate-limité contre le brute-force d'énumération de codes.
+    Route::middleware('throttle:gift-code')->group(function () {
+        Route::post('/gift-code', [CartController::class, 'applyGiftCode']);
+    });
+    Route::delete('/gift-code', [CartController::class, 'removeGiftCode']);
 });
 
 // Checkout & Orders (public for guest checkout)
 Route::post('/checkout', [OrderController::class, 'createFromCart']);
+Route::post('/checkout/confirm-free', [OrderController::class, 'confirmFreeOrder']);
 Route::get('/orders/{order}', [OrderController::class, 'show']);
 Route::get('/orders/{order}/download/{item}', [OrderController::class, 'downloadPhoto']);
 Route::get('/orders/{order}/download-all', [OrderController::class, 'downloadAll']);
@@ -255,6 +263,11 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     // Gift cards
     Route::get('/gift-cards', [GiftCardController::class, 'index']);
     Route::put('/gift-cards/{giftCard}', [GiftCardController::class, 'update']);
+
+    // Codes promo (Gift Codes) — distinct des Bons Cadeaux ci-dessus
+    Route::get('/gift-codes/generate-code', [GiftCodeController::class, 'generateCode']);
+    Route::put('/gift-codes/{giftCode}/toggle', [GiftCodeController::class, 'toggle']);
+    Route::apiResource('gift-codes', GiftCodeController::class);
 
     // Notifications
     Route::post('/notifications', [NotificationController::class, 'store']);
