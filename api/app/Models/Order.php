@@ -103,11 +103,6 @@ class Order extends Model
         return $this->belongsTo(Cart::class);
     }
 
-    public function giftCode(): BelongsTo
-    {
-        return $this->belongsTo(GiftCode::class);
-    }
-
     public function items(): HasMany
     {
         return $this->hasMany(OrderItem::class);

@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CreateCheckoutRequest;
 use App\Http\Requests\GetOrdersByEmailRequest;
+use App\Http\Requests\OrderIdRequest;
 use App\Models\Order;
 use App\Services\CartService;
 use App\Services\InvoiceService;
@@ -136,7 +137,7 @@ class OrderController extends Controller
      * Étape de double confirmation : la commande créée par /checkout reste `pending`
      * jusqu'à cet appel explicite. Idempotent (un retry/double-clic renvoie succès).
      */
-    public function confirmFreeOrder(\App\Http\Requests\OrderIdRequest $request): JsonResponse
+    public function confirmFreeOrder(OrderIdRequest $request): JsonResponse
     {
         $validated = $request->validated();
 
