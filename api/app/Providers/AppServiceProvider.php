@@ -67,5 +67,10 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('sumup-webhook', function (Request $request) {
             return Limit::perMinute(60)->by($request->ip());
         });
+
+        // Codes promo : 6 caractères → devinables, on borne le brute-force d'énumération.
+        RateLimiter::for('gift-code', function (Request $request) {
+            return Limit::perMinute(20)->by($request->ip());
+        });
     }
 }

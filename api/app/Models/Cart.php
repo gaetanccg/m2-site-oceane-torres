@@ -16,6 +16,7 @@ class Cart extends Model
         'user_id',
         'session_id',
         'guest_email',
+        'gift_code_id',
         'status',
         'expires_at',
     ];

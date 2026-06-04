@@ -162,9 +162,68 @@
                                     <span class="text-gray-600">{{ cartStore.itemsCount }} article(s)</span>
                                     <span>{{ formatPrice(cartStore.subtotal) }}</span>
                                 </div>
+                                <div v-if="cartStore.discount > 0" class="flex justify-between text-green-700 font-medium">
+                                    <span>Remise<template v-if="cartStore.appliedCode"> ({{ cartStore.appliedCode.code }})</template></span>
+                                    <span>-{{ formatPrice(cartStore.discount) }}</span>
+                                </div>
                                 <div v-if="cartStore.shippingFee > 0" class="flex justify-between text-gray-600">
                                     <span>Frais de port</span>
                                     <span>+{{ formatPrice(cartStore.shippingFee) }}</span>
+                                </div>
+                            </div>
+
+                            <!-- Promo code -->
+                            <div class="mt-4 pt-4 border-t border-gray-100">
+                                <div v-if="cartStore.appliedCode" class="flex items-center justify-between gap-2 p-2.5 bg-green-50 border border-green-200 rounded-lg">
+                                    <span class="text-sm text-green-800">
+                                        Code <strong>{{ cartStore.appliedCode.code }}</strong> appliqué
+                                    </span>
+                                    <button
+                                        type="button"
+                                        @click="handleRemovePromo"
+                                        :disabled="promoLoading"
+                                        class="text-xs text-green-700 hover:text-red-600 underline disabled:opacity-50"
+                                    >
+                                        {{ promoLoading ? 'Retrait...' : 'Retirer' }}
+                                    </button>
+                                </div>
+                                <div v-else>
+                                    <label class="block text-sm text-gray-600 mb-1.5">Code promo</label>
+                                    <div class="flex gap-2">
+                                        <div class="relative flex-1 min-w-0">
+                                            <input
+                                                v-model="promoInput"
+                                                type="text"
+                                                placeholder="Votre code"
+                                                maxlength="24"
+                                                @keyup.enter="handleApplyPromo"
+                                                class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 pr-9 uppercase focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold"
+                                            />
+                                            <!-- Centrage via wrapper flex, jamais par translate : animate-spin
+                                                 anime `transform`, un translate sur le même élément fige la rotation. -->
+                                            <span
+                                                v-if="promoLoading"
+                                                class="absolute inset-y-0 right-3 flex items-center pointer-events-none"
+                                            >
+                                                <svg class="animate-spin h-4 w-4 text-gold" fill="none" viewBox="0 0 24 24">
+                                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                                </svg>
+                                            </span>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            @click="handleApplyPromo"
+                                            :disabled="promoLoading || !promoInput.trim()"
+                                            class="flex-shrink-0 px-3 flex items-center justify-center bg-gold text-white rounded-lg hover:bg-gold/90 transition-colors disabled:opacity-50"
+                                            title="Appliquer le code"
+                                            aria-label="Appliquer le code promo"
+                                        >
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                            </svg>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
@@ -209,7 +268,7 @@
 </template>
 
 <script setup lang="ts">
-import { watch } from 'vue'
+import { ref, watch } from 'vue'
 import { useCartStore } from '@/stores/cart'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
@@ -219,6 +278,36 @@ import type { ProductType, CartItem, AvailableProductType } from '@/services/car
 const cartStore = useCartStore()
 const toast = useToast()
 const { confirm } = useConfirm()
+
+const promoInput = ref('')
+const promoLoading = ref(false)
+
+async function handleApplyPromo() {
+    const code = promoInput.value.trim()
+    if (!code || promoLoading.value) return
+
+    promoLoading.value = true
+    try {
+        const ok = await cartStore.applyGiftCode(code)
+        if (ok) {
+            toast.success('Code promo', 'Code appliqué.')
+            promoInput.value = ''
+        }
+        // Échec : le message serveur remonte via le watcher cartStore.error → toast.
+    } finally {
+        promoLoading.value = false
+    }
+}
+
+async function handleRemovePromo() {
+    if (promoLoading.value) return
+    promoLoading.value = true
+    try {
+        await cartStore.removeGiftCode()
+    } finally {
+        promoLoading.value = false
+    }
+}
 
 // Watch for cart errors and show as toast
 watch(() => cartStore.error, (newError) => {

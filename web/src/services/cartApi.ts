@@ -46,11 +46,19 @@ export interface CartItem {
     available_product_types?: Record<ProductType, AvailableProductType>
 }
 
+export interface AppliedGiftCode {
+    code: string
+    type: 'fixed' | 'percent'
+    value: number
+}
+
 export interface Cart {
     id: string
     items: CartItem[]
     items_count: number
     subtotal: number
+    discount_amount?: number
+    gift_code?: AppliedGiftCode | null
     shipping_fee: number
     total: number
     has_prints: boolean
@@ -122,6 +130,8 @@ export interface CheckoutResponse {
         id: string
         order_number: string
         subtotal: number
+        discount_amount?: number
+        gift_code?: string | null
         shipping_fee: number
         total: number
         currency: string
@@ -136,9 +146,10 @@ export interface CheckoutResponse {
         } | null
     }
     payment: {
-        checkout_id: string
+        checkout_id?: string
         order_id: string
         order_number: string
+        free?: boolean
     }
 }
 
@@ -222,6 +233,19 @@ class CartApiService extends BaseApiService {
         })
     }
 
+    async applyGiftCode(code: string): Promise<CartResponse> {
+        return this.cartRequest<CartResponse>('/cart/gift-code', {
+            method: 'POST',
+            body: JSON.stringify({ code }),
+        })
+    }
+
+    async removeGiftCode(): Promise<CartResponse> {
+        return this.cartRequest<CartResponse>('/cart/gift-code', {
+            method: 'DELETE',
+        })
+    }
+
     // ============================================================================
     // Checkout & Orders
     // ============================================================================
@@ -242,6 +266,13 @@ class CartApiService extends BaseApiService {
                 cgv_accepted: cgvAccepted ?? true,
                 ...(shipping ?? {}),
             }),
+        })
+    }
+
+    async confirmFreeOrder(orderId: string): Promise<{ success: boolean; order_id?: string; order_number?: string; message?: string }> {
+        return this.cartRequest('/checkout/confirm-free', {
+            method: 'POST',
+            body: JSON.stringify({ order_id: orderId }),
         })
     }
 
