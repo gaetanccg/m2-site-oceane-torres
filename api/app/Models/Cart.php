@@ -43,11 +43,6 @@ class Cart extends Model
         return $this->belongsTo(Order::class);
     }
 
-    public function giftCode(): BelongsTo
-    {
-        return $this->belongsTo(GiftCode::class);
-    }
-
     public function getTotalAttribute(): float
     {
         return $this->items->sum('price');
