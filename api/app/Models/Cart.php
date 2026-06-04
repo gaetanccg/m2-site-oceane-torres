@@ -16,6 +16,7 @@ class Cart extends Model
         'user_id',
         'session_id',
         'guest_email',
+        'gift_code_id',
         'status',
         'expires_at',
     ];
@@ -40,6 +41,11 @@ class Cart extends Model
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);
+    }
+
+    public function giftCode(): BelongsTo
+    {
+        return $this->belongsTo(GiftCode::class);
     }
 
     public function getTotalAttribute(): float

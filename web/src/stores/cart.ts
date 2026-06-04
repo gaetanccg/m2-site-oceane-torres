@@ -30,6 +30,8 @@ export const useCartStore = defineStore('cart', () => {
     const requiresShipping = computed(() => cart.value?.requires_shipping ?? false)
     const hasPackPricing = computed(() => cart.value?.has_pack_pricing ?? false)
     const packSavings = computed(() => cart.value?.pack_savings ?? 0)
+    const discount = computed(() => cart.value?.discount_amount ?? 0)
+    const appliedCode = computed(() => cart.value?.gift_code ?? null)
     const productTypes = computed(() => cart.value?.product_types ?? {
         digital: { label: 'Fichier numérique', price: 13, is_print: false },
         print_10x15: { label: 'Tirage 10x15 cm', price: 10, is_print: true },
@@ -224,6 +226,54 @@ export const useCartStore = defineStore('cart', () => {
     }
 
     /**
+     * Apply a promo / gift code to the cart.
+     * On failure, `error` holds the server message (invalid / expired / used up).
+     */
+    async function applyGiftCode(code: string): Promise<boolean> {
+        await waitForInit()
+        isLoading.value = true
+        error.value = null
+
+        try {
+            const response = await cartApi.applyGiftCode(code)
+            if (response.success) {
+                cart.value = response.cart
+                return true
+            }
+            error.value = response.message ?? 'Code promo invalide.'
+            return false
+        } catch (e) {
+            error.value = e instanceof CartApiError ? e.apiError.message : 'Code promo invalide.'
+            return false
+        } finally {
+            isLoading.value = false
+        }
+    }
+
+    /**
+     * Remove the applied promo / gift code from the cart.
+     */
+    async function removeGiftCode(): Promise<boolean> {
+        await waitForInit()
+        isLoading.value = true
+        error.value = null
+
+        try {
+            const response = await cartApi.removeGiftCode()
+            if (response.success) {
+                cart.value = response.cart
+                return true
+            }
+            return false
+        } catch (e) {
+            error.value = e instanceof CartApiError ? e.apiError.message : 'Erreur lors du retrait du code'
+            return false
+        } finally {
+            isLoading.value = false
+        }
+    }
+
+    /**
      * Merge guest cart after login
      */
     async function mergeAfterLogin(): Promise<void> {
@@ -317,6 +367,8 @@ export const useCartStore = defineStore('cart', () => {
         requiresShipping,
         hasPackPricing,
         packSavings,
+        discount,
+        appliedCode,
         productTypes,
         isPhotoInCart,
         getQuantity,
@@ -328,6 +380,8 @@ export const useCartStore = defineStore('cart', () => {
         updateItemType,
         removeItem,
         clearCart,
+        applyGiftCode,
+        removeGiftCode,
         mergeAfterLogin,
         refresh,
         openDrawer,

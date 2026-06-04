@@ -44,6 +44,11 @@ const statusClasses: Record<string, string> = {
   used: 'bg-gray-100 text-gray-800',
   expired: 'bg-red-100 text-red-800',
 
+  // Gift code (promo) statuses
+  inactive: 'bg-gray-100 text-gray-800',
+  scheduled: 'bg-blue-100 text-blue-800',
+  used_up: 'bg-orange-100 text-orange-800',
+
   // Facture statuses
   draft: 'bg-gray-100 text-gray-800',
   sent: 'bg-blue-100 text-blue-800',
@@ -79,6 +84,9 @@ const statusLabels: Record<string, string> = {
   active: 'Actif',
   used: 'Utilisé',
   expired: 'Expiré',
+  inactive: 'Désactivé',
+  scheduled: 'Programmé',
+  used_up: 'Épuisé',
   draft: 'Brouillon',
   sent: 'Envoyé',
   // School session statuses

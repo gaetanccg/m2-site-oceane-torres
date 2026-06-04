@@ -231,6 +231,26 @@
                 @endforeach
             </tbody>
             <tfoot>
+                @if($order->discount_amount > 0 || $order->shipping_fee > 0)
+                <tr>
+                    <td style="text-align: right; color: #666;">Sous-total</td>
+                    <td>{{ number_format($order->subtotal, 2, ',', ' ') }} €</td>
+                </tr>
+                @endif
+                @if($order->discount_amount > 0)
+                <tr>
+                    <td style="text-align: right; color: #666;">
+                        Remise@if($order->gift_code) (code {{ $order->gift_code }})@endif
+                    </td>
+                    <td>-{{ number_format($order->discount_amount, 2, ',', ' ') }} €</td>
+                </tr>
+                @endif
+                @if($order->shipping_fee > 0)
+                <tr>
+                    <td style="text-align: right; color: #666;">Frais de port</td>
+                    <td>{{ number_format($order->shipping_fee, 2, ',', ' ') }} €</td>
+                </tr>
+                @endif
                 <tr class="total-row">
                     <td><strong>Total TTC</strong></td>
                     <td>{{ number_format($order->total, 2, ',', ' ') }} €</td>

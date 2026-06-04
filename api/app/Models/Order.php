@@ -19,6 +19,9 @@ class Order extends Model
     protected $fillable = [
         'user_id',
         'cart_id',
+        'gift_code_id',
+        'gift_code',
+        'discount_amount',
         'guest_email',
         'guest_first_name',
         'guest_last_name',
@@ -50,6 +53,7 @@ class Order extends Model
     {
         return [
             'subtotal' => 'decimal:2',
+            'discount_amount' => 'decimal:2',
             'shipping_fee' => 'decimal:2',
             'total' => 'decimal:2',
             'metadata' => 'array',
@@ -97,6 +101,11 @@ class Order extends Model
     public function cart(): BelongsTo
     {
         return $this->belongsTo(Cart::class);
+    }
+
+    public function giftCode(): BelongsTo
+    {
+        return $this->belongsTo(GiftCode::class);
     }
 
     public function items(): HasMany

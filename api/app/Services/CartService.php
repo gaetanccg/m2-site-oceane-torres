@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Exceptions\BusinessException;
 use App\Models\Cart;
 use App\Models\CartItem;
+use App\Models\GiftCode;
 use App\Models\Photo;
 use App\Models\User;
 use Illuminate\Support\Collection;
@@ -241,6 +242,12 @@ class CartService
             }
         }
 
+        // Reporte le code promo appliqué au panier invité s'il n'y en a pas déjà un côté user
+        // (sinon le code saisi avant login serait silencieusement perdu).
+        if ($guestCart->gift_code_id && ! $userCart->gift_code_id) {
+            $userCart->update(['gift_code_id' => $guestCart->gift_code_id]);
+        }
+
         $guestCart->markAsExpired();
 
         // Recalcule les prix de palier après merge (quantités cumulées ont pu changer).
@@ -337,13 +344,17 @@ class CartService
         });
         $shippingFee = $requiresShipping ? (float) config('shop.shipping_fee_print', 0) : 0.0;
 
+        [$discount, $giftCode] = $this->resolveGiftCode($cart, $subtotal);
+
         return [
             'id' => $cart->id,
             'items' => $items,
             'items_count' => $items->sum('quantity'),
             'subtotal' => $subtotal,
+            'discount_amount' => $discount,
+            'gift_code' => $giftCode,
             'shipping_fee' => $shippingFee,
-            'total' => $subtotal + $shippingFee,
+            'total' => ($subtotal - $discount) + $shippingFee,
             'has_prints' => $hasPrints,
             'requires_shipping' => $requiresShipping,
             'has_pack_pricing' => $totalSavings > 0,
@@ -351,6 +362,37 @@ class CartService
             'currency' => 'EUR',
             'product_types' => CartItem::PRODUCT_TYPES,
         ];
+    }
+
+    /**
+     * Résout le code promo appliqué au panier pour le sous-total courant.
+     * Auto-nettoyage : un code devenu invalide est retiré silencieusement.
+     *
+     * @return array{0: float, 1: array{code: string, type: string, value: float}|null}
+     */
+    private function resolveGiftCode(Cart $cart, float $subtotal): array
+    {
+        if (! $cart->gift_code_id) {
+            return [0.0, null];
+        }
+
+        $code = GiftCode::find($cart->gift_code_id);
+
+        if ($code && app(GiftCodeService::class)->preview($code, $subtotal)['valid']) {
+            return [
+                $code->effectiveDiscount($subtotal),
+                [
+                    'code' => $code->code,
+                    'type' => $code->type,            // 'fixed' | 'percent'
+                    'value' => (float) $code->value,  // euros ou %
+                ],
+            ];
+        }
+
+        // Code invalide/expiré/épuisé → on le retire du panier.
+        $cart->update(['gift_code_id' => null]);
+
+        return [0.0, null];
     }
 
     /**
