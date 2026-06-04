@@ -14,11 +14,11 @@ return new class extends Migration
             $table->enum('type', ['fixed', 'percent'])->default('fixed');
             $table->decimal('value', 10, 2);                            // euros si fixed ; 0-100 si percent
             $table->decimal('max_discount_amount', 10, 2)->nullable();  // plafond € (percent uniquement)
-            $table->timestamp('valid_from')->nullable();                // début de validité (null = immédiat)
-            $table->timestamp('valid_until')->nullable();               // fin de validité (null = illimité)
-            $table->unsignedInteger('max_uses')->nullable()->default(1);  // défaut 1 ; null = illimité
-            $table->boolean('is_active')->default(true);                // interrupteur manuel admin
-            $table->text('note')->nullable();                           // note interne admin (jamais exposée au client) — voir aussi 000004 (ALTER idempotent pour bases déjà migrées)
+            $table->timestamp('valid_from')->nullable();
+            $table->timestamp('valid_until')->nullable();
+            $table->unsignedInteger('max_uses')->nullable()->default(1);  // null = illimité
+            $table->boolean('is_active')->default(true);
+            $table->text('note')->nullable();                           // interne admin, jamais exposée au client — cf. 000004
             $table->timestamps();
 
             $table->index('code');

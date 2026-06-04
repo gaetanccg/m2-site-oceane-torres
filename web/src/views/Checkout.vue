@@ -216,7 +216,7 @@
                                     {{ paymentError }}
                                 </div>
 
-                                <!-- Payment processing indicator (SumUp uniquement, le bouton gratuit a son propre spinner) -->
+                                <!-- Payment processing indicator (SumUp) -->
                                 <div v-if="isPaymentProcessing && !isFreeOrder" class="mt-4 flex items-center justify-center gap-2 text-gray-600">
                                     <svg class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
                                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
@@ -559,8 +559,6 @@ async function initPaymentWidget() {
     }
 }
 
-// Double confirmation d'une commande gratuite (total 0 €, couverte par un code promo).
-// La commande est `pending` côté serveur ; ce clic la finalise (paid + facture + email).
 async function confirmFreeOrder() {
     if (!currentOrder.value || isPaymentProcessing.value) return
 
@@ -575,10 +573,9 @@ async function confirmFreeOrder() {
             try {
                 await cartStore.clearCart()
             } catch {
-                // Best-effort : ne jamais bloquer la redirection vers la confirmation.
+                // Best-effort : ne jamais bloquer la redirection.
             }
-            // isPaymentProcessing reste true → onUnmounted ne tentera pas d'annuler
-            // la commande désormais payée (même pattern que le flux SumUp).
+            // isPaymentProcessing reste true → onUnmounted n'annulera pas la commande payée.
             router.push(`/commande/${currentOrder.value.id}`)
             return
         }
@@ -705,11 +702,8 @@ async function createOrder() {
             throw new Error('Erreur lors de la creation de la commande')
         }
 
-        // Commande gratuite (code promo couvrant 100 % du panier) : la commande est créée
-        // en `pending` côté serveur — rien n'est finalisé tant que l'utilisateur n'a pas
-        // explicitement confirmé (étape de double confirmation, pas de widget SumUp).
-        // Le garde-fou de totaux ne s'applique pas : l'écran de confirmation affiche
-        // lui-même le montant (0 €) avant toute validation.
+        // Commande gratuite : reste `pending` jusqu'à la double confirmation. Pas de
+        // garde-fou de totaux ici — l'écran de confirmation affiche lui-même le 0 €.
         if (orderResponse.payment.free) {
             currentOrder.value = {
                 id: orderResponse.order.id,

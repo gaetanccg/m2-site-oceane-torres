@@ -225,10 +225,7 @@ export const useCartStore = defineStore('cart', () => {
         }
     }
 
-    /**
-     * Apply a promo / gift code to the cart.
-     * On failure, `error` holds the server message (invalid / expired / used up).
-     */
+    /** On failure, `error` holds the server message (invalid / expired / used up). */
     async function applyGiftCode(code: string): Promise<boolean> {
         await waitForInit()
         isLoading.value = true
@@ -250,9 +247,6 @@ export const useCartStore = defineStore('cart', () => {
         }
     }
 
-    /**
-     * Remove the applied promo / gift code from the cart.
-     */
     async function removeGiftCode(): Promise<boolean> {
         await waitForInit()
         isLoading.value = true

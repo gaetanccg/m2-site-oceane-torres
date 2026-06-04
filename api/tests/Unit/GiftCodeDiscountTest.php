@@ -5,10 +5,7 @@ namespace Tests\Unit;
 use App\Models\GiftCode;
 use PHPUnit\Framework\TestCase;
 
-/**
- * Test unitaire pur (sans base de données) du calcul de remise — la logique
- * sécurité-critique : le montant facturé dépend entièrement de cette méthode.
- */
+/** Test pur (sans DB) du calcul de remise — le montant facturé en dépend entièrement. */
 class GiftCodeDiscountTest extends TestCase
 {
     private function makeCode(array $attributes): GiftCode
@@ -32,7 +29,6 @@ class GiftCodeDiscountTest extends TestCase
     {
         $code = $this->makeCode(['type' => 'fixed', 'value' => 100]);
 
-        // Une remise supérieure au panier ne peut pas rendre le total négatif.
         $this->assertEqualsWithDelta(50.0, $code->effectiveDiscount(50), 0.001);
     }
 

@@ -9,16 +9,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * Code promo / de réduction appliqué au panier avant paiement.
- *
- * NE PAS confondre avec {@see GiftCard} (« Bons Cadeaux ») qui est une carte
- * prépayée (valeur stockée), un moyen de paiement débité à l'usage.
+ * Code promo. NE PAS confondre avec {@see GiftCard} (« Bons Cadeaux »),
+ * qui est une carte prépayée débitée à l'usage.
  */
 class GiftCode extends Model
 {
     use CastsBooleansForPostgres, HasFactory, HasUuids;
 
-    /** Alphabet sans caractères ambigus (pas de O, 0, I, 1) pour la saisie manuelle. */
+    /** Sans caractères ambigus (O, 0, I, 1) : les codes sont saisis à la main. */
     private const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
     protected $fillable = [
@@ -75,35 +73,23 @@ class GiftCode extends Model
         return $code;
     }
 
-    /** Commandes ayant référencé ce code (toutes statuts confondus). */
     public function orders(): HasMany
     {
         return $this->hasMany(Order::class);
     }
 
-    /**
-     * Commandes en cours (pending) référençant le code — uniquement informatif pour l'admin.
-     * NE compte PAS dans le quota : un panier abandonné ne doit jamais « brûler » un code.
-     */
+    /** Informatif (admin) — hors quota : un panier abandonné ne « brûle » jamais un code. */
     public function pendingCount(): int
     {
         return $this->orders()->where('status', 'pending')->count();
     }
 
-    /**
-     * Utilisations réellement consommées = commandes PAYÉES uniquement.
-     * Source de vérité pour le quota (`max_uses`) et le statut « utilisé / épuisé ».
-     * Une commande fail / expired / pending ne consomme jamais le code.
-     */
+    /** Seules les commandes payées consomment le quota `max_uses` (jamais pending/failed/expired). */
     public function paidCount(): int
     {
         return $this->orders()->where('status', 'paid')->count();
     }
 
-    /**
-     * Remise effective en euros pour un sous-total donné.
-     * Toujours bornée au sous-total (total jamais négatif) et au plafond éventuel.
-     */
     public function effectiveDiscount(float $subtotal): float
     {
         if ($subtotal <= 0) {

@@ -7,10 +7,6 @@ use App\Models\GiftCode;
 
 class GiftCodeService
 {
-    /**
-     * Résout un code saisi (insensible à la casse / espaces) vers son modèle.
-     * Lecture seule — ne modifie rien.
-     */
     public function resolve(string $rawCode): ?GiftCode
     {
         $code = strtoupper(trim($rawCode));
@@ -22,11 +18,7 @@ class GiftCodeService
         return GiftCode::where('code', $code)->first();
     }
 
-    /**
-     * Aperçu de validité pour un sous-total donné (hors verrou, pour le panier).
-     *
-     * @return array{valid: bool, reason: ?string, discount: float}
-     */
+    /** @return array{valid: bool, reason: ?string, discount: float} */
     public function preview(GiftCode $code, float $subtotal): array
     {
         $reason = $this->validationError($code);
@@ -38,10 +30,7 @@ class GiftCodeService
         return ['valid' => true, 'reason' => null, 'discount' => $code->effectiveDiscount($subtotal)];
     }
 
-    /**
-     * Validation FINALE, à appeler DANS la transaction de checkout sur un modèle
-     * déjà verrouillé (lockForUpdate). Throw si inutilisable, sinon renvoie la remise.
-     */
+    /** À appeler DANS la transaction de checkout, sur un modèle verrouillé (lockForUpdate). */
     public function assertUsableForCheckout(GiftCode $code, float $subtotal): float
     {
         $reason = $this->validationError($code);
@@ -53,7 +42,6 @@ class GiftCodeService
         return $code->effectiveDiscount($subtotal);
     }
 
-    /** Message d'erreur métier si le code est inutilisable, null sinon. */
     private function validationError(GiftCode $code): ?string
     {
         if (! $code->is_active) {

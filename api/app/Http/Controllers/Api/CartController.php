@@ -16,14 +16,9 @@ use Illuminate\Support\Facades\RateLimiter;
 
 class CartController extends Controller
 {
-    /**
-     * Anti brute-force codes promo : nombre max de tentatives ÉCHOUÉES par IP
-     * avant blocage temporaire. Seuls les échecs comptent (un client légitime
-     * qui applique son code du premier coup n'est jamais pénalisé).
-     */
+    /** Anti brute-force : tentatives ÉCHOUÉES max par IP (les succès ne comptent pas). */
     private const GIFT_CODE_MAX_FAILURES = 10;
 
-    /** Durée du blocage / d'expiration du compteur d'échecs, en secondes. */
     private const GIFT_CODE_FAILURE_DECAY = 600;
 
     private CartService $cartService;
@@ -37,12 +32,9 @@ class CartController extends Controller
     }
 
     /**
-     * Résout l'utilisateur même sur ces routes publiques (sans middleware auth) :
-     * `$request->user()` s'appuie sur le guard par défaut (`web`) et IGNORE le Bearer
-     * token. Le checkout (OrderController) résout lui via le guard sanctum. Sans cette
-     * symétrie, un client connecté manipule un panier invité (session) que le checkout
-     * fusionne ensuite dans son panier utilisateur → totaux divergents et panier
-     * « perdu » côté front après la fusion.
+     * Sur ces routes publiques, `$request->user()` (guard `web`) ignore le Bearer token
+     * alors que le checkout résout via sanctum. Sans cette symétrie, un client connecté
+     * manipule un panier session que le checkout fusionne ailleurs → totaux divergents.
      */
     private function resolveUser(Request $request): ?\App\Models\User
     {
@@ -248,11 +240,6 @@ class CartController extends Controller
         ]);
     }
 
-    /**
-     * Apply a promo / gift code to the current cart.
-     * The code reference is stored server-side on the cart; the discount itself
-     * is always computed server-side (the client never sends an amount).
-     */
     public function applyGiftCode(ApplyGiftCodeRequest $request): JsonResponse
     {
         $validated = $request->validated();
@@ -260,9 +247,7 @@ class CartController extends Controller
         $user = $this->resolveUser($request);
         $sessionId = $request->header('X-Cart-Session') ?? $request->input('session_id');
 
-        // Anti brute-force (2e couche, en plus du throttle:gift-code de la route) :
-        // compteur d'ÉCHECS par IP. Au-delà du seuil → 429 temporaire. Le compteur
-        // est remis à zéro dès qu'un code valide est appliqué.
+        // Anti brute-force, 2e couche après le throttle:gift-code : seuls les échecs comptent.
         $throttleKey = 'gift-code-failures:'.sha1((string) $request->ip());
 
         if (RateLimiter::tooManyAttempts($throttleKey, self::GIFT_CODE_MAX_FAILURES)) {
@@ -319,9 +304,6 @@ class CartController extends Controller
         }
     }
 
-    /**
-     * Remove the applied promo / gift code from the current cart.
-     */
     public function removeGiftCode(Request $request): JsonResponse
     {
         $user = $this->resolveUser($request);

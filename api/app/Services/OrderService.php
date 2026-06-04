@@ -81,12 +81,8 @@ class OrderService
                 throw new BusinessException('Adresse de livraison manquante pour une commande avec tirages.', 422);
             }
 
-            // Code promo : revalidation FINALE au moment du checkout. Le quota `max_uses`
-            // est basé sur les commandes PAYÉES uniquement (un panier pending/abandonné ne
-            // consomme jamais le code) → on bloque ici tout code déjà épuisé par des paiements.
-            // La remise est calculée serveur ; SumUp recevra `total` (déjà réduit). Cf. doc §3.4.
-            // Le verrou de ligne couvre la course rare « webhook qui finalise une commande
-            // pendant ce checkout » ; cf. doc §5 pour la limite résiduelle de concurrence.
+            // Revalidation finale du code sous verrou de ligne (course webhook). Quota basé
+            // sur les commandes payées uniquement ; SumUp recevra `total` déjà réduit.
             $discount = 0.0;
             $giftCode = null;
             if ($cart->gift_code_id) {
@@ -369,11 +365,7 @@ class OrderService
         }
     }
 
-    /**
-     * Finalise une commande dont le total est nul (code promo couvrant 100 % du panier).
-     * Aucun checkout SumUp n'est créé. Sécurité : on refuse tout total > 0 pour que ce
-     * chemin ne puisse jamais court-circuiter un vrai paiement. Cf. doc §3.5.
-     */
+    /** Refuse tout total > 0 : ce chemin ne doit jamais court-circuiter un vrai paiement. */
     public function completeFreeOrder(Order $order): Order
     {
         if ((float) $order->total > 0.0) {
