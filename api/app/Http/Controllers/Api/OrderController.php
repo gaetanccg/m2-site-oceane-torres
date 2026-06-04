@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CreateCheckoutRequest;
 use App\Http\Requests\GetOrdersByEmailRequest;
+use App\Http\Requests\OrderIdRequest;
 use App\Models\Order;
 use App\Services\CartService;
 use App\Services\InvoiceService;
@@ -63,28 +64,53 @@ class OrderController extends Controller
                 $shippingData
             );
 
+            $orderPayload = [
+                'id' => $order->id,
+                'order_number' => $order->order_number,
+                'subtotal' => (float) $order->subtotal,
+                'discount_amount' => (float) $order->discount_amount,
+                'gift_code' => $order->gift_code,
+                'shipping_fee' => (float) $order->shipping_fee,
+                'total' => (float) $order->total,
+                'currency' => $order->currency,
+                'items_count' => $order->items->count(),
+                'shipping' => $order->shipping_fee > 0 ? [
+                    'phone' => $order->shipping_phone,
+                    'address_line1' => $order->shipping_address_line1,
+                    'address_line2' => $order->shipping_address_line2,
+                    'postal_code' => $order->shipping_postal_code,
+                    'city' => $order->shipping_city,
+                    'country' => $order->shipping_country,
+                ] : null,
+            ];
+
+            // Total couvert par le code promo : pas de checkout SumUp. La commande reste
+            // `pending` jusqu'à la confirmation explicite (POST /checkout/confirm-free).
+            if ((float) $order->total <= 0.0) {
+                Log::info('Free order awaiting user confirmation (gift code covers full cart)', [
+                    'order_id' => $order->id,
+                    'gift_code' => $order->gift_code,
+                    'discount_amount' => (float) $order->discount_amount,
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Commande gratuite en attente de confirmation.',
+                    'order' => $orderPayload,
+                    'payment' => [
+                        'free' => true,
+                        'order_id' => $order->id,
+                        'order_number' => $order->order_number,
+                    ],
+                ]);
+            }
+
             $paymentData = $this->orderService->initiatePayment($order);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Commande creee.',
-                'order' => [
-                    'id' => $order->id,
-                    'order_number' => $order->order_number,
-                    'subtotal' => (float) $order->subtotal,
-                    'shipping_fee' => (float) $order->shipping_fee,
-                    'total' => (float) $order->total,
-                    'currency' => $order->currency,
-                    'items_count' => $order->items->count(),
-                    'shipping' => $order->shipping_fee > 0 ? [
-                        'phone' => $order->shipping_phone,
-                        'address_line1' => $order->shipping_address_line1,
-                        'address_line2' => $order->shipping_address_line2,
-                        'postal_code' => $order->shipping_postal_code,
-                        'city' => $order->shipping_city,
-                        'country' => $order->shipping_country,
-                    ] : null,
-                ],
+                'order' => $orderPayload,
                 'payment' => $paymentData,
             ]);
         } catch (\App\Exceptions\BusinessException $e) {
@@ -94,6 +120,54 @@ class OrderController extends Controller
             ], $e->getHttpStatus());
         } catch (\Throwable $e) {
             Log::error('Checkout creation failed', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => "Une erreur s'est produite, veuillez réessayer plus tard. Si l'erreur persiste, n'hésitez pas à me contacter.",
+            ], 500);
+        }
+    }
+
+    /** Finalise une commande gratuite (total 0 €) restée `pending`. Idempotent. */
+    public function confirmFreeOrder(OrderIdRequest $request): JsonResponse
+    {
+        $validated = $request->validated();
+
+        try {
+            $order = Order::findOrFail($validated['order_id']);
+
+            if ($order->isPaid()) {
+                return response()->json([
+                    'success' => true,
+                    'order_id' => $order->id,
+                    'order_number' => $order->order_number,
+                ]);
+            }
+
+            if (! $order->isPending()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cette commande ne peut plus être confirmée. Veuillez repasser commande.',
+                ], 400);
+            }
+
+            $this->orderService->completeFreeOrder($order);
+
+            return response()->json([
+                'success' => true,
+                'order_id' => $order->id,
+                'order_number' => $order->order_number,
+            ]);
+        } catch (\App\Exceptions\BusinessException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], $e->getHttpStatus());
+        } catch (\Throwable $e) {
+            Log::error('Free order confirmation failed', [
+                'order_id' => $validated['order_id'] ?? null,
                 'error' => $e->getMessage(),
             ]);
 

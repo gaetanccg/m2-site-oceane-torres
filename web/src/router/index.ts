@@ -54,6 +54,7 @@ const AdminClients = () => import('@/views/admin/Clients.vue')
 const AdminPrestations = () => import('@/views/admin/Prestations.vue')
 const AdminReservations = () => import('@/views/admin/Reservations.vue')
 const AdminGiftCards = () => import('@/views/admin/GiftCards.vue')
+const AdminPromoCodes = () => import('@/views/admin/PromoCodes.vue')
 const AdminEventGalleries = () => import('@/views/admin/EventGalleries.vue')
 const AdminOrders = () => import('@/views/admin/Orders.vue')
 const AdminSchoolSessions = () => import('@/views/admin/SchoolSessions.vue')
@@ -281,6 +282,12 @@ export const routes: RouteRecordRaw[] = [
                 name: 'admin-gift-cards',
                 component: AdminGiftCards,
                 meta: {title: 'Bons Cadeaux'}
+            },
+            {
+                path: 'promo-codes',
+                name: 'admin-promo-codes',
+                component: AdminPromoCodes,
+                meta: {title: 'Codes Promo'}
             },
             {
                 path: 'events',

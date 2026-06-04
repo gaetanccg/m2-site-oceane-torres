@@ -372,6 +372,7 @@
 
 <script setup lang="ts">
 import {ref, computed, watch, onMounted} from 'vue'
+import {useRoute} from 'vue-router'
 import AdminHeader from '@/components/admin/AdminHeader.vue'
 import DataTable from '@/components/admin/ui/DataTable.vue'
 import StatCard from '@/components/admin/ui/StatCard.vue'
@@ -385,9 +386,11 @@ import type {AdminOrder, TableColumn} from '@/types/admin'
 
 const toast = useToast()
 const { confirm } = useConfirm()
+const route = useRoute()
 const orders = ref<AdminOrder[]>([])
 const isLoading = ref(true)
-const searchQuery = ref('')
+// Seed depuis l'URL (?search=) ; à la déclaration pour ne pas déclencher le watcher debounce.
+const searchQuery = ref(typeof route.query.search === 'string' ? route.query.search : '')
 const statusFilter = ref('')
 const currentPage = ref(1)
 const totalPages = ref(1)
