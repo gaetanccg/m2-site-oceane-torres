@@ -17,6 +17,8 @@ class OrderResource extends JsonResource
             'print_status' => $this->print_status,
             'shipped_at' => $this->shipped_at?->toIso8601String(),
             'subtotal' => (float) $this->subtotal,
+            'discount_amount' => (float) $this->discount_amount,
+            'gift_code' => $this->gift_code,
             'shipping_fee' => (float) $this->shipping_fee,
             'total' => (float) $this->total,
             'currency' => $this->currency,
