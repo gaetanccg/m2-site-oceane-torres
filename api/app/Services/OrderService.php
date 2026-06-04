@@ -8,6 +8,7 @@ use App\Mail\PrintOrderNotificationMail;
 use App\Mail\SchoolOrderConfirmationMail;
 use App\Models\Cart;
 use App\Models\CartItem;
+use App\Models\GiftCode;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
@@ -22,10 +23,13 @@ class OrderService
 
     private InvoiceService $invoiceService;
 
-    public function __construct(SumUpService $sumUpService, InvoiceService $invoiceService)
+    private GiftCodeService $giftCodeService;
+
+    public function __construct(SumUpService $sumUpService, InvoiceService $invoiceService, GiftCodeService $giftCodeService)
     {
         $this->sumUpService = $sumUpService;
         $this->invoiceService = $invoiceService;
+        $this->giftCodeService = $giftCodeService;
     }
 
     /**
@@ -77,9 +81,23 @@ class OrderService
                 throw new BusinessException('Adresse de livraison manquante pour une commande avec tirages.', 422);
             }
 
+            // Revalidation finale du code sous verrou de ligne (course webhook). Quota basé
+            // sur les commandes payées uniquement ; SumUp recevra `total` déjà réduit.
+            $discount = 0.0;
+            $giftCode = null;
+            if ($cart->gift_code_id) {
+                $giftCode = GiftCode::lockForUpdate()->find($cart->gift_code_id);
+                if ($giftCode) {
+                    $discount = $this->giftCodeService->assertUsableForCheckout($giftCode, $subtotal);
+                }
+            }
+
             $order = Order::create([
                 'user_id' => $user?->id,
                 'cart_id' => $cart->id,
+                'gift_code_id' => $giftCode?->id,
+                'gift_code' => $giftCode?->code,
+                'discount_amount' => $discount,
                 'guest_email' => $guestEmail ?? $user?->email ?? $cart->guest_email,
                 'guest_first_name' => $guestFirstName ?? $user?->first_name,
                 'guest_last_name' => $guestLastName ?? $user?->last_name,
@@ -92,7 +110,7 @@ class OrderService
                 'shipping_country' => $shippingData['shipping_country'] ?? 'FR',
                 'subtotal' => $subtotal,
                 'shipping_fee' => $shippingFee,
-                'total' => $subtotal + $shippingFee,
+                'total' => ($subtotal - $discount) + $shippingFee,
                 'currency' => 'EUR',
                 'status' => 'pending',
                 'cgv_accepted' => true,
@@ -345,6 +363,16 @@ class OrderService
             ]);
             throw $e;
         }
+    }
+
+    /** Refuse tout total > 0 : ce chemin ne doit jamais court-circuiter un vrai paiement. */
+    public function completeFreeOrder(Order $order): Order
+    {
+        if ((float) $order->total > 0.0) {
+            throw new BusinessException('Cette commande nécessite un paiement.', 400);
+        }
+
+        return $this->completeOrder($order, 'free_'.$order->id);
     }
 
     public function completeOrder(Order $order, string $transactionId): Order
