@@ -26,7 +26,7 @@ deploy/
 git clone https://github.com/gaetanccg/m2-site-oceane-torres.git
 cd m2-site-oceane-torres
 
-# 2. Creer le fichier de secrets
+# 2. Créer le fichier de secrets
 cp deploy/.env.prod.example deploy/.env.prod
 # Remplir les valeurs <SECRET> dans deploy/.env.prod
 

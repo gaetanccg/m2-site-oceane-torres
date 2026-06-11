@@ -182,7 +182,7 @@
                                 :key="photo.id"
                             >
                                 <PhotoCard
-                                    :src="photo.preview_url || photo.display_url || photo.file_path"
+                                    :src="photo.thumbnail_url || photo.preview_url || photo.display_url || photo.file_path"
                                     :thumbnail-url="photo.thumbnail_url"
                                     :alt="photo.title || 'Photo'"
                                     @click="openLightbox(index)"

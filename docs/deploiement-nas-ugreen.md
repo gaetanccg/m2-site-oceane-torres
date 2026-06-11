@@ -41,7 +41,7 @@ cd /volume1/docker
 git clone https://github.com/gaetanccg/m2-site-oceane-torres.git oceane-api
 cd oceane-api
 
-# 3. Creer le fichier de secrets
+# 3. Créer le fichier de secrets
 cp deploy/.env.prod.example deploy/.env.prod
 # Editer deploy/.env.prod et remplir toutes les valeurs <SECRET>
 
@@ -53,7 +53,7 @@ cp deploy/.env.prod.example deploy/.env.prod
 
 1. Télécharger le repo en ZIP depuis GitHub
 2. Extraire dans `/volume1/docker/oceane-api/`
-3. Creer `deploy/.env.prod` depuis `deploy/.env.prod.example`
+3. Créer `deploy/.env.prod` depuis `deploy/.env.prod.example`
 4. Remplir les secrets
 5. En SSH : `cd /volume1/docker/oceane-api && chmod +x deploy/deploy.sh && ./deploy/deploy.sh --no-pull`
 
@@ -122,7 +122,7 @@ Le script fait automatiquement :
 |-----------|-------|------|------|
 | api-php | PHP 8.4 FPM Alpine | Backend API | 9000 (interne) |
 | api-queue | PHP 8.4 FPM Alpine | Background jobs | - |
-| api-scheduler | PHP 8.4 FPM Alpine | Taches planifiees | - |
+| api-scheduler | PHP 8.4 FPM Alpine | Taches planifiées | - |
 | api-nginx | Nginx Alpine | Reverse proxy | 8080 (expose) |
 
 ---
@@ -189,4 +189,4 @@ docker exec api-php php artisan tinker
 
 ## Commandes SSH utiles
 
-Voir `deploy/SSH-COMMANDS.md` pour les commandes d'administration avancees (verification donnees, traitement commandes manuelles, regeneration watermarks, nettoyage MinIO).
+Voir `deploy/SSH-COMMANDS.md` pour les commandes d'administration avancées (verification données, traitement commandes manuelles, regeneration watermarks, nettoyage MinIO).

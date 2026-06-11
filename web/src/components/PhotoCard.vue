@@ -10,6 +10,7 @@
                     class="blur-bg"
                     alt=""
                     aria-hidden="true"
+                    loading="lazy"
                 />
                 <div class="shimmer" />
             </div>

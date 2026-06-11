@@ -49,7 +49,7 @@ class AvailabilityPattern extends Model
      * Genere les creneaux pour ce pattern jusqu'a une date limite
      *
      * @param  Carbon  $untilDate  Date limite de generation
-     * @return array Les creneaux crees
+     * @return array Les creneaux crées
      */
     public function generateSlots(Carbon $untilDate): array
     {

@@ -34,7 +34,7 @@ oceanetorresphotographie.fr (Frontend Vue.js)
          │
          ├── api.oceanetorresphotographie.fr (Backend Laravel - NAS)
          ├── s3.oceanetorresphotographie.fr (MinIO Storage - NAS)
-         └── Supabase (Base de donnees PostgreSQL)
+         └── Supabase (Base de données PostgreSQL)
 ```
 
 ## Services utilises
@@ -44,7 +44,7 @@ oceanetorresphotographie.fr (Frontend Vue.js)
 | **Render**     | Hebergement frontend (Static Site) | oceanetorresphotographie.fr     |
 | **NAS UGREEN** | Backend API Laravel + Nginx        | api.oceanetorresphotographie.fr |
 | **NAS UGREEN** | Stockage MinIO (S3)                | s3.oceanetorresphotographie.fr  |
-| **Supabase**   | Base de donnees PostgreSQL         | (connexion via API)             |
+| **Supabase**   | Base de données PostgreSQL         | (connexion via API)             |
 | **Cloudflare** | DNS + Tunnel vers NAS              | -                               |
 
 ---
@@ -55,7 +55,7 @@ Avant de deployer le frontend, assure-toi que :
 
 - [x] **Backend API** deploye sur le NAS et accessible via `https://api.oceanetorresphotographie.fr`
 - [x] **MinIO** configure sur le NAS et accessible via `https://s3.oceanetorresphotographie.fr`
-- [x] **Supabase** projet cree avec la base de donnees configuree
+- [x] **Supabase** projet cree avec la base de données configuree
 - [x] **Cloudflare** domaine configure avec les tunnels actifs
 - [ ] **Compte Render** cree (https://render.com)
 
@@ -78,7 +78,7 @@ Doit retourner :
 
 ---
 
-## Etape 1 : Creer le Static Site sur Render
+## Etape 1 : Créer le Static Site sur Render
 
 ### 1.1 Connexion et creation
 
@@ -98,7 +98,7 @@ Doit retourner :
 
 > **Important SEO** : La commande `build:prerender` genere des pages HTML statiques pour les routes publiques, permettant a Google d'indexer le contenu sans JavaScript.
 
-### 1.3 Prerendering SEO (pages generees)
+### 1.3 Prerendering SEO (pages generées)
 
 Le script de prerendering genere des pages HTML statiques pour les routes suivantes :
 
