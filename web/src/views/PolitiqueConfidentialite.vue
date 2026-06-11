@@ -17,7 +17,7 @@
         </section>
 
         <section class="mb-8">
-            <h2 class="text-xl font-medium mb-3">2. Données collectees</h2>
+            <h2 class="text-xl font-medium mb-3">2. Données collectées</h2>
             <p class="mb-4">Nous collectons les categories de données personnelles suivantes :</p>
 
             <h3 class="text-lg font-medium mb-2 mt-4">2.1 Données d'identification</h3>
@@ -30,14 +30,14 @@
             <h3 class="text-lg font-medium mb-2 mt-4">2.2 Données de connexion</h3>
             <ul class="list-disc list-inside space-y-1 text-gray-700 ml-4">
                 <li>Adresse IP</li>
-                <li>Données de navigation (pages visitees, duree de visite)</li>
+                <li>Données de navigation (pages visitées, durée de visite)</li>
                 <li>Type de navigateur et systeme d'exploitation</li>
             </ul>
 
             <h3 class="text-lg font-medium mb-2 mt-4">2.3 Données de transaction</h3>
             <ul class="list-disc list-inside space-y-1 text-gray-700 ml-4">
                 <li>Historique des commandes</li>
-                <li>Informations de paiement (traitees par notre prestataire SumUp)</li>
+                <li>Informations de paiement (traitées par notre prestataire SumUp)</li>
             </ul>
         </section>
 
@@ -85,7 +85,7 @@
 
         <section class="mb-8">
             <h2 class="text-xl font-medium mb-3">4. Destinataires des données</h2>
-            <p class="mb-4">Vos données personnelles peuvent etre communiquees aux destinataires suivants :</p>
+            <p class="mb-4">Vos données personnelles peuvent être communiquées aux destinataires suivants :</p>
             <ul class="list-disc list-inside space-y-2 text-gray-700 ml-4">
                 <li><strong>Oceane Torres Photographie</strong> : pour la gestion de la relation client</li>
                 <li><strong>SumUp</strong> : prestataire de paiement securise (données de transaction uniquement)</li>
@@ -101,7 +101,7 @@
             <h2 class="text-xl font-medium mb-3">5. Transferts de données hors UE</h2>
             <p>
                 Certains de nos prestataires (Google) peuvent traiter des données en dehors de l'Union Europeenne.
-                Ces transferts sont encadres par des garanties appropriees (Clauses Contractuelles Types de la Commission Europeenne
+                Ces transferts sont encadres par des garanties appropriées (Clauses Contractuelles Types de la Commission Européenne
                 ou certification Privacy Shield lorsque applicable).
             </p>
         </section>
@@ -154,7 +154,7 @@
         <section class="mb-8">
             <h2 class="text-xl font-medium mb-3">8. Securite des données</h2>
             <p>
-                Nous mettons en oeuvre des mesures techniques et organisationnelles appropriees pour proteger vos données personnelles
+                Nous mettons en oeuvre des mesures techniques et organisationnelles appropriées pour protéger vos données personnelles
                 contre la destruction, la perte, l'alteration, la divulgation ou l'acces non autorise :
             </p>
             <ul class="list-disc list-inside space-y-1 text-gray-700 ml-4 mt-2">

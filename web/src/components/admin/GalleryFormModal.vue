@@ -145,7 +145,7 @@
         <template #footer>
             <Button variant="secondary" @click="visible = false">Annuler</Button>
             <Button :loading="isSaving" @click="saveGallery">
-                {{ gallery ? 'Enregistrer' : 'Creer' }}
+                {{ gallery ? 'Enregistrer' : 'Créer' }}
             </Button>
         </template>
     </Modal>

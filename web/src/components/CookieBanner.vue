@@ -157,7 +157,7 @@
                                         </div>
                                         <div>
                                             <h4 class="font-medium text-gray-900">Marketing</h4>
-                                            <p class="text-xs text-gray-500">Publicites ciblees</p>
+                                            <p class="text-xs text-gray-500">Publicités ciblées</p>
                                         </div>
                                     </div>
                                     <label class="relative cursor-pointer">
