@@ -72,7 +72,7 @@ class Photo extends Model
     }
 
     /**
-     * Get preview URL (1200px + watermark) via proxy
+     * Get preview URL (1200px + watermark).
      */
     public function getPreviewUrlAttribute(): ?string
     {
@@ -81,12 +81,11 @@ class Photo extends Model
             return $this->getVideoUrl();
         }
 
-        // Return proxy URL
-        return url("/api/images/preview/{$this->id}");
+        return $this->resolveImageUrl('preview', $this->file_path_preview);
     }
 
     /**
-     * Get thumbnail URL (400px + strong watermark) via proxy
+     * Get thumbnail URL (400px + strong watermark).
      */
     public function getThumbnailUrlAttribute(): ?string
     {
@@ -95,8 +94,44 @@ class Photo extends Model
             return $this->getVideoUrl();
         }
 
-        // Return proxy URL
-        return url("/api/images/thumbnail/{$this->id}");
+        return $this->resolveImageUrl('thumbnail', $this->file_path_thumbnail);
+    }
+
+    /**
+     * Résout l'URL d'un dérivé (preview/thumbnail).
+     *
+     * Mode direct (défaut, cf. config shop.serve_images_direct) : les dérivés DÉJÀ
+     * traités et watermarkés sont servis directement depuis MinIO via une URL signée.
+     * Le navigateur tire les octets de MinIO, sans passer par PHP-FPM ni le tunnel de
+     * l'API — c'est ce qui décharge le backend du streaming sur les grosses galeries.
+     *
+     * L'URL signée est mise en cache (12 h) pour rester STABLE sur une fenêtre plus
+     * courte que sa validité (24 h) : elle reste donc cacheable côté navigateur entre
+     * deux visites, avec une marge de 12 h avant expiration.
+     *
+     * Fallback sur le proxy /api/images/... (génération à la volée + streaming) quand
+     * la photo n'est pas encore traitée, si la signature échoue, ou si le mode direct
+     * est désactivé.
+     */
+    private function resolveImageUrl(string $version, ?string $processedPath): ?string
+    {
+        $proxyUrl = url("/api/images/{$version}/{$this->id}");
+
+        if (! config('shop.serve_images_direct', true)) {
+            return $proxyUrl;
+        }
+
+        if (! $this->is_processed || ! $processedPath) {
+            return $proxyUrl;
+        }
+
+        // Génération directe : la signature est du pur calcul (HMAC local, aucune I/O).
+        // PAS de cache ici — un cache fichier ajoutait 400 accès au disque du NAS (2 par
+        // photo × 200) à la réponse JSON, soit ~19 s de latence. Conséquence : l'URL
+        // change à chaque chargement (pas de cache navigateur entre 2 visites) ; c'est
+        // un compromis assumé tant qu'on n'a pas de cache rapide (Redis) ou de signature
+        // déterministe. Voir aussi le mécanisme vidéo dans getVideoUrl().
+        return app(MinioStorageService::class)->getSignedUrl($processedPath, 86400) ?: $proxyUrl;
     }
 
     /**
