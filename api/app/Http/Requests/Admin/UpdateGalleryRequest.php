@@ -20,6 +20,7 @@ class UpdateGalleryRequest extends FormRequest
             'client_id' => ['nullable', 'exists:clients,id'],
             'assigned_email' => ['nullable', 'email', 'max:255'],
             'sms_template' => ['nullable', 'string', 'max:320', new SmsTemplateRule],
+            'shipping_fee' => ['nullable', 'numeric', 'min:0', 'max:9999.99'],
             'product_types' => ['nullable', 'array'],
             'product_types.*.product_type' => ['required_with:product_types', 'string', 'in:digital,print_10x15,print_15x20,print_scolaire'],
             'product_types.*.is_enabled' => ['required_with:product_types', 'boolean'],

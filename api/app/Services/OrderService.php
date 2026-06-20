@@ -66,7 +66,7 @@ class OrderService
             $subtotal = collect($validItems)->sum(
                 fn ($item) => (float) $item->price * (int) ($item->quantity ?? 1)
             );
-            $requiresShipping = collect($validItems)->contains(function ($item) {
+            $shippingItems = collect($validItems)->filter(function ($item) {
                 $gallery = $item->photo?->gallery;
                 $productType = $item->product_type ?? 'digital';
 
@@ -74,7 +74,13 @@ class OrderService
                     ? $gallery->getRequiresShippingForProductType($productType)
                     : CartItem::requiresShipping($productType);
             });
-            $shippingFee = $requiresShipping ? (float) config('shop.shipping_fee_print', 0) : 0.0;
+            $requiresShipping = $shippingItems->isNotEmpty();
+            // Per-gallery fee; take the highest among shipping items to avoid undercharging mixed carts.
+            $shippingFee = $requiresShipping
+                ? (float) $shippingItems->map(fn ($item) => $item->photo?->gallery
+                    ? $item->photo->gallery->getShippingFee()
+                    : (float) config('shop.shipping_fee_print', 0))->max()
+                : 0.0;
 
             // Garde-fou : la FormRequest valide déjà, defense in depth.
             if ($requiresShipping && empty($shippingData['shipping_address_line1'])) {
