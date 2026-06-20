@@ -10,6 +10,7 @@
                     class="blur-bg"
                     alt=""
                     aria-hidden="true"
+                    loading="lazy"
                 />
                 <div class="shimmer" />
             </div>
@@ -24,6 +25,7 @@
 
             <!-- Actual image - always in DOM, opacity changes when loaded -->
             <img
+                :key="reloadKey"
                 :src="imageSrc"
                 :alt="alt"
                 loading="lazy"
@@ -63,8 +65,26 @@ const isLoaded = ref(false)
 const hasFailed = ref(false)
 const imageSrc = ref(props.src)
 const retryCount = ref(0)
+// Bumping this key recreates the <img> element to force a fresh network fetch.
+const reloadKey = ref(0)
 
 const MAX_RETRIES = 3
+
+// Les URLs signées MinIO signent TOUS les query params (SigV4) : on ne peut pas
+// ajouter de cache-buster sans casser la signature. On force alors un nouveau fetch
+// en recréant l'élément (bump de key). Pour les URLs proxy classiques, on garde le
+// cache-buster qui contourne aussi une entrée de cache navigateur corrompue.
+const isSignedUrl = (url: string) => url.includes('X-Amz-Signature')
+
+const forceReload = () => {
+    if (isSignedUrl(props.src)) {
+        imageSrc.value = props.src
+        reloadKey.value++
+    } else {
+        const separator = props.src.includes('?') ? '&' : '?'
+        imageSrc.value = `${props.src}${separator}_r=${Date.now()}`
+    }
+}
 
 // Handle successful load
 const onImageLoad = () => {
@@ -76,10 +96,7 @@ const onImageLoad = () => {
 const onImageError = () => {
     if (retryCount.value < MAX_RETRIES) {
         retryCount.value++
-        setTimeout(() => {
-            const separator = props.src.includes('?') ? '&' : '?'
-            imageSrc.value = `${props.src}${separator}_r=${Date.now()}`
-        }, 1000 * retryCount.value)
+        setTimeout(forceReload, 1000 * retryCount.value)
     } else {
         hasFailed.value = true
         isLoaded.value = true
@@ -91,7 +108,7 @@ const retryLoad = () => {
     hasFailed.value = false
     isLoaded.value = false
     retryCount.value = 0
-    imageSrc.value = `${props.src}?_retry=${Date.now()}`
+    forceReload()
 }
 
 // Reset when src changes

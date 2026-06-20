@@ -30,7 +30,7 @@ class SendSchoolSessionMessagesRequest extends FormRequest
             'contacts.required' => 'Au moins un contact est requis.',
             'contacts.*.email.required_if' => 'L\'email est requis pour l\'envoi par email.',
             'contacts.*.phone.required_if' => 'Le numero de telephone est requis pour l\'envoi par SMS.',
-            'contacts.*.gallery_id.exists' => 'Une des galeries specifiees n\'existe pas.',
+            'contacts.*.gallery_id.exists' => 'Une des galeries specifiées n\'existe pas.',
         ];
     }
 }

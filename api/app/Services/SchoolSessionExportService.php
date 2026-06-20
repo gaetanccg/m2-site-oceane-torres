@@ -58,7 +58,7 @@ class SchoolSessionExportService
         // 3. Build ZIP
         $zip = new \ZipArchive;
         if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
-            $export->markAs('failed', 'Impossible de creer le fichier ZIP.');
+            $export->markAs('failed', 'Impossible de créer le fichier ZIP.');
 
             return;
         }

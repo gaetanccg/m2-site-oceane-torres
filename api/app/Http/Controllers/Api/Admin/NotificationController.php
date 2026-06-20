@@ -68,7 +68,7 @@ class NotificationController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Toutes les notifications ont ete marquees comme lues.',
+            'message' => 'Toutes les notifications ont été marquées comme lues.',
         ]);
     }
 

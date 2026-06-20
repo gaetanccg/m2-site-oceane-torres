@@ -59,7 +59,7 @@
 - [x] Nom + prenom obligatoires (migration, FormRequest, frontend)
 - [x] Admin : copier lien commande (regenere le token)
 - [x] Admin : re-trigger verification paiement SumUp
-- [x] Infos client envoyees a SumUp (email, first/last name)
+- [x] Infos client envoyées a SumUp (email, first/last name)
 
 ### Phase C — Securite & RGPD
 
