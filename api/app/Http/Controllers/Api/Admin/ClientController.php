@@ -87,7 +87,7 @@ class ClientController extends Controller
 
     /**
      * Suppression d'un client (RGPD - droit à l'oubli)
-     * Anonymise toutes les donnees personnelles liees
+     * Anonymise toutes les données personnelles liées
      */
     public function destroy(Client $client): JsonResponse
     {

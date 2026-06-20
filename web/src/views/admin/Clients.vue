@@ -157,7 +157,7 @@
 
       <template #footer>
         <Button variant="secondary" @click="showCreateModal = false">Annuler</Button>
-        <Button :loading="isCreating" @click="createClient">Creer le client</Button>
+        <Button :loading="isCreating" @click="createClient">Créer le client</Button>
       </template>
     </Modal>
 

@@ -23,7 +23,7 @@ interface ProductTypeDefaults {
 // Mirrors api CartItem::PRODUCT_TYPES — keep prices in sync.
 // print_scolaire is opt-in: livré à l'école, donc requires_shipping = false par défaut.
 const DEFAULT_PRODUCT_TYPES: Record<ProductType, ProductTypeDefaults> = {
-    digital: { label: 'Photo numerique', price: 13, requires_shipping: false, enabled_by_default: true },
+    digital: { label: 'Photo numérique', price: 13, requires_shipping: false, enabled_by_default: true },
     print_10x15: { label: 'Impression 10x15', price: 10, requires_shipping: true, enabled_by_default: true },
     print_15x20: { label: 'Impression 15x20', price: 15, requires_shipping: true, enabled_by_default: true },
     print_scolaire: { label: 'Tirage scolaire', price: 6, requires_shipping: false, enabled_by_default: false },

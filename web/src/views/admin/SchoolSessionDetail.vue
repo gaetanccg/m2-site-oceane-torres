@@ -77,7 +77,7 @@
                             {{ failedPhotosCount }} photo(s) en echec
                         </p>
                         <p class="text-xs text-orange-600 mt-1">
-                            Certaines photos n'ont pas pu etre traitees. Relancez le traitement pour reessayer.
+                            Certaines photos n'ont pas pu être traitées. Relancez le traitement pour réessayer.
                         </p>
                     </div>
                     <Button :loading="isRetrying" variant="secondary" @click="retryFailedPhotos">
@@ -437,8 +437,8 @@
                 <label v-if="!exportInProgress" class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100">
                     <input v-model="exportIncludeDigital" type="checkbox" class="w-4 h-4 text-gold rounded focus:ring-gold" />
                     <div class="flex-1">
-                        <p class="text-sm font-medium text-gray-700">Inclure aussi les fichiers numeriques</p>
-                        <p class="text-xs text-gray-500">Par defaut, seules les commandes papier sont exportees.</p>
+                        <p class="text-sm font-medium text-gray-700">Inclure aussi les fichiers numériques</p>
+                        <p class="text-xs text-gray-500">Par defaut, seules les commandes papier sont exportées.</p>
                     </div>
                 </label>
 
@@ -490,7 +490,7 @@
                     :loading="isCreatingExport"
                     @click="startExport"
                 >
-                    {{ latestExport?.status === 'failed' ? 'Reessayer' : 'Generer le ZIP' }}
+                    {{ latestExport?.status === 'failed' ? 'Réessayer' : 'Generer le ZIP' }}
                 </Button>
             </template>
         </Modal>
@@ -524,7 +524,7 @@
 
                 <!-- Items -->
                 <div>
-                    <h4 class="font-medium text-gray-900 mb-2">Photos commandees</h4>
+                    <h4 class="font-medium text-gray-900 mb-2">Photos commandées</h4>
                     <div class="border border-gray-200 rounded-lg divide-y divide-gray-200">
                         <div
                             v-for="item in selectedOrder.items"
@@ -770,7 +770,7 @@ function startPolling() {
         if (session.value?.status === 'completed' || session.value?.status === 'failed') {
             stopPolling()
             if (session.value.status === 'completed') {
-                toast.success('Termine', `${session.value.total_galleries} galeries creees`)
+                toast.success('Termine', `${session.value.total_galleries} galeries creées`)
                 await fetchGalleries()
             }
         }
