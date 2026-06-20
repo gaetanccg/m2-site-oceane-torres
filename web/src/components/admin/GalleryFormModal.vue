@@ -80,7 +80,7 @@
                             <label
                                 class="flex items-center gap-1.5 cursor-pointer w-full sm:w-auto"
                                 :class="pt.is_enabled ? 'text-gray-700' : 'text-gray-400 cursor-not-allowed'"
-                                :title="pt.is_enabled ? 'Cocher pour appliquer des frais de port (2&euro;) au panier si ce produit est commandé' : ''"
+                                :title="pt.is_enabled ? 'Cocher pour appliquer les frais de port au panier si ce produit est commandé' : ''"
                             >
                                 <input
                                     type="checkbox"
@@ -91,6 +91,12 @@
                                 />
                                 <span class="text-xs">Frais de port</span>
                             </label>
+                            <span
+                                v-if="pt.is_enabled && pt.requires_shipping"
+                                class="text-xs text-gray-400 w-full sm:w-auto"
+                            >
+                                +{{ shippingFeeDisplay }}
+                            </span>
                         </div>
                         <!-- Pack Tiers -->
                         <div v-if="pt.is_enabled" class="mt-3 ml-6 space-y-2">
@@ -133,6 +139,44 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Galerie vitrine : aucun produit activé -->
+                <div
+                    v-if="!anyProductEnabled"
+                    class="mt-4 flex items-start gap-2 p-3 rounded-lg bg-blue-50 border border-blue-100 text-blue-700 text-xs"
+                >
+                    <svg class="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>
+                        Aucun produit activé : cette galerie sera en <strong>consultation et likes uniquement</strong>,
+                        sans possibilité d'achat.
+                    </span>
+                </div>
+
+                <!-- Montant des frais de port (niveau galerie) -->
+                <div v-if="anyProductEnabled" class="mt-4 flex items-center gap-3 flex-wrap">
+                    <label for="shipping-fee" class="text-sm font-medium text-gray-700">
+                        Montant des frais de port
+                    </label>
+                    <div class="flex items-center gap-1 ml-auto">
+                        <input
+                            id="shipping-fee"
+                            type="number"
+                            v-model="shippingFeeInput"
+                            step="0.01"
+                            min="0"
+                            :placeholder="String(DEFAULT_SHIPPING_FEE)"
+                            class="w-24 px-2 py-1 text-sm text-right border border-gray-300 rounded-md focus:ring-gold focus:border-gold"
+                        />
+                        <span class="text-sm text-gray-500">&euro;</span>
+                    </div>
+                    <p class="text-xs text-gray-500 w-full">
+                        Appliqué une seule fois au panier dès qu'un produit avec « Frais de port »
+                        est commandé. Laisser vide pour utiliser la valeur par défaut ({{ DEFAULT_SHIPPING_FEE }}&nbsp;&euro;).
+                    </p>
+                </div>
+
                 <p v-if="productTypesError" class="text-xs text-red-500 mt-2">{{ productTypesError }}</p>
             </div>
 
@@ -176,6 +220,9 @@ const emit = defineEmits<{
 const toast = useToast()
 const isSaving = ref(false)
 
+// Mirrors api config('shop.shipping_fee_print') default — used as placeholder/fallback display only.
+const DEFAULT_SHIPPING_FEE = 2
+
 const {
     productTypesState, productTypesError, productTypesList,
     toggleProductType, updateProductPrice, toggleRequiresShipping, resetProductTypes,
@@ -189,7 +236,27 @@ const form = reactive<GalleryFormData>({
     client_id: '',
     assigned_email: '',
     sms_template: '',
+    shipping_fee: null,
 })
+
+// Bridge between the number input (string) and form.shipping_fee (number | null).
+const shippingFeeInput = computed<string | number>({
+    get: () => form.shipping_fee ?? '',
+    set: (val) => {
+        const num = typeof val === 'number' ? val : parseFloat(val)
+        form.shipping_fee = val === '' || isNaN(num) ? null : num
+    },
+})
+
+const shippingFeeDisplay = computed(() => {
+    const fee = form.shipping_fee ?? DEFAULT_SHIPPING_FEE
+    return `${fee.toFixed(2).replace('.', ',')} €`
+})
+
+// Aucun produit coché => galerie "vitrine" (consultation + likes, pas de vente).
+const anyProductEnabled = computed(() =>
+    Object.values(productTypesState.value).some(pt => pt.is_enabled)
+)
 
 const visible = computed({
     get: () => props.modelValue,
@@ -206,6 +273,7 @@ function resetForm() {
     form.client_id = ''
     form.assigned_email = ''
     form.sms_template = ''
+    form.shipping_fee = null
     resetProductTypes()
 }
 
@@ -218,6 +286,7 @@ watch(() => props.modelValue, (isOpen) => {
         form.client_id = props.gallery.client_id || ''
         form.assigned_email = props.gallery.assigned_email || ''
         form.sms_template = props.gallery.sms_template || ''
+        form.shipping_fee = props.gallery.shipping_fee != null ? Number(props.gallery.shipping_fee) : null
         loadProductTypesFromGallery(props.gallery.gallery_product_types)
     } else {
         resetForm()
@@ -225,12 +294,7 @@ watch(() => props.modelValue, (isOpen) => {
 })
 
 async function saveGallery() {
-    const hasEnabled = Object.values(productTypesState.value).some(pt => pt.is_enabled)
-    if (!hasEnabled) {
-        productTypesError.value = 'Au moins un type de produit doit etre actif.'
-        return
-    }
-
+    // Aucun produit activé = galerie en consultation/likes uniquement (vitrine). C'est autorisé.
     isSaving.value = true
     try {
         // Normalize empty template to null so backend treats it as "use default"

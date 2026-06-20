@@ -301,6 +301,8 @@ export interface AdminGallery {
     download_status: DownloadStatus
     photos?: AdminPhoto[]
     gallery_product_types?: GalleryProductTypeConfig[]
+    // null/undefined = use global default shipping fee
+    shipping_fee?: number | null
     created_at: string
     updated_at: string
 }
@@ -333,6 +335,7 @@ export interface GalleryFormData {
     client_id: string
     assigned_email: string
     sms_template?: string | null
+    shipping_fee?: number | null
     product_types?: GalleryProductTypeConfig[]
 }
 
