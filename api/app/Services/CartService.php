@@ -333,7 +333,7 @@ class CartService
 
         $subtotal = (float) $items->sum('line_total');
         $hasPrints = $items->contains('is_print', true);
-        $requiresShipping = $cart->items->contains(function ($cartItem) {
+        $shippingItems = $cart->items->filter(function ($cartItem) {
             $gallery = $cartItem->photo?->gallery;
             $productType = $cartItem->product_type ?? 'digital';
 
@@ -341,7 +341,13 @@ class CartService
                 ? $gallery->getRequiresShippingForProductType($productType)
                 : CartItem::requiresShipping($productType);
         });
-        $shippingFee = $requiresShipping ? (float) config('shop.shipping_fee_print', 0) : 0.0;
+        $requiresShipping = $shippingItems->isNotEmpty();
+        // Per-gallery fee; take the highest among shipping items to avoid undercharging mixed carts.
+        $shippingFee = $requiresShipping
+            ? (float) $shippingItems->map(fn ($cartItem) => $cartItem->photo?->gallery
+                ? $cartItem->photo->gallery->getShippingFee()
+                : (float) config('shop.shipping_fee_print', 0))->max()
+            : 0.0;
 
         [$discount, $giftCode] = $this->resolveGiftCode($cart, $subtotal);
 

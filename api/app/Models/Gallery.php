@@ -33,6 +33,7 @@ class Gallery extends Model
         'is_published',
         'school_session_id',
         'class_name',
+        'shipping_fee',
     ];
 
     protected $appends = [];
@@ -45,6 +46,7 @@ class Gallery extends Model
             'views_count' => 'integer',
             'sort_order' => 'integer',
             'is_published' => 'boolean',
+            'shipping_fee' => 'decimal:2',
         ];
     }
 
@@ -245,6 +247,15 @@ class Gallery extends Model
         return $gpt
             ? $gpt->effectiveRequiresShipping()
             : CartItem::requiresShipping($productType);
+    }
+
+    /**
+     * Per-gallery shipping fee amount, falling back to the global config default
+     * when no explicit value is set on the gallery.
+     */
+    public function getShippingFee(): float
+    {
+        return (float) ($this->shipping_fee ?? config('shop.shipping_fee_print', 0));
     }
 
     /**

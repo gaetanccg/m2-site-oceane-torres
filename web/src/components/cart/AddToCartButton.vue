@@ -1,7 +1,7 @@
 <template>
     <!-- Quantity stepper when item is in cart -->
     <div
-        v-if="quantity > 0"
+        v-if="hasEnabledProducts && quantity > 0"
         @click.stop
         :class="[
             'inline-flex items-center gap-1 bg-green-500 text-white rounded-md',
@@ -34,9 +34,9 @@
         </button>
     </div>
 
-    <!-- Initial add button -->
+    <!-- Initial add button (hidden for view-only galleries with no purchasable product) -->
     <button
-        v-else
+        v-else-if="hasEnabledProducts"
         @click.stop="handleAdd"
         :disabled="isLoading"
         :class="[
@@ -98,6 +98,13 @@ const { trackAddToCart } = useGtag()
 const isLoading = ref(false)
 
 const productType = computed<ProductTypeKey>(() => getDefaultProductType())
+
+// Vitrine : aucun produit activé => pas de vente. availableProductTypes null = legacy/chargement,
+// on préserve le comportement actuel (bouton affiché).
+const hasEnabledProducts = computed(() => {
+    if (!props.availableProductTypes) return true
+    return Object.values(props.availableProductTypes).some(p => p.is_enabled)
+})
 
 const quantity = computed(() => cartStore.getQuantity(props.photoId, productType.value))
 
