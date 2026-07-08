@@ -6,6 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreClientRequest;
 use App\Http\Requests\Admin\UpdateClientRequest;
 use App\Models\Client;
+use App\Models\ContactMessage;
+use App\Models\DownloadLog;
+use App\Models\Gallery;
+use App\Models\Order;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -102,14 +106,14 @@ class ClientController extends Controller
         ]);
 
         // Anonymiser les commandes par email
-        \App\Models\Order::where('guest_email', $email)->update([
+        Order::where('guest_email', $email)->update([
             'guest_email' => null,
             'guest_first_name' => 'Supprimé',
             'guest_last_name' => null,
         ]);
 
         // Anonymiser les messages de contact
-        \App\Models\ContactMessage::where('email', $email)->update([
+        ContactMessage::where('email', $email)->update([
             'name' => 'Supprimé',
             'email' => null,
             'phone' => null,
@@ -117,9 +121,9 @@ class ClientController extends Controller
 
         // Supprimer les logs de téléchargement lies aux galeries du client
         if ($client->user_id) {
-            $galleryIds = \App\Models\Gallery::where('user_id', $client->user_id)->pluck('id');
+            $galleryIds = Gallery::where('user_id', $client->user_id)->pluck('id');
             if ($galleryIds->isNotEmpty()) {
-                \App\Models\DownloadLog::whereIn('gallery_id', $galleryIds)->delete();
+                DownloadLog::whereIn('gallery_id', $galleryIds)->delete();
             }
         }
 

@@ -11,6 +11,7 @@ use App\Jobs\SendSchoolSessionSmsJob;
 use App\Mail\GalleryAccessMail;
 use App\Models\Client;
 use App\Models\Gallery;
+use App\Policies\GalleryPolicy;
 use App\Services\MinioStorageService;
 use App\Services\SmsTemplateService;
 use App\Traits\SyncsProductTypes;
@@ -352,7 +353,7 @@ class GalleryController extends Controller
         $user = $request->user();
 
         abort_unless(
-            app(\App\Policies\GalleryPolicy::class)->download($user, $gallery, $token),
+            app(GalleryPolicy::class)->download($user, $gallery, $token),
             403,
             'Accès non autorisé.'
         );
