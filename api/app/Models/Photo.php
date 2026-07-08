@@ -31,6 +31,7 @@ class Photo extends Model
         'file_path_watermark',
         'file_path_preview',
         'file_path_thumbnail',
+        'file_path_thumbnail_clean',
         'is_processed',
         'is_video',
         'title',
@@ -95,6 +96,54 @@ class Photo extends Model
         }
 
         return $this->resolveImageUrl('thumbnail', $this->file_path_thumbnail);
+    }
+
+    /**
+     * URL de la miniature CLEAN (sans filigrane) pour la grille des galeries
+     * téléchargeables.
+     *
+     * Non appended globalement (cf. $appends) : exposé uniquement par l'endpoint
+     * de la galerie de téléchargement, jamais dans les galeries shop — sinon le
+     * dérivé sans filigrane fuiterait.
+     *
+     * Chemin rapide : si la miniature clean a été pré-générée sur MinIO, on sert
+     * une URL signée directe (comme les dérivés watermarkés). Fallback sur le
+     * proxy /api/images/clean-thumb (génération à la volée, token requis) tant que
+     * la miniature n'a pas encore été générée (avant backfill / job asynchrone).
+     */
+    public function getCleanThumbnailUrlAttribute(): ?string
+    {
+        if ($this->is_video) {
+            return $this->getVideoUrl();
+        }
+
+        if (
+            config('shop.serve_images_direct', true)
+            && $this->is_processed
+            && $this->file_path_thumbnail_clean
+        ) {
+            $signed = app(MinioStorageService::class)->getSignedUrl($this->file_path_thumbnail_clean, 86400);
+            if ($signed) {
+                return $signed;
+            }
+        }
+
+        $proxyUrl = url("/api/images/clean-thumb/{$this->id}");
+        $token = $this->gallery?->access_token;
+
+        return $token ? "{$proxyUrl}?token={$token}" : $proxyUrl;
+    }
+
+    /**
+     * Chemin de stockage MinIO déterministe de la miniature clean, dérivé du même
+     * basename que la miniature watermarkée (idempotent : le backfill ne crée pas
+     * de doublons).
+     */
+    public function cleanThumbnailStoragePath(): string
+    {
+        $source = $this->file_path_thumbnail ?: $this->resolved_storage_path;
+
+        return $this->gallery_id.'/thumbnail-clean/'.basename($source);
     }
 
     /**

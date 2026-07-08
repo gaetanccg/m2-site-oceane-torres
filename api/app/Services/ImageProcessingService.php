@@ -248,6 +248,23 @@ class ImageProcessingService
     }
 
     /**
+     * Generate a clean (no-watermark) thumbnail from the original and persist it on
+     * MinIO, so downloadable galleries can serve it via a direct signed URL instead
+     * of regenerating it on-the-fly through PHP-FPM on every view.
+     */
+    public function generateAndStoreCleanThumbnail(string $originalPath, string $targetPath, string $mimeType): bool
+    {
+        $content = $this->generateCleanThumbnailOnTheFly($originalPath);
+        if (! $content) {
+            return false;
+        }
+
+        $this->uploadContent($targetPath, $content, $mimeType);
+
+        return true;
+    }
+
+    /**
      * Decode the source once, derive preview + thumbnail from a single scaled buffer.
      * Memory peak per photo ~17 MB instead of ~260 MB on a 7000×4600 source (was decoding twice).
      */
