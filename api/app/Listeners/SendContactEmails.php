@@ -17,7 +17,7 @@ class SendContactEmails
 
         // Send notification to admin
         try {
-            Mail::to(config('mail.from.address'))
+            Mail::to(config('mail.admin_email', config('mail.from.address')))
                 ->send(new ContactFormMail(
                     senderName: $data['name'],
                     senderEmail: $data['email'],
