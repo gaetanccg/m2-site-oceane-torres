@@ -1,8 +1,21 @@
 <?php
 
+use App\Exceptions\BusinessException;
+use App\Http\Middleware\EnsureUserIsAdmin;
+use App\Http\Middleware\SecurityHeaders;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Auth\AuthenticationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Middleware\HandleCors;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
+use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -15,16 +28,16 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->trustProxies(at: '*');
 
         $middleware->use([
-            \Illuminate\Http\Middleware\HandleCors::class,
-            \App\Http\Middleware\SecurityHeaders::class,
+            HandleCors::class,
+            SecurityHeaders::class,
         ]);
 
         $middleware->api(prepend: [
-            \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
+            EnsureFrontendRequestsAreStateful::class,
         ]);
 
         $middleware->alias([
-            'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
+            'admin' => EnsureUserIsAdmin::class,
         ]);
 
         $middleware->validateCsrfTokens(except: [
@@ -40,12 +53,12 @@ return Application::configure(basePath: dirname(__DIR__))
         // rendering so the client still gets specific feedback. Anything else
         // is treated as a technical failure: logged server-side, replaced by
         // a generic message so SQL or stacktraces never reach the client.
-        $exceptions->render(function (\Throwable $e, \Illuminate\Http\Request $request) {
+        $exceptions->render(function (Throwable $e, Request $request) {
             if (! $request->is('api/*')) {
                 return null;
             }
 
-            if ($e instanceof \App\Exceptions\BusinessException) {
+            if ($e instanceof BusinessException) {
                 return response()->json([
                     'success' => false,
                     'message' => $e->getMessage(),
@@ -55,8 +68,8 @@ return Application::configure(basePath: dirname(__DIR__))
             // 404: return a clean message (Laravel's default for ModelNotFoundException
             // leaks the model class name, e.g. "No query results for model [App\Models\Order]")
             if (
-                $e instanceof \Illuminate\Database\Eloquent\ModelNotFoundException
-                || $e instanceof \Symfony\Component\HttpKernel\Exception\NotFoundHttpException
+                $e instanceof ModelNotFoundException
+                || $e instanceof NotFoundHttpException
             ) {
                 return response()->json([
                     'success' => false,
@@ -65,10 +78,10 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             $passthrough = [
-                \Illuminate\Validation\ValidationException::class,
-                \Illuminate\Auth\AuthenticationException::class,
-                \Illuminate\Auth\Access\AuthorizationException::class,
-                \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface::class,
+                ValidationException::class,
+                AuthenticationException::class,
+                AuthorizationException::class,
+                HttpExceptionInterface::class,
             ];
             foreach ($passthrough as $class) {
                 if ($e instanceof $class) {
@@ -76,7 +89,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 }
             }
 
-            \Illuminate\Support\Facades\Log::error('Unhandled API exception', [
+            Log::error('Unhandled API exception', [
                 'path' => $request->path(),
                 'method' => $request->method(),
                 'exception' => $e::class,

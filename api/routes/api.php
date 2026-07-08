@@ -72,6 +72,7 @@ Route::middleware('throttle:images')->group(function () {
     Route::get('/images/preview/{photo}', [ImageProxyController::class, 'preview']);
     Route::get('/images/thumbnail/{photo}', [ImageProxyController::class, 'thumbnail']);
     Route::get('/images/clean/{photo}', [ImageProxyController::class, 'clean']);
+    Route::get('/images/clean-thumb/{photo}', [ImageProxyController::class, 'cleanThumbnail']);
 });
 Route::middleware('throttle:downloads')->group(function () {
     Route::get('/images/download/{photo}', [ImageProxyController::class, 'download']);

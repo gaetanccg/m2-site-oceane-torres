@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Exceptions\BusinessException;
 use App\Models\Cart;
 use App\Models\CartItem;
+use App\Models\GalleryProductType;
 use App\Models\GiftCode;
 use App\Models\Photo;
 use App\Models\User;
@@ -402,7 +403,7 @@ class CartService
      * Groupe les items pour le pricing cumulatif cross-galerie : même offer signature
      * (product_type + prix + tiers) = même groupe, même si galeries différentes.
      *
-     * @return Collection<string, array{items: Collection, count: int, gpt: \App\Models\GalleryProductType|null}>
+     * @return Collection<string, array{items: Collection, count: int, gpt: GalleryProductType|null}>
      */
     public function buildPackGroups(Cart $cart): Collection
     {

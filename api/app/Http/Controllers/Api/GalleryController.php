@@ -11,6 +11,7 @@ use App\Jobs\SendSchoolSessionSmsJob;
 use App\Mail\GalleryAccessMail;
 use App\Models\Client;
 use App\Models\Gallery;
+use App\Policies\GalleryPolicy;
 use App\Services\MinioStorageService;
 use App\Services\SmsTemplateService;
 use App\Traits\SyncsProductTypes;
@@ -18,8 +19,11 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use ZipArchive;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+use ZipStream\CompressionMethod;
+use ZipStream\ZipStream;
 
 class GalleryController extends Controller
 {
@@ -333,63 +337,74 @@ class GalleryController extends Controller
         ]);
     }
 
-    public function downloadZip(Gallery $gallery, Request $request): JsonResponse
+    /**
+     * Stream a ZIP of every downloadable photo directly to the browser.
+     *
+     * The archive is streamed on the fly (bounded memory, first bytes sent
+     * immediately) instead of being built entirely in memory — the previous
+     * addFromString() approach exhausted PHP's memory_limit on large galleries,
+     * killing the worker before HandleCors could attach headers (surfacing as a
+     * CORS error client-side). The frontend downloads this via a direct
+     * navigation, so the request is not an XHR and CORS never applies.
+     */
+    public function downloadZip(Gallery $gallery, Request $request): StreamedResponse
     {
         $token = $request->query('token');
         $user = $request->user();
 
-        if (! app(\App\Policies\GalleryPolicy::class)->download($user, $gallery, $token)) {
-            return response()->json([
-                'message' => 'Accès non autorisé.',
-            ], 403);
-        }
+        abort_unless(
+            app(GalleryPolicy::class)->download($user, $gallery, $token),
+            403,
+            'Accès non autorisé.'
+        );
 
         $photos = $gallery->photos()->downloadable()->limit(500)->get();
 
-        if ($photos->isEmpty()) {
-            return response()->json([
-                'message' => 'Aucune photo téléchargeable.',
-            ], 404);
-        }
+        abort_if($photos->isEmpty(), 404, 'Aucune photo téléchargeable.');
 
-        $storageService = app(MinioStorageService::class);
-        $zipFilename = 'gallery_'.$gallery->id.'_'.time().'.zip';
-        $zipPath = storage_path('app/temp/'.$zipFilename);
+        $zipName = 'galerie_'.(Str::slug($gallery->title) ?: 'photos').'.zip';
+        $ip = $request->ip();
+        $userAgent = $request->userAgent();
 
-        if (! file_exists(storage_path('app/temp'))) {
-            mkdir(storage_path('app/temp'), 0755, true);
-        }
+        return response()->streamDownload(function () use ($photos, $ip, $userAgent) {
+            $zip = new ZipStream(
+                sendHttpHeaders: false,
+                defaultCompressionMethod: CompressionMethod::STORE,
+            );
 
-        $zip = new ZipArchive;
-        if ($zip->open($zipPath, ZipArchive::CREATE) !== true) {
-            return response()->json([
-                'message' => 'Erreur lors de la création du ZIP.',
-            ], 500);
-        }
+            $usedNames = [];
 
-        foreach ($photos as $index => $photo) {
-            $storagePath = $photo->resolved_storage_path;
-            $fileContent = $storageService->getFileContent($storagePath);
-            if ($fileContent) {
-                $extension = pathinfo($photo->file_path, PATHINFO_EXTENSION);
-                $filename = ($photo->title ?? 'photo_'.($index + 1)).'.'.$extension;
-                $zip->addFromString($filename, $fileContent);
+            foreach ($photos as $index => $photo) {
+                $stream = Storage::disk('minio')->readStream($photo->resolved_storage_path);
+                if ($stream === null) {
+                    continue;
+                }
 
-                $photo->recordDownload(
-                    $request->ip(),
-                    $request->userAgent()
-                );
+                $extension = pathinfo($photo->file_path, PATHINFO_EXTENSION) ?: 'jpg';
+                $base = preg_replace('/[^a-zA-Z0-9_.-]/', '_', $photo->title ?: 'photo_'.($index + 1));
+                $entryName = $base.'.'.$extension;
+
+                // Ensure unique entry names inside the archive
+                $suffix = 1;
+                while (isset($usedNames[$entryName])) {
+                    $entryName = $base.'_'.$suffix.'.'.$extension;
+                    $suffix++;
+                }
+                $usedNames[$entryName] = true;
+
+                $zip->addFileFromStream($entryName, $stream);
+
+                if (is_resource($stream)) {
+                    fclose($stream);
+                }
+
+                $photo->recordDownload($ip, $userAgent);
             }
-        }
 
-        $zip->close();
-
-        $downloadUrl = url('/api/galleries/'.$gallery->id.'/download-file?file='.$zipFilename);
-
-        return response()->json([
-            'download_url' => $downloadUrl,
-            'filename' => $zipFilename,
-            'photos_count' => $photos->count(),
+            $zip->finish();
+        }, $zipName, [
+            'Content-Type' => 'application/zip',
+            'X-Accel-Buffering' => 'no',
         ]);
     }
 

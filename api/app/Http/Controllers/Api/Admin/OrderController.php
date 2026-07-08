@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Admin;
 
+use App\Exceptions\BusinessException;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\OrderResource;
 use App\Models\Order;
@@ -188,7 +189,7 @@ class OrderController extends Controller
                     : 'Paiement non confirmé sur SumUp. Statut actuel : '.$updatedOrder->status,
                 'order' => self::formatOrder($updatedOrder->load('items.photo')),
             ]);
-        } catch (\App\Exceptions\BusinessException $e) {
+        } catch (BusinessException $e) {
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
