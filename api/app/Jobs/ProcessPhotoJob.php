@@ -3,11 +3,13 @@
 namespace App\Jobs;
 
 use App\Models\Gallery;
+use App\Models\Photo;
 use App\Models\PhotoUpload;
 use App\Services\ImageProcessingService;
 use App\Services\MinioStorageService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
@@ -77,14 +79,14 @@ class ProcessPhotoJob implements ShouldQueue
         }
     }
 
-    private function processImage(Gallery $gallery): ?\App\Models\Photo
+    private function processImage(Gallery $gallery): ?Photo
     {
         $imageProcessingService = app(ImageProcessingService::class);
 
         $fullPath = Storage::disk('local')->path($this->tempFilePath);
 
         // `test=true` pour skip la validation interne (le fichier n'est pas un vrai upload HTTP).
-        $tempFile = new \Illuminate\Http\UploadedFile(
+        $tempFile = new UploadedFile(
             $fullPath,
             $this->originalFilename,
             $this->mimeType,
@@ -114,13 +116,13 @@ class ProcessPhotoJob implements ShouldQueue
         ]);
     }
 
-    private function processVideo(Gallery $gallery): ?\App\Models\Photo
+    private function processVideo(Gallery $gallery): ?Photo
     {
         $storageService = app(MinioStorageService::class);
 
         $fullPath = Storage::disk('local')->path($this->tempFilePath);
 
-        $tempFile = new \Illuminate\Http\UploadedFile(
+        $tempFile = new UploadedFile(
             $fullPath,
             $this->originalFilename,
             $this->mimeType,

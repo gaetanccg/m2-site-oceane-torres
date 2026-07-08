@@ -16,6 +16,7 @@ use App\Services\MinioStorageService;
 use App\Traits\ClearsEventGalleriesCache;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 
 class PhotoController extends Controller
@@ -292,7 +293,7 @@ class PhotoController extends Controller
     }
 
     private function processSinglePhoto(
-        \Illuminate\Http\UploadedFile $file,
+        UploadedFile $file,
         Gallery $gallery,
         ImageProcessingService $imageProcessing,
         MinioStorageService $storage,

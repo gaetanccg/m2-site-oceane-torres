@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\PricingService;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -218,22 +219,22 @@ class Gallery extends Model
      */
     public function getAvailableProductTypes(): array
     {
-        return app(\App\Services\PricingService::class)->getAvailableProductTypes($this);
+        return app(PricingService::class)->getAvailableProductTypes($this);
     }
 
     public function getPackPricing(): array
     {
-        return app(\App\Services\PricingService::class)->getPackPricing($this);
+        return app(PricingService::class)->getPackPricing($this);
     }
 
     public function resolvePackPrice(string $productType, int $quantity): ?float
     {
-        return app(\App\Services\PricingService::class)->resolvePackPrice($this, $productType, $quantity);
+        return app(PricingService::class)->resolvePackPrice($this, $productType, $quantity);
     }
 
     public function getPriceForProductType(string $productType): ?float
     {
-        return app(\App\Services\PricingService::class)->getPriceForProductType($this, $productType);
+        return app(PricingService::class)->getPriceForProductType($this, $productType);
     }
 
     /**

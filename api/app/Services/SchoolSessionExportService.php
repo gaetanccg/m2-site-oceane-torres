@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\OrderItem;
 use App\Models\SchoolSession;
 use App\Models\SchoolSessionExport;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
@@ -160,7 +161,7 @@ class SchoolSessionExportService
             $zip->close();
             @unlink($zipPath);
             $this->cleanupTempDir($tempDir);
-            \Illuminate\Support\Facades\Log::error('SchoolSessionExport build failed', [
+            Log::error('SchoolSessionExport build failed', [
                 'export_id' => $export->id,
                 'error' => $e->getMessage(),
             ]);
@@ -187,7 +188,7 @@ class SchoolSessionExportService
      * Collect all OrderItem rows for a session's galleries that belong to paid orders.
      * Returns one row per OrderItem (1 unit each — quantity is implicit).
      */
-    private function collectOrderItems(SchoolSession $session, bool $includeDigital): \Illuminate\Database\Eloquent\Collection
+    private function collectOrderItems(SchoolSession $session, bool $includeDigital): Collection
     {
         $galleryIds = $session->galleries()->pluck('id');
 
