@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\CartItem;
 use App\Services\CartService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
@@ -88,7 +89,7 @@ class CreateCheckoutRequest extends FormRequest
 
                 return $gallery
                     ? $gallery->getRequiresShippingForProductType($productType)
-                    : \App\Models\CartItem::requiresShipping($productType);
+                    : CartItem::requiresShipping($productType);
             });
         } catch (\Exception) {
             return false;

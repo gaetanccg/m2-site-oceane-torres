@@ -13,6 +13,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -555,7 +556,7 @@ class OrderService
     /**
      * Get orders for a user
      */
-    public function getOrdersForUser(User $user): \Illuminate\Database\Eloquent\Collection
+    public function getOrdersForUser(User $user): Collection
     {
         return Order::forUser($user->id)
             ->with('items.photo')
@@ -564,7 +565,7 @@ class OrderService
             ->get();
     }
 
-    public function getOrdersForEmail(string $email): \Illuminate\Database\Eloquent\Collection
+    public function getOrdersForEmail(string $email): Collection
     {
         return Order::forEmail($email)
             ->with('items.photo')

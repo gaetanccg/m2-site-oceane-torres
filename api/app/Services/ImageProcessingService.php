@@ -222,6 +222,31 @@ class ImageProcessingService
         }
     }
 
+    /** Small thumbnail without watermark, used for the downloadable gallery grid. */
+    public function generateCleanThumbnailOnTheFly(string $originalPath): ?string
+    {
+        try {
+            $content = $this->storageService->getFileContent($originalPath);
+            if (! $content) {
+                return null;
+            }
+
+            $extension = strtolower(pathinfo($originalPath, PATHINFO_EXTENSION)) ?: 'jpg';
+            $image = $this->rawManager->read($content);
+            $this->scaleDownPreservingOrientation($image, self::THUMBNAIL_MAX_WIDTH);
+            $image->modify(new AlignRotationModifier);
+
+            return $this->encodeImage($image, $extension, self::THUMBNAIL_QUALITY);
+        } catch (\Exception $e) {
+            Log::error('On-the-fly clean thumbnail generation failed', [
+                'error' => $e->getMessage(),
+                'path' => $originalPath,
+            ]);
+
+            return null;
+        }
+    }
+
     /**
      * Decode the source once, derive preview + thumbnail from a single scaled buffer.
      * Memory peak per photo ~17 MB instead of ~260 MB on a 7000×4600 source (was decoding twice).

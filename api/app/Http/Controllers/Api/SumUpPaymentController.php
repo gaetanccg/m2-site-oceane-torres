@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exceptions\BusinessException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\OrderIdRequest;
 use App\Models\Order;
 use App\Services\OrderService;
 use App\Services\SumUpService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -56,7 +58,7 @@ class SumUpPaymentController extends Controller
                     'status' => $order->status,
                 ],
             ]);
-        } catch (\App\Exceptions\BusinessException $e) {
+        } catch (BusinessException $e) {
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
@@ -87,7 +89,7 @@ class SumUpPaymentController extends Controller
      * une page de confirmation qui voit l'order déjà en `paid` (ou `failed`),
      * même si le SDK n'a jamais déclenché `onResponse` côté navigateur.
      */
-    public function browserReturn(Request $request): \Illuminate\Http\RedirectResponse
+    public function browserReturn(Request $request): RedirectResponse
     {
         $checkoutId = $request->input('checkout_id');
         $orderId = $request->input('order');

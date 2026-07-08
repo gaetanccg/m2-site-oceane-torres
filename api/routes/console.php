@@ -4,6 +4,7 @@ use App\Models\Cart;
 use App\Models\ContactMessage;
 use App\Models\DownloadLog;
 use App\Models\Order;
+use App\Services\OrderService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schedule;
@@ -13,8 +14,8 @@ use Illuminate\Support\Facades\Schedule;
 // retourne 503 sur erreur transient pour profiter des retries SumUp, mais qui
 // peut quand même rater définitivement après 1m / 5m / 20m / 2h).
 Schedule::call(function () {
-    /** @var \App\Services\OrderService $service */
-    $service = app(\App\Services\OrderService::class);
+    /** @var OrderService $service */
+    $service = app(OrderService::class);
     $service->reconcilePendingOrders();
 })
     ->everyTenMinutes()

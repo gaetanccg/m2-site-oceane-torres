@@ -2,16 +2,20 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exceptions\BusinessException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AddToCartRequest;
 use App\Http\Requests\ApplyGiftCodeRequest;
 use App\Http\Requests\UpdateCartEmailRequest;
 use App\Http\Requests\UpdateCartItemTypeRequest;
+use App\Models\Cart;
+use App\Models\User;
 use App\Services\CartService;
 use App\Services\GiftCodeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 
 class CartController extends Controller
@@ -36,7 +40,7 @@ class CartController extends Controller
      * alors que le checkout résout via sanctum. Sans cette symétrie, un client connecté
      * manipule un panier session que le checkout fusionne ailleurs → totaux divergents.
      */
-    private function resolveUser(Request $request): ?\App\Models\User
+    private function resolveUser(Request $request): ?User
     {
         return $request->user() ?? Auth::guard('sanctum')->user();
     }
@@ -82,13 +86,13 @@ class CartController extends Controller
                 'cart' => $summary,
                 'session_id' => $cart->session_id,
             ]);
-        } catch (\App\Exceptions\BusinessException $e) {
+        } catch (BusinessException $e) {
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
             ], $e->getHttpStatus());
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('Cart addItem failed', [
+            Log::error('Cart addItem failed', [
                 'photo_id' => $validated['photo_id'] ?? null,
                 'error' => $e->getMessage(),
             ]);
@@ -120,13 +124,13 @@ class CartController extends Controller
                 'message' => 'Type de produit mis à jour.',
                 'cart' => $summary,
             ]);
-        } catch (\App\Exceptions\BusinessException $e) {
+        } catch (BusinessException $e) {
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
             ], $e->getHttpStatus());
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('Cart updateItemType failed', [
+            Log::error('Cart updateItemType failed', [
                 'item_id' => $itemId,
                 'error' => $e->getMessage(),
             ]);
@@ -251,7 +255,7 @@ class CartController extends Controller
         $throttleKey = 'gift-code-failures:'.sha1((string) $request->ip());
 
         if (RateLimiter::tooManyAttempts($throttleKey, self::GIFT_CODE_MAX_FAILURES)) {
-            \Illuminate\Support\Facades\Log::warning('Gift code brute-force lockout', [
+            Log::warning('Gift code brute-force lockout', [
                 'ip' => $request->ip(),
             ]);
 
@@ -296,7 +300,7 @@ class CartController extends Controller
                 'message' => 'Code promo appliqué.',
                 'cart' => $this->cartService->getCartSummary($cart->fresh(['items.photo'])),
             ]);
-        } catch (\App\Exceptions\BusinessException $e) {
+        } catch (BusinessException $e) {
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
@@ -340,7 +344,7 @@ class CartController extends Controller
             ]);
         }
 
-        $guestCart = \App\Models\Cart::active()
+        $guestCart = Cart::active()
             ->forSession($sessionId)
             ->whereNull('user_id')
             ->first();

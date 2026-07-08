@@ -73,6 +73,32 @@ class ImageProxyController extends Controller
     }
 
     /**
+     * Stream a small clean thumbnail (no watermark) for the downloadable gallery grid
+     */
+    public function cleanThumbnail(Request $request, string $photo): Response
+    {
+        $model = $this->findPhotoCached($photo);
+        if (! $model) {
+            return $this->errorResponse('Photo non trouvée.', 404);
+        }
+
+        $token = $request->query('token');
+        $gallery = $model->gallery;
+
+        // Verify access via gallery token
+        if (! $gallery || ! $gallery->isAccessible($token)) {
+            return $this->errorResponse('Accès non autorisé.', 403);
+        }
+
+        // Only allow for downloadable photos
+        if (! $model->is_downloadable) {
+            return $this->errorResponse('Photo non téléchargeable.', 403);
+        }
+
+        return $this->streamCleanThumbnail($model);
+    }
+
+    /**
      * Cached lookup with eager-loaded gallery — avoids hammering the DB pool
      * when many photos load in parallel from a gallery view.
      */
@@ -97,6 +123,29 @@ class ImageProxyController extends Controller
 
         $content = Cache::remember($cacheKey, 3600, function () use ($originalPath) {
             return $this->imageProcessingService->generateCleanPreviewOnTheFly($originalPath);
+        });
+
+        if (! $content) {
+            return $this->errorResponse('Image non disponible.', 404);
+        }
+
+        $extension = pathinfo($photo->file_path, PATHINFO_EXTENSION) ?: 'jpg';
+
+        return $this->createImageResponse($content, "image.{$extension}");
+    }
+
+    /**
+     * Stream clean thumbnail (small, no watermark) for grid display
+     */
+    private function streamCleanThumbnail(Photo $photo): Response
+    {
+        $originalPath = $photo->resolved_storage_path;
+
+        // Generate clean thumbnail on-the-fly with caching
+        $cacheKey = "image_clean_thumb_{$photo->id}";
+
+        $content = Cache::remember($cacheKey, 3600, function () use ($originalPath) {
+            return $this->imageProcessingService->generateCleanThumbnailOnTheFly($originalPath);
         });
 
         if (! $content) {
