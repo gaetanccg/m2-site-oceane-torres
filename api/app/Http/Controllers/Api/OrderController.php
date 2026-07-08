@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exceptions\BusinessException;
 use App\Http\Controllers\Api\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CreateCheckoutRequest;
@@ -113,7 +114,7 @@ class OrderController extends Controller
                 'order' => $orderPayload,
                 'payment' => $paymentData,
             ]);
-        } catch (\App\Exceptions\BusinessException $e) {
+        } catch (BusinessException $e) {
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
@@ -160,7 +161,7 @@ class OrderController extends Controller
                 'order_id' => $order->id,
                 'order_number' => $order->order_number,
             ]);
-        } catch (\App\Exceptions\BusinessException $e) {
+        } catch (BusinessException $e) {
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
@@ -275,13 +276,13 @@ class OrderController extends Controller
                 'download_url' => $downloadUrl,
                 'filename' => basename($storagePath),
             ]);
-        } catch (\App\Exceptions\BusinessException $e) {
+        } catch (BusinessException $e) {
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
             ], $e->getHttpStatus());
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('downloadPhoto failed', [
+            Log::error('downloadPhoto failed', [
                 'order_id' => $orderId,
                 'item_id' => $itemId,
                 'error' => $e->getMessage(),
@@ -360,7 +361,7 @@ class OrderController extends Controller
             return Response::download($zipFile, 'commande_'.$order->order_number.'.zip', [
                 'Content-Type' => 'application/zip',
             ])->deleteFileAfterSend(true);
-        } catch (\App\Exceptions\BusinessException $e) {
+        } catch (BusinessException $e) {
             foreach ($tempFiles as $tempFile) {
                 if (file_exists($tempFile)) {
                     @unlink($tempFile);
@@ -378,7 +379,7 @@ class OrderController extends Controller
                 }
             }
 
-            \Illuminate\Support\Facades\Log::error('downloadAll failed', [
+            Log::error('downloadAll failed', [
                 'order_id' => $orderId,
                 'error' => $e->getMessage(),
             ]);
@@ -437,13 +438,13 @@ class OrderController extends Controller
                 'download_url' => $downloadUrl,
                 'filename' => 'facture_'.$invoice->invoice_number.'.pdf',
             ]);
-        } catch (\App\Exceptions\BusinessException $e) {
+        } catch (BusinessException $e) {
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
             ], $e->getHttpStatus());
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('downloadInvoice failed', [
+            Log::error('downloadInvoice failed', [
                 'order_id' => $orderId,
                 'error' => $e->getMessage(),
             ]);

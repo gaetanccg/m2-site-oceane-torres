@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -93,8 +94,8 @@ class AvailabilitySlot extends Model
 
     public function getFormattedTimeRangeAttribute(): string
     {
-        $start = \Carbon\Carbon::parse($this->start_time)->format('H:i');
-        $end = \Carbon\Carbon::parse($this->end_time)->format('H:i');
+        $start = Carbon::parse($this->start_time)->format('H:i');
+        $end = Carbon::parse($this->end_time)->format('H:i');
 
         return "{$start} - {$end}";
     }
