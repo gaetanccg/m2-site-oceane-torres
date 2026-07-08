@@ -57,20 +57,41 @@
                         </button>
                     </div>
 
-                    <!-- Photos grid (masonry-style) -->
-                    <div class="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-6 space-y-6">
+                    <!-- Photos grid (left-to-right, row order) -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-start">
                         <div
                             v-for="(photo, index) in gallery.photos"
                             :key="photo.id"
-                            class="break-inside-avoid"
                         >
                             <div class="relative group bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow">
+                                <!-- Skeleton placeholder while loading -->
+                                <div
+                                    v-if="!imgState(photo).loaded && !imgState(photo).failed"
+                                    class="skeleton-shimmer w-full"
+                                ></div>
+
+                                <!-- Failed state placeholder (click to retry) -->
+                                <button
+                                    v-else-if="imgState(photo).failed"
+                                    @click.stop="retryImage(photo)"
+                                    class="w-full aspect-[3/4] flex flex-col items-center justify-center gap-2 bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-500 transition-colors"
+                                >
+                                    <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    </svg>
+                                    <span class="text-xs font-light">Réessayer</span>
+                                </button>
+
                                 <img
-                                    :src="getCleanUrl(photo)"
+                                    v-show="imgState(photo).loaded && !imgState(photo).failed"
+                                    :src="imgState(photo).currentSrc"
                                     :alt="photo.title || 'Photo'"
                                     class="w-full h-auto cursor-pointer"
                                     loading="lazy"
+                                    decoding="async"
                                     @click="openLightbox(index)"
+                                    @load="onImageLoad(photo)"
+                                    @error="onImageError(photo)"
                                 />
 
                                 <!-- Download button overlay -->
@@ -96,6 +117,25 @@
             </section>
         </template>
 
+        <!-- ZIP preparation overlay -->
+        <div
+            v-if="isDownloadingAll"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+        >
+            <div class="bg-white rounded-2xl shadow-xl px-10 py-8 flex flex-col items-center gap-4 max-w-sm mx-6 text-center">
+                <svg class="animate-spin h-12 w-12 text-gold" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <div>
+                    <p class="text-lg font-medium text-gray-800">Préparation de votre archive…</p>
+                    <p class="text-sm text-gray-500 font-light mt-1">
+                        Le téléchargement démarrera automatiquement. Merci de patienter.
+                    </p>
+                </div>
+            </div>
+        </div>
+
         <!-- Lightbox (without watermark for download gallery) -->
         <Lightbox
             :images="lightboxImages"
@@ -108,7 +148,7 @@
 </template>
 
 <script setup lang="ts">
-import {ref, computed, onMounted} from 'vue'
+import {ref, reactive, computed, onMounted} from 'vue'
 import {useRoute} from 'vue-router'
 import Lightbox from '@/components/Lightbox.vue'
 import {API_CONFIG} from '@/config/constants'
@@ -142,10 +182,78 @@ const lightboxIndex = ref(0)
 const isDownloadingAll = ref(false)
 const downloadingPhotos = ref(new Set<string>())
 
-// Generate clean URL (no watermark) for downloadable photos
+// Per-photo loading state for the grid thumbnails (blur-up + retry)
+interface ImgState {
+    loaded: boolean
+    failed: boolean
+    retryCount: number
+    currentSrc: string
+}
+
+const imageStates = reactive<Record<string, ImgState>>({})
+const MAX_RETRIES = 3
+const RETRY_DELAYS = [1000, 2000, 4000] // Exponential backoff
+
+// Full-size clean image (no watermark) — used by the lightbox and derived downloads
 const getCleanUrl = (photo: Photo) => {
     if (!gallery.value) return photo.preview_url || photo.display_url || photo.file_path
     return `${API_CONFIG.baseUrl}/images/clean/${photo.id}?token=${gallery.value.access_token}`
+}
+
+// Lightweight clean thumbnail (no watermark) — used by the grid
+const getCleanThumbUrl = (photo: Photo) => {
+    if (!gallery.value) return photo.thumbnail_url || photo.preview_url || photo.file_path
+    return `${API_CONFIG.baseUrl}/images/clean-thumb/${photo.id}?token=${gallery.value.access_token}`
+}
+
+const initImageStates = () => {
+    if (!gallery.value) return
+    for (const photo of gallery.value.photos) {
+        imageStates[photo.id] = {
+            loaded: false,
+            failed: false,
+            retryCount: 0,
+            currentSrc: getCleanThumbUrl(photo)
+        }
+    }
+}
+
+const imgState = (photo: Photo): ImgState =>
+    imageStates[photo.id] ?? {loaded: false, failed: false, retryCount: 0, currentSrc: ''}
+
+const onImageLoad = (photo: Photo) => {
+    const state = imageStates[photo.id]
+    if (!state) return
+    state.loaded = true
+    state.failed = false
+}
+
+const onImageError = (photo: Photo) => {
+    const state = imageStates[photo.id]
+    if (!state) return
+
+    if (state.retryCount < MAX_RETRIES) {
+        const delay = RETRY_DELAYS[state.retryCount] || RETRY_DELAYS[RETRY_DELAYS.length - 1]
+        state.retryCount++
+        setTimeout(() => {
+            const base = getCleanThumbUrl(photo)
+            const separator = base.includes('?') ? '&' : '?'
+            state.currentSrc = `${base}${separator}_retry=${Date.now()}`
+        }, delay)
+    } else {
+        state.failed = true
+    }
+}
+
+const retryImage = (photo: Photo) => {
+    const state = imageStates[photo.id]
+    if (!state) return
+    state.failed = false
+    state.loaded = false
+    state.retryCount = 0
+    const base = getCleanThumbUrl(photo)
+    const separator = base.includes('?') ? '&' : '?'
+    state.currentSrc = `${base}${separator}_retry=${Date.now()}`
 }
 
 const lightboxImages = computed<LightboxImage[]>(() => {
@@ -205,50 +313,31 @@ const downloadPhoto = async (photo: Photo) => {
     }
 }
 
-const downloadAll = async () => {
+const downloadAll = () => {
     if (!gallery.value) return
 
     isDownloadingAll.value = true
 
-    try {
-        // First step: ask backend to create the ZIP and get the download URL
-        const response = await fetch(
-            `${API_CONFIG.baseUrl}/galleries/${gallery.value.id}/download-zip?token=${gallery.value.access_token}`,
-            {
-                headers: {'Accept': 'application/json'}
-            }
-        )
+    // The ZIP is streamed by the backend as a Content-Disposition attachment.
+    // We trigger it with a plain browser download (not an XHR) so CORS never
+    // applies and the browser shows its native download progress. The overlay
+    // bridges the short "connecting" gap until the browser UI takes over.
+    const url = `${API_CONFIG.baseUrl}/galleries/${gallery.value.id}/download-zip?token=${gallery.value.access_token}`
 
-        if (response.ok) {
-            const data = await response.json()
-
-            if (isInAppBrowser()) {
-                // WebView: redirect to the download URL directly (served with Content-Disposition)
-                window.location.href = data.download_url
-                setTimeout(() => { isDownloadingAll.value = false }, 3000)
-                return
-            }
-
-            const filename = data.filename || 'gallery.zip'
-
-            // Fetch the actual ZIP file and create blob for download
-            const fileResponse = await fetch(data.download_url)
-            const blob = await fileResponse.blob()
-            const blobUrl = URL.createObjectURL(blob)
-
-            const link = document.createElement('a')
-            link.href = blobUrl
-            link.download = filename
-            document.body.appendChild(link)
-            link.click()
-            document.body.removeChild(link)
-            URL.revokeObjectURL(blobUrl)
-        }
-    } catch {
-        // Download failed
-    } finally {
-        isDownloadingAll.value = false
+    if (isInAppBrowser()) {
+        window.location.href = url
+    } else {
+        const link = document.createElement('a')
+        link.href = url
+        link.rel = 'noopener'
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
     }
+
+    setTimeout(() => {
+        isDownloadingAll.value = false
+    }, 4000)
 }
 
 const fetchGallery = async () => {
@@ -269,6 +358,7 @@ const fetchGallery = async () => {
         if (response.ok) {
             const data = await response.json()
             gallery.value = data.gallery
+            initImageStates()
         } else {
             const data = await response.json()
             error.value = data.message || 'Galerie non trouvee'
@@ -282,3 +372,26 @@ const fetchGallery = async () => {
 
 onMounted(fetchGallery)
 </script>
+
+<style scoped>
+.skeleton-shimmer {
+    aspect-ratio: 3 / 4;
+    background: linear-gradient(
+        90deg,
+        #f3f4f6 25%,
+        #e5e7eb 37%,
+        #f3f4f6 63%
+    );
+    background-size: 400% 100%;
+    animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: 100% 0;
+    }
+    100% {
+        background-position: 0 0;
+    }
+}
+</style>
