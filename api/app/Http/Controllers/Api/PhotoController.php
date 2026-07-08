@@ -8,6 +8,7 @@ use App\Http\Requests\Admin\BulkToggleDownloadableRequest;
 use App\Http\Requests\StoreAsyncPhotoRequest;
 use App\Http\Requests\UpdateSortOrderRequest;
 use App\Http\Requests\UploadStatusRequest;
+use App\Jobs\GenerateCleanThumbnailJob;
 use App\Models\Gallery;
 use App\Models\Photo;
 use App\Models\PhotoUpload;
@@ -136,6 +137,12 @@ class PhotoController extends Controller
     {
         $isDownloadable = $photo->toggleDownloadable();
 
+        // Pre-generate the clean thumbnail so the download gallery grid is served
+        // from a direct MinIO URL (fast) instead of on-the-fly PHP-FPM generation.
+        if ($isDownloadable && ! $photo->is_video && ! $photo->file_path_thumbnail_clean) {
+            GenerateCleanThumbnailJob::dispatch($photo->id);
+        }
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -153,6 +160,15 @@ class PhotoController extends Controller
 
         Photo::whereIn('id', $validated['photo_ids'])
             ->update(['is_downloadable' => $validated['is_downloadable']]);
+
+        // Pre-generate clean thumbnails for the newly-downloadable photos.
+        if ($validated['is_downloadable']) {
+            Photo::whereIn('id', $validated['photo_ids'])
+                ->whereRaw('is_video = false')
+                ->whereNull('file_path_thumbnail_clean')
+                ->pluck('id')
+                ->each(fn (string $id) => GenerateCleanThumbnailJob::dispatch($id));
+        }
 
         return response()->json([
             'message' => $validated['is_downloadable']

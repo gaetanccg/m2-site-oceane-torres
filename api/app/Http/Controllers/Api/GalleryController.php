@@ -320,6 +320,14 @@ class GalleryController extends Controller
             },
         ]);
 
+        // Expose the clean thumbnail URL only here (never in shop galleries, to avoid
+        // leaking the non-watermarked derivative). Set the gallery relation so the
+        // accessor's token fallback doesn't trigger an N+1 query.
+        $gallery->photos->each(function ($photo) use ($gallery) {
+            $photo->setRelation('gallery', $gallery);
+            $photo->append('clean_thumbnail_url');
+        });
+
         return response()->json([
             'gallery' => $gallery,
             'mode' => 'download',

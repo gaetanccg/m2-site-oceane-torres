@@ -63,54 +63,29 @@
                             v-for="(photo, index) in gallery.photos"
                             :key="photo.id"
                         >
-                            <div class="relative group bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow">
-                                <!-- Skeleton placeholder while loading -->
-                                <div
-                                    v-if="!imgState(photo).loaded && !imgState(photo).failed"
-                                    class="skeleton-shimmer w-full"
-                                ></div>
-
-                                <!-- Failed state placeholder (click to retry) -->
-                                <button
-                                    v-else-if="imgState(photo).failed"
-                                    @click.stop="retryImage(photo)"
-                                    class="w-full aspect-[3/4] flex flex-col items-center justify-center gap-2 bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-500 transition-colors"
-                                >
-                                    <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                    </svg>
-                                    <span class="text-xs font-light">Réessayer</span>
-                                </button>
-
-                                <img
-                                    v-show="imgState(photo).loaded && !imgState(photo).failed"
-                                    :src="imgState(photo).currentSrc"
-                                    :alt="photo.title || 'Photo'"
-                                    class="w-full h-auto cursor-pointer"
-                                    loading="lazy"
-                                    decoding="async"
-                                    @click="openLightbox(index)"
-                                    @load="onImageLoad(photo)"
-                                    @error="onImageError(photo)"
-                                />
-
-                                <!-- Download button overlay -->
-                                <div class="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                            <PhotoCard
+                                :src="getThumbUrl(photo)"
+                                :thumbnail-url="getThumbUrl(photo)"
+                                :alt="photo.title || 'Photo'"
+                                @click="openLightbox(index)"
+                            >
+                                <template #actions>
                                     <button
                                         @click.stop="downloadPhoto(photo)"
                                         :disabled="downloadingPhotos.has(photo.id)"
-                                        class="opacity-0 group-hover:opacity-100 transition-opacity p-3 bg-white/90 rounded-full hover:bg-white shadow-lg"
+                                        class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 hover:text-gold transition-colors disabled:opacity-50"
                                     >
-                                        <svg v-if="!downloadingPhotos.has(photo.id)" class="w-6 h-6 text-gray-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <svg v-if="!downloadingPhotos.has(photo.id)" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                         </svg>
-                                        <svg v-else class="w-6 h-6 text-gold animate-spin" fill="none" viewBox="0 0 24 24">
+                                        <svg v-else class="w-5 h-5 text-gold animate-spin" fill="none" viewBox="0 0 24 24">
                                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
                                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                         </svg>
+                                        {{ downloadingPhotos.has(photo.id) ? 'Téléchargement…' : 'Télécharger' }}
                                     </button>
-                                </div>
-                            </div>
+                                </template>
+                            </PhotoCard>
                         </div>
                     </div>
                 </div>
@@ -148,9 +123,10 @@
 </template>
 
 <script setup lang="ts">
-import {ref, reactive, computed, onMounted} from 'vue'
+import {ref, computed, onMounted} from 'vue'
 import {useRoute} from 'vue-router'
 import Lightbox from '@/components/Lightbox.vue'
+import PhotoCard from '@/components/PhotoCard.vue'
 import {API_CONFIG} from '@/config/constants'
 import {isInAppBrowser} from '@/utils/download'
 import type {LightboxImage} from '@/types'
@@ -161,6 +137,7 @@ interface Photo {
     display_url?: string
     preview_url?: string
     thumbnail_url?: string
+    clean_thumbnail_url?: string
     title?: string
 }
 
@@ -182,78 +159,18 @@ const lightboxIndex = ref(0)
 const isDownloadingAll = ref(false)
 const downloadingPhotos = ref(new Set<string>())
 
-// Per-photo loading state for the grid thumbnails (blur-up + retry)
-interface ImgState {
-    loaded: boolean
-    failed: boolean
-    retryCount: number
-    currentSrc: string
-}
-
-const imageStates = reactive<Record<string, ImgState>>({})
-const MAX_RETRIES = 3
-const RETRY_DELAYS = [1000, 2000, 4000] // Exponential backoff
-
-// Full-size clean image (no watermark) — used by the lightbox and derived downloads
-const getCleanUrl = (photo: Photo) => {
-    if (!gallery.value) return photo.preview_url || photo.display_url || photo.file_path
-    return `${API_CONFIG.baseUrl}/images/clean/${photo.id}?token=${gallery.value.access_token}`
-}
-
-// Lightweight clean thumbnail (no watermark) — used by the grid
-const getCleanThumbUrl = (photo: Photo) => {
+// Grid thumbnail: prefer the clean thumbnail served directly from MinIO by the
+// backend (fast); fall back to the on-the-fly proxy if it hasn't been generated.
+const getThumbUrl = (photo: Photo) => {
+    if (photo.clean_thumbnail_url) return photo.clean_thumbnail_url
     if (!gallery.value) return photo.thumbnail_url || photo.preview_url || photo.file_path
     return `${API_CONFIG.baseUrl}/images/clean-thumb/${photo.id}?token=${gallery.value.access_token}`
 }
 
-const initImageStates = () => {
-    if (!gallery.value) return
-    for (const photo of gallery.value.photos) {
-        imageStates[photo.id] = {
-            loaded: false,
-            failed: false,
-            retryCount: 0,
-            currentSrc: getCleanThumbUrl(photo)
-        }
-    }
-}
-
-const imgState = (photo: Photo): ImgState =>
-    imageStates[photo.id] ?? {loaded: false, failed: false, retryCount: 0, currentSrc: ''}
-
-const onImageLoad = (photo: Photo) => {
-    const state = imageStates[photo.id]
-    if (!state) return
-    state.loaded = true
-    state.failed = false
-}
-
-const onImageError = (photo: Photo) => {
-    const state = imageStates[photo.id]
-    if (!state) return
-
-    if (state.retryCount < MAX_RETRIES) {
-        const delay = RETRY_DELAYS[state.retryCount] || RETRY_DELAYS[RETRY_DELAYS.length - 1]
-        state.retryCount++
-        setTimeout(() => {
-            const base = getCleanThumbUrl(photo)
-            const separator = base.includes('?') ? '&' : '?'
-            state.currentSrc = `${base}${separator}_retry=${Date.now()}`
-        }, delay)
-    } else {
-        state.failed = true
-    }
-}
-
-const retryImage = (photo: Photo) => {
-    const state = imageStates[photo.id]
-    if (!state) return
-    state.failed = false
-    state.loaded = false
-    state.retryCount = 0
-    const base = getCleanThumbUrl(photo)
-    const separator = base.includes('?') ? '&' : '?'
-    state.currentSrc = `${base}${separator}_retry=${Date.now()}`
+// Full-size clean image (no watermark) — used by the lightbox
+const getCleanUrl = (photo: Photo) => {
+    if (!gallery.value) return photo.preview_url || photo.display_url || photo.file_path
+    return `${API_CONFIG.baseUrl}/images/clean/${photo.id}?token=${gallery.value.access_token}`
 }
 
 const lightboxImages = computed<LightboxImage[]>(() => {
@@ -358,7 +275,6 @@ const fetchGallery = async () => {
         if (response.ok) {
             const data = await response.json()
             gallery.value = data.gallery
-            initImageStates()
         } else {
             const data = await response.json()
             error.value = data.message || 'Galerie non trouvee'
@@ -372,26 +288,3 @@ const fetchGallery = async () => {
 
 onMounted(fetchGallery)
 </script>
-
-<style scoped>
-.skeleton-shimmer {
-    aspect-ratio: 3 / 4;
-    background: linear-gradient(
-        90deg,
-        #f3f4f6 25%,
-        #e5e7eb 37%,
-        #f3f4f6 63%
-    );
-    background-size: 400% 100%;
-    animation: shimmer 1.4s ease-in-out infinite;
-}
-
-@keyframes shimmer {
-    0% {
-        background-position: 100% 0;
-    }
-    100% {
-        background-position: 0 0;
-    }
-}
-</style>
