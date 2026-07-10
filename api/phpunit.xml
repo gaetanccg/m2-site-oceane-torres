@@ -23,11 +23,41 @@
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
         <env name="CACHE_STORE" value="array"/>
-        <env name="DB_CONNECTION" value="sqlite"/>
-        <env name="DB_DATABASE" value=":memory:"/>
+
+        <!--
+            Base de test : Postgres dédié (service docker `postgres-test`, profil `test`).
+            Le code utilise du SQL Postgres non portable (pg_advisory_xact_lock,
+            FILTER (WHERE), scopes whereRaw booléens) → SQLite est exclu.
+            Démarrer la base avant : docker compose (profil test) up -d postgres-test
+        -->
+        <env name="DB_CONNECTION" value="pgsql"/>
+        <env name="DB_HOST" value="127.0.0.1"/>
+        <env name="DB_PORT" value="55432"/>
+        <env name="DB_DATABASE" value="testing"/>
+        <env name="DB_USERNAME" value="postgres"/>
+        <env name="DB_PASSWORD" value="postgres"/>
+
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
+        <env name="FILESYSTEM_DISK" value="minio"/>
+
+        <!--
+            SumUp : on reste en SANDBOX pour les tests de paiement (comportement
+            identique au dev local). ⚠️ En sandbox + APP_ENV testing,
+            OrderService::verifyAndUpdateOrder() auto-complète la commande sans
+            appeler l'API SumUp — c'est intentionnel et testé comme tel.
+            Le webhook, lui, appelle toujours getCheckout() : il faut Http::fake().
+        -->
+        <env name="SUMUP_ENV" value="sandbox"/>
+        <env name="SUMUP_API_KEY" value="test_sumup_key"/>
+        <env name="SUMUP_MERCHANT_CODE" value="TEST_MERCHANT"/>
+        <env name="SUMUP_PUBLIC_KEY" value="test_public_key"/>
+        <env name="APP_URL" value="http://localhost"/>
+
+        <!-- Services externes neutralisés -->
+        <env name="BREVO_API_KEY" value="test_brevo_key"/>
+
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>

@@ -170,6 +170,40 @@ services:
       - app-network
 
   # ----------------------------
+  # Postgres de TEST (suite PHPUnit uniquement)
+  # ----------------------------
+  # Base éphémère dédiée aux tests. Le code contient du SQL Postgres-spécifique
+  # (pg_advisory_xact_lock, FILTER (WHERE), casts booléens) incompatible SQLite,
+  # donc les tests tournent sur le même moteur que la prod.
+  #
+  # Isolé derrière le profil `test` : ne démarre PAS avec `docker compose up`
+  # (l'app applicative utilise Supabase, pas ce conteneur).
+  #   Démarrer :  docker compose --profile test up -d postgres-test
+  #   Tests    :  cd api && php artisan test   (connexion `testing` → 127.0.0.1:55432)
+  #   Arrêter  :  docker compose --profile test down
+  #
+  # `tmpfs` : données en RAM → migrations + tests plus rapides, rien à nettoyer.
+  postgres-test:
+    image: postgres:16-alpine
+    container_name: ot-postgres-test
+    profiles: [test]
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=testing
+    ports:
+      - "55432:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d testing"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+    networks:
+      - app-network
+
+  # ----------------------------
   # Mailpit (Dev emails - ARM64 compatible)
   # ----------------------------
   mailpit:
