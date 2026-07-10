@@ -23,6 +23,11 @@ cd "$REPO_ROOT"
 COMPOSE_FILE="deploy/docker-compose.preprod.yml"
 BRANCH="develop"
 
+# Compose V2 resout les chemins relatifs (context: ./api, env_file: ./deploy/...)
+# par rapport au dossier du fichier compose. On force --project-directory a la
+# RACINE du repo pour que ./api et ./deploy/... pointent au bon endroit.
+DC=(docker compose --project-directory "$REPO_ROOT" -f "$COMPOSE_FILE")
+
 echo "=========================================="
 echo "  DEPLOIEMENT OCEANE API - PREPROD"
 echo "  Repo: $REPO_ROOT"
@@ -51,7 +56,7 @@ fi
 if [[ "$*" != *"--no-build"* ]]; then
     echo ""
     echo "2/6 - Building containers..."
-    docker compose -f "$COMPOSE_FILE" build --no-cache
+    "${DC[@]}" build --no-cache
 else
     echo ""
     echo "2/6 - Skipping build (--no-build)"
@@ -60,12 +65,12 @@ fi
 # Etape 3: Stop
 echo ""
 echo "3/6 - Stopping old containers..."
-docker compose -f "$COMPOSE_FILE" down
+"${DC[@]}" down
 
 # Etape 4: Start
 echo ""
 echo "4/6 - Starting new containers..."
-docker compose -f "$COMPOSE_FILE" up -d
+"${DC[@]}" up -d
 
 # Etape 5: Wait + Laravel setup
 echo ""
@@ -89,6 +94,6 @@ echo "=========================================="
 echo "  DEPLOIEMENT PREPROD TERMINE !"
 echo "=========================================="
 echo ""
-docker compose -f "$COMPOSE_FILE" ps
+"${DC[@]}" ps
 echo ""
 echo "Test: curl http://localhost:8081/api/prestations"

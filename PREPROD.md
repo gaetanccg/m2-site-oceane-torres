@@ -225,7 +225,7 @@ docker logs api-nginx-preprod --tail 50
 **CORS** : après modif de `deploy/.env.preprod`, vider le cache config :
 ```bash
 docker exec api-php-preprod php artisan config:cache
-docker compose -f deploy/docker-compose.preprod.yml restart
+docker compose --project-directory . -f deploy/docker-compose.preprod.yml restart
 ```
 
 **Images qui ne s'affichent pas** : vérifier que le bucket `galleries-preprod`
