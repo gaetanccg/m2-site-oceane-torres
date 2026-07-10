@@ -5,7 +5,7 @@ Elle tourne **en parallèle** de la prod sur le même NAS UGREEN, avec un site R
 dédié pour le front.
 
 - **Front** : `https://preprod.oceanetorresphotographie.fr` (Render, branche `develop`)
-- **API** : `https://api.preprod.oceanetorresphotographie.fr` (NAS, port `8081`)
+- **API** : `https://preprod-api.oceanetorresphotographie.fr` (NAS, port `8081`)
 
 ---
 
@@ -15,7 +15,7 @@ dédié pour le front.
 |--------------------|----------------------------------------|-----------------------------------------------|
 | Branche git        | `main`                                 | `develop`                                     |
 | Front (Render)     | `oceanetorresphotographie.fr`          | `preprod.oceanetorresphotographie.fr`         |
-| API                | `api.oceanetorresphotographie.fr`      | `api.preprod.oceanetorresphotographie.fr`     |
+| API                | `api.oceanetorresphotographie.fr`      | `preprod-api.oceanetorresphotographie.fr`     |
 | Port Nginx (NAS)   | `8080`                                 | `8081`                                        |
 | Containers         | `api-php`, `api-queue`, …              | `api-php-preprod`, `api-queue-preprod`, …     |
 | Projet compose     | `oceane-api-prod`                      | `oceane-api-preprod`                          |
@@ -99,13 +99,18 @@ un marchand sandbox différent.
 | Type  | Name          | Target                                    | Proxy    |
 |-------|---------------|-------------------------------------------|----------|
 | CNAME | `preprod`     | `oceane-torres-web-preprod.onrender.com`  | DNS only |
-| CNAME | `api.preprod` | `<tunnel-id>.cfargotunnel.com`            | Proxied  |
+| CNAME | `preprod-api` | `<tunnel-id>.cfargotunnel.com`            | Proxied  |
+
+> Sous-domaines **de niveau 1** volontairement (`preprod-api`, pas `api.preprod`) :
+> le SSL Universal gratuit de Cloudflare ne couvre qu'`*.oceanetorresphotographie.fr`.
+> Un `api.preprod.…` (niveau 2) déclencherait un `handshake failure` faute de
+> certificat, sauf à payer l'Advanced Certificate Manager.
 
 ### 3.6 Tunnel Cloudflare (config du tunnel, sur le NAS)
 Ajouter une entrée d'ingress :
 
 ```yaml
-- hostname: api.preprod.oceanetorresphotographie.fr
+- hostname: preprod-api.oceanetorresphotographie.fr
   service: http://localhost:8081
 ```
 Puis redémarrer `cloudflared`.
@@ -148,7 +153,7 @@ Options : `--no-pull`, `--no-build` (comme le script prod).
 ### Vérifier
 ```bash
 curl http://localhost:8081/api/prestations
-curl https://api.preprod.oceanetorresphotographie.fr/api/health
+curl https://preprod-api.oceanetorresphotographie.fr/api/health
 ```
 
 ---
@@ -169,13 +174,13 @@ Variables d'environnement (Render → Environment) :
 
 | Variable                           | Valeur                                                  |
 |------------------------------------|---------------------------------------------------------|
-| `VITE_API_URL`                     | `https://api.preprod.oceanetorresphotographie.fr/api`   |
+| `VITE_API_URL`                     | `https://preprod-api.oceanetorresphotographie.fr/api`   |
 | `PUPPETEER_SKIP_CHROMIUM_DOWNLOAD` | `false`                                                 |
 
 Custom domain : `preprod.oceanetorresphotographie.fr`.
 
 > Build preprod **en local** :
-> `VITE_API_URL=https://api.preprod.oceanetorresphotographie.fr/api npm run build:prerender`
+> `VITE_API_URL=https://preprod-api.oceanetorresphotographie.fr/api npm run build:prerender`
 
 ---
 
@@ -185,7 +190,7 @@ Custom domain : `preprod.oceanetorresphotographie.fr`.
 - **Containers / réseau / projet compose** : suffixés `-preprod` → coexistent.
 - **DB** : projet Supabase distinct.
 - **Stockage** : bucket `galleries-preprod` (chemins isolés par bucket, mêmes credentials MinIO).
-- **Cookies** : `SESSION_DOMAIN=.preprod.oceanetorresphotographie.fr` + `SESSION_COOKIE=oceane_preprod_session` → aucune interférence avec les sessions prod.
+- **Cookies** : front et API partagent le parent `.oceanetorresphotographie.fr` (comme en prod) ; l'isolation vs prod vient du nom de cookie distinct `SESSION_COOKIE=oceane_preprod_session`.
 - **Paiements** : SumUp sandbox → aucun débit réel.
 - **Emails** : dédiés recommandés (sinon partagés avec la prod).
 
@@ -196,8 +201,8 @@ Custom domain : `preprod.oceanetorresphotographie.fr`.
 - [ ] Projet Supabase preprod créé, `DB_USERNAME`/`DB_PASSWORD` remplis dans `deploy/.env.preprod`
 - [ ] Bucket MinIO `galleries-preprod` créé
 - [ ] (Optionnel) Compte/expéditeur Brevo dédié configuré
-- [ ] DNS Cloudflare `preprod` + `api.preprod` ajoutés
-- [ ] Ingress tunnel `api.preprod → localhost:8081` ajouté et `cloudflared` redémarré
+- [ ] DNS Cloudflare `preprod` + `preprod-api` ajoutés
+- [ ] Ingress tunnel `preprod-api → localhost:8081` ajouté et `cloudflared` redémarré
 - [ ] Repo cloné sur le NAS dans `oceane-api-preprod`, branche `develop`
 - [ ] `./deploy/deploy-preprod.sh --no-pull` exécuté avec succès
 - [ ] `curl http://localhost:8081/api/prestations` répond
