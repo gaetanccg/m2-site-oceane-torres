@@ -90,7 +90,16 @@ fresh: ## Fresh migrate with seeders
 ## Testing
 ## ===========================================
 
-test: ## Run all tests
+test-db-up: ## Start the dedicated test Postgres (profil test)
+	docker compose --profile test up -d postgres-test
+	@echo "⏳ Waiting for postgres-test..."
+	@until docker exec ot-postgres-test pg_isready -U postgres -d testing >/dev/null 2>&1; do sleep 1; done
+	@echo "✅ postgres-test ready on 127.0.0.1:55432"
+
+test-db-down: ## Stop the dedicated test Postgres
+	docker compose --profile test down
+
+test: test-db-up ## Run all tests (starts the test DB first)
 	cd api && php artisan test
 	@echo "✅ Tests completed"
 
