@@ -158,8 +158,12 @@ class PhotoController extends Controller
     {
         $validated = $request->validated();
 
+        // Postgres (emulate prepares) rejette un booléen PHP transmis via un mass-update
+        // query-builder (« column is of type boolean but expression is of type integer »),
+        // car il court-circuite le mutateur CastsBooleansForPostgres. On passe donc la
+        // chaîne 'true'/'false' que le driver accepte — même stratégie que le trait.
         Photo::whereIn('id', $validated['photo_ids'])
-            ->update(['is_downloadable' => $validated['is_downloadable']]);
+            ->update(['is_downloadable' => $validated['is_downloadable'] ? 'true' : 'false']);
 
         // Pre-generate clean thumbnails for the newly-downloadable photos.
         if ($validated['is_downloadable']) {
@@ -182,21 +186,16 @@ class PhotoController extends Controller
     {
         $validated = $request->validated();
 
-        $cases = [];
-        $bindings = [];
-        $ids = [];
-        foreach ($validated['photos'] as $photoData) {
-            $cases[] = 'WHEN ? THEN ?';
-            $bindings[] = $photoData['id'];
-            $bindings[] = (int) $photoData['sort_order'];
-            $ids[] = $photoData['id'];
-        }
-
-        if (! empty($cases)) {
-            $caseSql = implode(' ', $cases);
-            Photo::whereIn('id', $ids)
-                ->update(['sort_order' => \DB::raw("CASE id {$caseSql} END", $bindings)]);
-        }
+        // NB : DB::raw() n'accepte PAS de bindings en 2e argument (ils étaient
+        // silencieusement ignorés → SQLSTATE[HY093], placeholders non liés et
+        // décalage des paramètres). On met à jour chaque photo dans une transaction :
+        // le nombre de photos réordonnées est borné par la taille d'une galerie.
+        \DB::transaction(function () use ($validated) {
+            foreach ($validated['photos'] as $photoData) {
+                Photo::where('id', $photoData['id'])
+                    ->update(['sort_order' => (int) $photoData['sort_order']]);
+            }
+        });
 
         return response()->json([
             'message' => 'Ordre mis à jour.',

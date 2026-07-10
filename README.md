@@ -116,7 +116,9 @@ make seed          # Exécuter les seeders
 make fresh         # Reset la base de données (migrate:fresh --seed)
 
 # Tests & Qualité
-make test          # Lancer les tests PHPUnit
+make test          # Lancer les tests PHPUnit (démarre la base de test au besoin)
+make test-db-up    # Démarrer le Postgres de test (conteneur dédié, port 55432)
+make test-db-down  # Arrêter le Postgres de test
 make test-coverage # Tests avec couverture de code
 make lint          # Formater le code avec Pint
 make lint-check    # Vérifier le style sans corriger
@@ -212,16 +214,44 @@ Voir [supabase/README.md](supabase/README.md) pour :
 
 ## Tests
 
+La suite de tests backend (PHPUnit) couvre les **parties critiques** : paiement (checkout,
+webhook SumUp, vérification, annulation), téléchargement (ZIP galerie, photo, HD verrouillé
+par achat) et upload (traitement photo, validation, jobs).
+
+### Prérequis : base de données de test dédiée (Postgres)
+
+Le code utilise du SQL spécifique à PostgreSQL (`pg_advisory_xact_lock`, `FILTER (WHERE)`,
+casts booléens) **incompatible avec SQLite**. Les tests tournent donc sur une base Postgres
+dédiée, lancée dans un conteneur Docker isolé (profil `test`, données en RAM via `tmpfs`,
+port `55432`). Elle est **séparée** de la base applicative (Supabase) et détruite à l'arrêt.
+
+Aucune configuration manuelle n'est requise : la connexion de test est définie dans
+`api/phpunit.xml` (services externes neutralisés, SumUp en mode **sandbox**).
+
+### Lancer les tests
+
 ```bash
-# Tests unitaires et feature
+# Tout-en-un : démarre la base de test puis exécute PHPUnit
 make test
 
-# Tests avec couverture
+# Base de test seule (à garder démarrée pendant le développement des tests)
+make test-db-up      # démarre le Postgres de test (127.0.0.1:55432)
+make test-db-down    # arrête et supprime le conteneur de test
+
+# Une fois la base démarrée, on peut lancer PHPUnit directement :
+cd api && php artisan test
+cd api && php artisan test --filter=CheckoutTest   # un test précis
+
+# Couverture de code
 make test-coverage
 
-# Vérification du style de code
-make lint-check
+# Style de code (Laravel Pint)
+make lint-check      # vérifie sans corriger
+make lint            # corrige
 ```
+
+> **Prérequis** : Docker doit être démarré (la base de test tourne dans un conteneur).
+> Le port `55432` doit être libre.
 
 ---
 
