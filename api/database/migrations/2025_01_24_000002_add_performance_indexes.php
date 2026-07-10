@@ -8,11 +8,17 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Indexes pour la table clients
-        Schema::table('clients', function (Blueprint $table) {
-            $table->index('source');
-            $table->index('created_at');
-        });
+        // Indexes pour la table clients.
+        // Sur une installation fraîche, cette migration (2025) s'exécute AVANT
+        // la création de la table clients (2026) : on saute alors ce bloc, les
+        // index étant créés directement dans create_clients_table. Sur les bases
+        // déjà migrées où clients existait, le bloc s'applique normalement.
+        if (Schema::hasTable('clients')) {
+            Schema::table('clients', function (Blueprint $table) {
+                $table->index('source');
+                $table->index('created_at');
+            });
+        }
 
         // Indexes pour la table galleries
         Schema::table('galleries', function (Blueprint $table) {
@@ -49,10 +55,12 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::table('clients', function (Blueprint $table) {
-            $table->dropIndex(['source']);
-            $table->dropIndex(['created_at']);
-        });
+        if (Schema::hasTable('clients')) {
+            Schema::table('clients', function (Blueprint $table) {
+                $table->dropIndex(['source']);
+                $table->dropIndex(['created_at']);
+            });
+        }
 
         Schema::table('galleries', function (Blueprint $table) {
             $table->dropIndex(['type']);

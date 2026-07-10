@@ -19,6 +19,14 @@ return new class extends Migration
             $table->boolean('gdpr_consent')->default(false);
             $table->timestamp('gdpr_consent_at')->nullable();
             $table->timestamps();
+
+            // Index de performance. Historiquement ajoutés par la migration
+            // 2025_01_24_000002_add_performance_indexes, mais celle-ci s'exécute
+            // AVANT la création de cette table sur une installation fraîche
+            // (dates 2025 < 2026). On les crée donc ici ; l'autre migration les
+            // saute via un garde Schema::hasTable('clients').
+            $table->index('source');
+            $table->index('created_at');
         });
     }
 

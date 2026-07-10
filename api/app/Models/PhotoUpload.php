@@ -3,12 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class PhotoUpload extends Model
 {
-    use HasUuids;
+    use HasFactory, HasUuids;
 
     protected $fillable = [
         'batch_id',
@@ -53,7 +54,9 @@ class PhotoUpload extends Model
             ->selectRaw("COUNT(*) FILTER (WHERE status IN ('pending', 'uploading', 'processing')) as processing")
             ->first();
 
-        if (! $counts || $counts->total === 0) {
+        // Postgres renvoie COUNT(*) sous forme de chaîne : comparaison stricte via cast
+        // (sinon "0" === 0 est faux et un batch inexistant serait signalé found=true).
+        if (! $counts || (int) $counts->total === 0) {
             return [
                 'batch_id' => $batchId,
                 'found' => false,
