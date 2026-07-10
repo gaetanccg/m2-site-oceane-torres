@@ -394,7 +394,8 @@ couvre `readStream`, `get`, `temporaryUrl`, etc. Pour simuler un **échec** de s
 `make test` reste **vert** (132 tests).
 
 ## 7. Optionnel (hors périmètre immédiat, à proposer plus tard)
-- [ ] CI GitHub Actions (`.github/workflows/tests.yml`) : Postgres service + `php artisan test`.
+- [x] CI GitHub Actions : job `backend-tests` ajouté à `.github/workflows/ci.yml` (service Postgres
+  sur le port 55432 + `php artisan test`), câblé au récap `ci-success`.
 - [ ] Couverture (`make test-coverage`) et seuil minimal sur les 3 zones critiques.
 - [ ] Traiter les 2 anomalies repérées : route morte `downloadPhotos`, path-traversal `downloadFile`.
 - [ ] Tests directs (lourds) de `ImageProcessingService` avec Imagick/GD réels (§5).
