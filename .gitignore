@@ -113,6 +113,10 @@ PROJECT_REFERENCE_MVP.md
 
 # Deployment secrets (never commit)
 /deploy/.env.prod
+/deploy/.env.preprod
+# ...mais on garde les templates versionnés (ignorés par la règle .env.* plus haut)
+!/deploy/.env.prod.example
+!/deploy/.env.preprod.example
 
 .claude
 *.tar.gz

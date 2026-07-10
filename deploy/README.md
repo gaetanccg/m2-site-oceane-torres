@@ -50,6 +50,21 @@ Le script fait automatiquement : `git pull` → `docker build` → `docker down/
 ./deploy/deploy.sh --no-build  # Ne pas rebuild les images Docker
 ```
 
+## Environnement de preprod
+
+Une stack preprod iso-prod tourne en parallele sur le meme NAS (containers `-preprod`,
+port `8081`, reseau dedie), alimentee par la branche `develop`, avec base/bucket/Brevo
+dedies et SumUp en sandbox. Fichiers dedies : `.env.preprod.example`,
+`docker-compose.preprod.yml`, `nginx.preprod.conf`, `deploy-preprod.sh`.
+
+```bash
+# Premier deploiement preprod (clone DISTINCT, sur develop)
+cp deploy/.env.preprod.example deploy/.env.preprod   # puis remplir les <SECRET>
+./deploy/deploy-preprod.sh --no-pull
+```
+
+Guide complet : `/PREPROD.md` (racine du repo).
+
 ## Voir la doc complete
 
 Consulte `/docs/deploiement-nas-ugreen.md` pour le guide detaille et le troubleshooting.
