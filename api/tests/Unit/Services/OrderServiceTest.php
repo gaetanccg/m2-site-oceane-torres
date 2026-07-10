@@ -3,7 +3,11 @@
 namespace Tests\Unit\Services;
 
 use App\Exceptions\BusinessException;
+use App\Mail\OrderConfirmationMail;
+use App\Mail\PrintOrderNotificationMail;
+use App\Mail\SchoolOrderConfirmationMail;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Services\OrderService;
 use App\Services\SumUpService;
@@ -136,5 +140,58 @@ class OrderServiceTest extends TestCase
         $service->completeFreeOrder($order);
 
         $this->assertTrue($order->fresh()->isPaid());
+    }
+
+    public function test_complete_order_queues_confirmation_and_print_notification(): void
+    {
+        $service = $this->serviceWithSumUp(fn ($m) => $m);
+        $order = Order::factory()->pending()->create();
+        OrderItem::factory()->print('print_10x15')->create(['order_id' => $order->id]);
+
+        $service->completeOrder($order, 'txn_print');
+
+        Mail::assertQueued(OrderConfirmationMail::class);
+        Mail::assertQueued(PrintOrderNotificationMail::class);
+    }
+
+    public function test_complete_order_for_school_uses_school_mail_and_skips_print_notif(): void
+    {
+        $service = $this->serviceWithSumUp(fn ($m) => $m);
+        $order = Order::factory()->pending()->create();
+        // Commande 100 % scolaire → mail dédié, pas de notif print générique.
+        OrderItem::factory()->print('print_scolaire')->create(['order_id' => $order->id]);
+
+        $service->completeOrder($order, 'txn_school');
+
+        Mail::assertQueued(SchoolOrderConfirmationMail::class);
+        Mail::assertNotQueued(PrintOrderNotificationMail::class);
+    }
+
+    public function test_verify_and_update_order_completes_on_paid_in_production(): void
+    {
+        // Hors sandbox : le raccourci d'auto-complétion ne s'applique pas, getCheckout est appelé.
+        config(['sumup.environment' => 'production']);
+        $service = $this->serviceWithSumUp(function ($m) {
+            $m->shouldReceive('getCheckout')->once()->andReturn(['status' => 'PAID', 'transaction_id' => 'txn_prod']);
+        });
+        $order = Order::factory()->pending()->withCheckout('chk_prod')->create();
+
+        $result = $service->verifyAndUpdateOrder('chk_prod');
+
+        $this->assertTrue($result->isPaid());
+    }
+
+    public function test_verify_and_update_order_leaves_order_unchanged_when_not_paid(): void
+    {
+        config(['sumup.environment' => 'production']);
+        $service = $this->serviceWithSumUp(function ($m) {
+            $m->shouldReceive('getCheckout')->once()->andReturn(['status' => 'PENDING']);
+        });
+        $order = Order::factory()->pending()->withCheckout('chk_wait')->create();
+
+        $result = $service->verifyAndUpdateOrder('chk_wait');
+
+        // Ni payée ni échouée : seuls le webhook / la réconciliation marquent failed.
+        $this->assertSame('pending', $result->status);
     }
 }

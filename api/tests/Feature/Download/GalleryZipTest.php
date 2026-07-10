@@ -5,9 +5,11 @@ namespace Tests\Feature\Download;
 use App\Models\DownloadLog;
 use App\Models\Gallery;
 use App\Models\Photo;
+use App\Models\User;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
+use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
@@ -110,5 +112,63 @@ class GalleryZipTest extends TestCase
 
         // Seule la photo présente est loggée.
         $this->assertSame(1, DownloadLog::count());
+    }
+
+    public function test_published_event_gallery_is_downloadable_without_token(): void
+    {
+        // Branche GalleryPolicy : event + is_published → accès sans token.
+        $gallery = Gallery::factory()->event()->create();
+        $this->downloadablePhotoWithFile($gallery, 'p1');
+
+        $this->get("/api/galleries/{$gallery->id}/download-zip")->assertOk();
+    }
+
+    public function test_owner_can_download_private_gallery_without_token(): void
+    {
+        // Branche GalleryPolicy : propriétaire authentifié → accès sans token.
+        $owner = User::factory()->create();
+        Sanctum::actingAs($owner);
+        $gallery = Gallery::factory()->private()->create(['user_id' => $owner->id]);
+        $this->downloadablePhotoWithFile($gallery, 'p1');
+
+        $this->get("/api/galleries/{$gallery->id}/download-zip")->assertOk();
+    }
+
+    public function test_caps_at_500_photos(): void
+    {
+        $gallery = Gallery::factory()->public()->create();
+        $photos = Photo::factory()->count(501)->downloadable()->create(['gallery_id' => $gallery->id]);
+        foreach ($photos as $photo) {
+            $this->disk->put($photo->resolved_storage_path, 'x');
+        }
+
+        $response = $this->get("/api/galleries/{$gallery->id}/download-zip");
+        $response->streamedContent();
+
+        // Plafond dur de 500 : au-delà, les photos ne sont pas streamées ni loggées.
+        $this->assertSame(500, DownloadLog::count());
+    }
+
+    public function test_duplicate_titles_get_unique_zip_entry_names(): void
+    {
+        $gallery = Gallery::factory()->public()->create();
+        $this->downloadablePhotoWithFile($gallery, 'dup');
+        $this->downloadablePhotoWithFile($gallery, 'dup');
+
+        $response = $this->get("/api/galleries/{$gallery->id}/download-zip");
+
+        $tmp = tempnam(sys_get_temp_dir(), 'ziptest').'.zip';
+        file_put_contents($tmp, $response->streamedContent());
+        $zip = new \ZipArchive;
+        $zip->open($tmp);
+        $names = [];
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $names[] = $zip->statIndex($i)['name'];
+        }
+        $zip->close();
+        @unlink($tmp);
+
+        $this->assertCount(2, $names);
+        $this->assertSame($names, array_values(array_unique($names)));
     }
 }

@@ -12,9 +12,9 @@
 
 ---
 
-## ✅ État d'avancement — **132 tests, 303 assertions, tous verts**
+## ✅ État d'avancement — **143 tests, 327 assertions, tous verts**
 
-Répartition : **5** fondations · **52** paiement · **37** téléchargement · **32** upload ·
+Répartition : **5** fondations · **58** paiement · **41** téléchargement · **33** upload ·
 **6** préexistant (`GiftCodeDiscountTest`).
 
 **Lancer :** `make test` (démarre la base de test puis exécute PHPUnit), ou
@@ -25,30 +25,30 @@ Répartition : **5** fondations · **52** paiement · **37** téléchargement ·
 | Chantier | Tests | Type | Fichiers |
 |---|---:|---|---|
 | Fondations | 5 | Feature | `SmokeTest` (connexion pgsql, factories, génération n° commande) |
-| **1. Paiement** | **52** | 32 Feature + 20 Unit | `Feature/Payment/*` + `Unit/Services/{OrderService,SumUpService,GiftCodeService}Test` |
-| **2. Téléchargement** | **37** | 26 Feature + 11 Unit | `Feature/Download/*` + `Unit/Jobs/GenerateCleanThumbnailJobTest` + `Unit/Models/PhotoTest` |
-| **3. Upload** | **32** | 20 Feature + 12 Unit | `Feature/Upload/*` + `Unit/PhotoController/HumanizeUploadErrorTest` + `Unit/Jobs/ProcessPhotoJobTest` |
+| **1. Paiement** | **58** | 34 Feature + 24 Unit | `Feature/Payment/*` + `Unit/Services/{OrderService,SumUpService,GiftCodeService}Test` |
+| **2. Téléchargement** | **41** | 30 Feature + 11 Unit | `Feature/Download/*` + `Unit/Jobs/GenerateCleanThumbnailJobTest` + `Unit/Models/PhotoTest` |
+| **3. Upload** | **33** | 21 Feature + 12 Unit | `Feature/Upload/*` + `Unit/PhotoController/HumanizeUploadErrorTest` + `Unit/Jobs/ProcessPhotoJobTest` |
 | Préexistant | 6 | Unit | `Unit/GiftCodeDiscountTest` (calcul pur de remise) |
 
-### 1. Paiement — 52 tests
+### 1. Paiement — 58 tests
 
 | Fichier | Tests | Ce qui est couvert |
 |---|---:|---|
-| `Feature/Payment/CheckoutTest` | 7 | `POST /checkout` : panier vide (400), commande payante + init SumUp, commande **gratuite** (code cadeau couvrant tout → pas de SumUp), tirage sans adresse (422), CGV requises, e-mail invité requis, expiration des pending précédents |
+| `Feature/Payment/CheckoutTest` | 9 | `POST /checkout` : panier vide (400), commande payante + init SumUp, commande **gratuite** (code cadeau couvrant tout → pas de SumUp), tirage sans adresse (422), CGV requises, e-mail invité requis, expiration des pending précédents, **frais de port = max multi-galeries**, **re-sync du prix obsolète** |
 | `Feature/Payment/SumUpWebhookTest` | 7 | Webhook `POST /payments/sumup/return` : `id` manquant → ack, commande inconnue → ack, déjà payée → ack, `PAID` → complétée, `FAILED` → échouée, `PENDING` → intacte, erreur → **503** (retry). Ne fait jamais confiance au payload |
 | `Feature/Payment/OrderAccessTest` | 6 | `GET /orders/{order}` : accès owner / e-mail invité / token / fenêtre 30 min, refus (403), introuvable (404) |
 | `Feature/Payment/ConfirmFreeOrderTest` | 5 | `POST /checkout/confirm-free` : confirmation, idempotence, refus si total > 0, refus si non-pending, validation |
 | `Feature/Payment/VerifyPaymentTest` | 4 | `POST /payments/sumup/verify` : déjà payée, sans checkout, **auto-complétion sandbox**, validation |
 | `Feature/Payment/CancelCheckoutTest` | 3 | `POST /payments/sumup/cancel-checkout` : annulation, non-pending (400), race webhook payée → **409** |
-| `Unit/Services/OrderServiceTest` | 8 | `initiatePayment` (non-pending, réutilisation checkout, déjà payé → 409, un seul Payment), `completeOrder` (idempotence, état inattendu), `completeFreeOrder` |
+| `Unit/Services/OrderServiceTest` | 12 | `initiatePayment` (non-pending, réutilisation checkout, déjà payé → 409, un seul Payment), `completeOrder` (idempotence, état inattendu, **mail confirmation + notif print**, **cas school → SchoolOrderConfirmationMail sans notif print**), `completeFreeOrder`, `verifyAndUpdateOrder` **hors sandbox** (PAID → complète, sinon inchangé) |
 | `Unit/Services/GiftCodeServiceTest` | 6 | `assertUsableForCheckout` : code valide, inactif/expiré/pas-encore-valide (422), quota `max_uses` sur commandes **payées** uniquement |
 | `Unit/Services/SumUpServiceTest` | 6 | Constructeur (config manquante), `createCheckout` (persiste l'id / échec), `deactivateCheckout` (bool, ne throw pas) |
 
-### 2. Téléchargement — 37 tests
+### 2. Téléchargement — 41 tests
 
 | Fichier | Tests | Ce qui est couvert |
 |---|---:|---|
-| `Feature/Download/GalleryZipTest` | 7 | ZIP streamé `download-zip` : accès (privé sans/avec token, public), 404 si vide, seules les photos téléchargeables loggées, photo sans fichier ignorée |
+| `Feature/Download/GalleryZipTest` | 11 | ZIP streamé `download-zip` : accès (privé sans/avec token, public, **event publié**, **propriétaire**), 404 si vide, seules les photos téléchargeables loggées, photo sans fichier ignorée, **plafond 500**, **noms d'entrées uniques** (titres en collision) |
 | `Feature/Download/ImageProxyDownloadTest` | 6 | HD verrouillé par achat `images/download/{photo}` : token/order requis, non payée, token invalide, photo hors commande, succès + `markAsDownloaded`, fichier absent (404) |
 | `Feature/Download/PhotoDownloadTest` | 6 | `photos/{photo}/download` : galerie inaccessible (403), non téléchargeable (403), mode direct (octets / 500), mode URL signée (/ 500), logging |
 | `Feature/Download/OrderDownloadTest` | 4 | `orders/{order}/download*` : URL signée + `markAsDownloaded`, non payée (403), **cap 50** photos, ZIP complet |
@@ -56,11 +56,11 @@ Répartition : **5** fondations · **52** paiement · **37** téléchargement ·
 | `Unit/Jobs/GenerateCleanThumbnailJobTest` | 6 | Skips (photo absente / vidéo / non-téléchargeable / déjà générée), succès, échec → throw (retry) |
 | `Unit/Models/PhotoTest` | 5 | `resolved_storage_path` (fallback), `cleanThumbnailStoragePath`, `recordDownload` (compteur + `DownloadLog`, troncature UA) |
 
-### 3. Upload — 32 tests
+### 3. Upload — 33 tests
 
 | Fichier | Tests | Ce qui est couvert |
 |---|---:|---|
-| `Feature/Upload/StoreAsyncPhotoTest` | 6 | `storeAsync` : auth admin requise, non-admin (403), galerie parente (422), image OK, vidéo OK, **succès partiel** (un fichier échoue sans bloquer le batch) |
+| `Feature/Upload/StoreAsyncPhotoTest` | 7 | `storeAsync` : auth admin requise, non-admin (403), galerie parente (422), image OK, vidéo OK, **succès partiel** (un fichier échoue sans bloquer le batch), **galerie event via `/admin/events` + cache vidé** |
 | `Feature/Upload/PhotoManagementTest` | 6 | `toggle-downloadable` (dispatch job clean-thumbnail), off (pas de job), vidéo (pas de job), `bulk-downloadable`, tri `sort-order`, suppression |
 | `Feature/Upload/UploadValidationTest` | 5 | `StoreAsyncPhotoRequest` : `batch_id` requis, ≥1 photo, max 15, mime interdit, > 50 Mo |
 | `Feature/Upload/UploadStatusTest` | 3 | `upload-status` : agrégat (`FILTER (WHERE)` pgsql), batch complet, batch inexistant |
@@ -206,8 +206,8 @@ raccourci (il appelle toujours `getCheckout()`), il est donc testé avec `Http::
 - [x] article print nécessitant livraison sans adresse → 422
 - [x] expiration des anciennes commandes pending du même panier/utilisateur
 - [x] CGV requises (422) · e-mail invité requis (422)
-- [ ] frais de port = **max** des frais parmi les galeries (panier mixte) — *non couvert*
-- [ ] re-synchronisation du prix si le prix a changé pendant la mise au panier — *non couvert*
+- [x] frais de port = **max** des frais parmi les galeries (panier mixte)
+- [x] re-synchronisation du prix si le prix a changé pendant la mise au panier
 
 **`tests/Feature/Payment/ConfirmFreeOrderTest.php`** — `POST /checkout/confirm-free` — 5 tests
 - [x] commande gratuite pending → complétée (idempotent si déjà payée)
@@ -246,8 +246,8 @@ raccourci (il appelle toujours `getCheckout()`), il est donc testé avec `Http::
 - [x] `initiatePayment` : réutilise checkout `PENDING` ; `PAID` existant → complète + 409 ; non pending → 400 ; crée/maj **une seule** ligne `Payment`
 - [x] `completeOrder` : idempotence (lock + short-circuit `isPaid`) ; état inattendu → 409
 - [x] `completeFreeOrder` : rejette `total > 0` (400) ; complète un total 0
-- [ ] effets de bord fins (school order → `SchoolOrderConfirmationMail`, notif print) — *non couvert*
-- [ ] `verifyAndUpdateOrder` en **unit** (branche non-sandbox « sinon inchangé ») — *couvert au niveau Feature en sandbox uniquement*
+- [x] effets de bord : commande standard → `OrderConfirmationMail` + `PrintOrderNotificationMail` ; commande **school** → `SchoolOrderConfirmationMail` sans notif print
+- [x] `verifyAndUpdateOrder` en **unit** hors sandbox : `PAID` → complète, sinon inchangé (ne marque pas failed)
 
 **`tests/Unit/Services/SumUpServiceTest.php`** (`Http::fake()`) — 6 tests
 - [x] constructeur throw si config manquante (api_key, merchant_code)
@@ -287,8 +287,8 @@ couvre `readStream`, `get`, `temporaryUrl`, etc. Pour simuler un **échec** de s
 - [x] seules les photos `is_downloadable` sont incluses
 - [x] photo dont `readStream` renvoie null → **ignorée** (pas de `recordDownload` pour elle)
 - [x] **logging** : nb de `DownloadLog` == nb de photos réellement streamées
-- [ ] accès **event publié** / **propriétaire** (autres branches de `GalleryPolicy`) — *non couvert*
-- [ ] plafond de **500** photos · noms d'entrées uniques (collisions de titres) — *non couvert*
+- [x] accès **event publié** / **propriétaire** (autres branches de `GalleryPolicy`)
+- [x] plafond de **500** photos · noms d'entrées uniques (collisions de titres)
 
 **`tests/Feature/Download/PhotoDownloadTest.php`** — `GET /photos/{photo}/download` — 6 tests
 - [x] galerie non accessible (token) → 403 (avant tout accès stockage)
@@ -345,7 +345,7 @@ couvre `readStream`, `get`, `temporaryUrl`, etc. Pour simuler un **échec** de s
 - [x] upload image OK → `Photo` créée (`is_processed=true`, `is_downloadable=false`), `PhotoUpload` `completed`
 - [x] upload vidéo OK → `Photo` `is_video=true` via `MinioStorageService::uploadPhoto`
 - [x] **succès partiel** : un fichier échoue → `PhotoUpload` `failed` avec `error_message`, les autres passent, réponse 200
-- [ ] galerie `event` → cache event vidé · même endpoint via `POST /admin/events/{gallery}/photos/async` — *non couvert*
+- [x] galerie `event` → cache event vidé · même endpoint via `POST /admin/events/{gallery}/photos/async`
 
 **`tests/Feature/Upload/UploadValidationTest.php`** — `StoreAsyncPhotoRequest` — 5 tests
 - [x] `photos` requis, min 1, **max 15** → 422 au-delà
@@ -398,5 +398,3 @@ couvre `readStream`, `get`, `temporaryUrl`, etc. Pour simuler un **échec** de s
 - [ ] Couverture (`make test-coverage`) et seuil minimal sur les 3 zones critiques.
 - [ ] Traiter les 2 anomalies repérées : route morte `downloadPhotos`, path-traversal `downloadFile`.
 - [ ] Tests directs (lourds) de `ImageProcessingService` avec Imagick/GD réels (§5).
-- [ ] Compléments non couverts : frais de port max (checkout), plafond 500 / noms uniques (ZIP),
-  branches event-publié/propriétaire de `GalleryPolicy`, cache event à l'upload.
