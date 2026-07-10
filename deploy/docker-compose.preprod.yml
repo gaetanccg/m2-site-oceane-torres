@@ -46,6 +46,7 @@ services:
         mkdir -p /var/www/storage/framework/views &&
         mkdir -p /var/www/storage/framework/cache &&
         mkdir -p /var/www/storage/logs &&
+        mkdir -p /var/www/bootstrap/cache &&
         chmod -R 755 /var/www &&
         chmod -R 777 /var/www/storage /var/www/bootstrap/cache &&
         chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache &&
@@ -94,6 +95,7 @@ services:
         mkdir -p /var/www/storage/framework/views &&
         mkdir -p /var/www/storage/framework/cache &&
         mkdir -p /var/www/storage/logs &&
+        mkdir -p /var/www/bootstrap/cache &&
         chmod -R 755 /var/www &&
         chmod -R 777 /var/www/storage /var/www/bootstrap/cache &&
         chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache &&
@@ -130,6 +132,7 @@ services:
     command: >
       sh -c "
         mkdir -p /var/www/storage/logs &&
+        mkdir -p /var/www/bootstrap/cache &&
         chmod -R 777 /var/www/storage /var/www/bootstrap/cache &&
         php artisan schedule:work
       "
