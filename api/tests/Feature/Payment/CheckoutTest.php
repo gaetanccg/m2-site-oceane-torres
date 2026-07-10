@@ -3,9 +3,12 @@
 namespace Tests\Feature\Payment;
 
 use App\Models\Cart;
+use App\Models\CartItem;
+use App\Models\Gallery;
 use App\Models\GiftCode;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\Photo;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
@@ -132,5 +135,55 @@ class CheckoutTest extends TestCase
         $this->checkout('reuse-session')->assertOk();
 
         $this->assertSame('expired', $firstOrder->fresh()->status);
+    }
+
+    public function test_shipping_fee_is_the_max_across_galleries_in_a_mixed_cart(): void
+    {
+        $this->fakeSumUp(createCheckout: ['id' => 'chk_ship', 'status' => 'PENDING']);
+
+        // Deux galeries avec des frais de port différents, un tirage papier dans chacune.
+        $cart = Cart::factory()->create(['session_id' => 'ship-session']);
+        foreach ([3.00, 7.00] as $fee) {
+            $gallery = Gallery::factory()->withShippingFee($fee)->create();
+            $photo = Photo::factory()->create(['gallery_id' => $gallery->id]);
+            CartItem::factory()->print('print_10x15')->create([
+                'cart_id' => $cart->id,
+                'photo_id' => $photo->id,
+            ]);
+        }
+
+        $response = $this->checkout('ship-session', [
+            'shipping_phone' => '0612345678',
+            'shipping_address_line1' => '1 rue de la Photo',
+            'shipping_postal_code' => '75001',
+            'shipping_city' => 'Paris',
+        ]);
+
+        $response->assertOk();
+        // Frais = max(3, 7) pour ne pas sous-facturer un panier multi-galeries.
+        $this->assertSame('7.00', Order::first()->shipping_fee);
+        $response->assertJsonPath('order.shipping_fee', 7);
+    }
+
+    public function test_stale_cart_item_price_is_resynced_at_checkout(): void
+    {
+        $this->fakeSumUp(createCheckout: ['id' => 'chk_price', 'status' => 'PENDING']);
+
+        // Prix figé à 5 € dans le panier alors que le prix résolu du digital est 13 €.
+        $cart = Cart::factory()->create(['session_id' => 'stale-session']);
+        $photo = Photo::factory()->create();
+        $item = CartItem::factory()->create([
+            'cart_id' => $cart->id,
+            'photo_id' => $photo->id,
+            'product_type' => 'digital',
+            'price' => 5.00,
+        ]);
+
+        $response = $this->checkout('stale-session');
+
+        $response->assertOk()->assertJsonPath('order.total', 13);
+        $this->assertSame('13.00', Order::first()->subtotal);
+        // Le prix du panier a été resynchronisé.
+        $this->assertSame('13.00', $item->fresh()->price);
     }
 }

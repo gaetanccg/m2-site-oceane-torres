@@ -9,6 +9,7 @@ use App\Services\ImageProcessingService;
 use App\Services\MinioStorageService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
 use Mockery;
 use Tests\TestCase;
 
@@ -146,5 +147,24 @@ class StoreAsyncPhotoTest extends TestCase
         $this->assertSame(1, PhotoUpload::where('status', 'completed')->count());
         $this->assertSame(1, PhotoUpload::where('status', 'failed')->count());
         $this->assertSame(1, Photo::count());
+    }
+
+    public function test_event_gallery_upload_via_events_route_clears_cache(): void
+    {
+        $this->actingAsAdmin();
+        $this->mockImageSuccess();
+        $gallery = Gallery::factory()->event()->create();
+
+        // Le cache des galeries événement doit être invalidé après un upload réussi.
+        Cache::put('event_galleries_page_1', ['stale'], 60);
+
+        $response = $this->postJson("/api/admin/events/{$gallery->id}/photos/async", [
+            'batch_id' => 'batch-event',
+            'photos' => [UploadedFile::fake()->image('e.jpg')],
+        ]);
+
+        $response->assertOk()->assertJsonPath('uploads.0.status', 'completed');
+        $this->assertSame(1, Photo::count());
+        $this->assertFalse(Cache::has('event_galleries_page_1'));
     }
 }
