@@ -502,7 +502,7 @@
                 <div class="flex items-center justify-between bg-gray-50 rounded-xl p-4">
                     <div class="text-sm text-gray-600">
                         <p v-if="selectedOrder.paid_at">Payée le {{ formatDate(selectedOrder.paid_at) }}</p>
-                        <p v-else>Creee le {{ formatDate(selectedOrder.created_at) }}</p>
+                        <p v-else>Créée le {{ formatDate(selectedOrder.created_at) }}</p>
                     </div>
                     <p class="text-2xl font-bold text-gold">{{ formatPrice(selectedOrder.total) }}</p>
                 </div>

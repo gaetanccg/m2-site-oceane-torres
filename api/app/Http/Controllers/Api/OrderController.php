@@ -110,7 +110,7 @@ class OrderController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Commande creee.',
+                'message' => 'Commande créée.',
                 'order' => $orderPayload,
                 'payment' => $paymentData,
             ]);
