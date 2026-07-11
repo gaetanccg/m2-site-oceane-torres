@@ -106,14 +106,24 @@ un marchand sandbox différent.
 > Un `api.preprod.…` (niveau 2) déclencherait un `handshake failure` faute de
 > certificat, sauf à payer l'Advanced Certificate Manager.
 
-### 3.6 Tunnel Cloudflare (config du tunnel, sur le NAS)
-Ajouter une entrée d'ingress :
+### 3.6 Tunnel Cloudflare — ingress managé par le DASHBOARD
+⚠️ Le tunnel (`826dee89-…`) est **remotely-managed** : cloudflared récupère son
+ingress depuis le dashboard Cloudflare, **pas** depuis `/etc/cloudflared/config.yml`
+(signe dans les logs : `Updated to new configuration … version=N`). Éditer le
+fichier local n'a **aucun effet**.
 
-```yaml
-- hostname: preprod-api.oceanetorresphotographie.fr
-  service: http://localhost:8081
-```
-Puis redémarrer `cloudflared`.
+Ajouter le hostname dans **Zero Trust → Networks → Tunnels → ce tunnel →
+Public Hostnames → Add** :
+
+| Champ            | Valeur                        |
+|------------------|-------------------------------|
+| Subdomain        | `preprod-api`                 |
+| Domain           | `oceanetorresphotographie.fr` |
+| Service (Type)   | `HTTP`                        |
+| Service (URL)    | `localhost:8081`              |
+
+L'edge pousse la nouvelle config automatiquement (pas de restart). `api → localhost:8080`
+(prod) y figure déjà.
 
 ---
 
