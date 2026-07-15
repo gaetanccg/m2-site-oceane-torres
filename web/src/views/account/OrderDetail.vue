@@ -161,8 +161,8 @@ const statusLabel = computed(() => {
     switch (order.value?.status) {
         case 'paid': return 'Payée'
         case 'pending': return 'En attente'
-        case 'failed': return 'Echouee'
-        case 'refunded': return 'Remboursee'
+        case 'failed': return 'Echouée'
+        case 'refunded': return 'Remboursée'
         default: return order.value?.status ?? ''
     }
 })

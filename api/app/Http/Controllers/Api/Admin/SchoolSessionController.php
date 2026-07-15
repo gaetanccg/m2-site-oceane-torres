@@ -385,7 +385,7 @@ class SchoolSessionController extends Controller
         if ($schoolSession->isClosed()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Cette session est deja cloturee.',
+                'message' => 'Cette session est deja cloturée.',
             ], 422);
         }
 
@@ -394,7 +394,7 @@ class SchoolSessionController extends Controller
         return response()->json([
             'success' => true,
             'data' => $schoolSession->fresh(),
-            'message' => 'Session cloturee. Les parents ne peuvent plus commander.',
+            'message' => 'Session cloturée. Les parents ne peuvent plus commander.',
         ]);
     }
 
@@ -403,7 +403,7 @@ class SchoolSessionController extends Controller
         if (! $schoolSession->isClosed()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Cette session n\'est pas cloturee.',
+                'message' => 'Cette session n\'est pas cloturée.',
             ], 422);
         }
 

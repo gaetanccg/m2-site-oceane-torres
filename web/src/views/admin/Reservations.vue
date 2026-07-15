@@ -146,7 +146,7 @@
               </tr>
               <tr v-if="reservations.length === 0">
                 <td colspan="5" class="px-6 py-12 text-center text-gray-500">
-                  Aucune reservation trouvee
+                  Aucune reservation trouvée
                 </td>
               </tr>
             </tbody>
