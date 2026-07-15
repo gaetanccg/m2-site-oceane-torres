@@ -176,6 +176,17 @@ class PersonalDataLocator
             'query' => ['type' => $type, 'value' => $value],
             'summary' => $summary,
             'categories' => $categories,
+            // Ensembles d'ancres résolus — utilisés par l'effacement pour cibler
+            // précisément les lignes (jamais exposé comme critère de suppression aveugle).
+            'keys' => [
+                'emails' => $this->emails->values()->all(),
+                'phones' => $this->phones->values()->all(),
+                'user_ids' => $this->userIds->values()->all(),
+                'client_ids' => $this->clientIds->values()->all(),
+                'order_ids' => $this->orderIds->values()->all(),
+                'gallery_ids' => $this->galleryIds->values()->all(),
+                'reservation_ids' => $this->reservationIds->values()->all(),
+            ],
         ];
     }
 

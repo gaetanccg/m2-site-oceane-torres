@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\Privacy\ErasePrivacyRequest;
 use App\Http\Requests\Admin\Privacy\SearchPrivacyRequest;
 use App\Jobs\GeneratePrivacyExportJob;
 use App\Models\PrivacyAuditLog;
 use App\Models\PrivacyExport;
+use App\Services\Privacy\PersonalDataEraser;
 use App\Services\Privacy\PersonalDataLocator;
 use App\Services\Privacy\PrivacyAuditLogger;
 use Illuminate\Http\JsonResponse;
@@ -140,6 +142,34 @@ class PrivacyController extends Controller
             'error_message' => $export->error_message,
             'created_at' => $export->created_at?->toIso8601String(),
         ];
+    }
+
+    /**
+     * Aperçu d'effacement : ce qui sera anonymisé / supprimé / conservé.
+     */
+    public function erasurePreview(SearchPrivacyRequest $request, PersonalDataEraser $eraser): JsonResponse
+    {
+        $data = $eraser->preview($request->input('type'), $request->input('value'));
+
+        return response()->json(array_merge(['success' => true], $data));
+    }
+
+    /**
+     * Exécute l'effacement / anonymisation (confirmation tapée requise) et l'audite.
+     */
+    public function erase(ErasePrivacyRequest $request, PersonalDataEraser $eraser): JsonResponse
+    {
+        $type = $request->input('type');
+        $value = $request->input('value');
+
+        $result = $eraser->erase($type, $value);
+
+        $this->audit->record('erasure', $type, $value, $result, $request);
+
+        return response()->json([
+            'success' => true,
+            'result' => $result,
+        ]);
     }
 
     /**

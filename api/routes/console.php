@@ -88,3 +88,12 @@ Schedule::call(function () {
         ]);
     }
 })->weekly()->sundays()->at('04:00')->name('rgpd-data-retention-cleanup');
+
+// Monthly RGPD: purge accounting data (orders/invoices/payments) past the legal
+// retention period. Complements the erasure feature — these records are RETAINED
+// during the retention window then removed here. Adjust --years to the confirmed
+// legal duration (default 10 years, Code de commerce).
+Schedule::command('privacy:purge-expired', ['--years' => 10])
+    ->monthlyOn(1, '05:00')
+    ->name('privacy-purge-expired')
+    ->withoutOverlapping();

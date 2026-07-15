@@ -202,6 +202,8 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::post('/privacy/export-subject', [PrivacyController::class, 'exportSubject']);
     Route::get('/privacy/exports/{export}', [PrivacyController::class, 'exportStatus']);
     Route::get('/privacy/exports/{export}/download', [PrivacyController::class, 'downloadExport']);
+    Route::get('/privacy/erasure/preview', [PrivacyController::class, 'erasurePreview']);
+    Route::post('/privacy/erasure', [PrivacyController::class, 'erase']);
 
     // Logs applicatifs
     Route::get('/logs', [LogController::class, 'index']);
