@@ -105,7 +105,6 @@ web/yarn.lock
 tmp/
 temp/
 cache/
-/docs/MIGRATION-MINIO.md
 
 # Reference documents (contain secrets)
 PROJECT_REFERENCE.md
@@ -120,4 +119,3 @@ PROJECT_REFERENCE_MVP.md
 
 .claude
 *.tar.gz
-/docs

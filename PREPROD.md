@@ -7,6 +7,10 @@ dédié pour le front.
 - **Front** : `https://preprod.oceanetorresphotographie.fr` (Render, branche `develop`)
 - **API** : `https://preprod-api.oceanetorresphotographie.fr` (NAS, port `8081`)
 
+> **Placeholders** : les valeurs propres à l'infra sont volontairement masquées et
+> notées `<NAS_IP>`, `<NAS_USER>`, `<TUNNEL_ID>`, `<SUPABASE_PROD_REF>`,
+> `<SUPABASE_PREPROD_REF>`. Remplace-les par tes valeurs réelles (jamais commitées).
+
 ---
 
 ## 1. Ce qui change vs la prod
@@ -20,7 +24,7 @@ dédié pour le front.
 | Containers         | `api-php`, `api-queue`, …              | `api-php-preprod`, `api-queue-preprod`, …     |
 | Projet compose     | `oceane-api-prod`                      | `oceane-api-preprod`                          |
 | Réseau Docker      | `oceane-network`                       | `oceane-network-preprod`                      |
-| Base de données    | Supabase prod (`ekhlybdoblhjigpnpbff`) | **Supabase dédié preprod** (à créer)          |
+| Base de données    | Supabase prod (`<SUPABASE_PROD_REF>`)  | **Supabase dédié preprod** (à créer)          |
 | Bucket MinIO       | `galleries`                            | **`galleries-preprod`** (même serveur MinIO)  |
 | Emails             | Brevo prod                             | Brevo (partagé par défaut, dédié recommandé)  |
 | SumUp              | `live` (`sup_sk_…` marchand prod)      | **`sandbox`** (clés déjà dans `api/.env`)     |
@@ -61,7 +65,7 @@ sandbox, Brevo, APP_KEY). Seules deux valeurs restent à compléter, marquées
 ## 3. Prérequis (une seule fois)
 
 ### 3.1 Base Supabase dédiée
-Projet preprod déjà créé : **`koimluuhjlhslwlxiesb`** (eu-central-1). Les valeurs
+Projet preprod déjà créé : **`<SUPABASE_PREPROD_REF>`** (eu-central-1). Les valeurs
 sont pré-remplies dans `deploy/.env.preprod` ; il ne reste qu'à **coller le mot
 de passe** du projet :
 
@@ -69,7 +73,7 @@ de passe** du projet :
 DB_HOST=aws-0-eu-central-1.pooler.supabase.com
 DB_PORT=6543                       # transaction pooler (comme la prod) ; 5432 = session pooler
 DB_DATABASE=postgres
-DB_USERNAME=postgres.koimluuhjlhslwlxiesb
+DB_USERNAME=postgres.<SUPABASE_PREPROD_REF>
 DB_PASSWORD="<mot de passe du projet Supabase preprod>"   # ⚠️ à compléter
 ```
 
@@ -107,7 +111,7 @@ un marchand sandbox différent.
 > certificat, sauf à payer l'Advanced Certificate Manager.
 
 ### 3.6 Tunnel Cloudflare — ingress managé par le DASHBOARD
-⚠️ Le tunnel (`826dee89-…`) est **remotely-managed** : cloudflared récupère son
+⚠️ Le tunnel (`<TUNNEL_ID>`) est **remotely-managed** : cloudflared récupère son
 ingress depuis le dashboard Cloudflare, **pas** depuis `/etc/cloudflared/config.yml`
 (signe dans les logs : `Updated to new configuration … version=N`). Éditer le
 fichier local n'a **aucun effet**.
@@ -133,7 +137,7 @@ La preprod suit `develop`, la prod suit `main` → **clone distinct** obligatoir
 
 ```bash
 # 1. SSH sur le NAS
-ssh Gaetan-Admin@192.168.1.49
+ssh <NAS_USER>@<NAS_IP>
 
 # 2. Cloner dans un dossier DISTINCT de la prod, sur develop
 cd /volume1/docker
@@ -154,7 +158,7 @@ chmod +x deploy/deploy-preprod.sh
 
 ### Mises à jour courantes
 ```bash
-ssh Gaetan-Admin@192.168.1.49
+ssh <NAS_USER>@<NAS_IP>
 cd /volume1/docker/oceane-api-preprod
 ./deploy/deploy-preprod.sh          # git pull origin develop + build + migrate + cache
 ```
