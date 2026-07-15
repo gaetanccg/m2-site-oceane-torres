@@ -647,6 +647,15 @@ export interface PrivacySearchResult {
     categories: Record<string, Array<Record<string, unknown>>>
 }
 
+export interface PrivacyErasurePreview {
+    success?: boolean
+    query: { type: string; value: string }
+    to_anonymize: Record<string, number>
+    to_delete: Record<string, number>
+    retained_legal: Record<string, number>
+    notes?: Record<string, string>
+}
+
 export interface PrivacyExportInfo {
     id: string
     type: string

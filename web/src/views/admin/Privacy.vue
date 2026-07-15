@@ -66,14 +66,14 @@
                     <!-- Résumé + export ciblé -->
                     <div class="flex items-center justify-between gap-4">
                         <h3 class="text-sm font-semibold text-gray-900">Résultats</h3>
-                        <Button
-                            v-if="!isEmptyResult"
-                            variant="secondary"
-                            :disabled="isExporting"
-                            @click="exportSubject"
-                        >
-                            {{ isExporting ? 'Génération…' : 'Exporter cette personne (ZIP)' }}
-                        </Button>
+                        <div v-if="!isEmptyResult" class="flex gap-2">
+                            <Button variant="secondary" :disabled="isExporting" @click="exportSubject">
+                                {{ isExporting ? 'Génération…' : 'Exporter cette personne (ZIP)' }}
+                            </Button>
+                            <Button variant="danger" @click="openErasure">
+                                Supprimer / anonymiser
+                            </Button>
+                        </div>
                     </div>
                     <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
                         <StatCard
@@ -161,6 +161,55 @@
                     </table>
                 </div>
             </div>
+
+            <!-- Modale d'effacement / anonymisation -->
+            <Modal v-model="showErasureModal" title="Supprimer / anonymiser les données" size="lg">
+                <div v-if="erasurePreview" class="space-y-4 text-sm">
+                    <p class="text-gray-600">
+                        Cible : <span class="font-medium font-mono">{{ erasurePreview.query.value }}</span>
+                    </p>
+                    <div class="grid sm:grid-cols-3 gap-3">
+                        <div class="rounded-lg border border-red-100 bg-red-50 p-3">
+                            <p class="font-semibold text-red-700 mb-1">Supprimé</p>
+                            <ul class="text-red-700/80 space-y-0.5">
+                                <li v-for="(n, k) in erasurePreview.to_delete" :key="k">{{ categoryLabel(k) }} : {{ n }}</li>
+                            </ul>
+                        </div>
+                        <div class="rounded-lg border border-amber-100 bg-amber-50 p-3">
+                            <p class="font-semibold text-amber-700 mb-1">Anonymisé</p>
+                            <ul class="text-amber-700/80 space-y-0.5">
+                                <li v-for="(n, k) in erasurePreview.to_anonymize" :key="k">{{ categoryLabel(k) }} : {{ n }}</li>
+                            </ul>
+                        </div>
+                        <div class="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                            <p class="font-semibold text-gray-700 mb-1">Conservé (légal)</p>
+                            <ul class="text-gray-600 space-y-0.5">
+                                <li v-for="(n, k) in erasurePreview.retained_legal" :key="k">{{ categoryLabel(k) }} : {{ n }}</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-500">
+                        Les photos de galeries ne sont pas supprimées (accès anonymisé). Les factures/paiements
+                        sont conservés au titre de l'obligation comptable. Action irréversible.
+                    </p>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            Pour confirmer, tapez : <span class="font-mono">{{ erasurePreview.query.value }}</span>
+                        </label>
+                        <input
+                            v-model="confirmText"
+                            type="text"
+                            class="w-full rounded-lg border-gray-300 text-sm focus:border-red-500 focus:ring-red-500"
+                        />
+                    </div>
+                    <div class="flex justify-end gap-2 pt-2">
+                        <Button variant="ghost" @click="showErasureModal = false">Annuler</Button>
+                        <Button variant="danger" :disabled="!canConfirmErase || isErasing" @click="confirmErase">
+                            {{ isErasing ? 'Suppression…' : 'Confirmer' }}
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     </div>
 </template>
@@ -169,11 +218,12 @@
 import { computed, onBeforeUnmount, ref } from 'vue'
 import AdminHeader from '@/components/admin/AdminHeader.vue'
 import Button from '@/components/admin/ui/Button.vue'
+import Modal from '@/components/admin/ui/Modal.vue'
 import StatCard from '@/components/admin/ui/StatCard.vue'
 import StatusBadge from '@/components/admin/ui/StatusBadge.vue'
 import { adminApi } from '@/services/adminApi'
 import { useToast } from '@/composables/useToast'
-import type { PrivacyAuditEntry, PrivacyExportInfo, PrivacySearchResult } from '@/types/admin'
+import type { PrivacyAuditEntry, PrivacyErasurePreview, PrivacyExportInfo, PrivacySearchResult } from '@/types/admin'
 
 const toast = useToast()
 
@@ -210,6 +260,7 @@ const exportStatusLabel = computed(() =>
 
 const CATEGORY_LABELS: Record<string, string> = {
     accounts: 'Comptes',
+    users: 'Comptes',
     clients: 'Clients',
     orders: 'Commandes',
     order_items: 'Lignes de commande',
@@ -222,7 +273,18 @@ const CATEGORY_LABELS: Record<string, string> = {
     galleries: 'Galeries',
     gift_cards: 'Bons cadeaux',
     download_logs: 'Logs de téléchargement',
+    photo_uploads: 'Uploads',
+    notifications: 'Notifications',
 }
+
+const showErasureModal = ref(false)
+const erasurePreview = ref<PrivacyErasurePreview | null>(null)
+const confirmText = ref('')
+const isErasing = ref(false)
+
+const canConfirmErase = computed(
+    () => !!erasurePreview.value && confirmText.value === erasurePreview.value.query.value,
+)
 
 const placeholder = computed(() => {
     if (searchType.value === 'email') return 'client@exemple.fr'
@@ -325,6 +387,33 @@ async function pollExport() {
     } catch {
         stopExportPolling()
         toast.error('Erreur', "Le suivi de l'export a échoué.")
+    }
+}
+
+async function openErasure() {
+    if (!searchValue.value) return
+    try {
+        erasurePreview.value = await adminApi.erasurePreviewPrivacy(searchType.value, searchValue.value.trim())
+        confirmText.value = ''
+        showErasureModal.value = true
+    } catch {
+        toast.error('Erreur', "Impossible de charger l'aperçu de suppression.")
+    }
+}
+
+async function confirmErase() {
+    if (!erasurePreview.value || !canConfirmErase.value) return
+    isErasing.value = true
+    try {
+        const { type, value } = erasurePreview.value.query
+        await adminApi.erasePrivacy(type, value, confirmText.value)
+        toast.success('Terminé', 'Les données ont été supprimées / anonymisées.')
+        showErasureModal.value = false
+        await runSearch()
+    } catch {
+        toast.error('Erreur', "L'effacement a échoué.")
+    } finally {
+        isErasing.value = false
     }
 }
 

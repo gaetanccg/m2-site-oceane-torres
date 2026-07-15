@@ -1,5 +1,5 @@
 import { BaseAdminService } from './baseAdmin'
-import type { PrivacyAuditEntry, PrivacyExportInfo, PrivacySearchResult } from '@/types/admin'
+import type { PrivacyAuditEntry, PrivacyErasurePreview, PrivacyExportInfo, PrivacySearchResult } from '@/types/admin'
 
 class PrivacyApiService extends BaseAdminService {
     /** Recherche « personne concernée » par email / téléphone / n° de commande. */
@@ -29,6 +29,20 @@ class PrivacyApiService extends BaseAdminService {
     /** URL de téléchargement du ZIP (navigation directe, auth par cookie de session). */
     getExportDownloadUrl(id: string): string {
         return `${this.baseUrl}/admin/privacy/exports/${id}/download`
+    }
+
+    /** Aperçu d'effacement : ce qui sera anonymisé / supprimé / conservé. */
+    async erasurePreview(type: string, value: string): Promise<PrivacyErasurePreview> {
+        const params = new URLSearchParams({ type, value })
+        return this.adminRequest(`/admin/privacy/erasure/preview?${params.toString()}`)
+    }
+
+    /** Exécute l'effacement (confirmation tapée = valeur ciblée). */
+    async erase(type: string, value: string, confirm: string): Promise<{ success: boolean; result: Record<string, unknown> }> {
+        return this.adminRequest('/admin/privacy/erasure', {
+            method: 'POST',
+            body: JSON.stringify({ type, value, confirm }),
+        })
     }
 
     /** Journal d'audit RGPD (paginé). */

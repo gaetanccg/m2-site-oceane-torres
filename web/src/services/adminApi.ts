@@ -130,6 +130,8 @@ export const adminApi = {
     getPrivacyAudit: privacyApi.getAudit.bind(privacyApi),
     exportAllPrivacy: privacyApi.exportAll.bind(privacyApi),
     exportSubjectPrivacy: privacyApi.exportSubject.bind(privacyApi),
+    erasurePreviewPrivacy: privacyApi.erasurePreview.bind(privacyApi),
+    erasePrivacy: privacyApi.erase.bind(privacyApi),
     getPrivacyExport: privacyApi.getExport.bind(privacyApi),
     getPrivacyExportDownloadUrl: privacyApi.getExportDownloadUrl.bind(privacyApi),
 
