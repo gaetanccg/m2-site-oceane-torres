@@ -619,3 +619,52 @@ export interface SelectOption {
     value: string | number
     label: string
 }
+
+// ============================================================================
+// RGPD / Données personnelles
+// ============================================================================
+
+export interface PrivacySummary {
+    accounts: number
+    clients: number
+    orders: number
+    order_items: number
+    payments: number
+    invoices: number
+    reservations: number
+    client_forms: number
+    carts: number
+    contact_messages: number
+    galleries: number
+    gift_cards: number
+    download_logs: number
+}
+
+export interface PrivacySearchResult {
+    success: boolean
+    query: { type: string; value: string }
+    summary: PrivacySummary
+    categories: Record<string, Array<Record<string, unknown>>>
+}
+
+export interface PrivacyExportInfo {
+    id: string
+    type: string
+    status: 'pending' | 'processing' | 'completed' | 'failed'
+    total_items: number
+    processed_items: number
+    file_size_bytes: number | null
+    error_message: string | null
+    created_at: string
+}
+
+export interface PrivacyAuditEntry {
+    id: string
+    action: string
+    subject_type: string | null
+    subject_value: string | null
+    affected: Record<string, unknown> | null
+    ip_address: string | null
+    actor: { id: string; name: string; email: string } | null
+    created_at: string
+}

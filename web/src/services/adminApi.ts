@@ -14,6 +14,8 @@ import { galleryApi } from './admin/galleryApi'
 import { giftCodeApi } from './admin/giftCodeApi'
 import { orderApi } from './admin/orderApi'
 import { schoolSessionApi } from './admin/schoolSessionApi'
+import { privacyApi } from './admin/privacyApi'
+import { logApi } from './admin/logApi'
 
 export { AdminApiError } from './admin/baseAdmin'
 
@@ -122,6 +124,18 @@ export const adminApi = {
     createSchoolSessionExport: schoolSessionApi.createSchoolSessionExport.bind(schoolSessionApi),
     getLatestSchoolSessionExport: schoolSessionApi.getLatestSchoolSessionExport.bind(schoolSessionApi),
     getSchoolSessionExportDownloadUrl: schoolSessionApi.getSchoolSessionExportDownloadUrl.bind(schoolSessionApi),
+
+    // RGPD / Données personnelles
+    searchPrivacy: privacyApi.search.bind(privacyApi),
+    getPrivacyAudit: privacyApi.getAudit.bind(privacyApi),
+    exportAllPrivacy: privacyApi.exportAll.bind(privacyApi),
+    exportSubjectPrivacy: privacyApi.exportSubject.bind(privacyApi),
+    getPrivacyExport: privacyApi.getExport.bind(privacyApi),
+    getPrivacyExportDownloadUrl: privacyApi.getExportDownloadUrl.bind(privacyApi),
+
+    // Logs applicatifs
+    getLogs: logApi.getLogs.bind(logApi),
+    getLogsDownloadUrl: logApi.getDownloadUrl.bind(logApi),
 }
 
 export default adminApi
