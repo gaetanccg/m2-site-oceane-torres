@@ -59,6 +59,8 @@ const AdminEventGalleries = () => import('@/views/admin/EventGalleries.vue')
 const AdminOrders = () => import('@/views/admin/Orders.vue')
 const AdminSchoolSessions = () => import('@/views/admin/SchoolSessions.vue')
 const AdminSchoolSessionDetail = () => import('@/views/admin/SchoolSessionDetail.vue')
+const AdminPrivacy = () => import('@/views/admin/Privacy.vue')
+const AdminLogs = () => import('@/views/admin/Logs.vue')
 
 export const routes: RouteRecordRaw[] = [
     {
@@ -312,6 +314,18 @@ export const routes: RouteRecordRaw[] = [
                 name: 'admin-school-session-detail',
                 component: AdminSchoolSessionDetail,
                 meta: {title: 'Detail Shooting'}
+            },
+            {
+                path: 'privacy',
+                name: 'admin-privacy',
+                component: AdminPrivacy,
+                meta: {title: 'Données personnelles (RGPD)'}
+            },
+            {
+                path: 'logs',
+                name: 'admin-logs',
+                component: AdminLogs,
+                meta: {title: 'Logs applicatifs'}
             },
         ]
     },

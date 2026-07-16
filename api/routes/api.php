@@ -5,8 +5,10 @@ use App\Http\Controllers\Api\Admin\ClientController;
 use App\Http\Controllers\Api\Admin\DashboardController;
 use App\Http\Controllers\Api\Admin\EventCategoryController;
 use App\Http\Controllers\Api\Admin\GiftCodeController;
+use App\Http\Controllers\Api\Admin\LogController;
 use App\Http\Controllers\Api\Admin\NotificationController;
 use App\Http\Controllers\Api\Admin\OrderController as AdminOrderController;
+use App\Http\Controllers\Api\Admin\PrivacyController;
 use App\Http\Controllers\Api\Admin\SchoolSessionController;
 use App\Http\Controllers\Api\Admin\UserController;
 use App\Http\Controllers\Api\AuthController;
@@ -192,6 +194,21 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::apiResource('clients', ClientController::class);
     Route::get('/clients/{client}/reservations', [ClientController::class, 'reservations']);
     Route::post('/clients/{client}/gdpr-export', [ClientController::class, 'gdprExport']);
+
+    // RGPD / Données personnelles
+    Route::get('/privacy/search', [PrivacyController::class, 'search']);
+    Route::get('/privacy/audit', [PrivacyController::class, 'audit']);
+    Route::post('/privacy/export-all', [PrivacyController::class, 'exportAll']);
+    Route::post('/privacy/export-subject', [PrivacyController::class, 'exportSubject']);
+    Route::get('/privacy/exports/{export}', [PrivacyController::class, 'exportStatus']);
+    Route::get('/privacy/exports/{export}/download', [PrivacyController::class, 'downloadExport']);
+    Route::get('/privacy/erasure/preview', [PrivacyController::class, 'erasurePreview']);
+    Route::post('/privacy/erasure', [PrivacyController::class, 'erase']);
+
+    // Logs applicatifs
+    Route::get('/logs', [LogController::class, 'index']);
+    Route::get('/logs/download', [LogController::class, 'download']);
+    Route::delete('/logs', [LogController::class, 'clear']);
 
     // Prestations management
     Route::get('/prestations', [PrestationController::class, 'adminIndex']);
