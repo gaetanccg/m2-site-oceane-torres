@@ -18,6 +18,11 @@ class LogApiService extends BaseAdminService {
     getDownloadUrl(): string {
         return `${this.baseUrl}/admin/logs/download`
     }
+
+    /** Vide le fichier de log applicatif (laravel.log). */
+    async clearLogs(): Promise<{ success: boolean; message: string }> {
+        return this.adminRequest('/admin/logs', { method: 'DELETE' })
+    }
 }
 
 export const logApi = new LogApiService()

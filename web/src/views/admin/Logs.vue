@@ -27,6 +27,9 @@
                 <a :href="downloadUrl" class="text-sm text-gold hover:underline self-center whitespace-nowrap">
                     Télécharger le fichier
                 </a>
+                <Button variant="danger" :disabled="isClearing" @click="showClearModal = true">
+                    Vider les logs
+                </Button>
             </div>
 
             <p v-if="truncated" class="text-xs text-amber-600">
@@ -43,6 +46,22 @@
 </span></pre>
             </div>
         </div>
+
+        <Modal v-model="showClearModal" title="Vider les logs applicatifs">
+            <div class="space-y-4">
+                <p class="text-sm text-gray-600">
+                    Le contenu de <code class="text-xs">laravel.log</code> sera
+                    définitivement effacé. Pense à <strong>télécharger le fichier</strong>
+                    avant si tu veux en garder une copie.
+                </p>
+                <div class="flex justify-end gap-2">
+                    <Button variant="ghost" :disabled="isClearing" @click="showClearModal = false">Annuler</Button>
+                    <Button variant="danger" :disabled="isClearing" @click="clearLogs">
+                        {{ isClearing ? 'Suppression…' : 'Vider' }}
+                    </Button>
+                </div>
+            </div>
+        </Modal>
     </div>
 </template>
 
@@ -50,6 +69,7 @@
 import { computed, onMounted, ref } from 'vue'
 import AdminHeader from '@/components/admin/AdminHeader.vue'
 import Button from '@/components/admin/ui/Button.vue'
+import Modal from '@/components/admin/ui/Modal.vue'
 import { adminApi } from '@/services/adminApi'
 import { useToast } from '@/composables/useToast'
 
@@ -61,6 +81,8 @@ const search = ref('')
 const isLoading = ref(false)
 const lines = ref<string[]>([])
 const truncated = ref(false)
+const showClearModal = ref(false)
+const isClearing = ref(false)
 
 const downloadUrl = computed(() => adminApi.getLogsDownloadUrl())
 
@@ -81,6 +103,20 @@ async function fetchLogs() {
         toast.error('Erreur', 'Impossible de charger les logs.')
     } finally {
         isLoading.value = false
+    }
+}
+
+async function clearLogs() {
+    isClearing.value = true
+    try {
+        await adminApi.clearLogs()
+        showClearModal.value = false
+        toast.success('Logs vidés', 'Le fichier laravel.log a été vidé.')
+        await fetchLogs()
+    } catch {
+        toast.error('Erreur', 'Impossible de vider les logs.')
+    } finally {
+        isClearing.value = false
     }
 }
 

@@ -95,4 +95,28 @@ class LogViewerTest extends TestCase
             ->assertOk()
             ->assertHeader('content-disposition');
     }
+
+    public function test_clear_requires_admin(): void
+    {
+        $this->deleteJson('/api/admin/logs')->assertStatus(401);
+
+        $this->actingAsClient();
+        $this->deleteJson('/api/admin/logs')->assertStatus(403);
+    }
+
+    public function test_clear_empties_the_log_file(): void
+    {
+        $this->actingAsAdmin();
+        $this->seedLog();
+
+        $this->deleteJson('/api/admin/logs')
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        // Le fichier ne contient plus les anciennes lignes ; seule la ligne de
+        // traçabilité de l'action (re-loggée aussitôt) peut subsister.
+        $content = file_get_contents($this->logPath);
+        $this->assertStringNotContainsString('boom happened', $content);
+        $this->assertStringNotContainsString('hello world', $content);
+    }
 }

@@ -138,6 +138,7 @@ export const adminApi = {
     // Logs applicatifs
     getLogs: logApi.getLogs.bind(logApi),
     getLogsDownloadUrl: logApi.getDownloadUrl.bind(logApi),
+    clearLogs: logApi.clearLogs.bind(logApi),
 }
 
 export default adminApi

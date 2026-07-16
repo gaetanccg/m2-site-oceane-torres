@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
@@ -75,5 +76,30 @@ class LogController extends Controller
         }
 
         return response()->download($path, 'laravel.log');
+    }
+
+    /**
+     * Vide le fichier de log applicatif. On tronque le fichier plutôt que de le
+     * supprimer (évite les soucis de permissions à la recréation par le logger).
+     * L'action elle-même est immédiatement re-tracée pour garder qui/quand/IP.
+     */
+    public function clear(Request $request): JsonResponse
+    {
+        $path = storage_path('logs/laravel.log');
+
+        if (is_file($path)) {
+            file_put_contents($path, '');
+        }
+
+        Log::warning('Logs applicatifs vidés depuis l\'administration', [
+            'admin_id' => $request->user()?->id,
+            'admin_email' => $request->user()?->email,
+            'ip' => $request->ip(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Logs vidés.',
+        ]);
     }
 }

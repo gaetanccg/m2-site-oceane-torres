@@ -208,6 +208,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     // Logs applicatifs
     Route::get('/logs', [LogController::class, 'index']);
     Route::get('/logs/download', [LogController::class, 'download']);
+    Route::delete('/logs', [LogController::class, 'clear']);
 
     // Prestations management
     Route::get('/prestations', [PrestationController::class, 'adminIndex']);

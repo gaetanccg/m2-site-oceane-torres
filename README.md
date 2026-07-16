@@ -219,6 +219,7 @@ Vue : `/admin/logs`. Visionneuse de `storage/logs/laravel.log` (tail borné + fi
 |---------|-----------------------------|------------------------------------------|
 | GET     | `/api/admin/logs`           | Dernières lignes (filtres `level`, `search`, `limit`) |
 | GET     | `/api/admin/logs/download`  | Fichier de log brut                      |
+| DELETE  | `/api/admin/logs`           | Vide `laravel.log` (action tracée dans le log) |
 
 ---
 
