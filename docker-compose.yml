@@ -43,6 +43,9 @@ services:
     volumes:
       - ./api:/var/www
       - ./docker/php.ini:/usr/local/etc/php/conf.d/custom.ini
+      - ./docker/www.conf:/usr/local/etc/php-fpm.d/zz-custom.conf
+      # Le volume garantit l'existence du dossier attendu par le slow log du pool.
+      - php-logs:/var/log/php
     environment:
       # APP
       - APP_NAME=${APP_NAME}
@@ -84,6 +87,19 @@ services:
       # CORS & SANCTUM
       - CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000,http://localhost:4173
       - SANCTUM_STATEFUL_DOMAINS=localhost,localhost:5173,127.0.0.1,127.0.0.1:8000
+      # SUPERVISION
+      - APP_VERSION=${APP_VERSION:-dev}
+      - HEALTH_CHECK_TOKEN=${HEALTH_CHECK_TOKEN:-}
+      - MAIL_ADMIN_EMAIL=${MAIL_ADMIN_EMAIL:-}
+      - SUPERVISION_ALERTS_ENABLED=${SUPERVISION_ALERTS_ENABLED:-true}
+      - SUPERVISION_ALERT_EMAIL=${SUPERVISION_ALERT_EMAIL:-}
+      - SENTRY_DSN=${SENTRY_DSN:-}
+    healthcheck:
+      test: [ "CMD-SHELL", "(SCRIPT_NAME=/ping SCRIPT_FILENAME=/ping REQUEST_METHOD=GET cgi-fcgi -bind -connect 127.0.0.1:9000 2>/dev/null | grep -q pong) || php -r 'exit(@fsockopen(\"127.0.0.1\", 9000) ? 0 : 1);'" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     networks:
       - app-network
 
@@ -143,10 +159,102 @@ services:
       - MAIL_ENCRYPTION=${MAIL_ENCRYPTION}
       - MAIL_FROM_ADDRESS=${MAIL_FROM_ADDRESS}
       - MAIL_FROM_NAME=${MAIL_FROM_NAME}
+      # SUPERVISION
+      - APP_VERSION=${APP_VERSION:-dev}
+      - HEALTH_CHECK_TOKEN=${HEALTH_CHECK_TOKEN:-}
+      - MAIL_ADMIN_EMAIL=${MAIL_ADMIN_EMAIL:-}
+      - SUPERVISION_ALERTS_ENABLED=${SUPERVISION_ALERTS_ENABLED:-true}
+      - SUPERVISION_ALERT_EMAIL=${SUPERVISION_ALERT_EMAIL:-}
+      - SENTRY_DSN=${SENTRY_DSN:-}
     # max-time=300 forces the worker to exit every 5min so Docker restarts it
     # (restart: unless-stopped). This auto-reloads job class code after any edit,
     # which a long-running `queue:work` would otherwise keep cached in memory.
     command: php artisan queue:work --sleep=3 --tries=3 --max-time=300
+    healthcheck:
+      test: [ "CMD-SHELL", "php artisan supervision:heartbeat:check queue --max-age=600" ]
+      interval: 60s
+      timeout: 20s
+      retries: 3
+      start_period: 60s
+    depends_on:
+      - laravel
+    networks:
+      - app-network
+
+  # ----------------------------
+  # Scheduler (Cron Jobs)
+  # ----------------------------
+  scheduler:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+      target: development
+    container_name: scheduler
+    restart: unless-stopped
+    working_dir: /var/www
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 1.1.1.1
+    volumes:
+      - ./api:/var/www
+      - ./docker/php.ini:/usr/local/etc/php/conf.d/custom.ini
+    environment:
+      # APP
+      - APP_NAME=${APP_NAME}
+      - APP_ENV=${APP_ENV:-local}
+      - APP_KEY=${APP_KEY}
+      - APP_DEBUG=${APP_DEBUG:-true}
+      - APP_URL=${APP_URL:-http://localhost:8000}
+      - APP_LOCALE=fr
+      - APP_TIMEZONE=Europe/Paris
+      # DATABASE
+      - DB_CONNECTION=pgsql
+      - DB_HOST=${DB_HOST_DOCKER}
+      - DB_PORT=${DB_PORT_DOCKER}
+      - DB_DATABASE=${DB_DATABASE}
+      - DB_USERNAME=${DB_USERNAME_DOCKER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      # SESSION & CACHE
+      - SESSION_DRIVER=${SESSION_DRIVER}
+      - SESSION_LIFETIME=${SESSION_LIFETIME}
+      - CACHE_STORE=${CACHE_STORE}
+      - QUEUE_CONNECTION=${QUEUE_CONNECTION}
+      # STORAGE
+      - FILESYSTEM_DISK=${FILESYSTEM_DISK}
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
+      - MINIO_BUCKET=${MINIO_BUCKET}
+      - MINIO_REGION=${MINIO_REGION}
+      - MINIO_USE_PATH_STYLE=${MINIO_USE_PATH_STYLE}
+      # MAIL
+      - MAIL_MAILER=${MAIL_MAILER}
+      - MAIL_HOST=${MAIL_HOST}
+      - MAIL_PORT=${MAIL_PORT}
+      - MAIL_USERNAME=${MAIL_USERNAME}
+      - MAIL_PASSWORD=${MAIL_PASSWORD}
+      - MAIL_ENCRYPTION=${MAIL_ENCRYPTION}
+      - MAIL_FROM_ADDRESS=${MAIL_FROM_ADDRESS}
+      - MAIL_FROM_NAME=${MAIL_FROM_NAME}
+      # SUPERVISION
+      - APP_VERSION=${APP_VERSION:-dev}
+      - HEALTH_CHECK_TOKEN=${HEALTH_CHECK_TOKEN:-}
+      - MAIL_ADMIN_EMAIL=${MAIL_ADMIN_EMAIL:-}
+      - SUPERVISION_ALERTS_ENABLED=${SUPERVISION_ALERTS_ENABLED:-true}
+      - SUPERVISION_ALERT_EMAIL=${SUPERVISION_ALERT_EMAIL:-}
+      - SENTRY_DSN=${SENTRY_DSN:-}
+    command: >
+      sh -c "
+        php artisan supervision:heartbeat scheduler &&
+        php artisan schedule:work
+      "
+    healthcheck:
+      test: [ "CMD-SHELL", "php artisan supervision:heartbeat:check scheduler --max-age=900" ]
+      interval: 60s
+      timeout: 20s
+      retries: 3
+      start_period: 60s
     depends_on:
       - laravel
     networks:
@@ -164,6 +272,14 @@ services:
     volumes:
       - ./api/public:/var/www/public:ro
       - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - nginx-logs:/var/log/nginx
+    healthcheck:
+      # Route de liveness, jamais /api/health (503 en mode dégradé).
+      test: [ "CMD-SHELL", "wget -q -O - http://127.0.0.1/api/health/live | grep -q '\"status\":\"ok\"'" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     depends_on:
       - laravel
     networks:
@@ -222,6 +338,10 @@ services:
 # ----------------------------
 # Networks
 # ----------------------------
+volumes:
+  nginx-logs:
+  php-logs:
+
 networks:
   app-network:
     driver: bridge

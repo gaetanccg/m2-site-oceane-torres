@@ -4,9 +4,11 @@
 FROM php:8.4-fpm-alpine AS base
 
 # Install system dependencies
+# fcgi : cgi-fcgi, requis par le healthcheck php-fpm (cf. deploy/docker/www.conf)
 RUN apk add --no-cache \
     git \
     curl \
+    fcgi \
     libpng-dev \
     libjpeg-turbo-dev \
     freetype-dev \
