@@ -10,6 +10,8 @@ autoportant et pensé pour rester utile sur un clone propre du repo.
 | [plan-rgpd-admin.md](plan-rgpd-admin.md) | RGPD depuis l'admin : recherche/export/effacement par personne, carte de traitement (conserver/anonymiser/supprimer), audit, purge de rétention. |
 | [deploy-improve-photo-upload.md](deploy-improve-photo-upload.md) | Déploiement sur le NAS : pièges de configuration (pooler Postgres `6543`, rechargement des workers), vérifications post-déploiement. |
 | [preprod-runbook.md](preprod-runbook.md) | Preprod : pièges réellement rencontrés (SSL, tunnel dashboard-managed, Compose V2, MinIO) et commandes d'exploitation. Complément de [`../PREPROD.md`](../PREPROD.md). |
+| [supervision.md](supervision.md) | Supervision et alerte : périmètre, sondes et seuils, healthchecks Docker, alertes email, sondes externes (UptimeRobot / healthchecks.io / Sentry), procédure de réaction par type d'alerte. |
+| [audit-supervision.md](audit-supervision.md) | État des lieux de l'observabilité **avant** la mise en place ci-dessus : ce qui existait, ce qui manquait, les cinq angles morts identifiés. |
 
 ## Convention
 
