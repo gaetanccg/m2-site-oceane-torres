@@ -15,6 +15,7 @@
         "typecheck": "vue-tsc --noEmit"
     },
     "dependencies": {
+        "@sentry/vue": "^10.69.0",
         "pinia": "^3.0.4",
         "vue": "^3.4.38",
         "vue-router": "^4.6.3"
