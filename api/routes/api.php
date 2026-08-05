@@ -32,12 +32,22 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 | Health Check Routes
 |--------------------------------------------------------------------------
+|
+| Détail des trois niveaux d'exposition : docs/supervision.md §2.
+| `/health/tables` a été supprimée : elle publiait le schéma de la base.
+|
 */
 
-Route::get('/', [HealthController::class, 'index']);
-Route::get('/health', [HealthController::class, 'index']);
-Route::get('/health/database', [HealthController::class, 'database']);
-Route::get('/health/tables', [HealthController::class, 'tables']);
+Route::middleware('throttle:health')->group(function () {
+    Route::get('/', [HealthController::class, 'live']);
+    Route::get('/health', [HealthController::class, 'index']);
+    Route::get('/health/live', [HealthController::class, 'live']);
+
+    Route::middleware('health.token')->group(function () {
+        Route::get('/health/details', [HealthController::class, 'details']);
+        Route::get('/health/database', [HealthController::class, 'database']);
+    });
+});
 
 /*
 |--------------------------------------------------------------------------
@@ -186,6 +196,8 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index']);
     Route::get('/dashboard/stats', [DashboardController::class, 'stats']);
+
+    Route::get('/health', [HealthController::class, 'details']);
 
     // Users management
     Route::apiResource('users', UserController::class);
