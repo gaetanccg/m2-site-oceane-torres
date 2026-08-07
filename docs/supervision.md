@@ -30,6 +30,34 @@ Hors périmètre, assumé : les métriques système du NAS (CPU, RAM, disque), d
 couvertes par l'interface UGREEN, et la performance applicative détaillée (pas de
 budget quota pour du tracing).
 
+### 1.1 Cible de déploiement
+
+Le dispositif est **mis en place d'abord sur la preprod**. Le code est identique
+dans les deux environnements ; seuls changent les noms de conteneurs, le fichier
+compose et les URL. Toutes les commandes de ce document utilisent la colonne
+preprod : pour la production, retirer le suffixe `-preprod` et changer de
+fichier compose.
+
+| | Preprod (cible actuelle) | Production (plus tard) |
+|---|---|---|
+| API | `https://preprod-api.oceanetorresphotographie.fr` | `https://api.oceanetorresphotographie.fr` |
+| Front | `https://preprod.oceanetorresphotographie.fr` | `https://oceanetorresphotographie.fr` |
+| Port nginx (NAS) | `8081` | `8080` |
+| Compose | `deploy/docker-compose.preprod.yml` | `deploy/docker-compose.prod.yml` |
+| Environnement | `deploy/.env.preprod` | `deploy/.env.prod` |
+| Script de déploiement | `deploy/deploy-preprod.sh` | `deploy/deploy.sh` |
+| Conteneurs | `api-php-preprod`, `api-queue-preprod`, `api-scheduler-preprod`, `api-nginx-preprod` | `api-php`, `api-queue`, `api-scheduler`, `api-nginx` |
+| Branche Render | `develop` | `main` |
+
+Deux particularités de la preprod, traitées dans la configuration :
+
+- `APP_ENV` y vaut `production` (c'est voulu : on teste au plus près du réel).
+  Sans `SENTRY_ENVIRONMENT=preprod`, les erreurs de preprod arriveraient dans
+  Sentry étiquetées « production » et seraient indistinguables des vraies.
+- `LOG_LEVEL=debug` y produit beaucoup plus de volume qu'en production : la
+  rotation quotidienne (`LOG_STACK=daily`, rétention 14 jours) y est donc encore
+  plus nécessaire.
+
 ---
 
 ## 2. Architecture : trois niveaux de santé
@@ -86,6 +114,9 @@ affiche et ce qui déclenche un email ne peuvent donc pas diverger.
 
 ### 3.2 Healthchecks Docker (locaux, visibles dans `docker ps`)
 
+Noms de conteneurs donnés sans suffixe ; en preprod ils se terminent par
+`-preprod` (cf. §1.1).
+
 | Service | Sonde | Intervalle | Ce que ça détecte |
 |---------|-------|-----------|-------------------|
 | `api-php` | aller-retour FastCGI sur `/ping` (`cgi-fcgi`), repli sur test de socket | 30 s | pool PHP-FPM figé ou saturé |
@@ -112,8 +143,8 @@ conservateur pour ne pas crier au loup.
 
 | Sonde | Cible | Fréquence | Ce que ça détecte, et que rien d'autre ne détecte |
 |-------|-------|-----------|---------------------------------------------------|
-| UptimeRobot — API | `https://api.<domaine>/api/health`, mot-clé `ok` | 5 min | NAS éteint, tunnel Cloudflare coupé, box HS, **et** toute dégradation interne (503) |
-| UptimeRobot — site | `https://<domaine>/` | 5 min | panne Render / DNS |
+| UptimeRobot — API | `https://preprod-api.<domaine>/api/health`, mot-clé `ok` | 5 min | NAS éteint, tunnel Cloudflare coupé, box HS, **et** toute dégradation interne (503) |
+| UptimeRobot — front | `https://preprod.<domaine>/` | 5 min | panne Render / DNS |
 | healthchecks.io — purge RGPD | ping hebdomadaire | hebdo | la purge RGPD **ne s'exécute plus** |
 | healthchecks.io — réconciliation | ping toutes les 10 min | 10 min | la réconciliation des paiements ne tourne plus |
 
@@ -149,10 +180,10 @@ autant de pannes invisibles de l'extérieur, où l'API répond parfaitement.
 
 1. Créer un compte sur [uptimerobot.com](https://uptimerobot.com) avec l'adresse
    qui reçoit déjà les alertes (`MAIL_ADMIN_EMAIL`).
-2. **Moniteur API** — *Add New Monitor* :
+2. **Moniteur API preprod** — *Add New Monitor* :
    - Monitor Type : **Keyword**
-   - Friendly Name : `API Océane Torres`
-   - URL : `https://api.<domaine>/api/health`
+   - Friendly Name : `API Océane Torres (preprod)`
+   - URL : `https://preprod-api.oceanetorresphotographie.fr/api/health`
    - Keyword Type : **Exists**, Keyword : `"status":"ok"`
    - Monitoring Interval : **5 minutes**
    - Alert Contacts : l'email du compte
@@ -160,66 +191,82 @@ autant de pannes invisibles de l'extérieur, où l'API répond parfaitement.
 
    Le mot-clé plutôt que le simple code HTTP : un 503 **et** un `"status":"degraded"`
    renvoyé en 200 par erreur déclenchent tous les deux l'alerte. Double sécurité.
-3. **Moniteur site public** — *Add New Monitor* :
+3. **Moniteur front preprod** — *Add New Monitor* :
    - Monitor Type : **HTTP(s)**
-   - Friendly Name : `Site oceanetorresphotographie.fr`
-   - URL : `https://<domaine>/`
+   - Friendly Name : `Front Océane Torres (preprod)`
+   - URL : `https://preprod.oceanetorresphotographie.fr/`
    - Monitoring Interval : **5 minutes**
 4. Régler *My Settings* → **Alert when down for** : 2 vérifications consécutives,
    pour absorber un micro-incident réseau sans email inutile.
 5. Facultatif : activer la *Public Status Page* — utile comme preuve d'exploitation
    dans un dossier de certification.
 
-> Pendant un déploiement, `deploy.sh` fait un `down` puis un `up` : l'API est
-> réellement indisponible ~1 à 3 min et UptimeRobot alertera. Mettre le moniteur
-> en pause (bouton *Pause*) avant un déploiement planifié, ou accepter l'alerte
-> comme trace du déploiement.
+Le plan gratuit autorise 50 moniteurs : les deux moniteurs de production
+(`api.` et le domaine racine) se créeront à l'identique le jour de la promotion,
+sans toucher à ceux de preprod.
+
+> Pendant un déploiement, `deploy-preprod.sh` fait un `down` puis un `up` :
+> l'API est réellement indisponible ~1 à 3 min et UptimeRobot alertera. Mettre le
+> moniteur en pause (bouton *Pause*) avant un déploiement planifié, ou accepter
+> l'alerte comme trace du déploiement.
 
 ### 5.2 healthchecks.io — plan gratuit (20 checks)
 
 Détecte le **silence** : c'est l'absence de ping qui alerte.
 
 1. Créer un compte sur [healthchecks.io](https://healthchecks.io).
-2. Créer un check **« Purge RGPD hebdomadaire »** :
+2. Créer un check **« Purge RGPD hebdomadaire (preprod) »** :
    - Schedule : **Cron**, expression `0 4 * * 0` (dimanche 04:00), fuseau
      `Europe/Paris`
    - Grace Time : **2 heures** (marge si la purge est lente)
    - Copier l'URL de ping (`https://hc-ping.com/<uuid>`)
-3. Créer un check **« Réconciliation commandes »** :
+3. Créer un check **« Réconciliation commandes (preprod) »** :
    - Schedule : **Cron**, `*/10 * * * *`, fuseau `Europe/Paris`
    - Grace Time : **20 minutes**
-4. Renseigner les URL dans `deploy/.env.prod` :
+4. Renseigner les URL dans `deploy/.env.preprod` :
    ```dotenv
    HEALTHCHECKS_RGPD_URL=https://hc-ping.com/<uuid-purge-rgpd>
    HEALTHCHECKS_RECONCILE_URL=https://hc-ping.com/<uuid-reconciliation>
    ```
 5. Redéployer, puis vérifier que le premier ping arrive :
    ```bash
-   docker exec api-php php artisan schedule:run
+   docker exec api-php-preprod php artisan schedule:run
    ```
    Le check passe au vert dans l'interface healthchecks.io.
 
 Sans URL configurée, aucun ping n'est émis : le comportement par défaut n'ajoute
 aucune dépendance réseau.
 
+> Créer des checks **distincts** pour la production le jour de la promotion :
+> un check partagé entre les deux environnements serait maintenu au vert par la
+> preprod, masquant exactement la panne qu'il est censé détecter en production.
+
 ### 5.3 Sentry — plan gratuit (5 000 erreurs/mois)
 
 1. Créer un compte sur [sentry.io](https://sentry.io), puis **deux projets** :
    - plateforme **Laravel** → pour l'API
    - plateforme **Vue** → pour le front
-2. **API** : copier le DSN du projet Laravel dans `deploy/.env.prod` :
+2. **API** : copier le DSN du projet Laravel dans `deploy/.env.preprod` :
    ```dotenv
    SENTRY_DSN=https://<clé>@<org>.ingest.sentry.io/<projet>
    SENTRY_TRACES_SAMPLE_RATE=0
-   APP_VERSION=2.3.0
+   SENTRY_ENVIRONMENT=preprod
+   APP_VERSION=2.3.0-preprod
    ```
    Redéployer. Vérifier la remontée :
    ```bash
-   docker exec api-php php artisan sentry:test
+   docker exec api-php-preprod php artisan sentry:test
    ```
-3. **Front** : dans le service Render du site, ajouter la variable
-   d'environnement **de build** `VITE_SENTRY_DSN` avec le DSN du projet Vue, puis
-   relancer un déploiement.
+
+   > `SENTRY_ENVIRONMENT` n'est pas cosmétique : `APP_ENV` vaut `production` en
+   > preprod, donc sans cette variable les erreurs des deux environnements se
+   > mélangent sous la même étiquette. Les mêmes **deux projets** Sentry servent
+   > pour la preprod et la production — c'est l'`environment` qui les sépare, ce
+   > qui permet de filtrer, comparer, et de ne consommer qu'un seul quota.
+
+3. **Front** : dans le service Render **de la preprod** (branche `develop`),
+   ajouter la variable d'environnement **de build** `VITE_SENTRY_DSN` avec le DSN
+   du projet Vue, puis relancer un déploiement.
 
    > ⚠️ Point à ne pas manquer : Vite **inline les variables au moment du build**.
    > Sans `VITE_SENTRY_DSN` défini *pendant le build*, le SDK n'est pas seulement
@@ -249,29 +296,33 @@ Chaque email d'alerte contient déjà le geste à faire (le catalogue est dans
 ```bash
 # Depuis l'extérieur, avec le jeton de supervision
 curl -s -H "X-Health-Token: $HEALTH_CHECK_TOKEN" \
-  https://api.<domaine>/api/health/details | jq
+  https://preprod-api.oceanetorresphotographie.fr/api/health/details | jq
 
 # Ou depuis le NAS
 docker ps                    # colonne STATUS : (healthy) / (unhealthy)
-docker exec api-php php artisan supervision:alert   # force une évaluation
+docker exec api-php-preprod php artisan supervision:alert   # force une évaluation
 ```
+
+Le tableau ci-dessous nomme les conteneurs de preprod. En production, retirer le
+suffixe `-preprod` et remplacer `docker-compose.preprod.yml` par
+`docker-compose.prod.yml` (cf. §1.1).
 
 | Motif | Gravité | Diagnostic | Remise en service |
 |-------|---------|-----------|-------------------|
-| `database_unreachable` | 🔴 site HS | Vérifier [status.supabase.com](https://status.supabase.com), puis `docker exec api-php php artisan db:show` | Rien à redémarrer : les conteneurs repartent seuls dès que la base répond. Si Supabase est vert, vérifier le pooler (port `6543`) et les quotas de connexions. |
+| `database_unreachable` | 🔴 site HS | Vérifier [status.supabase.com](https://status.supabase.com), puis `docker exec api-php-preprod php artisan db:show` | Rien à redémarrer : les conteneurs repartent seuls dès que la base répond. Si Supabase est vert, vérifier le pooler (port `6543`) et les quotas de connexions. |
 | `database_slow` | 🟠 dégradé | Charge du pooler, requêtes lentes côté Supabase | Souvent transitoire. Si ça persiste : regarder les connexions ouvertes, envisager `pgbouncer` en mode transaction. |
-| `storage_unreachable` | 🔴 photos HS | `docker ps \| grep minio`, puis depuis l'API : `docker exec api-php curl -s -o /dev/null -w "%{http_code}" http://host.docker.internal:9000/minio/health/live` | Redémarrer le compose MinIO (séparé). Vérifier `extra_hosts: host.docker.internal`. |
+| `storage_unreachable` | 🔴 photos HS | `docker ps \| grep minio`, puis depuis l'API : `docker exec api-php-preprod curl -s -o /dev/null -w "%{http_code}" http://host.docker.internal:9000/minio/health/live` | Redémarrer le compose MinIO (séparé). Vérifier `extra_hosts: host.docker.internal`. |
 | `storage_witness_missing` | 🟡 config | Le bucket répond mais l'objet témoin a disparu | Vérifier `SUPERVISION_STORAGE_WITNESS` et le contenu du bucket (console MinIO). |
-| `queue_failed_jobs` | 🟠 fonctionnel | `docker exec api-php php artisan queue:failed` | Corriger la cause, puis `php artisan queue:retry all`. **Priorité aux exports RGPD** (délai réglementaire d'un mois) et aux traitements de photos. |
-| `queue_depth` | 🟡 charge | Normal après un import massif de photos | Sinon `docker logs --tail 100 api-queue` : vérifier que le worker consomme. |
-| `queue_stalled` | 🟠 blocage | Un job attend depuis > 15 min alors qu'un worker devrait le prendre | `docker compose -f deploy/docker-compose.prod.yml restart queue` |
-| `queue_worker_stale` | 🟠 blocage | Process vivant mais silencieux | `docker logs --tail 100 api-queue`, puis redémarrer le service `queue`. |
-| `queue_worker_missing` | 🔴 aucun job traité | `docker ps -a \| grep api-queue` | `docker compose -f deploy/docker-compose.prod.yml up -d queue`. Aucun email, photo ni export ne part tant que c'est rouge. |
-| `scheduler_stale` / `scheduler_missing` | 🔴 conformité + paiements | `docker logs --tail 100 api-scheduler` | Redémarrer le service `scheduler`. Penser aux verrous `withoutOverlapping` restés coincés après un kill : `php artisan cache:clear` les libère. **Vérifier ensuite** que `reconcile-pending-orders` a rattrapé les commandes `pending` et que la purge RGPD hebdo a bien tourné. |
+| `queue_failed_jobs` | 🟠 fonctionnel | `docker exec api-php-preprod php artisan queue:failed` | Corriger la cause, puis `php artisan queue:retry all`. **Priorité aux exports RGPD** (délai réglementaire d'un mois) et aux traitements de photos. |
+| `queue_depth` | 🟡 charge | Normal après un import massif de photos | Sinon `docker logs --tail 100 api-queue-preprod` : vérifier que le worker consomme. |
+| `queue_stalled` | 🟠 blocage | Un job attend depuis > 15 min alors qu'un worker devrait le prendre | `docker compose -f deploy/docker-compose.preprod.yml restart queue` |
+| `queue_worker_stale` | 🟠 blocage | Process vivant mais silencieux | `docker logs --tail 100 api-queue-preprod`, puis redémarrer le service `queue`. |
+| `queue_worker_missing` | 🔴 aucun job traité | `docker ps -a \| grep api-queue-preprod` | `docker compose -f deploy/docker-compose.preprod.yml up -d queue`. Aucun email, photo ni export ne part tant que c'est rouge. |
+| `scheduler_stale` / `scheduler_missing` | 🔴 conformité + paiements | `docker logs --tail 100 api-scheduler-preprod` | Redémarrer le service `scheduler`. Penser aux verrous `withoutOverlapping` restés coincés après un kill : `php artisan cache:clear` les libère. **Vérifier ensuite** que `reconcile-pending-orders` a rattrapé les commandes `pending` et que la purge RGPD hebdo a bien tourné. |
 | `queue_unreadable` | — | Symptôme secondaire d'une base injoignable | Traiter d'abord `database_unreachable`. |
 | Alerte UptimeRobot sans email interne | 🔴 | Le NAS, sa connexion ou le tunnel sont tombés → l'alerte interne n'a pas pu partir | Vérifier le NAS, puis `cloudflared` / le tunnel côté dashboard Cloudflare. |
 | Alerte healthchecks.io | 🔴 conformité | Une tâche planifiée ne s'exécute plus | Même procédure que `scheduler_missing`. |
-| Erreur Sentry en rafale après un déploiement | 🟠 régression | Comparer la `release` de l'erreur à la version déployée | Rollback (`git revert` + `deploy.sh`) puis corriger. |
+| Erreur Sentry en rafale après un déploiement | 🟠 régression | Comparer la `release` de l'erreur à la version déployée | Rollback (`git revert` + `deploy-preprod.sh`) puis corriger. |
 
 **Anti-spam** : un même motif n'est pas renvoyé plus d'une fois par heure
 (`SUPERVISION_ALERT_COOLDOWN_MINUTES`). Les motifs sont indépendants : une
@@ -313,26 +364,27 @@ Autres variables :
 
 ```bash
 # État détaillé des sondes
-docker exec api-php php artisan supervision:alert          # évalue + alerte si besoin
-curl -s -H "X-Health-Token: <jeton>" https://api.<domaine>/api/health/details | jq
+docker exec api-php-preprod php artisan supervision:alert   # évalue + alerte si besoin
+curl -s -H "X-Health-Token: <jeton>" \
+  https://preprod-api.oceanetorresphotographie.fr/api/health/details | jq
 
 # Heartbeats
-docker exec api-php php artisan supervision:heartbeat:check queue
-docker exec api-php php artisan supervision:heartbeat:check scheduler
-docker exec api-php php artisan supervision:heartbeat scheduler   # forcer un signal
+docker exec api-php-preprod php artisan supervision:heartbeat:check queue
+docker exec api-php-preprod php artisan supervision:heartbeat:check scheduler
+docker exec api-php-preprod php artisan supervision:heartbeat scheduler   # forcer un signal
 
 # Rapport de santé à la demande
-docker exec api-php php artisan supervision:report
+docker exec api-php-preprod php artisan supervision:report
 
 # Santé des conteneurs
 docker ps --format "table {{.Names}}\t{{.Status}}"
-docker inspect --format '{{json .State.Health}}' api-php | jq
+docker inspect --format '{{json .State.Health}}' api-php-preprod | jq
 
 # Logs
-docker logs --tail 100 api-queue
-docker logs --tail 100 api-scheduler
-docker exec api-php tail -n 100 storage/logs/laravel.log
-docker exec api-nginx tail -n 100 /var/log/nginx/error.log   # persisté (volume nginx-logs)
+docker logs --tail 100 api-queue-preprod
+docker logs --tail 100 api-scheduler-preprod
+docker exec api-php-preprod tail -n 100 storage/logs/laravel.log
+docker exec api-nginx-preprod tail -n 100 /var/log/nginx/error.log   # volume nginx-logs
 ```
 
 Les logs applicatifs sont aussi consultables depuis l'admin (**Admin → Logs**),
@@ -346,10 +398,12 @@ avec filtres par niveau et recherche : l'alerte prévient, cette vue diagnostiqu
 | `supervision:queue:heartbeat` | idem pour le worker de queue |
 | `supervision:alert:<motif>` | verrou anti-spam d'un motif |
 
-Ces clés vivent dans le cache applicatif. En production (`CACHE_STORE=file`)
-elles sont dans `storage/framework/cache`, monté par bind mount dans `api-php`,
-`api-queue` et `api-scheduler` : les trois conteneurs partagent donc le même
-cache, ce qui permet à l'API de lire les heartbeats écrits par les deux autres.
+Ces clés vivent dans le cache applicatif. En preprod comme en production
+(`CACHE_STORE=file`) elles sont dans `storage/framework/cache`, monté par bind
+mount dans les conteneurs PHP, queue et scheduler : les trois partagent donc le
+même cache, ce qui permet à l'API de lire les heartbeats écrits par les deux
+autres. Les deux environnements ayant des dossiers de déploiement distincts sur
+le NAS, leurs caches sont bien séparés.
 **Si `CACHE_STORE` ou le montage de `./api` changent, ce mécanisme casse** —
 basculer alors sur `CACHE_STORE=database` (la table `cache` existe déjà).
 
@@ -358,22 +412,24 @@ basculer alors sur `CACHE_STORE=database` (la table `cache` existe déjà).
 ## 9. Vérification après déploiement
 
 ```bash
+API=https://preprod-api.oceanetorresphotographie.fr
+
 # 1. Les quatre conteneurs sont sains
 docker ps --format "table {{.Names}}\t{{.Status}}"   # attendu : 4 × (healthy)
 
 # 2. Le statut global est vert et la version est la bonne
-curl -s https://api.<domaine>/api/health | jq
-# → {"status":"ok","message":"...","version":"2.3.0","timestamp":"..."}
+curl -s $API/api/health | jq
+# → {"status":"ok","message":"...","version":"2.3.0-preprod","timestamp":"..."}
 
 # 3. Le détail est protégé
-curl -s -o /dev/null -w "%{http_code}\n" https://api.<domaine>/api/health/details   # → 403
+curl -s -o /dev/null -w "%{http_code}\n" $API/api/health/details   # → 403
 
 # 4. Le schéma n'est plus exposé
-curl -s -o /dev/null -w "%{http_code}\n" https://api.<domaine>/api/health/tables    # → 404
+curl -s -o /dev/null -w "%{http_code}\n" $API/api/health/tables    # → 404
 
 # 5. Les heartbeats arrivent (attendre 5 min après le démarrage)
-docker exec api-php php artisan supervision:heartbeat:check scheduler
-docker exec api-php php artisan supervision:heartbeat:check queue
+docker exec api-php-preprod php artisan supervision:heartbeat:check scheduler
+docker exec api-php-preprod php artisan supervision:heartbeat:check queue
 ```
 
 ---
@@ -415,67 +471,97 @@ côté client. Autant de sujets à traiter séparément si le besoin apparaît.
 
 ## 11. À faire — récapitulatif des actions manuelles
 
-Le code est en place et testé ; **rien de ce qui suit n'est fait par le
-déploiement**. Tant que ces points sont ouverts, le dispositif tourne en mode
-dégradé (alertes email fonctionnelles, mais aucune sonde externe et aucune
-remontée d'erreurs).
+Cible : **la preprod**. Le code est en place et testé ; **rien de ce qui suit
+n'est fait par le déploiement**. Tant que ces points sont ouverts, le dispositif
+tourne en mode dégradé (alertes email fonctionnelles, mais aucune sonde externe
+et aucune remontée d'erreurs).
 
-### 11.1 Sur le NAS — `deploy/.env.prod`
+### 11.1 Sur le NAS — `deploy/.env.preprod`
 
-Ce fichier n'est pas versionné : les variables suivantes doivent y être ajoutées
-à la main (elles sont documentées dans `deploy/.env.prod.example`).
+Ce fichier n'est pas versionné. Le bloc de supervision y est déjà présent, avec
+les seuils préremplis : seules les lignes marquées `# À REMPLIR` attendent une
+valeur.
 
 | # | Variable | Valeur | Pourquoi |
 |---|----------|--------|----------|
-| 1 | `APP_VERSION` | tag git déployé, ex. `2.3.0` | Sans elle, `/api/health` annonce `dev` et les erreurs Sentry ne sont rattachées à aucune release |
-| 2 | `HEALTH_CHECK_TOKEN` | `php -r "echo bin2hex(random_bytes(32));"` | Sans elle, `/api/health/details` reste fermé (403) |
-| 3 | `LOG_STACK` | `daily` (au lieu de `single`) | En `single`, `laravel.log` grossit sans limite jusqu'à saturer le NAS (audit §2) |
-| 4 | `LOG_DAILY_DAYS` | `30` | Rétention bornée |
-| 5 | `QUEUE_CONNECTION` | vérifier qu'il vaut bien `database` | En `sync`, le conteneur `api-queue` tourne à vide (audit §3) |
-| 6 | `SENTRY_DSN` | DSN du projet Laravel | Sans elle, le SDK reste inerte |
-| 7 | `HEALTHCHECKS_RGPD_URL`<br>`HEALTHCHECKS_RECONCILE_URL` | URL de ping healthchecks.io | Sans elles, aucun ping n'est émis |
+| 1 | `HEALTH_CHECK_TOKEN` | `php -r "echo bin2hex(random_bytes(32));"` | Sans elle, `/api/health/details` reste fermé (403) |
+| 2 | `SENTRY_DSN` | DSN du projet Laravel | Sans elle, le SDK reste inerte |
+| 3 | `HEALTHCHECKS_RGPD_URL`<br>`HEALTHCHECKS_RECONCILE_URL` | URL de ping healthchecks.io | Sans elles, aucun ping n'est émis |
+
+Déjà positionnées, à vérifier seulement : `APP_VERSION=2.3.0-preprod`,
+`SENTRY_ENVIRONMENT=preprod`, `SUPERVISION_ALERTS_ENABLED=true`,
+`LOG_STACK=daily` + `LOG_DAILY_DAYS=14`, `QUEUE_CONNECTION=database`.
 
 ### 11.2 Redéploiement
 
 | # | Action | Pourquoi |
 |---|--------|----------|
-| 8 | Déployer **avec build d'image** (`./deploy/deploy.sh`, sans `--no-build`) | Le paquet `fcgi` a été ajouté au Dockerfile : sans reconstruction, le healthcheck `api-php` retombe sur le test de socket (moins précis, mais non bloquant) |
-| 9 | Vérifier les 4 conteneurs `(healthy)` et le contrat de `/api/health` | Procédure complète au §9 |
+| 4 | Déployer **avec build d'image** (`./deploy/deploy-preprod.sh`, sans `--no-build`) | Le paquet `fcgi` a été ajouté au Dockerfile : sans reconstruction, le healthcheck `api-php-preprod` retombe sur le test de socket (moins précis, mais non bloquant) |
+| 5 | Vérifier les 4 conteneurs `(healthy)` et le contrat de `/api/health` | Procédure complète au §9 |
 
 ### 11.3 Comptes et services externes
 
 | # | Service | Action | Détail |
 |---|---------|--------|--------|
-| 10 | UptimeRobot | Créer le compte + 2 moniteurs (API mot-clé `"status":"ok"`, site public), intervalle 5 min | §5.1 |
-| 11 | healthchecks.io | Créer le compte + 2 checks (purge RGPD hebdo, réconciliation 10 min), coller les URL dans `.env.prod` | §5.2 |
-| 12 | Sentry | Créer le compte + **2 projets** (Laravel pour l'API, Vue pour le front), récupérer les 2 DSN | §5.3 |
-| 13 | Sentry API | Vérifier la remontée : `docker exec api-php php artisan sentry:test` | §5.3 |
+| 6 | UptimeRobot | Créer le compte + 2 moniteurs preprod (API mot-clé `"status":"ok"`, front), intervalle 5 min | §5.1 |
+| 7 | healthchecks.io | Créer le compte + 2 checks preprod, coller les URL dans `.env.preprod` | §5.2 |
+| 8 | Sentry | Créer le compte + **2 projets** (Laravel pour l'API, Vue pour le front), récupérer les 2 DSN | §5.3 |
+| 9 | Sentry API | Vérifier la remontée : `docker exec api-php-preprod php artisan sentry:test` | §5.3 |
 
-### 11.4 Front (Render)
+### 11.4 Front preprod (Render, branche `develop`)
 
 | # | Action | Pourquoi |
 |---|--------|----------|
-| 14 | Ajouter `VITE_SENTRY_DSN` dans les variables d'environnement du Static Site | Le DSN du projet Vue |
-| 15 | **Relancer un build** (pas un simple redémarrage) | Vite inline les variables au build : sans nouveau build, le SDK est purement et simplement absent du bundle |
+| 10 | Ajouter `VITE_SENTRY_DSN` dans les variables du Static Site **de preprod** | Le DSN du projet Vue |
+| 11 | **Relancer un build** (pas un simple redémarrage) | Vite inline les variables au build : sans nouveau build, le SDK est purement et simplement absent du bundle |
 
 ### 11.5 Dossier de certification (C4.1.2)
 
-Captures d'écran à faire une fois les points ci-dessus réalisés :
+Captures d'écran à faire une fois les points ci-dessus réalisés. La preprod est
+un terrain de démonstration légitime, et même préférable : on peut y provoquer de
+vraies pannes sans impact client.
 
 | # | Capture | Ce qu'elle prouve |
 |---|---------|-------------------|
-| 16 | `docker ps` avec les 4 conteneurs `(healthy)` | Sondes locales opérationnelles |
-| 17 | Réponse de `/api/health` en 200, puis d'un `/api/health/details` complet | Indicateurs et sondes internes |
-| 18 | Tableau de bord UptimeRobot (2 moniteurs verts + % de disponibilité) | Sonde externe, disponibilité permanente |
-| 19 | Page healthchecks.io (checks au vert avec date du dernier ping) | Détection du silence sur les tâches critiques |
-| 20 | Un email d'alerte reçu (le provoquer : arrêter `api-queue`, attendre 15 min) | Modalité de signalement, de bout en bout |
-| 21 | Un email de rapport quotidien | Signalement périodique / homme mort |
-| 22 | Sentry : une erreur avec sa release | Remontée d'erreurs applicatives |
+| 12 | `docker ps` avec les 4 conteneurs `(healthy)` | Sondes locales opérationnelles |
+| 13 | Réponse de `/api/health` en 200, puis d'un `/api/health/details` complet | Indicateurs et sondes internes |
+| 14 | Tableau de bord UptimeRobot (2 moniteurs verts + % de disponibilité) | Sonde externe, disponibilité permanente |
+| 15 | Page healthchecks.io (checks au vert avec date du dernier ping) | Détection du silence sur les tâches critiques |
+| 16 | Un email d'alerte reçu (le provoquer : arrêter `api-queue-preprod`) | Modalité de signalement, de bout en bout |
+| 17 | Un email de rapport quotidien | Signalement périodique / homme mort |
+| 18 | Sentry : une erreur avec sa release et son `environment: preprod` | Remontée d'erreurs applicatives |
+| 19 | `/api/health` en **503** pendant la panne provoquée | Le passage ok → degraded → alerte, la chaîne complète |
 
-Pour provoquer une alerte de démonstration sans rien casser :
+Scénario de démonstration, sans rien casser :
 
 ```bash
-docker compose -f deploy/docker-compose.prod.yml stop queue
-# attendre le prochain passage de supervision:alert (≤ 15 min)
-docker compose -f deploy/docker-compose.prod.yml start queue
+# 1. État initial : tout est vert
+curl -s https://preprod-api.oceanetorresphotographie.fr/api/health | jq
+
+# 2. Provoquer la panne : on arrête le worker de queue
+docker compose -f deploy/docker-compose.preprod.yml stop queue
+
+# 3. Après ~10 min, la sonde `queue` passe au rouge et /api/health répond 503
+curl -s -o /dev/null -w "%{http_code}\n" https://preprod-api.oceanetorresphotographie.fr/api/health
+
+# 4. Au prochain passage de supervision:alert (≤ 15 min), l'email part.
+#    Pour ne pas attendre :
+docker exec api-php-preprod php artisan supervision:alert
+
+# 5. Remise en service
+docker compose -f deploy/docker-compose.preprod.yml start queue
 ```
+
+### 11.6 Plus tard — promotion en production
+
+Une fois la preprod validée, la mise en production ne demande aucun changement de
+code : c'est le même dépôt, la même image.
+
+| # | Action | Détail |
+|---|--------|--------|
+| 20 | Renseigner le bloc supervision de `deploy/.env.prod` | Le bloc y est déjà, avec les mêmes lignes `# À REMPLIR`. Générer un **jeton distinct** de celui de preprod. |
+| 21 | Corriger `LOG_STACK` dans `deploy/.env.prod` | Toujours à `single` : passer à `daily` + `LOG_DAILY_DAYS=30` (rappel en bas du fichier) |
+| 22 | Ne pas définir `SENTRY_ENVIRONMENT` en production | Il retombe alors sur `APP_ENV=production`, ce qui sépare correctement les deux environnements dans Sentry |
+| 23 | Créer 2 moniteurs UptimeRobot et 2 checks healthchecks.io **distincts** | Un check partagé serait maintenu au vert par la preprod, masquant la panne de production |
+| 24 | Ajouter `VITE_SENTRY_DSN` au Static Site de production (branche `main`) puis rebuild | Même DSN front, l'`environment` les distingue |
+| 25 | Déployer avec build (`./deploy/deploy.sh`) et rejouer le §9 | Sur les URL de production |
