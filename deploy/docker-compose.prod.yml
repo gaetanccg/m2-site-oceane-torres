@@ -14,7 +14,7 @@ services:
       dockerfile: Dockerfile
       target: development
     container_name: api-php
-    restart: always
+    restart: unless-stopped
     working_dir: /var/www
     dns:
       - 8.8.8.8
@@ -30,6 +30,7 @@ services:
       - ./api:/var/www
       - ./deploy/docker/php.ini:/usr/local/etc/php/conf.d/custom.ini
       - ./deploy/docker/www.conf:/usr/local/etc/php-fpm.d/zz-custom.conf
+      - php-logs:/var/log/php
     env_file:
       - ./deploy/.env.prod
     networks:
@@ -53,11 +54,14 @@ services:
         php-fpm
       "
     healthcheck:
-      test: [ "CMD-SHELL", "php-fpm -t || exit 1" ]
+      # Aller-retour FastCGI sur /ping, avec repli sur un test de socket : ce
+      # healthcheck conditionne le démarrage des trois autres services.
+      test: [ "CMD-SHELL", "(SCRIPT_NAME=/ping SCRIPT_FILENAME=/ping REQUEST_METHOD=GET cgi-fcgi -bind -connect 127.0.0.1:9000 2>/dev/null | grep -q pong) || php -r 'exit(@fsockopen(\"127.0.0.1\", 9000) ? 0 : 1);'" ]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      # Le démarrage enchaîne composer install, migrate et les caches.
+      start_period: 180s
 
   # ----------------------------
   # Queue Worker (Background Jobs)
@@ -68,7 +72,7 @@ services:
       dockerfile: Dockerfile
       target: development
     container_name: api-queue
-    restart: always
+    restart: unless-stopped
     working_dir: /var/www
     dns:
       - 8.8.8.8
@@ -95,6 +99,12 @@ services:
         chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache &&
         php artisan queue:work --sleep=3 --tries=3 --max-time=3600 --timeout=3600 --memory=2048
       "
+    healthcheck:
+      test: [ "CMD-SHELL", "php artisan supervision:heartbeat:check queue --max-age=600" ]
+      interval: 60s
+      timeout: 20s
+      retries: 3
+      start_period: 120s
     depends_on:
       laravel:
         condition: service_healthy
@@ -108,7 +118,7 @@ services:
       dockerfile: Dockerfile
       target: development
     container_name: api-scheduler
-    restart: always
+    restart: unless-stopped
     working_dir: /var/www
     dns:
       - 8.8.8.8
@@ -128,8 +138,16 @@ services:
       sh -c "
         mkdir -p /var/www/storage/logs &&
         chmod -R 777 /var/www/storage /var/www/bootstrap/cache &&
+        php artisan supervision:heartbeat scheduler &&
         php artisan schedule:work
       "
+    healthcheck:
+      # 900 s = deux exécutions manquées du heartbeat tolérées.
+      test: [ "CMD-SHELL", "php artisan supervision:heartbeat:check scheduler --max-age=900" ]
+      interval: 60s
+      timeout: 20s
+      retries: 3
+      start_period: 120s
     depends_on:
       laravel:
         condition: service_healthy
@@ -140,12 +158,21 @@ services:
   nginx:
     image: nginx:alpine
     container_name: api-nginx
-    restart: always
+    restart: unless-stopped
     ports:
       - "8080:80"
     volumes:
       - ./api:/var/www:ro
       - ./deploy/nginx.prod.conf:/etc/nginx/conf.d/default.conf:ro
+      - nginx-logs:/var/log/nginx
+    healthcheck:
+      # Route de liveness, jamais /api/health : celui-ci répond 503 en mode
+      # dégradé, pour des pannes que nginx ne peut pas réparer.
+      test: [ "CMD-SHELL", "wget -q -O - http://127.0.0.1/api/health/live | grep -q '\"status\":\"ok\"'" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     depends_on:
       laravel:
         condition: service_healthy
@@ -155,3 +182,7 @@ services:
 networks:
   oceane-network:
     driver: bridge
+
+volumes:
+  nginx-logs:
+  php-logs:
