@@ -29,6 +29,9 @@ class SupervisionAlertTest extends TestCase
             'supervision.thresholds.database_slow_ms' => 5000,
             'supervision.alerts.enabled' => true,
             'supervision.alerts.cooldown_minutes' => 60,
+            // Neutralisé explicitement : sans ça, un SUPERVISION_ALERT_EMAIL
+            // présent dans le .env de la machine détournerait le destinataire.
+            'supervision.alerts.recipient' => null,
             'mail.admin_email' => 'admin@example.test',
         ]);
 

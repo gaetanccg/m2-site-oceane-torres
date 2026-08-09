@@ -42,6 +42,36 @@ class LogViewerTest extends TestCase
         );
     }
 
+    public function test_index_reads_the_daily_file_when_rotation_is_active(): void
+    {
+        config([
+            'logging.default' => 'stack',
+            'logging.channels.stack.channels' => 'daily',
+        ]);
+
+        $dailyPath = storage_path('logs/laravel-'.now()->format('Y-m-d').'.log');
+        $existed = is_file($dailyPath);
+        $dailyBackup = $existed ? file_get_contents($dailyPath) : null;
+
+        file_put_contents($dailyPath, "[2026-07-15 10:00:00] testing.ERROR: rotation active\n");
+        $this->seedLog();
+
+        try {
+            $this->actingAsAdmin();
+
+            $response = $this->getJson('/api/admin/logs')->assertOk();
+
+            $this->assertStringContainsString('rotation active', implode("\n", $response->json('lines')));
+            $this->assertStringNotContainsString('boom happened', implode("\n", $response->json('lines')));
+        } finally {
+            if ($dailyBackup !== null) {
+                file_put_contents($dailyPath, $dailyBackup);
+            } elseif (is_file($dailyPath)) {
+                @unlink($dailyPath);
+            }
+        }
+    }
+
     public function test_requires_admin(): void
     {
         $this->getJson('/api/admin/logs')->assertStatus(401);
