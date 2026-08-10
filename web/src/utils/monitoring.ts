@@ -5,11 +5,6 @@ function stripQuery(url: string): string {
     return url.split('?')[0].split('#')[0]
 }
 
-/**
- * Import dynamique conditionnel : sans VITE_SENTRY_DSN au build, le SDK est
- * absent du bundle. Les URL sont nettoyées de leur query string avant envoi
- * (jetons de galerie, URL signées MinIO). Cf. docs/supervision.md §5.3.
- */
 export async function initErrorMonitoring(app: App, router: Router): Promise<void> {
     const dsn = import.meta.env.VITE_SENTRY_DSN
 
@@ -40,7 +35,6 @@ export async function initErrorMonitoring(app: App, router: Router): Promise<voi
             },
 
             beforeBreadcrumb(breadcrumb) {
-                // Peuvent contenir des réponses d'API ou des emails clients.
                 if (breadcrumb.category === 'console') {
                     return null
                 }

@@ -65,9 +65,6 @@ class HealthCheckService
     }
 
     /**
-     * Contrat historique de GET /api/health : les clés status, message, version et
-     * timestamp sont conservées à l'identique.
-     *
      * @return array<string, mixed>
      */
     public function publicPayload(HealthSnapshot $snapshot): array

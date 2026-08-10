@@ -19,10 +19,6 @@ class LogController extends Controller
 
     private const LEVELS = ['DEBUG', 'INFO', 'NOTICE', 'WARNING', 'ERROR', 'CRITICAL', 'ALERT', 'EMERGENCY'];
 
-    /**
-     * Fichier de log actif : le canal `daily` écrit dans laravel-Y-m-d.log,
-     * le canal `single` dans laravel.log.
-     */
     private function resolveLogPath(): ?string
     {
         if ($this->usesDailyChannel()) {
@@ -32,7 +28,6 @@ class LogController extends Controller
                 return $today;
             }
 
-            // Rien écrit aujourd'hui : on montre le plus récent plutôt que rien.
             $rotated = glob(storage_path('logs/laravel-*.log')) ?: [];
 
             return $rotated === [] ? null : end($rotated);
@@ -51,8 +46,6 @@ class LogController extends Controller
             return $default === 'daily';
         }
 
-        // La config `stack.channels` est déjà un tableau (explode côté config),
-        // mais reste tolérante à une valeur en chaîne.
         $channels = config('logging.channels.stack.channels', []);
 
         if (! is_array($channels)) {
@@ -122,9 +115,9 @@ class LogController extends Controller
     }
 
     /**
-     * Vide le fichier de log actif — celui que la visionneuse affiche. On tronque
-     * plutôt que de supprimer (évite les soucis de permissions à la recréation par
-     * le logger), et les fichiers déjà tournés sont laissés intacts.
+     * Vide le fichier de log applicatif. On tronque le fichier plutôt que de le
+     * supprimer (évite les soucis de permissions à la recréation par le logger).
+     * Les fichiers déjà tournés sont laissés intacts.
      * L'action elle-même est immédiatement re-tracée pour garder qui/quand/IP.
      */
     public function clear(Request $request): JsonResponse

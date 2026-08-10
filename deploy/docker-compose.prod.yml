@@ -54,13 +54,10 @@ services:
         php-fpm
       "
     healthcheck:
-      # Aller-retour FastCGI sur /ping, avec repli sur un test de socket : ce
-      # healthcheck conditionne le démarrage des trois autres services.
       test: [ "CMD-SHELL", "(SCRIPT_NAME=/ping SCRIPT_FILENAME=/ping REQUEST_METHOD=GET cgi-fcgi -bind -connect 127.0.0.1:9000 2>/dev/null | grep -q pong) || php -r 'exit(@fsockopen(\"127.0.0.1\", 9000) ? 0 : 1);'" ]
       interval: 30s
       timeout: 10s
       retries: 3
-      # Le démarrage enchaîne composer install, migrate et les caches.
       start_period: 180s
 
   # ----------------------------
@@ -142,7 +139,6 @@ services:
         php artisan schedule:work
       "
     healthcheck:
-      # 900 s = deux exécutions manquées du heartbeat tolérées.
       test: [ "CMD-SHELL", "php artisan supervision:heartbeat:check scheduler --max-age=900" ]
       interval: 60s
       timeout: 20s
@@ -166,8 +162,6 @@ services:
       - ./deploy/nginx.prod.conf:/etc/nginx/conf.d/default.conf:ro
       - nginx-logs:/var/log/nginx
     healthcheck:
-      # Route de liveness, jamais /api/health : celui-ci répond 503 en mode
-      # dégradé, pour des pannes que nginx ne peut pas réparer.
       test: [ "CMD-SHELL", "wget -q -O - http://127.0.0.1/api/health/live | grep -q '\"status\":\"ok\"'" ]
       interval: 30s
       timeout: 10s

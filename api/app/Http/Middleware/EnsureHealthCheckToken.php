@@ -12,8 +12,6 @@ class EnsureHealthCheckToken
     {
         $expected = config('supervision.token');
 
-        // Par défaut fermé : sans jeton configuré, l'endpoint refuse tout le monde
-        // plutôt que de s'ouvrir silencieusement.
         if (! is_string($expected) || $expected === '') {
             return response()->json([
                 'message' => "Le détail de santé n'est pas exposé : HEALTH_CHECK_TOKEN n'est pas configuré.",

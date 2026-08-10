@@ -29,8 +29,6 @@ class SupervisionAlertTest extends TestCase
             'supervision.thresholds.database_slow_ms' => 5000,
             'supervision.alerts.enabled' => true,
             'supervision.alerts.cooldown_minutes' => 60,
-            // Neutralisé explicitement : sans ça, un SUPERVISION_ALERT_EMAIL
-            // présent dans le .env de la machine détournerait le destinataire.
             'supervision.alerts.recipient' => null,
             'mail.admin_email' => 'admin@example.test',
         ]);
@@ -100,7 +98,6 @@ class SupervisionAlertTest extends TestCase
 
         $this->travel(61)->minutes();
 
-        // Les heartbeats ont vieilli avec le voyage dans le temps.
         $heartbeats = app(HeartbeatService::class);
         $heartbeats->touch(HeartbeatService::SCHEDULER);
         $heartbeats->touch(HeartbeatService::QUEUE);
@@ -167,8 +164,6 @@ class SupervisionAlertTest extends TestCase
         });
     }
 
-    // Mail::fake() ne rend pas les vues : sans ces deux tests, une erreur Blade ne
-    // se manifesterait qu'au moment d'une vraie alerte, en production.
     public function test_the_alert_email_renders_the_reason_and_the_remediation(): void
     {
         $snapshot = app(HealthCheckService::class)->snapshot();

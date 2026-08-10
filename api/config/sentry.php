@@ -1,8 +1,5 @@
 <?php
 
-// Seuls les écarts aux défauts du SDK. Sans DSN, le SDK ne s'initialise pas.
-// Le bloc `breadcrumbs` n'est volontairement pas redéfini : la fusion de config
-// est peu profonde, un override partiel désactiverait les autres fils d'Ariane.
 return [
 
     'dsn' => env('SENTRY_LARAVEL_DSN', env('SENTRY_DSN')),

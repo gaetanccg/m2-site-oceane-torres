@@ -24,8 +24,7 @@ class StorageProbe implements Probe
             if ($witness) {
                 $found = Storage::disk($disk)->fileExists($witness);
             } else {
-                // Résultat sans intérêt (le préfixe n'existe pas) : ce qu'on teste,
-                // c'est que l'appel S3 aboutisse sans exception.
+                // Le préfixe n'existe pas : on teste que l'appel S3 aboutisse.
                 Storage::disk($disk)->files((string) config('supervision.storage.probe_prefix'));
                 $found = true;
             }

@@ -2,7 +2,6 @@
 
 namespace App\Services\Supervision;
 
-// À maintenir cohérent avec le tableau de réaction de docs/supervision.md §6.
 final class AlertCatalog
 {
     /** @var array<string, array{label: string, action: string}> */

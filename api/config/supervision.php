@@ -2,7 +2,6 @@
 
 return [
 
-    // Vide = /api/health/details fermé. Générer : php -r "echo bin2hex(random_bytes(32));"
     'token' => env('HEALTH_CHECK_TOKEN'),
 
     'alerts' => [
@@ -21,12 +20,10 @@ return [
 
     'storage' => [
         'disk' => env('SUPERVISION_STORAGE_DISK') ?: env('FILESYSTEM_DISK', 'minio'),
-        // Vide = listing d'un préfixe inexistant au lieu d'un HEAD sur objet témoin.
         'witness' => env('SUPERVISION_STORAGE_WITNESS'),
         'probe_prefix' => '.supervision',
     ],
 
-    // URL vides = aucun ping émis.
     'healthchecks' => [
         'rgpd_cleanup_url' => env('HEALTHCHECKS_RGPD_URL'),
         'reconcile_orders_url' => env('HEALTHCHECKS_RECONCILE_URL'),

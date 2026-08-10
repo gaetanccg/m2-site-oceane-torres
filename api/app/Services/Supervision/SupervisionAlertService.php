@@ -8,10 +8,6 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
-/**
- * Envoi synchrone assumé (Mail::send, jamais ->queue()) : une alerte qui annonce
- * une file d'attente en panne ne peut pas dépendre de cette même file.
- */
 class SupervisionAlertService
 {
     public function __construct(
@@ -63,8 +59,6 @@ class SupervisionAlertService
 
         Mail::to($recipient)->send(new SupervisionAlertMail($snapshot, $notifiable));
 
-        // Verrous posés seulement après un envoi réussi : un échec SMTP ne fait pas
-        // perdre l'alerte, elle repart au passage suivant.
         foreach ($notifiable as $reason) {
             $this->markNotified($reason);
         }

@@ -40,7 +40,6 @@ class QueueProbe implements Probe
                 $messages[] = "{$failed} job(s) en échec sur les dernières 24 h.";
             }
 
-            // La table `jobs` ne reflète la file que sur le driver database.
             if ($connection === 'database') {
                 [$pendingStatuses, $pendingReasons, $pendingMessages] = $this->inspectDatabaseQueue($details);
 
@@ -103,7 +102,6 @@ class QueueProbe implements Probe
             $messages[] = "File engorgée : {$pending} jobs en attente (seuil : {$depthThreshold}).";
         }
 
-        // Ni réservés, ni différés dans le futur : réellement en attente.
         $oldestAvailableAt = DB::table('jobs')
             ->whereNull('reserved_at')
             ->where('available_at', '<=', now()->getTimestamp())

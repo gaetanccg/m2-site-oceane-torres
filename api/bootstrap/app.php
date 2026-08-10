@@ -50,7 +50,6 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->statefulApi();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        // Inerte tant que SENTRY_DSN n'est pas défini.
         Integration::handles($exceptions);
 
         // Render any uncaught exception on /api/* as a clean JSON response.
