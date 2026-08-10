@@ -21,7 +21,6 @@ Schedule::call(function () {
     ->everyTenMinutes()
     ->name('reconcile-pending-orders')
     ->withoutOverlapping(10)
-    // Ping « homme mort » : inactif sans URL configurée.
     ->pingOnSuccessIf(
         (bool) config('supervision.healthchecks.reconcile_orders_url'),
         (string) config('supervision.healthchecks.reconcile_orders_url'),
@@ -97,7 +96,6 @@ Schedule::call(function () {
     ->sundays()
     ->at('04:00')
     ->name('rgpd-data-retention-cleanup')
-    // Ping « homme mort » : inactif sans URL configurée.
     ->pingOnSuccessIf(
         (bool) config('supervision.healthchecks.rgpd_cleanup_url'),
         (string) config('supervision.healthchecks.rgpd_cleanup_url'),

@@ -44,7 +44,6 @@ services:
       - ./api:/var/www
       - ./docker/php.ini:/usr/local/etc/php/conf.d/custom.ini
       - ./docker/www.conf:/usr/local/etc/php-fpm.d/zz-custom.conf
-      # Le volume garantit l'existence du dossier attendu par le slow log du pool.
       - php-logs:/var/log/php
     environment:
       # APP
@@ -274,7 +273,6 @@ services:
       - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - nginx-logs:/var/log/nginx
     healthcheck:
-      # Route de liveness, jamais /api/health (503 en mode dégradé).
       test: [ "CMD-SHELL", "wget -q -O - http://127.0.0.1/api/health/live | grep -q '\"status\":\"ok\"'" ]
       interval: 30s
       timeout: 10s

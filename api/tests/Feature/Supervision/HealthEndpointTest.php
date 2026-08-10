@@ -219,7 +219,6 @@ class HealthEndpointTest extends TestCase
 
     public function test_a_slow_database_is_reported_as_degraded(): void
     {
-        // Seuil à 0 ms : couvre le chemin `database_slow` sans dépendre du temps réel.
         config(['supervision.thresholds.database_slow_ms' => 0]);
 
         $this->withHeader('X-Health-Token', self::TOKEN)

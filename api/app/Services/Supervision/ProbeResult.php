@@ -5,10 +5,6 @@ namespace App\Services\Supervision;
 use Illuminate\Contracts\Support\Arrayable;
 
 /**
- * `reasons` porte des codes machine (queue_failed_jobs, scheduler_stale…) : c'est
- * le contrat entre les sondes et le système d'alerte, qui les utilise comme clé
- * de verrou anti-spam.
- *
  * @implements Arrayable<string, mixed>
  */
 final class ProbeResult implements Arrayable

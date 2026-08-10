@@ -462,6 +462,29 @@ de 60 req/min/IP.
 après le montage de l'application, uniquement si un DSN est configuré au build :
 zéro impact sur le rendu initial et sur les pages prérendues.
 
+**La remontée d'erreurs front n'est pas exhaustive, et ne peut pas l'être.** Les
+domaines d'ingestion de Sentry (`*.ingest.sentry.io`) figurent dans les listes
+anti-traceurs courantes (EasyPrivacy, utilisée par uBlock Origin, AdGuard,
+Ghostery, les Shields de Brave). Chez ces visiteurs, l'erreur est bien capturée
+par le SDK mais l'envoi est bloqué par le navigateur — visible en `(blocked:other)`
+dans l'onglet Réseau, à ne pas confondre avec `blocked:csp`. Selon les publics,
+20 à 40 % des visiteurs sont concernés.
+
+Conséquence à garder en tête : **le monitoring front voit une majorité des
+erreurs, pas leur totalité**, là où la capture côté API est exhaustive. Une
+absence d'erreur JS ne prouve donc rien à elle seule.
+
+La parade existe — l'option `tunnel` du SDK fait transiter les événements par
+notre propre domaine au lieu de `sentry.io`, ce que les bloqueurs laissent
+passer. Elle demande un endpoint côté API qui relaie l'enveloppe, avec
+validation du DSN pour ne pas ouvrir un proxy anonyme. Volontairement non
+implémentée : elle ajoute une surface à sécuriser pour un gain partiel, et le
+volume d'erreurs déjà remonté suffit à détecter une régression. À reconsidérer
+si une régression front passe un jour inaperçue.
+
+Pour tester la remontée front sans être trompé par son propre navigateur :
+fenêtre de navigation privée, où les extensions sont désactivées par défaut.
+
 **Ce que ce dispositif ne couvre pas** : la saturation disque du NAS, le
 dépassement de quota Supabase (visible seulement dans leur console),
 l'expiration du certificat Cloudflare (géré par eux), et la performance perçue
@@ -530,6 +553,7 @@ vraies pannes sans impact client.
 | 16 | Un email d'alerte reçu (le provoquer : arrêter `api-queue-preprod`) | Modalité de signalement, de bout en bout |
 | 17 | Un email de rapport quotidien | Signalement périodique / homme mort |
 | 18 | Sentry : une erreur avec sa release et son `environment: preprod` | Remontée d'erreurs applicatives |
+| 18b | Sentry : une erreur JS du front (à déclencher en navigation privée, cf. §10) | Couverture front, distincte de l'API |
 | 19 | `/api/health` en **503** pendant la panne provoquée | Le passage ok → degraded → alerte, la chaîne complète |
 
 Scénario de démonstration, sans rien casser :

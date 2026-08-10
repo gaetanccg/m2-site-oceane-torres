@@ -25,11 +25,6 @@ class HealthController extends Controller
         );
     }
 
-    /**
-     * Liveness : aucune sonde, toujours 200. Conserve le contrat historique de la
-     * racine de l'API, et sert de cible aux healthchecks Docker — contrairement à
-     * index(), qui répond 503 pour des pannes qu'un conteneur ne peut pas réparer.
-     */
     public function live(): JsonResponse
     {
         return response()->json([

@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
- * Visionneuse des logs applicatifs (storage/logs/laravel.log) depuis l'admin.
+ * Visionneuse des logs applicatifs depuis l'admin.
  * Lecture bornée (tail) pour ne jamais charger un gros fichier en mémoire.
  */
 class LogController extends Controller
@@ -19,11 +19,47 @@ class LogController extends Controller
 
     private const LEVELS = ['DEBUG', 'INFO', 'NOTICE', 'WARNING', 'ERROR', 'CRITICAL', 'ALERT', 'EMERGENCY'];
 
+    private function resolveLogPath(): ?string
+    {
+        if ($this->usesDailyChannel()) {
+            $today = storage_path('logs/laravel-'.now()->format('Y-m-d').'.log');
+
+            if (is_file($today)) {
+                return $today;
+            }
+
+            $rotated = glob(storage_path('logs/laravel-*.log')) ?: [];
+
+            return $rotated === [] ? null : end($rotated);
+        }
+
+        $single = storage_path('logs/laravel.log');
+
+        return is_file($single) ? $single : null;
+    }
+
+    private function usesDailyChannel(): bool
+    {
+        $default = (string) config('logging.default');
+
+        if ($default !== 'stack') {
+            return $default === 'daily';
+        }
+
+        $channels = config('logging.channels.stack.channels', []);
+
+        if (! is_array($channels)) {
+            $channels = explode(',', (string) $channels);
+        }
+
+        return in_array('daily', array_map('trim', $channels), true);
+    }
+
     public function index(Request $request): JsonResponse
     {
-        $path = storage_path('logs/laravel.log');
+        $path = $this->resolveLogPath();
 
-        if (! is_file($path)) {
+        if ($path === null) {
             return response()->json([
                 'success' => true,
                 'lines' => [],
@@ -69,25 +105,26 @@ class LogController extends Controller
 
     public function download(): BinaryFileResponse|JsonResponse
     {
-        $path = storage_path('logs/laravel.log');
+        $path = $this->resolveLogPath();
 
-        if (! is_file($path)) {
+        if ($path === null) {
             return response()->json(['success' => false, 'message' => 'Aucun log disponible.'], 404);
         }
 
-        return response()->download($path, 'laravel.log');
+        return response()->download($path, basename($path));
     }
 
     /**
      * Vide le fichier de log applicatif. On tronque le fichier plutôt que de le
      * supprimer (évite les soucis de permissions à la recréation par le logger).
+     * Les fichiers déjà tournés sont laissés intacts.
      * L'action elle-même est immédiatement re-tracée pour garder qui/quand/IP.
      */
     public function clear(Request $request): JsonResponse
     {
-        $path = storage_path('logs/laravel.log');
+        $path = $this->resolveLogPath();
 
-        if (is_file($path)) {
+        if ($path !== null) {
             file_put_contents($path, '');
         }
 

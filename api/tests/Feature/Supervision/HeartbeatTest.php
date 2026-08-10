@@ -11,7 +11,6 @@ class HeartbeatTest extends TestCase
 {
     public function test_the_cache_key_matches_the_documented_one(): void
     {
-        // Clé documentée dans docs/supervision.md : contrat d'exploitation.
         $this->assertSame(
             'supervision:scheduler:heartbeat',
             app(HeartbeatService::class)->key(HeartbeatService::SCHEDULER),

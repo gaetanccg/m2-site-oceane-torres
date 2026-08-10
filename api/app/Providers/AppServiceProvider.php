@@ -24,8 +24,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        // Singleton : le throttle d'écriture du heartbeat s'appuie sur un état en
-        // mémoire qui doit survivre entre deux boucles du worker.
         $this->app->singleton(HeartbeatService::class);
     }
 
@@ -52,10 +50,6 @@ class AppServiceProvider extends ServiceProvider
         $this->configureRateLimiting();
     }
 
-    /**
-     * `Looping` est émis à chaque tour de boucle, file vide comprise : avec
-     * `JobProcessed`, une file calme aurait signalé une fausse panne.
-     */
     private function registerQueueHeartbeat(): void
     {
         if (! $this->app->runningInConsole()) {
@@ -94,8 +88,6 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(20)->by($request->ip());
         });
 
-        // Publics et non authentifiés, ces endpoints déclenchent une requête base
-        // + un appel S3 : on borne l'usage de /api/health comme amplificateur.
         RateLimiter::for('health', function (Request $request) {
             return Limit::perMinute(60)->by($request->ip());
         });

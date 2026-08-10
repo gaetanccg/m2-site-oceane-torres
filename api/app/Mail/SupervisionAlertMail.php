@@ -8,8 +8,6 @@ use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 
-// Sans trait Queueable : cet email doit partir en synchrone, il peut annoncer
-// que la file d'attente est à l'arrêt.
 class SupervisionAlertMail extends Mailable
 {
     /**

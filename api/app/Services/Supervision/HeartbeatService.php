@@ -5,13 +5,6 @@ namespace App\Services\Supervision;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
 
-/**
- * Signaux de vie du worker de queue et du scheduler, stockés dans le cache
- * applicatif partagé entre les conteneurs (cf. docs/supervision.md §8).
- *
- * Résolu en singleton : le throttle d'écriture s'appuie sur un état en mémoire
- * qui doit survivre entre deux boucles du worker.
- */
 class HeartbeatService
 {
     public const SCHEDULER = 'scheduler';
