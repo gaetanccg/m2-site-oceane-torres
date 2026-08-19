@@ -20,6 +20,10 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
+    // Les listeners sont câblés explicitement dans AppServiceProvider::boot().
+    // Sans discover: false, Laravel scanne AUSSI app/Listeners et enregistre
+    // une seconde fois chaque listener -> tous les mails partaient en double.
+    ->withEvents(discover: false)
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
         api: __DIR__.'/../routes/api.php',
