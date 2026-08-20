@@ -71,6 +71,47 @@ MinIO, puis re-uploader.
 **Cause** : `docker compose restart` **ne recharge pas** `env_file`.
 **Fix** : `up -d --force-recreate` (ou `config:cache` dans le container puis restart).
 
+### 1.8 Brevo — tous les envois cassés après un changement de compte
+**Symptôme** : rien ne part de la preprod. Aucune erreur visible côté utilisateur :
+les listeners de contact et de réservation attrapent l'exception et la loguent
+(`Failed to send contact admin email`). Le seul signal remonté est le Sentry
+`Scheduled command [… supervision:alert] failed with exit code [1]` — la
+supervision sert de canari, l'exception réelle n'étant que dans les logs :
+```bash
+docker exec api-php-preprod sh -c \
+  'grep -A8 "Échec de l.envoi d.une alerte de supervision" storage/logs/laravel-$(date +%F).log'
+```
+**Cause** : le compte Brevo se change en **4 champs solidaires**, et un seul oublié
+suffit. Deux façons de se planter :
+- `MAIL_USERNAME` d'un compte avec `MAIL_PASSWORD` d'un autre → `535 Authentication
+  failed`. Le login Brevo (`<id>@smtp-brevo.com`) est propre au compte : changer la
+  clé SMTP sans changer le login ne marche pas.
+- `MAIL_FROM_ADDRESS` qui n'est pas un expéditeur **validé du compte utilisé** →
+  rejet `sender is not valid`. Un domaine n'est authentifié que sur le compte où il
+  a été vérifié : remettre celui de la prod sur un compte preprod dédié le casse,
+  exactement comme le sous-domaine `preprod.` le cassait à l'origine.
+
+**Fix** : basculer les quatre ensemble, cf. le bloc `EMAILS & SMS - BREVO` de
+[`deploy/.env.preprod.example`](../deploy/.env.preprod.example) qui liste où
+récupérer chaque valeur.
+
+| Champ | Rôle |
+|---|---|
+| `MAIL_USERNAME` | login SMTP du compte |
+| `MAIL_PASSWORD` | clé SMTP du même compte (paire indissociable) |
+| `BREVO_API_KEY` | **SMS uniquement** (`BrevoSmsService`), indépendante de la clé SMTP |
+| `MAIL_FROM_ADDRESS` | expéditeur validé de ce compte |
+
+`MAIL_HOST`, `MAIL_PORT`, `MAIL_ADMIN_EMAIL` et `SUPERVISION_ALERT_EMAIL` ne
+dépendent pas du compte. `MAIL_ENCRYPTION` n'est plus lu depuis Laravel 11 (le
+transport ne connaît que `MAIL_SCHEME`, avec repli sur le port) : le modifier
+n'a aucun effet.
+
+**Vérification, sans attendre le cycle de 15 min** :
+```bash
+docker exec api-scheduler-preprod php artisan supervision:alert
+```
+
 ---
 
 ## 2. Exploitation
@@ -82,8 +123,8 @@ cd /volume1/docker/oceane-api-preprod    # dossier DISTINCT de la prod
 # État des containers (--project-directory . depuis la racine du repo)
 docker compose --project-directory . -f deploy/docker-compose.preprod.yml ps
 
-# Logs
-docker exec api-php-preprod tail -f storage/logs/laravel.log
+# Logs — LOG_STACK=daily : le fichier est daté, storage/logs/laravel.log n'existe pas
+docker exec api-php-preprod sh -c 'tail -f storage/logs/laravel-$(date +%F).log'
 docker logs api-nginx-preprod --tail 50
 
 # Artisan
@@ -111,8 +152,13 @@ docker compose --project-directory . -f deploy/docker-compose.preprod.yml up -d 
 - **Port 8081** : si occupé → `sudo lsof -i :8081`.
 - **Port DB** : `6543` (transaction pooler). En cas d'erreur de connexion Supabase,
   basculer sur `5432` (session pooler) dans `deploy/.env.preprod`.
-- **Emails** : Brevo partagé avec la prod par défaut → éviter d'envoyer des mails de
-  test vers de vraies adresses tant qu'un compte/expéditeur dédié n'est pas configuré.
+- **Emails & SMS** : la preprod a son **propre compte Brevo**. Le changer implique
+  4 champs solidaires (cf. 1.8) ; `BREVO_API_KEY` est celle qu'on oublie, et tant
+  qu'elle pointe ailleurs les SMS de preprod débitent les crédits de l'autre compte.
+  Garder `MAIL_ADMIN_EMAIL` et `SUPERVISION_ALERT_EMAIL` sur une boîte de test :
+  sinon les mails de preprod arrivent chez la photographe, indiscernables de ceux
+  de la prod (`MAIL_FROM_NAME` reprend `APP_NAME`, qui contient « Preprod » — c'est
+  le seul marqueur d'origine).
 - **Paiements** : SumUp **sandbox** → cartes de test uniquement, aucun débit réel.
   `APP_ENV=production` ⇒ pas d'auto-complétion : le paiement doit réellement aboutir
   côté sandbox (au plus proche de la prod).

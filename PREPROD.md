@@ -26,7 +26,7 @@ dédié pour le front.
 | Réseau Docker      | `oceane-network`                       | `oceane-network-preprod`                      |
 | Base de données    | Supabase prod (`<SUPABASE_PROD_REF>`)  | **Supabase dédié preprod** (à créer)          |
 | Bucket MinIO       | `galleries`                            | **`galleries-preprod`** (même serveur MinIO)  |
-| Emails             | Brevo prod                             | Brevo (partagé par défaut, dédié recommandé)  |
+| Emails & SMS       | Brevo prod                             | **Compte Brevo dédié preprod**                |
 | SumUp              | `live` (`sup_sk_…` marchand prod)      | **`sandbox`** (clés déjà dans `api/.env`)     |
 | `APP_ENV`          | `production`                           | `production` (iso-prod)                       |
 | `LOG_LEVEL`        | `error`                                | `debug`                                       |
@@ -57,8 +57,9 @@ PREPROD.md                      # Ce guide
 `deploy/docker/php.ini` et `deploy/docker/www.conf` sont **partagés** avec la prod.
 
 Le fichier `deploy/.env.preprod` est **déjà pré-rempli** au maximum (MinIO, SumUp
-sandbox, Brevo, APP_KEY). Seules deux valeurs restent à compléter, marquées
-`⚠️ À REMPLACER` dedans : les identifiants **Supabase preprod**.
+sandbox, APP_KEY). Restent à compléter :
+- les identifiants **Supabase preprod**, marqués `⚠️ À REMPLACER` dedans ;
+- les **4 champs du compte Brevo dédié** (cf. [§ 3.3](#33-brevo-dédié)).
 
 ---
 
@@ -89,11 +90,29 @@ mc mb local/galleries-preprod
 # Sinon via la console MinIO (http://<nas>:9001) → Buckets → Create Bucket.
 ```
 
-### 3.3 (Recommandé) Brevo dédié
-`deploy/.env.preprod` réutilise par défaut les identifiants Brevo de prod pour
-fonctionner tout de suite. Pour éviter de polluer les stats d'envoi prod et tout
-risque d'email à de vrais clients, créer un compte/expéditeur Brevo dédié et
-remplacer `MAIL_USERNAME` / `MAIL_PASSWORD` / `BREVO_API_KEY`.
+### 3.3 Brevo dédié
+Créer un compte Brevo dédié à la preprod : sinon les envois polluent les stats
+de la prod, les SMS débitent ses crédits, et un mail de test peut partir chez un
+vrai client.
+
+Le compte se change en **4 champs solidaires** — en oublier un casse tous les
+envois, silencieusement (les listeners avalent l'exception ; seul le Sentry de
+`supervision:alert` la signale) :
+
+| Champ | Où | Rôle |
+|---|---|---|
+| `MAIL_USERNAME` | SMTP & API → SMTP → « Login » | login SMTP du compte (`<id>@smtp-brevo.com`) |
+| `MAIL_PASSWORD` | SMTP & API → SMTP | clé SMTP du **même** compte — paire indissociable, sinon `535` |
+| `BREVO_API_KEY` | SMTP & API → API keys | **SMS uniquement** (`BrevoSmsService`), indépendante de la clé SMTP |
+| `MAIL_FROM_ADDRESS` | Senders | expéditeur **validé de ce compte**, sinon `sender is not valid` |
+
+Un domaine n'est authentifié que sur le compte où il a été vérifié : ne pas
+reprendre l'expéditeur de la prod. C'est `MAIL_FROM_NAME` (`APP_NAME` contient
+« Preprod ») qui distingue l'origine.
+
+Pointer aussi `MAIL_ADMIN_EMAIL` et `SUPERVISION_ALERT_EMAIL` sur une boîte de
+test — ils ne dépendent pas du compte Brevo. Détail et diagnostic :
+[`docs/preprod-runbook.md` § 1.8](docs/preprod-runbook.md).
 
 ### 3.4 SumUp sandbox
 Déjà rempli (clés sandbox reprises de `api/.env`). Rien à faire sauf si tu veux
@@ -214,7 +233,7 @@ Custom domain : `preprod.oceanetorresphotographie.fr`.
 
 - [ ] Projet Supabase preprod créé, `DB_USERNAME`/`DB_PASSWORD` remplis dans `deploy/.env.preprod`
 - [ ] Bucket MinIO `galleries-preprod` créé
-- [ ] (Optionnel) Compte/expéditeur Brevo dédié configuré
+- [ ] Compte Brevo dédié : `MAIL_USERNAME` + `MAIL_PASSWORD` + `BREVO_API_KEY` + `MAIL_FROM_ADDRESS` (les 4)
 - [ ] DNS Cloudflare `preprod` + `preprod-api` ajoutés
 - [ ] Ingress tunnel `preprod-api → localhost:8081` ajouté et `cloudflared` redémarré
 - [ ] Repo cloné sur le NAS dans `oceane-api-preprod`, branche `develop`
