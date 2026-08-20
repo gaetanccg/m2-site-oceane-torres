@@ -1,7 +1,7 @@
 {
     "name": "oceane-torres-photographie",
     "private": true,
-    "version": "2.2.1",
+    "version": "6.1.0",
     "type": "module",
     "scripts": {
         "dev": "vite",
