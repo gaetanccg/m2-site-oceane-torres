@@ -133,6 +133,7 @@ docker exec api-php-preprod php artisan tinker
 
 # Redéploiement (met à jour develop + build + migrate + cache)
 ./deploy/deploy-preprod.sh
+./deploy/deploy-preprod.sh --fresh   # idem, en ignorant le cache Docker (rare, cf. PREPROD.md)
 ```
 
 ### Après toute modif de `deploy/.env.preprod`

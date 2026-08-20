@@ -48,7 +48,15 @@ Le script fait automatiquement : `git pull` → `docker build` → `docker down/
 ```bash
 ./deploy/deploy.sh --no-pull   # Ne pas faire git pull (premier deploiement)
 ./deploy/deploy.sh --no-build  # Ne pas rebuild les images Docker
+./deploy/deploy.sh --fresh     # Rebuild en ignorant le cache Docker
 ```
+
+Le build utilise le cache Docker par defaut. `--fresh` n'est pas necessaire pour
+prendre en compte du code applicatif : le compose monte `./api` sur `/var/www`,
+donc les couches applicatives de l'image sont masquees au runtime, et toute
+modification du `Dockerfile` invalide deja le cache d'elle-meme. Le reserver aux
+couches systeme qui doivent repartir de zero (`pecl install imagick` n'est pas
+epingle) ou a un cache corrompu.
 
 ## Environnement de preprod
 

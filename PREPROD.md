@@ -181,7 +181,11 @@ ssh <NAS_USER>@<NAS_IP>
 cd /volume1/docker/oceane-api-preprod
 ./deploy/deploy-preprod.sh          # git pull origin develop + build + migrate + cache
 ```
-Options : `--no-pull`, `--no-build` (comme le script prod).
+Options : `--no-pull`, `--no-build`, `--fresh` (comme le script prod). Le build
+utilise le cache Docker par défaut ; `--fresh` l'ignore, ce qui n'est utile que
+pour reconstruire une couche système (`pecl install imagick` n'est pas épinglé)
+ou sortir d'un cache corrompu — le code applicatif, lui, arrive par le bind mount
+`./api:/var/www`, pas par l'image.
 
 ### Vérifier
 ```bash
