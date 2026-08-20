@@ -92,7 +92,8 @@ continuent de fonctionner.
 
 | Sonde | Ce qu'elle surveille | Comment | Seuil | Verdict | Canal d'alerte |
 |-------|---------------------|---------|-------|---------|----------------|
-| `database` | PostgreSQL Supabase joignable et réactif | `SELECT 1` + chronomètre | > 1000 ms | `degraded` | email + UptimeRobot (503) |
+| `database` | PostgreSQL Supabase réactif | `SELECT 1` chronométré, **connexion déjà ouverte** | > 1000 ms | `degraded` | email + UptimeRobot (503) |
+| | coût d'ouverture d'une connexion | `getPdo()` chronométré à part (DNS + TLS + pooler) | > 2500 ms | `degraded` | idem |
 | | | exception | — | `down` | idem |
 | `storage` | MinIO joignable, credentials valides, bucket existant | HEAD sur l'objet témoin, sinon LIST d'un préfixe vide | exception | `down` | email + UptimeRobot |
 | | objet témoin présent | `fileExists` | absent | `degraded` | email |
@@ -335,7 +336,8 @@ suffixe `-preprod` et remplacer `docker-compose.preprod.yml` par
 | Motif | Gravité | Diagnostic | Remise en service |
 |-------|---------|-----------|-------------------|
 | `database_unreachable` | 🔴 site HS | Vérifier [status.supabase.com](https://status.supabase.com), puis `docker exec api-php-preprod php artisan db:show` | Rien à redémarrer : les conteneurs repartent seuls dès que la base répond. Si Supabase est vert, vérifier le pooler (port `6543`) et les quotas de connexions. |
-| `database_slow` | 🟠 dégradé | Charge du pooler, requêtes lentes côté Supabase | Souvent transitoire. Si ça persiste : regarder les connexions ouvertes, envisager `pgbouncer` en mode transaction. |
+| `database_slow` | 🟠 dégradé | La base met > 1 s à répondre à un `SELECT 1` sur une connexion **déjà ouverte** : le réseau est hors de la mesure, la charge est bien côté base | Supabase → Reports → Query performance. Chercher les requêtes lentes et les connexions ouvertes. |
+| `database_connect_slow` | 🟠 dégradé | La base répond vite mais l'**ouverture** de connexion traîne : DNS, TLS, poignée de main du pooler. PDO n'est pas persistant (`config/database.php`), donc **chaque requête HTTP paie ce coût** | Ponctuel : on ignore. Répété : vérifier `DB_PORT`. `6543` = pooler en mode transaction (connexions légères), `5432` = mode session (un backend PostgreSQL dédié à chaque ouverture). |
 | `storage_unreachable` | 🔴 photos HS | `docker ps \| grep minio`, puis depuis l'API : `docker exec api-php-preprod curl -s -o /dev/null -w "%{http_code}" http://host.docker.internal:9000/minio/health/live` | Redémarrer le compose MinIO (séparé). Vérifier `extra_hosts: host.docker.internal`. |
 | `storage_witness_missing` | 🟡 config | Le bucket répond mais l'objet témoin a disparu | Vérifier `SUPERVISION_STORAGE_WITNESS` et le contenu du bucket (console MinIO). |
 | `queue_failed_jobs` | 🟠 fonctionnel | `docker exec api-php-preprod php artisan queue:failed` | Corriger la cause, puis `php artisan queue:retry all`. **Priorité aux exports RGPD** (délai réglementaire d'un mois) et aux traitements de photos. |
@@ -362,6 +364,7 @@ pas perdre l'alerte, elle repart au passage suivant (15 min).
 | Indicateur | Source | Variable de réglage | Défaut |
 |------------|--------|--------------------|--------|
 | Temps de réponse base (ms) | sonde `database` | `SUPERVISION_DATABASE_SLOW_MS` | 1000 |
+| Temps d'ouverture de connexion (ms) | sonde `database` | `SUPERVISION_DATABASE_CONNECT_SLOW_MS` | 2500 |
 | Temps de réponse stockage (ms) | sonde `storage` | — (indicatif) | — |
 | Profondeur de file | sonde `queue` | `SUPERVISION_QUEUE_DEPTH` | 100 |
 | Âge du plus ancien job en attente | sonde `queue` | `SUPERVISION_QUEUE_OLDEST_PENDING_MINUTES` | 15 |
@@ -392,6 +395,20 @@ Autres variables :
 docker exec api-php-preprod php artisan supervision:alert   # évalue + alerte si besoin
 curl -s -H "X-Health-Token: <jeton>" \
   https://preprod-api.oceanetorresphotographie.fr/api/health/details | jq
+
+# Latence base : ouverture de connexion vs requête, 5 mesures à froid.
+# À lancer quand une alerte database_slow / database_connect_slow arrive, pour
+# trancher entre pic passager et coût chronique du chemin réseau.
+docker exec api-php php artisan tinker --execute='
+for ($i = 0; $i < 5; $i++) {
+    DB::purge();
+    $t = microtime(true); DB::connection()->getPdo(); $c = (microtime(true) - $t) * 1000;
+    $t = microtime(true); DB::select("SELECT 1");      $q = (microtime(true) - $t) * 1000;
+    printf("connexion=%7.1f ms   requete=%6.1f ms\n", $c, $q);
+}'
+
+# Historique des alertes déjà remontées (le contexte du log porte les mesures)
+docker exec api-php sh -c 'grep -ho "\"\(response\|connect\)_time_ms\":[0-9.]*" storage/logs/laravel-*.log | tail -40'
 
 # Heartbeats
 docker exec api-php-preprod php artisan supervision:heartbeat:check queue
@@ -477,6 +494,18 @@ calme. L'écriture est limitée à une fois par minute pour ne pas marteler le c
 le fork de tâches fonctionne — mécanisme dont dépendent `privacy:purge-expired`
 et la réconciliation des paiements. Un `Schedule::call` aurait continué à écrire
 un heartbeat vert alors que les tâches forkées échouaient.
+
+**La sonde `database` chronomètre l'ouverture de connexion à part du `SELECT 1`.**
+Les deux coûts n'ont ni la même cause ni le même remède, et les mélanger produit
+des alertes trompeuses. `PDO::ATTR_PERSISTENT` est à `false` et `supervision:alert`
+tourne dans un process forké : la connexion y est donc toujours neuve, et un
+premier `SELECT` chronométré seul aurait facturé au compte de la base le DNS, la
+poignée de main TLS et celle du pooler. C'est ce qui s'est produit le 20/08/2026
+sur la prod — « la base répond en 1490 ms » alors qu'elle répondait en quelques
+millisecondes, l'action recommandée envoyant chercher des requêtes lentes qui
+n'existaient pas. Corollaire utile : comme rien n'est persistant, `connect_time_ms`
+est un coût que **chaque requête HTTP** paie aussi, ce qui en fait un indicateur
+de performance à part entière et pas seulement un artefact de mesure.
 
 **Pas de cache du résultat des sondes.** `/api/health` exécute réellement les
 sondes à chaque appel (1 requête SQL + 1 appel S3, ~20 à 50 ms) : un état de

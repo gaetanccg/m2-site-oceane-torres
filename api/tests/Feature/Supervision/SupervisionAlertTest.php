@@ -27,6 +27,7 @@ class SupervisionAlertTest extends TestCase
             'supervision.storage.disk' => 'minio',
             'supervision.storage.witness' => null,
             'supervision.thresholds.database_slow_ms' => 5000,
+            'supervision.thresholds.database_connect_slow_ms' => 5000,
             'supervision.alerts.enabled' => true,
             'supervision.alerts.cooldown_minutes' => 60,
             'supervision.alerts.recipient' => null,

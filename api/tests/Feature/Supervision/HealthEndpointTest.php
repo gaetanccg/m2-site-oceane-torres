@@ -29,6 +29,7 @@ class HealthEndpointTest extends TestCase
             'supervision.storage.disk' => 'minio',
             'supervision.storage.witness' => null,
             'supervision.thresholds.database_slow_ms' => 5000,
+            'supervision.thresholds.database_connect_slow_ms' => 5000,
             'supervision.token' => self::TOKEN,
         ]);
 
@@ -228,6 +229,36 @@ class HealthEndpointTest extends TestCase
                 'status' => 'degraded',
                 'checks' => ['database' => ['reasons' => ['database_slow']]],
             ]);
+    }
+
+    public function test_a_slow_connection_is_distinguished_from_a_slow_database(): void
+    {
+        // Seuil négatif : la connexion PDO est déjà ouverte quand le test tourne,
+        // donc le temps d'établissement mesuré est nul. C'est justement ce que la
+        // sonde doit savoir dire — sans confondre ce coût avec celui du SELECT.
+        config([
+            'supervision.thresholds.database_slow_ms' => 5000,
+            'supervision.thresholds.database_connect_slow_ms' => -1,
+        ]);
+
+        $this->withHeader('X-Health-Token', self::TOKEN)
+            ->getJson('/api/health/details')
+            ->assertStatus(503)
+            ->assertJson([
+                'status' => 'degraded',
+                'checks' => ['database' => ['reasons' => ['database_connect_slow']]],
+            ]);
+    }
+
+    public function test_the_database_probe_times_connection_and_query_separately(): void
+    {
+        $details = $this->withHeader('X-Health-Token', self::TOKEN)
+            ->getJson('/api/health/details')
+            ->assertOk()
+            ->json('checks.database.details');
+
+        $this->assertArrayHasKey('response_time_ms', $details);
+        $this->assertArrayHasKey('connect_time_ms', $details);
     }
 
     public function test_an_unreachable_storage_is_reported_as_down(): void

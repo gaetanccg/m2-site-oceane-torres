@@ -14,8 +14,17 @@ final class AlertCatalog
         ],
         'database_slow' => [
             'label' => 'Base de données lente',
-            'action' => 'Souvent un pic de charge passager sur le pooler Supabase (port 6543). Si ça persiste, '
-                .'regarder les requêtes lentes et le nombre de connexions ouvertes côté Supabase.',
+            'action' => 'La base met trop de temps à répondre à un SELECT 1, une fois la connexion ouverte : '
+                .'le temps de trajet réseau est déjà exclu de la mesure. Regarder la charge et les requêtes '
+                .'lentes dans le dashboard Supabase (Reports → Query performance).',
+        ],
+        'database_connect_slow' => [
+            'label' => 'Ouverture de connexion à la base lente',
+            'action' => "La base répond vite, c'est l'établissement de la connexion qui traîne : DNS, TLS et "
+                .'poignée de main du pooler. PDO n\'est pas persistant, donc chaque requête HTTP paie ce coût. '
+                .'Vérifier le port utilisé (DB_PORT) : 6543 est le pooler en mode transaction, connexions '
+                .'légères ; 5432 est le mode session, qui ouvre un backend PostgreSQL dédié à chaque fois. '
+                .'Ponctuel, on ignore ; répété, basculer sur 6543.',
         ],
         'storage_unreachable' => [
             'label' => 'Stockage MinIO injoignable',
