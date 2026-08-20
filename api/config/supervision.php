@@ -12,6 +12,7 @@ return [
 
     'thresholds' => [
         'database_slow_ms' => (int) env('SUPERVISION_DATABASE_SLOW_MS', 1000),
+        'database_connect_slow_ms' => (int) env('SUPERVISION_DATABASE_CONNECT_SLOW_MS', 2500),
         'queue_depth' => (int) env('SUPERVISION_QUEUE_DEPTH', 100),
         'queue_oldest_pending_minutes' => (int) env('SUPERVISION_QUEUE_OLDEST_PENDING_MINUTES', 15),
         'queue_worker_stale_minutes' => (int) env('SUPERVISION_QUEUE_WORKER_STALE_MINUTES', 10),

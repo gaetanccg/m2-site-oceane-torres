@@ -16,10 +16,19 @@ class DatabaseProbe implements Probe
 
     public function check(): ProbeResult
     {
-        $startedAt = microtime(true);
-
         try {
+            // Établissement et requête sont chronométrés séparément : PDO n'est
+            // pas persistant (config/database.php) et supervision:alert tourne
+            // dans un process forké, donc le premier SELECT paierait sinon
+            // DNS + TLS + poignée de main du pooler. Mélanger les deux faisait
+            // remonter « base lente » alors que la base répondait en 2 ms.
+            $startedAt = microtime(true);
+            DB::connection()->getPdo();
+            $connectMs = round((microtime(true) - $startedAt) * 1000, 1);
+
+            $startedAt = microtime(true);
             DB::select('SELECT 1');
+            $queryMs = round((microtime(true) - $startedAt) * 1000, 1);
         } catch (Throwable $e) {
             Log::warning('Sonde base de données en échec', [
                 'exception' => $e::class,
@@ -33,15 +42,28 @@ class DatabaseProbe implements Probe
             );
         }
 
-        $elapsedMs = round((microtime(true) - $startedAt) * 1000, 1);
-        $threshold = (int) config('supervision.thresholds.database_slow_ms');
-        $details = ['response_time_ms' => $elapsedMs];
+        $queryThreshold = (int) config('supervision.thresholds.database_slow_ms');
+        $connectThreshold = (int) config('supervision.thresholds.database_connect_slow_ms');
 
-        if ($elapsedMs > $threshold) {
+        $details = [
+            'response_time_ms' => $queryMs,
+            'connect_time_ms' => $connectMs,
+        ];
+
+        if ($queryMs > $queryThreshold) {
             return ProbeResult::degraded(
-                "La base répond en {$elapsedMs} ms (seuil : {$threshold} ms).",
-                $details + ['threshold_ms' => $threshold],
+                "La base répond en {$queryMs} ms (seuil : {$queryThreshold} ms).",
+                $details + ['threshold_ms' => $queryThreshold],
                 ['database_slow'],
+            );
+        }
+
+        if ($connectMs > $connectThreshold) {
+            return ProbeResult::degraded(
+                "L'ouverture de connexion prend {$connectMs} ms (seuil : {$connectThreshold} ms). "
+                    ."La base elle-même répond en {$queryMs} ms.",
+                $details + ['connect_threshold_ms' => $connectThreshold],
+                ['database_connect_slow'],
             );
         }
 
