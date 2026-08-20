@@ -133,7 +133,7 @@
                                                 'bg-red-100 text-red-800'
                                             ]"
                                         >
-                                            {{ order.status === 'paid' ? 'Payée' : order.status === 'pending' ? 'En attente' : 'Echouee' }}
+                                            {{ order.status === 'paid' ? 'Payée' : order.status === 'pending' ? 'En attente' : 'Echouée' }}
                                         </span>
                                     </div>
                                     <p class="text-sm text-gray-500">

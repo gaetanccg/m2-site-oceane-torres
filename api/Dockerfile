@@ -4,9 +4,11 @@
 FROM php:8.4-fpm-alpine AS base
 
 # Install system dependencies
+# fcgi : cgi-fcgi, requis par le healthcheck php-fpm (cf. deploy/docker/www.conf)
 RUN apk add --no-cache \
     git \
     curl \
+    fcgi \
     libpng-dev \
     libjpeg-turbo-dev \
     freetype-dev \
@@ -56,6 +58,10 @@ RUN composer install --no-scripts --no-autoloader
 
 # Copy application files
 COPY . .
+
+# bootstrap/cache n'est pas versionne : le creer avant dump-autoload sinon
+# package:discover echoue ("directory must be present and writable").
+RUN mkdir -p bootstrap/cache
 
 # Complete composer install
 RUN composer dump-autoload --optimize
@@ -119,6 +125,10 @@ WORKDIR /var/www
 
 # Copy application files
 COPY . /var/www
+
+# bootstrap/cache n'est pas versionne : le creer avant composer install
+# (post-autoload-dump -> package:discover exige ce dossier).
+RUN mkdir -p /var/www/bootstrap/cache
 
 # Install dependencies (production only)
 RUN composer install --no-dev --optimize-autoloader --no-interaction

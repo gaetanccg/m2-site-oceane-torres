@@ -183,6 +183,44 @@ make prune         # Supprimer toutes les données Docker
 | CRUD    | `/api/admin/galleries` | Gestion galeries     |
 | CRUD    | `/api/admin/factures`  | Gestion factures     |
 
+### Admin — RGPD / Données personnelles
+
+Recherche, export et effacement des données par **email / téléphone / n° de commande**,
+avec journal d'audit. Vue : `/admin/privacy`.
+
+| Méthode | Endpoint                                | Description                                             |
+|---------|-----------------------------------------|---------------------------------------------------------|
+| GET     | `/api/admin/privacy/search`             | Agrège tout ce qu'on détient sur une personne           |
+| POST    | `/api/admin/privacy/export-all`         | Export global (ZIP : JSON par table + PDF factures)     |
+| POST    | `/api/admin/privacy/export-subject`     | Export ciblé d'une personne                             |
+| GET     | `/api/admin/privacy/exports/{id}`       | Statut d'un export (polling)                            |
+| GET     | `/api/admin/privacy/exports/{id}/download` | Téléchargement du ZIP                                |
+| GET     | `/api/admin/privacy/erasure/preview`    | Aperçu : anonymisé / supprimé / conservé                |
+| POST    | `/api/admin/privacy/erasure`            | Efface/anonymise (confirmation tapée requise) + audit   |
+| GET     | `/api/admin/privacy/audit`              | Journal d'audit RGPD                                    |
+
+**Stratégie d'effacement** : anonymise le compte + les données CRM/contacts/paniers sont
+supprimées ; **commandes / factures / paiements sont conservés** (obligation légale ~10 ans).
+
+**Purge de rétention** (planifiée le 1er de chaque mois) :
+
+```bash
+docker exec api-php php artisan privacy:purge-expired --years=10 --dry-run  # simulation
+docker exec api-php php artisan privacy:purge-expired --years=10            # suppression
+```
+
+> ⚠️ La durée de rétention (10 ans par défaut) doit être validée juridiquement avant prod.
+
+### Admin — Logs applicatifs
+
+Vue : `/admin/logs`. Visionneuse de `storage/logs/laravel.log` (tail borné + filtres).
+
+| Méthode | Endpoint                    | Description                              |
+|---------|-----------------------------|------------------------------------------|
+| GET     | `/api/admin/logs`           | Dernières lignes (filtres `level`, `search`, `limit`) |
+| GET     | `/api/admin/logs/download`  | Fichier de log brut                      |
+| DELETE  | `/api/admin/logs`           | Vide `laravel.log` (action tracée dans le log) |
+
 ---
 
 ## Configuration Supabase

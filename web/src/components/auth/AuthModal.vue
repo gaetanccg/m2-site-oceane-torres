@@ -27,7 +27,7 @@
                             {{ activeTab === 'login' ? 'Connexion' : 'Inscription' }}
                         </h2>
                         <p class="text-sm text-gray-500 mt-2">
-                            {{ activeTab === 'login' ? 'Accedez a votre espace client' : 'Creez votre compte' }}
+                            {{ activeTab === 'login' ? 'Accedez à votre espace client' : 'Créez votre compte' }}
                         </p>
                     </div>
 
@@ -323,7 +323,7 @@ async function handleRegister() {
 
     if (success) {
         close()
-        toast.success('Inscription reussie', 'Bienvenue ! Votre compte a ete cree.')
+        toast.success('Inscription réussie', 'Bienvenue ! Votre compte a été crée.')
         router.push('/mon-compte')
     }
 }

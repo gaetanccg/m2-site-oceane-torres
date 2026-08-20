@@ -268,8 +268,8 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
                 <div class="flex-1">
-                    <p class="font-medium text-orange-900">Session cloturee</p>
-                    <p class="text-sm text-orange-800 mt-0.5">Les parents ne peuvent plus commander de photos. Cloturee le {{ formatDate(session.closed_at) }}.</p>
+                    <p class="font-medium text-orange-900">Session cloturée</p>
+                    <p class="text-sm text-orange-800 mt-0.5">Les parents ne peuvent plus commander de photos. Cloturée le {{ formatDate(session.closed_at) }}.</p>
                 </div>
             </div>
 
@@ -502,7 +502,7 @@
                 <div class="flex items-center justify-between bg-gray-50 rounded-xl p-4">
                     <div class="text-sm text-gray-600">
                         <p v-if="selectedOrder.paid_at">Payée le {{ formatDate(selectedOrder.paid_at) }}</p>
-                        <p v-else>Creee le {{ formatDate(selectedOrder.created_at) }}</p>
+                        <p v-else>Créée le {{ formatDate(selectedOrder.created_at) }}</p>
                     </div>
                     <p class="text-2xl font-bold text-gold">{{ formatPrice(selectedOrder.total) }}</p>
                 </div>
@@ -570,26 +570,26 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import {ref, computed, onMounted, onUnmounted, watch} from 'vue'
+import {useRoute, useRouter} from 'vue-router'
 import AdminHeader from '@/components/admin/AdminHeader.vue'
 import StatusBadge from '@/components/admin/ui/StatusBadge.vue'
 import Modal from '@/components/admin/ui/Modal.vue'
 import Button from '@/components/admin/ui/Button.vue'
 import SmsTemplateField from '@/components/admin/SmsTemplateField.vue'
 import PhotosManager from '@/components/admin/PhotosManager.vue'
-import { adminApi } from '@/services/adminApi'
-import { AdminApiError } from '@/services/admin/baseAdmin'
-import { useToast } from '@/composables/useToast'
-import { useConfirm } from '@/composables/useConfirm'
-import { useEta } from '@/composables/useEta'
-import { formatPrice } from '@/utils/format'
-import type { AdminOrder, SchoolSession, SchoolSessionExport, SchoolSessionGallery } from '@/types/admin'
+import {adminApi} from '@/services/adminApi'
+import {AdminApiError} from '@/services/admin/baseAdmin'
+import {useToast} from '@/composables/useToast'
+import {useConfirm} from '@/composables/useConfirm'
+import {useEta} from '@/composables/useEta'
+import {formatPrice} from '@/utils/format'
+import type {AdminOrder, SchoolSession, SchoolSessionExport, SchoolSessionGallery} from '@/types/admin'
 
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
-const { confirm } = useConfirm()
+const {confirm} = useConfirm()
 const processingEta = useEta()
 
 const sessionId = computed(() => route.params.id as string)
@@ -625,6 +625,7 @@ function openOrderDetail(order: AdminOrder) {
 function totalPhotos(order: AdminOrder): number {
     return order.items.reduce((sum, item) => sum + (item.quantity ?? 1), 0)
 }
+
 const gallerySearch = ref('')
 const collapsedClasses = ref<Record<string, boolean>>({})
 const showPhotosModal = ref(false)
@@ -634,6 +635,7 @@ function openPhotosManager(gallery: SchoolSessionGallery) {
     photosManagerGallery.value = gallery
     showPhotosModal.value = true
 }
+
 let pollInterval: ReturnType<typeof setInterval> | null = null
 
 // SMS template editor — local buffer so user can edit without saving immediately
@@ -646,10 +648,10 @@ async function saveSmsTemplate() {
     isSavingSmsTemplate.value = true
     try {
         const value = smsTemplateInput.value.trim()
-        const { data } = await adminApi.updateSchoolSession(session.value.id, {
+        const {data} = await adminApi.updateSchoolSession(session.value.id, {
             sms_template: value === '' ? null : value,
         })
-        session.value = { ...session.value, ...data }
+        session.value = {...session.value, ...data}
         smsTemplateInput.value = data.sms_template ?? ''
         toast.success('Modèle SMS enregistré')
     } catch (e) {
@@ -673,11 +675,16 @@ const isProcessing = computed(() => {
 
 const processingPhaseLabel = computed(() => {
     switch (session.value?.status) {
-        case 'uploading': return 'En attente du traitement...'
-        case 'extracting': return 'Extraction du ZIP...'
-        case 'creating_galleries': return 'Creation des galeries...'
-        case 'processing_photos': return 'Traitement des photos...'
-        default: return ''
+        case 'uploading':
+            return 'En attente du traitement...'
+        case 'extracting':
+            return 'Extraction du ZIP...'
+        case 'creating_galleries':
+            return 'Creation des galeries...'
+        case 'processing_photos':
+            return 'Traitement des photos...'
+        default:
+            return ''
     }
 })
 
@@ -701,7 +708,7 @@ const filteredGalleries = computed(() => {
 const groupedGalleries = computed(() => {
     const list = filteredGalleries.value
     const hasClasses = list.some(g => g.class_name)
-    if (!hasClasses) return [{ className: '__all__', galleries: list }]
+    if (!hasClasses) return [{className: '__all__', galleries: list}]
 
     const groups = new Map<string, SchoolSessionGallery[]>()
     for (const gallery of list) {
@@ -711,7 +718,7 @@ const groupedGalleries = computed(() => {
     }
     return Array.from(groups.entries())
         .sort(([a], [b]) => a.localeCompare(b, 'fr'))
-        .map(([className, gs]) => ({ className, galleries: gs }))
+        .map(([className, gs]) => ({className, galleries: gs}))
 })
 
 function toggleClass(className: string) {
@@ -720,7 +727,7 @@ function toggleClass(className: string) {
 
 async function fetchSession() {
     try {
-        const { data } = await adminApi.getSchoolSession(sessionId.value)
+        const {data} = await adminApi.getSchoolSession(sessionId.value)
         session.value = data
 
         // Only seed the editor on initial load or when not dirty — never clobber unsaved edits
@@ -741,18 +748,19 @@ async function fetchSession() {
 
 async function fetchGalleries() {
     try {
-        const { data } = await adminApi.getSchoolSessionGalleries(sessionId.value)
+        const {data} = await adminApi.getSchoolSessionGalleries(sessionId.value)
         galleries.value = data
-    } catch { /* ignore */ }
+    } catch { /* ignore */
+    }
 }
 
 async function fetchOrders() {
     ordersLoading.value = true
     try {
-        const { orders: list } = await adminApi.getSchoolSessionOrders(sessionId.value)
+        const {orders: list} = await adminApi.getSchoolSessionOrders(sessionId.value)
         orders.value = list
-    } catch { /* ignore */ }
-    finally {
+    } catch { /* ignore */
+    } finally {
         ordersLoading.value = false
     }
 }
@@ -802,7 +810,7 @@ async function retryFailedPhotos() {
 }
 
 function goBack() {
-    router.push({ name: 'admin-school-sessions' })
+    router.push({name: 'admin-school-sessions'})
 }
 
 async function confirmClose() {
@@ -815,9 +823,9 @@ async function confirmClose() {
     if (!confirmed) return
 
     try {
-        const { data } = await adminApi.closeSchoolSession(session.value.id)
+        const {data} = await adminApi.closeSchoolSession(session.value.id)
         session.value = data
-        toast.success('Session cloturee')
+        toast.success('Session cloturée')
     } catch {
         toast.error('Erreur', 'Impossible de cloturer la session')
     }
@@ -826,7 +834,7 @@ async function confirmClose() {
 async function reopen() {
     if (!session.value) return
     try {
-        const { data } = await adminApi.reopenSchoolSession(session.value.id)
+        const {data} = await adminApi.reopenSchoolSession(session.value.id)
         session.value = data
         toast.success('Session rouverte')
     } catch {
@@ -846,7 +854,7 @@ async function confirmDelete() {
     try {
         await adminApi.deleteSchoolSession(session.value.id)
         toast.success('Supprime')
-        router.push({ name: 'admin-school-sessions' })
+        router.push({name: 'admin-school-sessions'})
     } catch {
         toast.error('Erreur', 'Impossible de supprimer le shooting')
     }
@@ -870,7 +878,7 @@ function exportGalleriesCsv() {
             [g.class_name ?? '', g.title, g.share_code, `${baseUrl}/gallery/${g.share_code}`, g.photos_count].join(';')
         ),
     ]
-    const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' })
+    const blob = new Blob([rows.join('\n')], {type: 'text/csv;charset=utf-8;'})
     const link = document.createElement('a')
     link.href = URL.createObjectURL(blob)
     link.download = `${session.value.title.replace(/\s+/g, '_')}_liens.csv`
@@ -880,6 +888,7 @@ function exportGalleriesCsv() {
 
 // ==================== MESSAGES MODAL (email or SMS) ====================
 type Channel = 'email' | 'sms'
+
 interface MessageContact {
     gallery_id: string
     recipient_name: string
@@ -892,7 +901,7 @@ const isSending = ref(false)
 const csvFileName = ref('')
 const channel = ref<Channel>('email')
 const contacts = ref<MessageContact[]>([])
-const manualForm = ref({ gallery_id: '', email: '', phone: '' })
+const manualForm = ref({gallery_id: '', email: '', phone: ''})
 
 function isContactValid(contact: MessageContact): boolean {
     if (!contact.gallery_id) return false
@@ -924,7 +933,7 @@ const canAddManual = computed(() => {
 function openMessagesModal() {
     contacts.value = []
     csvFileName.value = ''
-    manualForm.value = { gallery_id: '', email: '', phone: '' }
+    manualForm.value = {gallery_id: '', email: '', phone: ''}
     showMessagesModal.value = true
 }
 
@@ -976,7 +985,7 @@ function addManualContact() {
         email: manualForm.value.email || undefined,
         phone: manualForm.value.phone || undefined,
     })
-    manualForm.value = { gallery_id: '', email: '', phone: '' }
+    manualForm.value = {gallery_id: '', email: '', phone: ''}
 }
 
 async function sendMessages() {
@@ -1021,9 +1030,12 @@ const exportInProgress = computed(() => {
 
 const exportPhaseLabel = computed(() => {
     switch (latestExport.value?.status) {
-        case 'pending': return 'En attente du worker...'
-        case 'processing': return 'Generation du ZIP en cours...'
-        default: return ''
+        case 'pending':
+            return 'En attente du worker...'
+        case 'processing':
+            return 'Generation du ZIP en cours...'
+        default:
+            return ''
     }
 })
 
@@ -1046,16 +1058,17 @@ async function openExportModal() {
 async function fetchLatestExport() {
     if (!session.value) return
     try {
-        const { data } = await adminApi.getLatestSchoolSessionExport(session.value.id)
+        const {data} = await adminApi.getLatestSchoolSessionExport(session.value.id)
         latestExport.value = data
-    } catch { /* ignore */ }
+    } catch { /* ignore */
+    }
 }
 
 async function startExport() {
     if (!session.value) return
     isCreatingExport.value = true
     try {
-        const { data } = await adminApi.createSchoolSessionExport(
+        const {data} = await adminApi.createSchoolSessionExport(
             session.value.id,
             exportIncludeDigital.value,
         )
@@ -1098,7 +1111,7 @@ async function downloadExport() {
     const token = localStorage.getItem('auth_token')
 
     try {
-        const res = await fetch(url, { headers: token ? { 'Authorization': `Bearer ${token}` } : {} })
+        const res = await fetch(url, {headers: token ? {'Authorization': `Bearer ${token}`} : {}})
 
         if (!res.ok) {
             // Le backend a marqué l'export comme `failed` si le fichier n'est plus disponible

@@ -1,0 +1,188 @@
+# ===========================================
+# DOCKER COMPOSE PREPROD - NAS UGREEN
+# ===========================================
+# Stack preprod parallèle à la prod sur le même NAS.
+# Différences vs prod : nom de projet, container_name (-preprod),
+# réseau dédié, port exposé 8081 (prod = 8080) et env_file .env.preprod.
+# Les NOMS DE SERVICES restent identiques (laravel/queue/scheduler/nginx)
+# pour que nginx.preprod.conf puisse résoudre "laravel" dans son réseau.
+#
+# À lancer depuis un clone DISTINCT du repo (checkout branche develop),
+# ex: /volume1/docker/oceane-api-preprod — voir docs/deploiement-preprod.md.
+
+name: oceane-api-preprod
+
+services:
+  # ----------------------------
+  # Backend Laravel (PHP-FPM)
+  # ----------------------------
+  laravel:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+      target: development
+    container_name: api-php-preprod
+    restart: unless-stopped
+    working_dir: /var/www
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 1.1.1.1
+    # P3.2 — Bypass du tunnel Cloudflare pour rejoindre MinIO sur le host.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./api:/var/www
+      - ./deploy/docker/php.ini:/usr/local/etc/php/conf.d/custom.ini
+      - ./deploy/docker/www.conf:/usr/local/etc/php-fpm.d/zz-custom.conf
+      - php-logs:/var/log/php
+    env_file:
+      - ./deploy/.env.preprod
+    networks:
+      - oceane-network-preprod
+    command: >
+      sh -c "
+        mkdir -p /var/log/php &&
+        mkdir -p /var/www/storage/framework/sessions &&
+        mkdir -p /var/www/storage/framework/views &&
+        mkdir -p /var/www/storage/framework/cache &&
+        mkdir -p /var/www/storage/logs &&
+        mkdir -p /var/www/bootstrap/cache &&
+        chmod -R 755 /var/www &&
+        chmod -R 777 /var/www/storage /var/www/bootstrap/cache &&
+        chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache &&
+        composer install --no-dev --optimize-autoloader --no-interaction &&
+        php artisan migrate --force &&
+        php artisan storage:link 2>/dev/null || true &&
+        php artisan config:cache &&
+        php artisan route:cache &&
+        php artisan view:cache &&
+        php-fpm
+      "
+    healthcheck:
+      test: [ "CMD-SHELL", "(SCRIPT_NAME=/ping SCRIPT_FILENAME=/ping REQUEST_METHOD=GET cgi-fcgi -bind -connect 127.0.0.1:9000 2>/dev/null | grep -q pong) || php -r 'exit(@fsockopen(\"127.0.0.1\", 9000) ? 0 : 1);'" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 180s
+
+  # ----------------------------
+  # Queue Worker (Background Jobs)
+  # ----------------------------
+  queue:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+      target: development
+    container_name: api-queue-preprod
+    restart: unless-stopped
+    working_dir: /var/www
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 1.1.1.1
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./api:/var/www
+      - ./deploy/docker/php.ini:/usr/local/etc/php/conf.d/custom.ini
+    env_file:
+      - ./deploy/.env.preprod
+    networks:
+      - oceane-network-preprod
+    command: >
+      sh -c "
+        mkdir -p /var/www/storage/framework/sessions &&
+        mkdir -p /var/www/storage/framework/views &&
+        mkdir -p /var/www/storage/framework/cache &&
+        mkdir -p /var/www/storage/logs &&
+        mkdir -p /var/www/bootstrap/cache &&
+        chmod -R 755 /var/www &&
+        chmod -R 777 /var/www/storage /var/www/bootstrap/cache &&
+        chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache &&
+        php artisan queue:work --sleep=3 --tries=3 --max-time=3600 --timeout=3600 --memory=2048
+      "
+    healthcheck:
+      test: [ "CMD-SHELL", "php artisan supervision:heartbeat:check queue --max-age=600" ]
+      interval: 60s
+      timeout: 20s
+      retries: 3
+      start_period: 120s
+    depends_on:
+      laravel:
+        condition: service_healthy
+
+  # ----------------------------
+  # Scheduler (Cron Jobs)
+  # ----------------------------
+  scheduler:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+      target: development
+    container_name: api-scheduler-preprod
+    restart: unless-stopped
+    working_dir: /var/www
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 1.1.1.1
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./api:/var/www
+      - ./deploy/docker/php.ini:/usr/local/etc/php/conf.d/custom.ini
+    env_file:
+      - ./deploy/.env.preprod
+    networks:
+      - oceane-network-preprod
+    command: >
+      sh -c "
+        mkdir -p /var/www/storage/logs &&
+        mkdir -p /var/www/bootstrap/cache &&
+        chmod -R 777 /var/www/storage /var/www/bootstrap/cache &&
+        php artisan supervision:heartbeat scheduler &&
+        php artisan schedule:work
+      "
+    healthcheck:
+      test: [ "CMD-SHELL", "php artisan supervision:heartbeat:check scheduler --max-age=900" ]
+      interval: 60s
+      timeout: 20s
+      retries: 3
+      start_period: 120s
+    depends_on:
+      laravel:
+        condition: service_healthy
+
+  # ----------------------------
+  # Nginx (Reverse Proxy API)
+  # ----------------------------
+  nginx:
+    image: nginx:alpine
+    container_name: api-nginx-preprod
+    restart: unless-stopped
+    ports:
+      - "8081:80"
+    volumes:
+      - ./api:/var/www:ro
+      - ./deploy/nginx.preprod.conf:/etc/nginx/conf.d/default.conf:ro
+      - nginx-logs:/var/log/nginx
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -q -O - http://127.0.0.1/api/health/live | grep -q '\"status\":\"ok\"'" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      laravel:
+        condition: service_healthy
+    networks:
+      - oceane-network-preprod
+
+networks:
+  oceane-network-preprod:
+    driver: bridge
+
+volumes:
+  nginx-logs:
+  php-logs:

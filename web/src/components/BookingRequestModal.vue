@@ -48,7 +48,7 @@
                     <!-- Form -->
                     <form v-else @submit.prevent="submit" class="p-6 space-y-5">
                         <p class="text-gray-600 font-light text-sm mb-4">
-                            Remplissez ce formulaire pour m'envoyer une demande de shooting. Je vous recontacterai dans les plus brefs delais.
+                            Remplissez ce formulaire pour m'envoyer une demande de shooting. Je vous recontacterai dans les plus brefs délais.
                         </p>
 
                         <!-- Nom -->

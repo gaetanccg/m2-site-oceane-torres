@@ -8,8 +8,10 @@ use App\Listeners\SendBookingNotifications;
 use App\Listeners\SendContactEmails;
 use App\Models\User;
 use App\Observers\UserObserver;
+use App\Services\Supervision\HeartbeatService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Queue\Events\Looping;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
@@ -22,7 +24,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(HeartbeatService::class);
     }
 
     /**
@@ -42,8 +44,21 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(ContactMessageSent::class, SendContactEmails::class);
         Event::listen(BookingRequested::class, SendBookingNotifications::class);
 
+        $this->registerQueueHeartbeat();
+
         // Rate limiting for image proxy endpoints
         $this->configureRateLimiting();
+    }
+
+    private function registerQueueHeartbeat(): void
+    {
+        if (! $this->app->runningInConsole()) {
+            return;
+        }
+
+        Event::listen(Looping::class, function (): void {
+            $this->app->make(HeartbeatService::class)->touchThrottled(HeartbeatService::QUEUE);
+        });
     }
 
     /**
@@ -71,6 +86,10 @@ class AppServiceProvider extends ServiceProvider
         // Codes promo : 6 caractères → devinables, on borne le brute-force d'énumération.
         RateLimiter::for('gift-code', function (Request $request) {
             return Limit::perMinute(20)->by($request->ip());
+        });
+
+        RateLimiter::for('health', function (Request $request) {
+            return Limit::perMinute(60)->by($request->ip());
         });
     }
 }

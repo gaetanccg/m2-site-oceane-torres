@@ -25,7 +25,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                             <h3 class="text-lg font-medium text-green-800 mb-2">Message envoyé !</h3>
-                            <p class="text-green-600 font-light">Je vous repondrai dans les plus brefs delais.</p>
+                            <p class="text-green-600 font-light">Je vous repondrai dans les plus brefs délais.</p>
                             <button
                                 @click="resetForm"
                                 class="mt-4 px-6 py-2 text-sm text-green-700 hover:text-green-800 underline"

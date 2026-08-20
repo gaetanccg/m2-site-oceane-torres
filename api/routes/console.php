@@ -20,7 +20,11 @@ Schedule::call(function () {
 })
     ->everyTenMinutes()
     ->name('reconcile-pending-orders')
-    ->withoutOverlapping(10);
+    ->withoutOverlapping(10)
+    ->pingOnSuccessIf(
+        (bool) config('supervision.healthchecks.reconcile_orders_url'),
+        (string) config('supervision.healthchecks.reconcile_orders_url'),
+    );
 
 // Daily cleanup: expire stale carts and abandoned orders
 Schedule::call(function () {
@@ -87,4 +91,48 @@ Schedule::call(function () {
             'deleted_tokens' => $deletedTokens,
         ]);
     }
-})->weekly()->sundays()->at('04:00')->name('rgpd-data-retention-cleanup');
+})
+    ->weekly()
+    ->sundays()
+    ->at('04:00')
+    ->name('rgpd-data-retention-cleanup')
+    ->pingOnSuccessIf(
+        (bool) config('supervision.healthchecks.rgpd_cleanup_url'),
+        (string) config('supervision.healthchecks.rgpd_cleanup_url'),
+    );
+
+// Monthly RGPD: purge accounting data (orders/invoices/payments) past the legal
+// retention period. Complements the erasure feature — these records are RETAINED
+// during the retention window then removed here. Adjust --years to the confirmed
+// legal duration (default 10 years, Code de commerce).
+Schedule::command('privacy:purge-expired', ['--years' => 10])
+    ->monthlyOn(1, '05:00')
+    ->name('privacy-purge-expired')
+    ->withoutOverlapping();
+
+/*
+|--------------------------------------------------------------------------
+| Supervision — cf. docs/supervision.md
+|--------------------------------------------------------------------------
+|
+| Le heartbeat passe par Schedule::command (process forké) et non par
+| Schedule::call : il prouve ainsi que `schedule:run` tourne ET que le fork de
+| tâches fonctionne, mécanisme dont dépendent privacy:purge-expired et la
+| réconciliation des paiements.
+|
+*/
+
+Schedule::command('supervision:heartbeat scheduler')
+    ->everyFiveMinutes()
+    ->name('supervision-heartbeat')
+    ->withoutOverlapping();
+
+Schedule::command('supervision:alert')
+    ->everyFifteenMinutes()
+    ->name('supervision-alert')
+    ->withoutOverlapping();
+
+Schedule::command('supervision:report')
+    ->dailyAt('08:00')
+    ->name('supervision-report')
+    ->withoutOverlapping();
