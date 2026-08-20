@@ -1,0 +1,52 @@
+# ===========================================
+# CONTEXTE DE BUILD - api/
+# ===========================================
+# Le contexte de build est ./api (cf. `context: ./api` dans les deux composes).
+# Sans ce fichier il pese ~5 Go : docker archive et envoie storage/app au daemon
+# a chaque build, y compris avec le cache.
+#
+# Rien de ce qui est exclu ici ne manque au runtime : le compose monte ./api sur
+# /var/www, donc le contenu applicatif de l'image est de toute facon masque, et
+# la `command` des services recree storage/framework/* et bootstrap/cache au
+# demarrage.
+
+# --- Dependances : l'image les reinstalle elle-meme ---
+# En plus du poids, vendor/ construit sur macOS contient des binaires
+# incompatibles avec l'image Alpine.
+vendor/
+node_modules/
+
+# --- Historique git ---
+# Le depot est a la racine du repo, pas dans api/ : regle preventive au cas ou
+# le contexte de build changerait.
+.git
+.gitignore
+
+# --- Secrets ---
+# api/.env pointe sur la base de PRODUCTION. Sans cette exclusion il est copie
+# dans l'image, et le `config:cache` du stage production y grave les
+# identifiants. La configuration reelle vient de `env_file` (compose) ou des
+# variables du dashboard Render.
+.env
+.env.backup
+.env.testing
+
+# --- Donnees et caches ---
+# storage/app pese 4,9 Go en local (exports RGPD, ZIP scolaires, photos).
+# On ne garde que les .gitignore suivis par git : ils suffisent a recreer le
+# squelette de dossiers dont depend le `chmod -R /var/www/storage` du Dockerfile.
+storage/**
+!storage/**/.gitignore
+
+# bootstrap/cache n'est pas versionne et le Dockerfile le recree (mkdir -p).
+# Y laisser un packages.php/services.php local ferait entrer un cache de
+# decouverte de paquets perime dans l'image.
+bootstrap/cache/
+
+# --- Artefacts de dev ---
+.phpunit.result.cache
+.phpunit.cache
+*.log
+.DS_Store
+.idea/
+.vscode/
