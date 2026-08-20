@@ -2,7 +2,15 @@
 # ===========================================
 # SCRIPT DE DEPLOIEMENT - NAS UGREEN
 # ===========================================
-# Usage: ./deploy/deploy.sh [--no-pull] [--no-build]
+# Usage: ./deploy/deploy.sh [--no-pull] [--no-build] [--fresh]
+#
+# --fresh: rebuild sans cache Docker. Inutile au quotidien: le compose monte
+#   ./api sur /var/www, donc les couches applicatives de l'image sont de toute
+#   facon masquees au runtime, et un changement de Dockerfile invalide deja le
+#   cache tout seul. A reserver aux cas ou une couche systeme doit repartir de
+#   zero (pecl install imagick n'est pas epingle) ou a un cache corrompu.
+#   Pour recuperer aussi une base php:8.4-fpm-alpine plus recente, il faut un
+#   docker compose ... build --pull, que --fresh ne fait pas.
 #
 # Prerequis:
 #   1. Le repo est clone sur le NAS
@@ -52,8 +60,13 @@ fi
 # Etape 2: Build
 if [[ "$*" != *"--no-build"* ]]; then
     echo ""
-    echo "2/6 - Building containers..."
-    "${DC[@]}" build --no-cache
+    if [[ "$*" == *"--fresh"* ]]; then
+        echo "2/6 - Building containers (--fresh: sans cache Docker)..."
+        "${DC[@]}" build --no-cache
+    else
+        echo "2/6 - Building containers..."
+        "${DC[@]}" build
+    fi
 else
     echo ""
     echo "2/6 - Skipping build (--no-build)"
