@@ -243,9 +243,15 @@ aucune dépendance réseau.
 
 ### 5.3 Sentry — plan gratuit (5 000 erreurs/mois)
 
-1. Créer un compte sur [sentry.io](https://sentry.io), puis **deux projets** :
-   - plateforme **Laravel** → pour l'API
-   - plateforme **Vue** → pour le front
+1. Créer un compte sur [sentry.io](https://sentry.io), puis **un projet par
+   couple (plateforme, environnement)** — quatre au total à terme :
+   - plateforme **Laravel** → `api-preprod`, `api-prod`
+   - plateforme **Vue** → `front-preprod`, `front-prod`
+
+   > Le choix de projets séparés plutôt qu'un projet par plateforme filtré par
+   > `environment` : quotas, règles d'alerte et historique de releases
+   > indépendants, et surtout — voir l'étape 3 — le front **ne peut pas** être
+   > séparé par `environment`.
 2. **API** : copier le DSN du projet Laravel dans `deploy/.env.preprod` :
    ```dotenv
    SENTRY_DSN=https://<clé>@<org>.ingest.sentry.io/<projet>
@@ -259,10 +265,15 @@ aucune dépendance réseau.
    ```
 
    > `SENTRY_ENVIRONMENT` n'est pas cosmétique : `APP_ENV` vaut `production` en
-   > preprod, donc sans cette variable les erreurs des deux environnements se
-   > mélangent sous la même étiquette. Les mêmes **deux projets** Sentry servent
-   > pour la preprod et la production — c'est l'`environment` qui les sépare, ce
-   > qui permet de filtrer, comparer, et de ne consommer qu'un seul quota.
+   > preprod, donc sans cette variable les erreurs des deux environnements
+   > arriveraient sous la même étiquette. Avec un projet par environnement, la
+   > variable devient une seconde barrière plutôt que la seule — la garder
+   > explicite (`preprod` / `production`) reste utile pour lire l'étiquette sans
+   > avoir à se souvenir de quel projet on regarde.
+
+   > La variable réellement lue est `SENTRY_LARAVEL_DSN`, avec repli sur
+   > `SENTRY_DSN` (`api/config/sentry.php`). Les deux fonctionnent ; les fichiers
+   > d'environnement utilisent `SENTRY_LARAVEL_DSN`.
 
 3. **Front** : dans le service Render **de la preprod** (branche `develop`),
    ajouter la variable d'environnement **de build** `VITE_SENTRY_DSN` avec le DSN
@@ -273,6 +284,20 @@ aucune dépendance réseau.
    > inactif — il est totalement absent du bundle (l'import dynamique est
    > éliminé). Bon pour les performances, mais ça veut dire qu'ajouter le DSN
    > exige un **nouveau build**, pas un simple redémarrage.
+
+   > ⚠️ **Le front ne peut pas être séparé par `environment`.**
+   > `web/src/utils/monitoring.ts` passe `environment: import.meta.env.MODE`, et
+   > le script de build (`vue-tsc -b && vite build`, sans `--mode`) laisse Vite
+   > sur son défaut `production`. Les deux Static Sites Render se construisent
+   > donc à l'identique : preprod et prod remonteraient **tous les deux** en
+   > `environment: production`, indiscernables. D'où un **projet Sentry Vue par
+   > environnement** (étape 1). L'alternative — passer un `--mode` distinct au
+   > build — toucherait au code et aux deux services Render.
+
+   > La `release` front vient de `__APP_VERSION__`, c'est-à-dire du champ
+   > `version` de `web/package.json` — pas de `APP_VERSION`. Garder les deux
+   > alignés, sinon un même déploiement remonte sous deux releases différentes
+   > selon qu'on regarde le projet API ou le projet front.
 
 4. Quota : `traces_sample_rate` à 0, métriques et logs désactivés. Seules les
    erreurs consomment le quota. Si le quota se remplit malgré tout, régler
@@ -344,7 +369,7 @@ pas perdre l'alerte, elle repart au passage suivant (15 min).
 | Fraîcheur du worker | heartbeat | `SUPERVISION_QUEUE_WORKER_STALE_MINUTES` | 10 |
 | Fraîcheur du scheduler | heartbeat | `SUPERVISION_SCHEDULER_STALE_MINUTES` | 120 |
 | Disponibilité externe (%) | UptimeRobot | — | — |
-| Erreurs applicatives par release | Sentry | `SENTRY_DSN` | — |
+| Erreurs applicatives par release | Sentry | `SENTRY_LARAVEL_DSN` (repli `SENTRY_DSN`) | — |
 | Version déployée | `/api/health` | `APP_VERSION` | `dev` |
 
 Autres variables :
@@ -584,8 +609,9 @@ code : c'est le même dépôt, la même image.
 | # | Action | Détail |
 |---|--------|--------|
 | 20 | Renseigner le bloc supervision de `deploy/.env.prod` | Le bloc y est déjà, avec les mêmes lignes `# À REMPLIR`. Générer un **jeton distinct** de celui de preprod. |
-| 21 | Corriger `LOG_STACK` dans `deploy/.env.prod` | Toujours à `single` : passer à `daily` + `LOG_DAILY_DAYS=30` (rappel en bas du fichier) |
-| 22 | Ne pas définir `SENTRY_ENVIRONMENT` en production | Il retombe alors sur `APP_ENV=production`, ce qui sépare correctement les deux environnements dans Sentry |
-| 23 | Créer 2 moniteurs UptimeRobot et 2 checks healthchecks.io **distincts** | Un check partagé serait maintenu au vert par la preprod, masquant la panne de production |
-| 24 | Ajouter `VITE_SENTRY_DSN` au Static Site de production (branche `main`) puis rebuild | Même DSN front, l'`environment` les distingue |
+| 21 | Corriger `LOG_STACK` dans `deploy/.env.prod` | Passer de `single` à `daily` + `LOG_DAILY_DAYS=30`. Sans rotation le fichier grossit sans fin, et la visionneuse admin attend des fichiers datés (`laravel-AAAA-MM-JJ.log`) |
+| 22 | Renseigner `SENTRY_LARAVEL_DSN` (projet API **prod**) et `SENTRY_ENVIRONMENT=production` | Un projet par environnement (§5.3). Laissée vide, `SENTRY_ENVIRONMENT` retomberait sur `APP_ENV`, qui vaut `production` des deux côtés |
+| 22b | Vérifier que `APP_VERSION` n'est **pas** resté à la valeur de preprod | Il sort en clair dans `/api/health` et sert de `release` Sentry : une valeur `…-preprod` en production casse le triage du §6 |
+| 23 | Créer 2 moniteurs UptimeRobot et 2 checks healthchecks.io **distincts** | Un check partagé serait maintenu au vert par la preprod, masquant la panne de production. Vérifier aussi que `HEALTH_CHECK_TOKEN` n'est pas celui de preprod |
+| 24 | Créer un **projet Sentry Vue dédié à la production**, mettre son DSN dans `VITE_SENTRY_DSN` du Static Site de prod (branche `main`), puis **rebuild** | Réutiliser le DSN front de la preprod mélangerait les deux : le front remonte `environment: production` dans les deux environnements (§5.3, étape 3) |
 | 25 | Déployer avec build (`./deploy/deploy.sh`) et rejouer le §9 | Sur les URL de production |
