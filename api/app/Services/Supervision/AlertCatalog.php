@@ -69,9 +69,16 @@ final class AlertCatalog
         ],
         'scheduler_stale' => [
             'label' => 'Scheduler silencieux',
-            'action' => 'docker logs --tail 100 api-scheduler. Penser aux verrous withoutOverlapping restés '
-                .'coincés après un kill : php artisan cache:clear les libère. Tant que c\'est rouge, la '
-                .'réconciliation des paiements SumUp et la purge RGPD ne tournent plus.',
+            'action' => 'Si docker logs --tail 200 api-scheduler montre bien des tâches qui tournent, le '
+                ."scheduler est vivant et c'est le heartbeat qui est écarté : une tâche dont le verrou "
+                .'withoutOverlapping traîne est filtrée SANS AUCUNE LIGNE de log. Vérifier avec : '
+                .'docker exec api-scheduler php artisan tinker --execute=\'foreach '
+                .'(app(Illuminate\\Console\\Scheduling\\Schedule::class)->events() as $e) '
+                .'{ printf("%-30s %s\\n", $e->getSummaryForDisplay(), $e->mutex->exists($e) ? "TENU" : "libre"); }\' '
+                .'— attention, Cache::has($e->mutexName()) ne marche PAS, FileStore::lock() préfixe la clé '
+                .'en file-store-lock:. Libérer avec $e->mutex->forget($e), ou cache:clear (plus brutal : '
+                .'efface aussi les heartbeats et les cooldowns). Tant que c\'est rouge, la réconciliation '
+                .'des paiements SumUp et la purge RGPD ne tournent plus.',
         ],
         'scheduler_missing' => [
             'label' => 'Aucun signe de vie du scheduler',

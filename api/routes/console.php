@@ -125,14 +125,14 @@ Schedule::command('privacy:purge-expired', ['--years' => 10])
 Schedule::command('supervision:heartbeat scheduler')
     ->everyFiveMinutes()
     ->name('supervision-heartbeat')
-    ->withoutOverlapping();
+    ->withoutOverlapping(10);
 
 Schedule::command('supervision:alert')
     ->everyFifteenMinutes()
     ->name('supervision-alert')
-    ->withoutOverlapping();
+    ->withoutOverlapping(30);
 
 Schedule::command('supervision:report')
     ->dailyAt('08:00')
     ->name('supervision-report')
-    ->withoutOverlapping();
+    ->withoutOverlapping(60);
