@@ -345,7 +345,7 @@ suffixe `-preprod` et remplacer `docker-compose.preprod.yml` par
 | `queue_stalled` | 🟠 blocage | Un job attend depuis > 15 min alors qu'un worker devrait le prendre | `docker compose -f deploy/docker-compose.preprod.yml restart queue` |
 | `queue_worker_stale` | 🟠 blocage | Process vivant mais silencieux | `docker logs --tail 100 api-queue-preprod`, puis redémarrer le service `queue`. |
 | `queue_worker_missing` | 🔴 aucun job traité | `docker ps -a \| grep api-queue-preprod` | `docker compose -f deploy/docker-compose.preprod.yml up -d queue`. Aucun email, photo ni export ne part tant que c'est rouge. |
-| `scheduler_stale` / `scheduler_missing` | 🔴 conformité + paiements | `docker logs --tail 100 api-scheduler-preprod` | Redémarrer le service `scheduler`. Penser aux verrous `withoutOverlapping` restés coincés après un kill : `php artisan cache:clear` les libère. **Vérifier ensuite** que `reconcile-pending-orders` a rattrapé les commandes `pending` et que la purge RGPD hebdo a bien tourné. |
+| `scheduler_stale` / `scheduler_missing` | 🔴 conformité + paiements | `docker logs --tail 200 api-scheduler`. Si des tâches y tournent, le scheduler est vivant et c'est le heartbeat qui est écarté par un mutex : voir §8 et le piège ci-dessous | `php artisan schedule:clear-cache` libère les mutex coincés (chirurgical), puis `php artisan supervision:heartbeat scheduler`. **Vérifier ensuite** que `reconcile-pending-orders` a rattrapé les commandes `pending` et que la purge RGPD hebdo a bien tourné. |
 | `queue_unreadable` | — | Symptôme secondaire d'une base injoignable | Traiter d'abord `database_unreachable`. |
 | Alerte UptimeRobot sans email interne | 🔴 | Le NAS, sa connexion ou le tunnel sont tombés → l'alerte interne n'a pas pu partir | Vérifier le NAS, puis `cloudflared` / le tunnel côté dashboard Cloudflare. |
 | Alerte healthchecks.io | 🔴 conformité | Une tâche planifiée ne s'exécute plus | Même procédure que `scheduler_missing`. |
@@ -494,6 +494,28 @@ calme. L'écriture est limitée à une fois par minute pour ne pas marteler le c
 le fork de tâches fonctionne — mécanisme dont dépendent `privacy:purge-expired`
 et la réconciliation des paiements. Un `Schedule::call` aurait continué à écrire
 un heartbeat vert alors que les tâches forkées échouaient.
+
+**Un mutex `withoutOverlapping` coincé rend une tâche invisible, pas bruyante.**
+`withoutOverlapping` s'implémente par un `skip()` : la tâche est écartée *avant*
+exécution, donc `schedule:work` n'émet **aucune ligne** — ni succès, ni échec, ni
+mention du skip. Le symptôme est une tâche qui n'existe plus dans les logs, pas une
+erreur. Vécu en production le 20/08/2026 : le `down` d'un déploiement a tué un
+`supervision:heartbeat` en plein vol, le mutex est resté posé, et le heartbeat a
+disparu pendant que `supervision:alert` continuait à tourner — d'où une alerte
+« scheduler silencieux » émise par un scheduler parfaitement vivant.
+
+Deux pièges dans le diagnostic. D'abord l'expiration par défaut est de **1440
+minutes** (`Scheduling\ManagesAttributes::withoutOverlapping`), soit 24 h de
+blocage ; les tâches de supervision fixent donc désormais une valeur explicite et
+courte. Ensuite, et c'est le plus traître : **`Cache::has($event->mutexName())` ne
+détecte rien.** Dès que le store implémente `LockProvider` — ce que fait
+`FileStore` — le mutex passe par un verrou atomique, et `FileStore::lock()`
+préfixe la clé en `file-store-lock:`. Le seul test valide est
+`$event->mutex->exists($event)`, ce que fait `schedule:clear-cache`.
+
+Prévention : la `command` du service `scheduler` appelle `schedule:clear-cache`
+avant `schedule:work`. Au démarrage du conteneur, aucun `schedule:run` ne peut
+être légitimement en cours, donc le nettoyage est sans risque.
 
 **La sonde `database` chronomètre l'ouverture de connexion à part du `SELECT 1`.**
 Les deux coûts n'ont ni la même cause ni le même remède, et les mélanger produit
