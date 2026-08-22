@@ -91,7 +91,8 @@ fonctionnalité n'ait changé. Point de décision naturel pour continuer ou s'ar
 | 0.15 Supervision externe | ⛔ | **créations de compte requises** |
 | 0.16 Veille de vulnérabilités | ✅ | job `security-audit` bloquant + `dependabot.yml` · **les deux audits sont verts** |
 | 0.17 Files d'attente | ✅ | 3 files, routage vérifié à l'exécution, `--memory=1024` < `memory_limit` |
-| 0.18 Correctifs courts | 🟡 | 10/10 écrits · ⚠️ **build Docker d'imagick NON vérifié** |
+| 0.18 Correctifs courts | ✅ | 10/10 · build Docker d'imagick validé par Gaëtan |
+| 0.19 Recette | 🟡 | **9/15 vérifiées** · 6 exigent la prod ou des comptes externes |
 | 0.12 XSS `v-html` | ✅ | aucune directive `v-html` dans `web/src` |
 | 0.13 Politique de mot de passe | ✅ | `min(12)->uncompromised()`, `StoreUserRequest` aligné |
 
@@ -162,22 +163,54 @@ Vérifié : `composer audit` et `npm audit --audit-level=high` ne signalent plus
 255 tests · `build:prerender` génère les 11 routes avec titre et contenu · `vue-tsc` et
 ESLint propres.
 
-### ⚠️ imagick : échec de build désormais BLOQUANT, et non vérifié
+### Recette de la phase 0 — 9 lignes sur 15
+
+Vertes : Makefile sans commande destructrice · base de dev locale · `download-file`
+absente de `route:list` · `clean-orphans` (6 tests) · `DELETE /admin/clients` absente ·
+rate limit login (8 tests) · révocation au logout (4 tests) · quantité sur facture
+(7 tests) · aucun `v-html`. Plus le mécanisme d'audit CI, constaté rouge avant montée
+des dépendances.
+
+Restent 6 lignes hors de portée locale : dump restauré, compte admin du seeder,
+`consent_ip` après déploiement, UptimeRobot + healthchecks.io, et l'email de
+confirmation pendant un export (exige un worker actif).
+
+### 🔴 Les 8 colonnes JSON sont de type `json`, pas `jsonb`
+
+Découvert en outillant la phase 1. Conséquence immédiate : **la requête la plus
+critique de l'audit ne peut pas s'exécuter telle qu'écrite.** §3bis.14-C emploie
+`metadata ? 'supabase_path'` — l'opérateur `?` n'existe que sur `jsonb`. C'est
+précisément le bloc qui dimensionne la phase 4.
+
+Le relevé utilise `metadata->>'clé' IS NOT NULL`, qui fonctionne sur `json` et vérifie
+en outre que la valeur n'est pas nulle — une clé présente à `null` est inutilisable pour
+résoudre un chemin de fichier.
+
+À reprendre dans l'item #38 : les 8 colonnes gagneraient à passer en `jsonb`, qui seul
+permet l'indexation et les opérateurs de containment.
+
+### Outillage de la phase 1 — prêt
+
+`deploy/releve-production.sql` + `deploy/releve-production.sh` : les 14 blocs de
+l'audit plus les 3 requêtes des passes de relecture, en une commande, produisant le
+document « Relevé de production » daté qui est le livrable de la phase 1.
+
+Refuse par défaut toute cible non locale (`ALLOW_REMOTE=1` pour forcer) — le relevé se
+joue sur la copie restaurée. Validé à blanc contre le schéma réel migré :
+**15 sections, 0 erreur SQL**.
+
+```bash
+./deploy/backup.sh all          # produit et vérifie le dump
+./deploy/releve-production.sh   # puis le relevé
+```
+
+### ✅ imagick : build validé
 
 `api/Dockerfile` épingle `IMAGICK_VERSION=3.8.1` (stable courante sur PECL, vérifiée) et
 retire le `|| echo "skipped"` qui laissait le build réussir avec un repli GD silencieux —
 cause du filigrane potentiellement illisible sur les photos vendues (→ §5.4).
 
-**Le build n'a pas pu être vérifié** (registre Docker trop lent sur ce poste). Avant tout
-déploiement :
-
-```bash
-cd api && docker build --target base -t ot-verif .
-docker run --rm ot-verif php -m | grep imagick
-```
-
-Si le build échoue, deux issues : ajuster `IMAGICK_VERSION`, ou restaurer la tolérance —
-mais alors le driver redevient non déterministe.
+Build vérifié par Gaëtan le 2026-08-22.
 
 ### Bloqué sur intervention manuelle
 
@@ -185,8 +218,8 @@ mais alors le driver redevient non déterministe.
 [ ] 0.2  ./deploy/backup.sh all   (puis `verify` au vert)
 [ ] 0.4  Requête SQL sur la production — compte admin du seeder
 [ ] 0.15 UptimeRobot + 2 checks healthchecks.io (créations de compte)
-[ ] 0.18 Vérifier le build Docker (imagick épinglé, échec désormais bloquant)
-[ ] 0.19 Recette de phase 0 — les points qui exigent la production
+[ ] 0.19 Les 6 lignes de recette qui exigent la production
+[ ] 1.x  Lancer ./deploy/releve-production.sh sur la copie restaurée
 ```
 
 ---
