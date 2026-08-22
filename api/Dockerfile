@@ -1,7 +1,11 @@
 # ===========================================
 # BASE STAGE - Common dependencies
 # ===========================================
+ARG IMAGICK_VERSION=3.8.1
+
 FROM php:8.4-fpm-alpine AS base
+
+ARG IMAGICK_VERSION
 
 # Install system dependencies
 # fcgi : cgi-fcgi, requis par le healthcheck php-fpm (cf. deploy/docker/www.conf)
@@ -27,17 +31,16 @@ RUN apk add --no-cache ttf-dejavu || echo "Font installation skipped"
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
     && docker-php-ext-install pdo pdo_pgsql pgsql mbstring exif pcntl bcmath gd zip intl opcache
 
-# Install Imagick (audit P2.4) — 2-3× faster than GD on large JPEGs.
-# Runtime driver is selected at app boot via ImageProcessingService::USE_IMAGICK_DRIVER (default: GD).
-# Build deps (autoconf, g++, make) are needed by phpize/pecl and removed after install
-# to keep the image lean. If install fails the build continues — GD remains active.
-RUN (apk add --no-cache --virtual .build-deps autoconf g++ make \
+# Imagick est le driver EFFECTIF (ImageProcessingService::USE_IMAGICK_DRIVER = true).
+# Version épinglée et échec bloquant : sans cela deux builds du même commit peuvent
+# produire deux moteurs de rendu différents (filigrane et performances différents).
+RUN apk add --no-cache --virtual .build-deps autoconf g++ make \
     && apk add --no-cache imagemagick imagemagick-dev \
-    && yes '' | pecl install imagick \
+    && yes '' | pecl install imagick-${IMAGICK_VERSION} \
     && docker-php-ext-enable imagick \
+    && php -m | grep -q '^imagick$' \
     && pecl clear-cache \
-    && apk del .build-deps) \
-    || echo "Imagick installation skipped (GD driver remains the default)"
+    && apk del .build-deps
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -83,6 +86,8 @@ CMD ["php-fpm"]
 # ===========================================
 FROM php:8.4-cli-alpine AS production
 
+ARG IMAGICK_VERSION
+
 # Install system dependencies
 RUN apk add --no-cache \
     git \
@@ -105,17 +110,16 @@ RUN apk add --no-cache ttf-dejavu || echo "Font installation skipped"
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
     && docker-php-ext-install pdo pdo_pgsql pgsql mbstring exif pcntl bcmath gd zip intl opcache
 
-# Install Imagick (audit P2.4) — 2-3× faster than GD on large JPEGs.
-# Runtime driver is selected at app boot via ImageProcessingService::USE_IMAGICK_DRIVER (default: GD).
-# Build deps (autoconf, g++, make) are needed by phpize/pecl and removed after install
-# to keep the image lean. If install fails the build continues — GD remains active.
-RUN (apk add --no-cache --virtual .build-deps autoconf g++ make \
+# Imagick est le driver EFFECTIF (ImageProcessingService::USE_IMAGICK_DRIVER = true).
+# Version épinglée et échec bloquant : sans cela deux builds du même commit peuvent
+# produire deux moteurs de rendu différents (filigrane et performances différents).
+RUN apk add --no-cache --virtual .build-deps autoconf g++ make \
     && apk add --no-cache imagemagick imagemagick-dev \
-    && yes '' | pecl install imagick \
+    && yes '' | pecl install imagick-${IMAGICK_VERSION} \
     && docker-php-ext-enable imagick \
+    && php -m | grep -q '^imagick$' \
     && pecl clear-cache \
-    && apk del .build-deps) \
-    || echo "Imagick installation skipped (GD driver remains the default)"
+    && apk del .build-deps
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
