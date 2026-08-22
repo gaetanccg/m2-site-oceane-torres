@@ -65,7 +65,6 @@ export const adminApi = {
     sendGalleryAccessEmail: galleryApi.sendGalleryAccessEmail.bind(galleryApi),
     sendGalleryAccessSms: galleryApi.sendGalleryAccessSms.bind(galleryApi),
     togglePhotoDownloadable: galleryApi.togglePhotoDownloadable.bind(galleryApi),
-    uploadPhotos: galleryApi.uploadPhotos.bind(galleryApi),
     deletePhoto: galleryApi.deletePhoto.bind(galleryApi),
 
     // Event Galleries
@@ -74,7 +73,6 @@ export const adminApi = {
     createEventGallery: galleryApi.createEventGallery.bind(galleryApi),
     updateEventGallery: galleryApi.updateEventGallery.bind(galleryApi),
     deleteEventGallery: galleryApi.deleteEventGallery.bind(galleryApi),
-    uploadEventPhotos: galleryApi.uploadEventPhotos.bind(galleryApi),
     getEventGalleryChildren: galleryApi.getEventGalleryChildren.bind(galleryApi),
     setEventThumbnail: galleryApi.setEventThumbnail.bind(galleryApi),
 

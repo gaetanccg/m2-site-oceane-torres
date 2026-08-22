@@ -36,6 +36,7 @@ export const useCartStore = defineStore('cart', () => {
         digital: { label: 'Fichier numérique', price: 13, is_print: false },
         print_10x15: { label: 'Tirage 10x15 cm', price: 10, is_print: true },
         print_15x20: { label: 'Tirage 15x20 cm', price: 15, is_print: true },
+        print_scolaire: { label: 'Tirage scolaire', price: 6, is_print: true },
     })
 
     const isPhotoInCart = computed(() => {

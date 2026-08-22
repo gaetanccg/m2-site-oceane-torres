@@ -36,6 +36,16 @@ export default defineConfig({
         port: 4173,
         host: true,
     },
+    test: {
+        environment: 'jsdom',
+        globals: true,
+        include: ['src/**/*.spec.ts'],
+        coverage: {
+            provider: 'v8',
+            include: ['src/stores/**', 'src/utils/**', 'src/composables/**'],
+            reporter: ['text', 'html'],
+        },
+    },
     build: {
         // Ne pas inliner les assets dans le JS
         assetsInlineLimit: 0,

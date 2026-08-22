@@ -39,6 +39,9 @@ jobs:
       - name: Run ESLint
         run: npm run lint
 
+      - name: Run Vitest
+        run: npm run test
+
   frontend-build:
     name: Frontend Build & Prerender
     runs-on: ubuntu-latest
