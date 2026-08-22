@@ -39,7 +39,7 @@ class GalleryController extends Controller
             return Gallery::public()
                 ->with('photos')
                 ->latest()
-                ->paginate(12);
+                ->paginate(min((int) request()->integer('per_page', 12) ?: 12, 100));
         });
 
         return response()->json($galleries);
@@ -395,9 +395,12 @@ class GalleryController extends Controller
                     $query->where('downloads_count', '>', 0);
                 },
             ])
-            ->withSum('photos', 'downloads_count')
-            ->latest()
-            ->paginate(20);
+            ->withSum('photos', 'downloads_count');
+
+        $galleries = $this->paginated(
+            $this->sorted($galleries, request(), ['created_at', 'title', 'event_date']),
+            request()
+        );
 
         // Batch-load client_ids for all galleries with a user_id (avoids N+1)
         $userIds = $galleries->getCollection()->pluck('user_id')->filter()->unique()->values();

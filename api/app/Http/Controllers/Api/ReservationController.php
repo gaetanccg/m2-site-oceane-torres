@@ -31,7 +31,10 @@ class ReservationController extends Controller
 
         // Les attributs client_name, client_email, client_phone, is_guest
         // sont automatiquement inclus grace a $appends dans le modele
-        $reservations = $query->latest()->paginate(20);
+        $reservations = $this->paginated(
+            $this->sorted($query, $request, ['created_at', 'date', 'status']),
+            $request
+        );
 
         return response()->json($reservations);
     }

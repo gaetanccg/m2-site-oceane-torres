@@ -14,7 +14,7 @@ class GiftCardController extends Controller
     {
         $giftCards = GiftCard::with('payment')
             ->latest()
-            ->paginate(20);
+            ->paginate(min((int) request()->integer('per_page', 20) ?: 20, 100));
 
         return response()->json($giftCards);
     }

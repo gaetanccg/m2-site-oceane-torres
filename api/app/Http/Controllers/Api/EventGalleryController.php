@@ -41,7 +41,7 @@ class EventGalleryController extends Controller
                 ->withCount(['photos', 'children'])
                 ->orderBy('sort_order')
                 ->latest()
-                ->paginate(12);
+                ->paginate(min((int) request()->integer('per_page', 12) ?: 12, 100));
 
             $result->getCollection()->transform(function ($gallery) {
                 $gallery->cover_photo = $gallery->thumbnailPhoto ?? $gallery->photos->first();
@@ -122,7 +122,7 @@ class EventGalleryController extends Controller
             ->withCount(['photos', 'children'])
             ->orderBy('sort_order')
             ->latest()
-            ->paginate(20);
+            ->paginate(min((int) request()->integer('per_page', 20) ?: 20, 100));
 
         $galleries->getCollection()->transform(function ($gallery) {
             $gallery->cover_photo = $gallery->thumbnailPhoto ?? $gallery->photos->first();

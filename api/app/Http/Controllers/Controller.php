@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Concerns\PaginatesQueries;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 abstract class Controller
 {
-    use AuthorizesRequests;
+    use AuthorizesRequests, PaginatesQueries;
 }

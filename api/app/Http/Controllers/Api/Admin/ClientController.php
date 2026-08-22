@@ -98,7 +98,7 @@ class ClientController extends Controller
         $reservations = $client->reservations()
             ->with(['prestation', 'payments'])
             ->latest()
-            ->paginate(20);
+            ->paginate(min((int) request()->integer('per_page', 20) ?: 20, 100));
 
         return response()->json($reservations);
     }
