@@ -18,7 +18,7 @@ class GallerySerializationTest extends TestCase
 
     private const GALERIE = [
         'id', 'title', 'description', 'class_name', 'event_date', 'event_link',
-        'photos', 'event_category_id', 'created_at',
+        'photos', 'sort_order', 'event_category_id', 'created_at',
     ];
 
     private const PHOTO = [

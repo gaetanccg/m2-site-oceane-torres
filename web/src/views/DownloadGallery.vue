@@ -132,32 +132,12 @@ import {isInAppBrowser, downloadFile} from '@/utils/download'
 import {api, ApiServiceError} from '@/services/api'
 import {useToast} from '@/composables/useToast'
 import type {LightboxImage} from '@/types'
-
-interface Photo {
-    id: string
-    display_url?: string
-    preview_url?: string
-    thumbnail_url?: string
-    clean_thumbnail_url?: string
-    title?: string
-}
-
-interface Gallery {
-    id: string
-    title: string
-    description?: string
-    access_token: string
-    photos: Photo[]
-}
-
-interface DownloadGalleryResponse {
-    gallery: Gallery
-}
+import type {DownloadableGallery, DownloadGalleryResponse, Photo} from '@/types/gallery'
 
 const route = useRoute()
 const toast = useToast()
 
-const gallery = ref<Gallery | null>(null)
+const gallery = ref<DownloadableGallery | null>(null)
 const isLoading = ref(true)
 const error = ref('')
 const lightboxOpen = ref(false)

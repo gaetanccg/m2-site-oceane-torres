@@ -99,7 +99,7 @@
                                 <div class="aspect-[4/3] bg-gray-100 relative overflow-hidden">
                                     <img
                                         v-if="child.cover_photo"
-                                        :src="child.cover_photo.thumbnail_url || child.cover_photo.preview_url || child.cover_photo.display_url"
+                                        :src="child.cover_photo.thumbnail_url || child.cover_photo.preview_url || child.cover_photo.display_url || ''"
                                         :alt="child.title"
                                         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                         loading="lazy"
@@ -261,72 +261,16 @@ import AddToCartButton from '@/components/cart/AddToCartButton.vue'
 import CopyrightNotice from '@/components/CopyrightNotice.vue'
 import {api, ApiServiceError} from '@/services/api'
 import type {LightboxImage} from '@/types'
-
-interface Photo {
-    id: string
-    display_url?: string
-    preview_url?: string
-    thumbnail_url?: string
-    title?: string
-}
-
-interface AvailableProductType {
-    label: string
-    price: number
-    is_print: boolean
-    is_enabled: boolean
-}
-
-interface ChildGallery {
-    id: string
-    title: string
-    description?: string
-    photos_count: number
-    cover_photo?: Photo
-}
-
-interface ParentGallery {
-    id: string
-    title: string
-}
-
-interface PackTierInfo {
-    min_quantity: number
-    unit_price: number
-}
-
-interface PackPricingEntry {
-    label: string
-    base_price: number
-    tiers: PackTierInfo[]
-}
-
-interface Gallery {
-    id: string
-    title: string
-    description?: string
-    event_date?: string
-    event_link?: string
-    photos?: Photo[]
-    children?: ChildGallery[]
-    parent?: ParentGallery | null
-}
-
-type ProductTypeKey = 'digital' | 'print_10x15' | 'print_15x20' | 'print_scolaire'
-
-interface EventGalleryResponse {
-    gallery: Gallery
-    is_parent: boolean
-    available_product_types?: Record<ProductTypeKey, AvailableProductType>
-    pack_pricing?: Record<ProductTypeKey, PackPricingEntry>
-}
+import type {
+    AvailableProductType, EventGalleryResponse, Gallery, PackPricingEntry, Photo, ProductType,
+} from '@/types/gallery'
 
 const route = useRoute()
 
 const gallery = ref<Gallery | null>(null)
 const isParent = ref(false)
-const availableProductTypes = ref<Record<ProductTypeKey, AvailableProductType> | null>(null)
-const packPricing = ref<Record<ProductTypeKey, PackPricingEntry> | null>(null)
+const availableProductTypes = ref<Record<ProductType, AvailableProductType> | null>(null)
+const packPricing = ref<Record<ProductType, PackPricingEntry> | null>(null)
 const isLoading = ref(true)
 const error = ref('')
 const lightboxOpen = ref(false)

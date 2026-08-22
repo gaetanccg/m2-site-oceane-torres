@@ -202,57 +202,15 @@ import PhotoCard from '@/components/PhotoCard.vue'
 import AddToCartButton from '@/components/cart/AddToCartButton.vue'
 import {api, ApiServiceError} from '@/services/api'
 import type {LightboxImage} from '@/types'
-
-interface Photo {
-    id: string
-    display_url?: string
-    preview_url?: string
-    thumbnail_url?: string
-    title?: string
-    is_liked: boolean
-}
-
-interface AvailableProductType {
-    label: string
-    price: number
-    is_print: boolean
-    is_enabled: boolean
-}
-
-type ProductTypeKey = 'digital' | 'print_10x15' | 'print_15x20' | 'print_scolaire'
-
-interface PackTierInfo {
-    min_quantity: number
-    unit_price: number
-}
-
-interface PackPricingEntry {
-    label: string
-    base_price: number
-    tiers: PackTierInfo[]
-}
-
-interface Gallery {
-    id: string
-    title: string
-    description?: string
-    class_name?: string | null
-    photos: Photo[]
-}
-
-interface ShareCodeResponse {
-    gallery: Gallery
-    available_product_types?: Record<ProductTypeKey, AvailableProductType>
-    pack_pricing?: Record<ProductTypeKey, PackPricingEntry>
-    school_message?: string | null
-    school_closed?: boolean
-}
+import type {
+    AvailableProductType, Gallery, PackPricingEntry, Photo, ProductType, ShareCodeResponse,
+} from '@/types/gallery'
 
 const route = useRoute()
 
 const gallery = ref<Gallery | null>(null)
-const availableProductTypes = ref<Record<ProductTypeKey, AvailableProductType> | null>(null)
-const packPricing = ref<Record<ProductTypeKey, PackPricingEntry> | null>(null)
+const availableProductTypes = ref<Record<ProductType, AvailableProductType> | null>(null)
+const packPricing = ref<Record<ProductType, PackPricingEntry> | null>(null)
 const schoolMessage = ref<string | null>(null)
 const schoolClosed = ref(false)
 const isLoading = ref(true)

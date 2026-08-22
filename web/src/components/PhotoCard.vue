@@ -48,7 +48,7 @@ import { ref, watch } from 'vue'
 
 interface Props {
     src: string
-    thumbnailUrl?: string
+    thumbnailUrl?: string | null
     alt?: string
 }
 

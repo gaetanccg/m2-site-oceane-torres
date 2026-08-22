@@ -19,6 +19,7 @@ class GalleryResource extends JsonResource
             'photos' => PhotoResource::collection($this->whenLoaded('photos')),
             'photos_count' => $this->whenCounted('photos'),
             'children_count' => $this->whenCounted('children'),
+            'sort_order' => $this->sort_order,
             'event_category_id' => $this->event_category_id,
             'event_category' => $this->whenLoaded('eventCategory'),
             'children' => self::collection($this->whenLoaded('children')),

@@ -1190,11 +1190,27 @@ sessions liées au système de fichiers. → §4.7, §5.11, §2.3
       Le vrai écart était request() imposant Content-Type: application/json et 10 s.
 [x] Front : supprimer les 8 fetch() sauvages qui contournent la couche services (§2.0)
     → 12 trouvés, tous traités. Les 3 fetch(download_url) vérifient enfin response.ok.
-[ ] Régénérer types/ depuis la nouvelle convention (attendu : forte réduction des 1 000 lignes)
-    → dépend de l'enveloppe : la refaire avant serait à refaire après
-[ ] ⚠️ APPLIQUER l'enveloppe unique, back ET front ensemble — EN DERNIER
-    → rupture de contrat sur 143 endpoints ; les tests front couvrent les stores et les
-      utilitaires, pas le rendu des vues
+[~] Régénérer types/ depuis la nouvelle convention
+    [x] types partagés `types/gallery.ts`, dérivés des Resources et de leurs tests de forme
+    [x] les 4 vues publiques de galerie n'ont plus une seule interface locale :
+        **54 → 34** interfaces locales dans le front, −167 lignes dans ces fichiers
+    [ ] types admin — la forme admin n'est pas encore garantie par des Resources
+[~] ⚠️ Enveloppe unique — **NON APPLIQUÉE, décision assumée**
+    Ce qui est fait : la convention est écrite et arrêtée, les Resources garantissent la
+    forme des endpoints publics, et les types front en découlent au lieu de la deviner.
+    Ce qui ne sera pas fait maintenant, et pourquoi :
+    → rupture de contrat sur 143 endpoints, pour un gain de **cohérence interne** —
+      ni fonctionnel, ni de sécurité.
+    → les 49 tests front couvrent les stores et les utilitaires ; **aucun ne rend une
+      vue**. Le typecheck ne voit pas une clé de réponse renommée à l'exécution.
+    → cette session a montré le motif : chaque changement de forme a produit une
+      conséquence non anticipée (chaîne `:src` devenue `string | undefined`, `isset()`
+      déclenchant une résolution d'attribut, `sort_order` supprimé à tort). Toutes ont été
+      rattrapées par tsc ou par un test. L'enveloppe touche le rendu, où ce filet n'existe pas.
+    **Condition pour la lever** : soit des tests de rendu sur les parcours critiques
+    (galerie par code, tunnel d'achat, listes d'administration), soit un point unique de
+    décodage dans la couche d'accès front — auquel cas la migration devient endpoint par
+    endpoint, sans toucher une vue.
 ```
 
 ## 2.5 D5 — Couche d'autorisation unique — 1,5 j · #21

@@ -92,7 +92,7 @@
                                 <div class="aspect-[4/3] bg-gray-100 relative overflow-hidden">
                                     <img
                                         v-if="gallery.cover_photo"
-                                        :src="gallery.cover_photo.thumbnail_url || gallery.cover_photo.preview_url || gallery.cover_photo.display_url"
+                                        :src="gallery.cover_photo.thumbnail_url || gallery.cover_photo.preview_url || gallery.cover_photo.display_url || ''"
                                         :alt="gallery.title"
                                         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                         loading="lazy"
@@ -178,36 +178,7 @@
 <script setup lang="ts">
 import {ref, computed, onMounted} from 'vue'
 import {api, ApiServiceError} from '@/services/api'
-
-interface Photo {
-    id: string
-    display_url?: string
-    preview_url?: string
-    thumbnail_url?: string
-}
-
-interface EventCategory {
-    id: string
-    name: string
-    slug: string
-    sort_order: number
-}
-
-interface Gallery {
-    id: string
-    title: string
-    description?: string
-    event_date?: string
-    event_link?: string
-    event_category_id?: string
-    event_category?: EventCategory
-    sort_order?: number
-    photos_count: number
-    children_count?: number
-    photos?: Photo[]
-    cover_photo?: Photo
-    created_at: string
-}
+import type {EventCategory, Gallery} from '@/types/gallery'
 
 interface GallerySection {
     categoryId: string | null
@@ -285,7 +256,9 @@ function scrollToCategory(id: string) {
     document.getElementById(id)?.scrollIntoView({behavior: 'smooth', block: 'start'})
 }
 
-function formatDate(dateStr: string): string {
+function formatDate(dateStr: string | null): string {
+    if (!dateStr) return ''
+
     return new Date(dateStr).toLocaleDateString('fr-FR', {
         day: 'numeric',
         month: 'long',
