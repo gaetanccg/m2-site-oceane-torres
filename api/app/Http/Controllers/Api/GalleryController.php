@@ -416,20 +416,6 @@ class GalleryController extends Controller
         ]);
     }
 
-    public function downloadFile(Gallery $gallery, Request $request)
-    {
-        $filename = $request->query('file');
-        $filePath = storage_path('app/temp/'.$filename);
-
-        if (! file_exists($filePath)) {
-            return response()->json([
-                'message' => 'Fichier non trouvé.',
-            ], 404);
-        }
-
-        return response()->download($filePath)->deleteFileAfterSend(true);
-    }
-
     public function adminIndex(): JsonResponse
     {
         $galleries = Gallery::with(['user:id,first_name,last_name,email', 'galleryProductTypes.packTiers'])
