@@ -284,6 +284,29 @@ services:
       - app-network
 
   # ----------------------------
+  # Postgres de DÉVELOPPEMENT (base applicative locale)
+  # ----------------------------
+  postgres-dev:
+    image: postgres:16-alpine
+    container_name: ot-postgres-dev
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=oceane_dev
+    ports:
+      - "55433:5432"
+    volumes:
+      - pgdata-dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d oceane_dev"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - app-network
+
+  # ----------------------------
   # Postgres de TEST (suite PHPUnit uniquement)
   # ----------------------------
   # Base éphémère dédiée aux tests. Le code contient du SQL Postgres-spécifique
@@ -339,6 +362,7 @@ services:
 volumes:
   nginx-logs:
   php-logs:
+  pgdata-dev:
 
 networks:
   app-network:
