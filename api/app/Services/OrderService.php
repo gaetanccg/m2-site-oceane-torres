@@ -15,6 +15,7 @@ use App\Models\Payment;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
@@ -631,19 +632,7 @@ class OrderService
             throw new BusinessException('Cette commande n\'a pas été payée.', 403);
         }
 
-        // Accès si : owner authentifié, token download valide, ou paid_at < 30 min
-        // (fenêtre courte pour permettre le download immédiat post-paiement).
-        $hasAccess = false;
-
-        if ($user && $order->user_id === $user->id) {
-            $hasAccess = true;
-        } elseif ($token && $order->isDownloadTokenValid($token)) {
-            $hasAccess = true;
-        } elseif ($order->paid_at && $order->paid_at->diffInMinutes(now()) < 30) {
-            $hasAccess = true;
-        }
-
-        if (! $hasAccess) {
+        if (! Gate::forUser($user)->allows('download', [$order, $token])) {
             throw new BusinessException('Accès non autorisé à cette commande.', 403);
         }
 

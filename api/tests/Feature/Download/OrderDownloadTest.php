@@ -6,23 +6,35 @@ use App\Models\Gallery;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Photo;
+use App\Models\User;
 use App\Services\MinioStorageService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
+use Laravel\Sanctum\Sanctum;
 use Mockery;
 use Tests\TestCase;
 
 /**
  * GET /orders/{order}/download/{item} et /orders/{order}/download-all.
- * Accès géré par OrderService::getOrderForDownload (payée + owner/token/paid_at<30min).
+ * Accès décidé par OrderPolicy::download (payée + propriétaire ou jeton valide).
+ * Ces tests portent sur la mécanique de téléchargement, pas sur l'autorisation :
+ * ils s'authentifient donc comme propriétaire de la commande.
  */
 class OrderDownloadTest extends TestCase
 {
     use RefreshDatabase;
 
+    private function paidOrderOwnedByCurrentUser(): Order
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        return Order::factory()->paid()->create(['user_id' => $user->id]);
+    }
+
     public function test_download_photo_returns_signed_url_and_marks_downloaded(): void
     {
-        $order = Order::factory()->paid()->create(); // paid_at = now → accès < 30 min
+        $order = $this->paidOrderOwnedByCurrentUser();
         $photo = Photo::factory()->create();
         $item = OrderItem::factory()->forPhoto($photo)->create(['order_id' => $order->id]);
 
@@ -48,7 +60,7 @@ class OrderDownloadTest extends TestCase
 
     public function test_download_all_is_capped_at_50_digital_items(): void
     {
-        $order = Order::factory()->paid()->create();
+        $order = $this->paidOrderOwnedByCurrentUser();
         OrderItem::factory()->count(51)->create(['order_id' => $order->id, 'product_type' => 'digital']);
 
         $this->getJson("/api/orders/{$order->id}/download-all")
@@ -60,7 +72,7 @@ class OrderDownloadTest extends TestCase
     {
         $disk = Storage::fake('minio');
         $gallery = Gallery::factory()->create();
-        $order = Order::factory()->paid()->create();
+        $order = $this->paidOrderOwnedByCurrentUser();
 
         $items = collect(range(1, 2))->map(function ($i) use ($gallery, $order, $disk) {
             $photo = Photo::factory()->create(['gallery_id' => $gallery->id]);

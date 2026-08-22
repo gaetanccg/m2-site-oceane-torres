@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Order;
+use App\Support\OrderAccessSignature;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -40,7 +41,7 @@ class SumUpService
             'currency' => $order->currency,
             'merchant_code' => $this->merchantCode,
             'description' => 'Commande photos - '.$order->order_number,
-            'return_url' => $this->returnUrl.'?order='.$order->id,
+            'return_url' => $this->returnUrl.'?order='.$order->id.'&token='.OrderAccessSignature::for($order),
         ];
 
         // Include customer info for SumUp dashboard tracking

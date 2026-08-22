@@ -9,6 +9,7 @@ use App\Http\Requests\CreateCheckoutRequest;
 use App\Http\Requests\GetOrdersByEmailRequest;
 use App\Http\Requests\OrderIdRequest;
 use App\Models\Order;
+use App\Support\OrderAccessSignature;
 use App\Services\CartService;
 use App\Services\InvoiceService;
 use App\Services\MinioStorageService;
@@ -16,6 +17,7 @@ use App\Services\OrderService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Response;
 
@@ -144,6 +146,7 @@ class OrderController extends Controller
                     'success' => true,
                     'order_id' => $order->id,
                     'order_number' => $order->order_number,
+                    'token' => OrderAccessSignature::for($order),
                 ]);
             }
 
@@ -184,41 +187,20 @@ class OrderController extends Controller
      */
     public function show(Request $request, string $orderId): JsonResponse
     {
-        $user = Auth::guard('sanctum')->user();
-        $token = $request->input('token');
+        $order = Order::with('items.photo')->findOrFail($orderId);
 
-        try {
-            $order = Order::with('items.photo')->findOrFail($orderId);
-
-            $hasAccess = false;
-
-            if ($user && $order->user_id === $user->id) {
-                $hasAccess = true;
-            } elseif ($order->guest_email && $request->input('email') === $order->guest_email) {
-                $hasAccess = true;
-            } elseif ($token && $order->isDownloadTokenValid($token)) {
-                $hasAccess = true;
-            } elseif ($order->created_at->diffInMinutes(now()) < 30) {
-                $hasAccess = true;
-            }
-
-            if (! $hasAccess) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Acces non autorise.',
-                ], 403);
-            }
-
-            return response()->json([
-                'success' => true,
-                'order' => new OrderResource($order),
-            ]);
-        } catch (\Exception $e) {
+        if (! Gate::forUser(Auth::guard('sanctum')->user())
+            ->allows('view', [$order, $request->input('token'), $request->input('email')])) {
             return response()->json([
                 'success' => false,
-                'message' => 'Commande non trouvee.',
-            ], 404);
+                'message' => 'Acces non autorise.',
+            ], 403);
         }
+
+        return response()->json([
+            'success' => true,
+            'order' => new OrderResource($order),
+        ]);
     }
 
     /**

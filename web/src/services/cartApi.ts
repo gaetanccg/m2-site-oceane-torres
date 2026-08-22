@@ -269,7 +269,7 @@ class CartApiService extends BaseApiService {
         })
     }
 
-    async confirmFreeOrder(orderId: string): Promise<{ success: boolean; order_id?: string; order_number?: string; message?: string }> {
+    async confirmFreeOrder(orderId: string): Promise<{ success: boolean; order_id?: string; order_number?: string; token?: string; message?: string }> {
         return this.cartRequest('/checkout/confirm-free', {
             method: 'POST',
             body: JSON.stringify({ order_id: orderId }),

@@ -576,7 +576,8 @@ async function confirmFreeOrder() {
                 // Best-effort : ne jamais bloquer la redirection.
             }
             // isPaymentProcessing reste true → onUnmounted n'annulera pas la commande payée.
-            router.push(`/commande/${currentOrder.value.id}`)
+            const query = result.token ? `?token=${encodeURIComponent(result.token)}` : ''
+            router.push(`/commande/${currentOrder.value.id}${query}`)
             return
         }
 

@@ -58,12 +58,13 @@ class OrderAccessTest extends TestCase
             ->assertJsonPath('success', true);
     }
 
-    public function test_order_is_open_within_30_minutes_of_creation(): void
+    public function test_a_recent_order_is_no_longer_open_without_credentials(): void
     {
-        // Edge case connu : toute commande est accessible sans identifiant pendant 30 min.
+        // Regle supprimee en 2.5 : « creee depuis moins de 30 minutes » accordait la
+        // lecture a quiconque connaissait l'identifiant, sans rien prouver.
         $order = Order::factory()->create(['created_at' => now()->subMinutes(5)]);
 
-        $this->getJson("/api/orders/{$order->id}")->assertOk();
+        $this->getJson("/api/orders/{$order->id}")->assertStatus(403);
     }
 
     public function test_unauthorized_after_30_minutes_returns_403(): void
