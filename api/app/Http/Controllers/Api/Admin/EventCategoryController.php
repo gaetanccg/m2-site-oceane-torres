@@ -85,20 +85,12 @@ class EventCategoryController extends Controller
         $validated = $request->validated();
 
         $cases = [];
-        $bindings = [];
-        $ids = [];
-        foreach ($validated['categories'] as $categoryData) {
-            $cases[] = 'WHEN ? THEN ?';
-            $bindings[] = $categoryData['id'];
-            $bindings[] = (int) $categoryData['sort_order'];
-            $ids[] = $categoryData['id'];
-        }
-
-        if (! empty($cases)) {
-            $caseSql = implode(' ', $cases);
-            EventCategory::whereIn('id', $ids)
-                ->update(['sort_order' => \DB::raw("CASE id {$caseSql} END", $bindings)]);
-        }
+        \DB::transaction(function () use ($validated) {
+            foreach ($validated['categories'] as $categoryData) {
+                EventCategory::where('id', $categoryData['id'])
+                    ->update(['sort_order' => (int) $categoryData['sort_order']]);
+            }
+        });
 
         return response()->json([
             'success' => true,
