@@ -24,27 +24,32 @@ class ImageProxyController extends Controller
     /**
      * Stream preview version of a photo
      */
-    public function preview(string $photo): Response
+    public function preview(Request $request, string $photo): Response
     {
-        $model = $this->findPhotoCached($photo);
-        if (! $model) {
-            return $this->errorResponse('Photo non trouvée.', 404);
-        }
-
-        return $this->streamImage($model, 'preview');
+        return $this->streamWatermarked($request, $photo, 'preview');
     }
 
     /**
      * Stream thumbnail version of a photo
      */
-    public function thumbnail(string $photo): Response
+    public function thumbnail(Request $request, string $photo): Response
+    {
+        return $this->streamWatermarked($request, $photo, 'thumbnail');
+    }
+
+    private function streamWatermarked(Request $request, string $photo, string $version): Response
     {
         $model = $this->findPhotoCached($photo);
         if (! $model) {
             return $this->errorResponse('Photo non trouvée.', 404);
         }
 
-        return $this->streamImage($model, 'thumbnail');
+        $gallery = $model->gallery;
+        if (! $gallery || ! $gallery->grantsWatermarkedPreview($request->query('token'))) {
+            return $this->errorResponse('Accès non autorisé.', 403);
+        }
+
+        return $this->streamImage($model, $version);
     }
 
     /**

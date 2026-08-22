@@ -33,8 +33,9 @@ class ImageDerivativeTest extends TestCase
     {
         $this->mockGenerator(1);
         $photo = Photo::factory()->unprocessed()->create();
+        $url = "/api/images/preview/{$photo->id}?token={$photo->gallery->share_code}";
 
-        $this->get("/api/images/preview/{$photo->id}")->assertOk();
+        $this->get($url)->assertOk();
 
         Storage::disk('minio')->assertExists("derived/preview_{$photo->id}.jpg");
     }
@@ -43,17 +44,19 @@ class ImageDerivativeTest extends TestCase
     {
         $this->mockGenerator(1);
         $photo = Photo::factory()->unprocessed()->create();
+        $url = "/api/images/preview/{$photo->id}?token={$photo->gallery->share_code}";
 
-        $this->get("/api/images/preview/{$photo->id}")->assertOk();
-        $this->get("/api/images/preview/{$photo->id}")->assertOk();
+        $this->get($url)->assertOk();
+        $this->get($url)->assertOk();
     }
 
     public function test_derivatives_are_not_written_to_the_application_cache(): void
     {
         $this->mockGenerator(1);
         $photo = Photo::factory()->unprocessed()->create();
+        $url = "/api/images/preview/{$photo->id}?token={$photo->gallery->share_code}";
 
-        $this->get("/api/images/preview/{$photo->id}")->assertOk();
+        $this->get($url)->assertOk();
 
         // Le cache est plafonne en memoire avec eviction LRU et porte les heartbeats
         // de supervision : aucun binaire d'image ne doit y entrer.

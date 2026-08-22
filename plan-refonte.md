@@ -1239,8 +1239,22 @@ Quatre mécanismes contradictoires aujourd'hui ; la règle des « 30 minutes » 
     → RETIRÉ plutôt que sécurisé : aucun consommateur ne l'appelait, et il renvoyait
       toutes les commandes d'une adresse sans authentification. docs/authorization.md §6
       décrit comment le rétablir sans en faire un oracle d'énumération.
-[ ] #34 Décider : soit preview/thumbnail passent derrière le token de galerie, soit documenter
-    que régénérer le code ne révoque pas l'accès aux previews 👤 DÉCISION PRODUIT
+[x] #34 Décider : soit preview/thumbnail passent derrière le token de galerie, soit documenter
+    → **option A retenue** : les deux endpoints exigent désormais un credential. Ils
+      n'exigeaient RIEN — l'UUID d'une photo suffisait, définitivement.
+    → credential = **code de partage**, pas jeton d'accès : c'est celui que détient la
+      visiteuse, et une URL est une chaîne que `$hidden` ne filtre pas — y mettre
+      `access_token` rouvrirait l'escalade vers les dérivés propres.
+    → coût mesuré nul : sur les 5350 photos de production, **5350** ont leur dérivé
+      généré, donc aucune n'emprunte ce chemin en fonctionnement normal.
+    → 🔴 **trouvé en cours de route** : `Gallery` n'invalidait aucun cache, alors que
+      `ImageProxyController` garde la photo AVEC sa galerie 1 h. L'ancien code serait
+      resté valable jusqu'à une heure après régénération — la correction aurait été
+      cosmétique. `Gallery::booted()` purge `photo_meta_*` sur rotation de credential.
+    → fenêtre résiduelle assumée de 24 h sur les URL signées MinIO déjà distribuées,
+      documentée dans `docs/authorization.md` §6bis.
+    → 16 tests, dont « régénérer le code révoque l'accès » et « le code de partage
+      n'ouvre pas les dérivés propres ».
 [x] Documenter la matrice « qui a le droit de quoi » dans docs/authorization.md
 ```
 

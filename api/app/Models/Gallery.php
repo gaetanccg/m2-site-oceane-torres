@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 class Gallery extends Model
@@ -83,6 +84,26 @@ class Gallery extends Model
                 $gallery->type = 'private';
             }
         });
+    }
+
+    protected static function booted(): void
+    {
+        static::saved(function (self $gallery) {
+            if ($gallery->wasChanged(['share_code', 'access_token'])) {
+                $gallery->forgetPhotoMetaCache();
+            }
+        });
+    }
+
+    /**
+     * ImageProxyController met en cache la photo AVEC sa galerie : sans cette
+     * invalidation, l'ancien credential resterait valable jusqu'a l'expiration du cache.
+     */
+    public function forgetPhotoMetaCache(): void
+    {
+        foreach ($this->photos()->pluck('id') as $photoId) {
+            Cache::forget("photo_meta_{$photoId}");
+        }
     }
 
     public static function generateUniqueShareCode(): string
@@ -177,9 +198,29 @@ class Gallery extends Model
         return $this->holdsAccessToken($token);
     }
 
+    /**
+     * Derives FILIGRANES. Le code de partage suffit — c'est le credential que detient la
+     * visiteuse, et celui dont la regeneration doit revoquer l'acces. Y mettre
+     * `access_token` rouvrirait l'escalade vers les derives propres : une URL est une
+     * chaine, que $hidden ne filtre pas.
+     */
+    public function grantsWatermarkedPreview(?string $credential = null): bool
+    {
+        if ($this->type === 'public' || ($this->type === 'event' && $this->is_published)) {
+            return true;
+        }
+
+        return $this->holdsAccessToken($credential) || $this->holdsShareCode($credential);
+    }
+
     private function holdsAccessToken(?string $token): bool
     {
         return $token !== null && $token !== '' && hash_equals($this->access_token, $token);
+    }
+
+    private function holdsShareCode(?string $candidate): bool
+    {
+        return $candidate !== null && $candidate !== '' && hash_equals((string) $this->share_code, $candidate);
     }
 
     public function scopePublic($query)

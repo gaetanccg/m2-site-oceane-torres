@@ -119,9 +119,40 @@ Pour rétablir la fonction proprement : n'accuser réception que d'une demande, 
 **par email** un lien signé vers la liste. La réponse HTTP ne doit jamais dépendre de
 l'existence de commandes pour cette adresse, sinon elle devient un oracle d'énumération.
 
+## 6bis. Aperçus filigranés — #34 tranché
+
+Deux chemins mènent à un dérivé **filigrané** (aperçu 1200 px, miniature 400 px).
+
+| Chemin | Credential | Révocable |
+|---|---|---|
+URL signée MinIO, validité **24 h** | la signature elle-même | non — elle vit sa vie |
+`/api/images/preview/{id}` · `/api/images/thumbnail/{id}` | **code de partage** ou jeton d'accès | oui, par régénération |
+
+Le second n'exigeait **rien** : connaître l'UUID d'une photo suffisait, définitivement.
+Régénérer le code de partage ne révoquait donc rien sur ce chemin, faute de credential à
+révoquer.
+
+Le credential retenu est le **code de partage**, pas le jeton d'accès. Deux raisons : c'est
+celui que détient la visiteuse, déjà présent dans son URL ; et une URL est une chaîne, que
+`$hidden` ne filtre pas — y mettre `access_token` rouvrirait l'escalade vers les dérivés
+propres (§5).
+
+Une galerie `public`, ou `event` publiée, reste ouverte sans credential : ses aperçus sont
+publics par conception.
+
+**Fenêtre résiduelle de 24 h.** Après régénération du code, les URL signées MinIO déjà
+distribuées restent valables jusqu'à leur expiration. Réduire ce délai est possible
+(`Photo::SIGNED_URL_CACHE_TTL` et la durée de signature) mais coûte le cache navigateur
+entre deux visites — sensible sur les galeries scolaires de plusieurs centaines de photos.
+Écart assumé : l'exposition se limite à des images filigranées, pour quelqu'un qui avait
+déjà l'accès.
+
+**Le cache devait être invalidé pour que tout cela tienne.** `ImageProxyController` met la
+photo en cache **avec sa galerie** pendant 1 h : sans invalidation, l'ancien code serait
+resté valable jusqu'à une heure après régénération, ce qui aurait vidé la correction de son
+sens. `Gallery::booted()` purge donc `photo_meta_*` quand `share_code` ou `access_token`
+change — et seulement alors.
+
 ## 7. Points ouverts
 
-- **#34** — `preview_url` et `thumbnail_url` ne passent pas derrière le jeton de galerie :
-  régénérer le code de partage ne révoque donc pas l'accès aux aperçus déjà connus.
-  Décision produit : soit les faire passer derrière le jeton, soit assumer et documenter.
 - **D8** — périmètre de l'authentification (#13, #28) : à trancher.

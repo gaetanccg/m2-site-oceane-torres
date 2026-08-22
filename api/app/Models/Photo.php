@@ -189,11 +189,11 @@ class Photo extends Model
         $proxyUrl = url("/api/images/{$version}/{$this->id}");
 
         if (! config('shop.serve_images_direct', true)) {
-            return $proxyUrl;
+            return $this->withGalleryCredential($proxyUrl);
         }
 
         if (! $this->is_processed || ! $processedPath) {
-            return $proxyUrl;
+            return $this->withGalleryCredential($proxyUrl);
         }
 
         // TTL de cache 12 h pour une signature valable 24 h : l'URL servie a donc au
@@ -205,7 +205,14 @@ class Photo extends Model
             fn () => app(MinioStorageService::class)->getSignedUrl($processedPath, 86400)
         );
 
-        return $cached ?: $proxyUrl;
+        return $cached ?: $this->withGalleryCredential($proxyUrl);
+    }
+
+    private function withGalleryCredential(string $proxyUrl): string
+    {
+        $code = $this->gallery?->share_code;
+
+        return $code ? "{$proxyUrl}?token={$code}" : $proxyUrl;
     }
 
     /**
