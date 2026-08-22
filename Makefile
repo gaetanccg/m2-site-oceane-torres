@@ -1,4 +1,4 @@
-.PHONY: help init up down restart logs shell test migrate seed fresh clean
+.PHONY: help init up down restart logs shell test migrate clean
 
 # Colors
 GREEN  := $(shell tput -Txterm setaf 2)
@@ -20,9 +20,13 @@ help: ## Show this help
 
 init: ## Initialize the project (first time setup)
 	@echo "🚀 Initializing project..."
-	cp api/.env.example api/.env
+	@if [ -f api/.env ]; then \
+		echo "↩️  api/.env existe déjà — conservé tel quel."; \
+	else \
+		cp api/.env.example api/.env; \
+		cd api && php artisan key:generate; \
+	fi
 	cd api && composer install
-	cd api && php artisan key:generate
 	@echo "✅ Project initialized! Configure your .env file then run 'make up'"
 
 install: ## Install all dependencies
@@ -37,7 +41,7 @@ up: ## Start all Docker containers
 	docker-compose up -d
 	@echo "✅ Containers started"
 	@echo "📍 API: http://localhost:8000"
-	@echo "📧 MailHog: http://localhost:8025"
+	@echo "📧 Mailpit: http://localhost:8025"
 
 down: ## Stop all Docker containers
 	docker-compose down
@@ -78,13 +82,6 @@ migrate: ## Run database migrations
 #    docker-compose exec laravel php -d memory_limit=1G artisan photos:process-existing
 #	@echo "✅ Process finished"
 
-seed: ## Run database seeders
-	docker-compose exec laravel php artisan db:seed
-	@echo "✅ Database seeded"
-
-fresh: ## Fresh migrate with seeders
-	docker-compose exec laravel php artisan migrate:fresh --seed
-	@echo "✅ Database refreshed"
 
 ## ===========================================
 ## Testing
