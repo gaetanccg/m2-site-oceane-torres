@@ -107,6 +107,14 @@ serveur plus recent que lui. Le script releve `server_version`, choisit
 `.counts` pour que `verify` restaure avec la meme version. Definir `POSTGRES_IMAGE`
 soi-meme epingle le client et desactive cet alignement.
 
+**Le dump se limite au schema `public`.** Supabase ne sert que de PostgreSQL
+manage — ni Auth, ni Storage, ni Realtime — et toutes les tables de l'application
+vivent dans `public` (38, plus `migrations`). Sans ce filtre, `pg_dump` embarque les
+schemas internes de Supabase et leurs extensions (`supabase_vault`, `pg_graphql`…),
+qui font echouer la restauration partout ailleurs que sur Supabase. Le filtre est
+applique au dump ET a la restauration, pour que les dumps pris avant cette regle
+restent verifiables. `DUMP_SCHEMA` permet de le changer.
+
 **Un dump non restaure n'est pas une sauvegarde.** `verify` restaure le dernier
 dump dans un conteneur jetable (tmpfs, `--network none`) et compare 9 tables
 temoins. Tant que cette etape n'est pas au vert, il n'y a pas de sauvegarde.

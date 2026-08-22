@@ -13,11 +13,16 @@ RETENTION_DAYS="${RETENTION_DAYS:-30}"
 # pg_dump exige une session stable : le pooler transaction (6543) ne convient pas.
 PGDUMP_PORT="${PGDUMP_PORT:-5432}"
 
+# Seul `public` porte les donnees de l'application. Sans ce filtre, le dump embarque
+# les schemas internes de Supabase et leurs extensions (supabase_vault, pg_graphql…),
+# qui rendent la restauration impossible ailleurs que sur Supabase.
+DUMP_SCHEMA="${DUMP_SCHEMA:-public}"
+
 WITNESS_TABLES=(users clients galleries photos orders order_items invoices payments privacy_audit_logs)
 
-red()  { printf '\033[31m%s\033[0m\n' "$*"; }
-grn()  { printf '\033[32m%s\033[0m\n' "$*"; }
-ylw()  { printf '\033[33m%s\033[0m\n' "$*"; }
+red()  { printf '\033[31m%b\033[0m\n' "$*"; }
+grn()  { printf '\033[32m%b\033[0m\n' "$*"; }
+ylw()  { printf '\033[33m%b\033[0m\n' "$*"; }
 die()  { red "✖ $*" >&2; exit 1; }
 step() { printf '\n\033[1m── %s\033[0m\n' "$*"; }
 
@@ -33,7 +38,7 @@ Sauvegarde base PostgreSQL + stockage objet MinIO.
 Cible : deploy/.env.prod par défaut. Pour la preprod :
   BACKUP_ENV_FILE=deploy/.env.preprod ./deploy/backup.sh all
 
-Surcharges : BACKUP_DIR, PGDUMP_PORT, RETENTION_DAYS
+Surcharges : BACKUP_DIR, PGDUMP_PORT, RETENTION_DAYS, DUMP_SCHEMA
 POSTGRES_IMAGE s'aligne seul sur la version du serveur. Le définir l'épingle et
 désactive cet alignement.
 EOF
@@ -73,7 +78,7 @@ target_label() {
 cmd_db() {
     step "Sauvegarde de la base"
     mkdir -p "${BACKUP_DIR}"
-    ylw "  cible : $(target_label) @ ${DB_HOST}:${PGDUMP_PORT}  (source : $(basename "${ENV_FILE}"))"
+    ylw "  cible : $(target_label) @ ${DB_HOST}:${PGDUMP_PORT} · schéma ${DUMP_SCHEMA}  (source : $(basename "${ENV_FILE}"))"
 
     local server_version
     server_version="$(pg_in_docker psql \
@@ -105,6 +110,7 @@ cmd_db() {
     pg_in_docker pg_dump \
         -h "${DB_HOST}" -p "${PGDUMP_PORT}" -U "${DB_USERNAME}" -d "${DB_DATABASE}" \
         --format=custom --no-owner --no-privileges \
+        --schema="${DUMP_SCHEMA}" \
         --file="/backup/${outfile}" \
         || die "pg_dump a échoué — supprimer le fichier partiel, ce n'est pas une sauvegarde."
 
@@ -168,10 +174,13 @@ cmd_verify() {
     docker exec "${container}" pg_isready -U postgres -d oceane_restore_check >/dev/null 2>&1 \
         || die "La base de contrôle n'a pas démarré."
 
+    # Filtre aussi a la restauration : un dump anterieur au filtre cote pg_dump
+    # embarque les schemas Supabase, dont des extensions absentes d'un PostgreSQL nu.
     docker cp "${dump}" "${container}:/tmp/restore.dump"
     docker exec -e PGPASSWORD=postgres "${container}" \
         pg_restore --dbname=oceane_restore_check --no-owner --no-privileges \
-                   --username=postgres --exit-on-error /tmp/restore.dump \
+                   --username=postgres --schema="${DUMP_SCHEMA}" \
+                   --exit-on-error /tmp/restore.dump \
         || die "pg_restore a échoué : ce dump n'est pas restaurable."
     grn "  restauration réussie"
 
