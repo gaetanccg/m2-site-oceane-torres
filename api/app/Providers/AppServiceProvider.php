@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\Password;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -90,6 +92,21 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('health', function (Request $request) {
             return Limit::perMinute(60)->by($request->ip());
+        });
+
+        RateLimiter::for('auth', function (Request $request) {
+            return [
+                Limit::perMinute(5)->by($request->ip()),
+                Limit::perMinute(5)->by(Str::lower((string) $request->input('email'))),
+            ];
+        });
+
+        RateLimiter::for('gallery-code', function (Request $request) {
+            return Limit::perMinute(10)->by($request->ip());
+        });
+
+        RateLimiter::for('public-form', function (Request $request) {
+            return Limit::perMinute(5)->by($request->ip());
         });
     }
 }

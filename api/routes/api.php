@@ -56,10 +56,12 @@ Route::middleware('throttle:health')->group(function () {
 */
 
 // Authentication
-Route::post('/auth/register', [AuthController::class, 'register']);
-Route::post('/auth/login', [AuthController::class, 'login']);
-Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword']);
-Route::post('/auth/reset-password', [AuthController::class, 'resetPassword']);
+Route::middleware('throttle:auth')->group(function () {
+    Route::post('/auth/register', [AuthController::class, 'register']);
+    Route::post('/auth/login', [AuthController::class, 'login']);
+    Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword']);
+    Route::post('/auth/reset-password', [AuthController::class, 'resetPassword']);
+});
 
 // Prestations (public)
 Route::get('/prestations', [PrestationController::class, 'index']);
@@ -90,7 +92,7 @@ Route::middleware('throttle:downloads')->group(function () {
 });
 
 // Contact
-Route::post('/contact', [ContactController::class, 'send']);
+Route::middleware('throttle:public-form')->post('/contact', [ContactController::class, 'send']);
 
 // Event Galleries (public)
 Route::get('/events', [EventGalleryController::class, 'index']);
@@ -100,7 +102,7 @@ Route::get('/events/{gallery}', [EventGalleryController::class, 'show']);
 Route::get('/gift-cards/validate/{code}', [GiftCardController::class, 'validate']);
 
 // Booking request (public - sans authentification)
-Route::post('/booking-request', [BookingRequestController::class, 'store']);
+Route::middleware('throttle:public-form')->post('/booking-request', [BookingRequestController::class, 'store']);
 
 // Cart (public - works with session for guests)
 Route::prefix('cart')->group(function () {
@@ -125,7 +127,7 @@ Route::get('/orders/{order}', [OrderController::class, 'show']);
 Route::get('/orders/{order}/download/{item}', [OrderController::class, 'downloadPhoto']);
 Route::get('/orders/{order}/download-all', [OrderController::class, 'downloadAll']);
 Route::get('/orders/{order}/invoice', [OrderController::class, 'downloadInvoice']);
-Route::post('/orders/by-email', [OrderController::class, 'getByEmail']);
+Route::middleware('throttle:auth')->post('/orders/by-email', [OrderController::class, 'getByEmail']);
 
 // SumUp Payment (public)
 Route::prefix('payments/sumup')->group(function () {
