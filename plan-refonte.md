@@ -14,7 +14,9 @@
 
 | Élément | Signification |
 |---|---|
-`[ ]` | Case à cocher — le document est fait pour être coché
+`[ ]` | Reste à faire
+`[x]` | Fait et vérifié — un test ou une mesure l'atteste
+`[~]` | **Partiel ou écarté** : la ligne juste en dessous dit ce qui manque et pourquoi
 `→ §X.Y` | Renvoi vers l'audit, pour le détail et la justification
 `#N` | Numéro d'item du registre de dette (§10, matrice de traçabilité)
 🔴 🟠 🟡 🟢 | Critique · Élevé · Moyen · Faible
@@ -315,6 +317,9 @@ Conséquence pour la suite : le choix du pooler n'est plus une dette. B et C de 
 (pooler session, Postgres auto-hébergé) deviennent sans objet.
 
 ### Phase 2 — avancement
+
+> Le tableau ci-dessous résume ; les **cases des sections `## 2.x`** sont la référence
+> détaillée. Les deux doivent concorder — si elles divergent, croire les cases.
 
 | Action | État | Résultat |
 |---|---|---|
@@ -1041,14 +1046,16 @@ fonctionnalité n'ait bougé — **point de contrôle naturel** pour décider de
     [x] Migration de suppression des 2 tables + reservations.availability_slot_id
 [x] 6 migrations Cashier/Stripe (200 l.) + 2 tables + 4 colonnes de users
 [x] OrderPolicy (65 l.) — jamais appelée, logique recopiée ailleurs
-[ ] ReservationPolicy (37 l.) — si les 3 routes mortes sont supprimées
+[x] ReservationPolicy (37 l.) — supprimée : ses 5 routes clientes l'ont été aussi
 [x] Edge Function Supabase (82 l.) + réécrire supabase/README.md
 [x] Cache de filigrane désactivé (~45 l.) — OU le réactiver et mesurer (Imagick, ÷21 rendus)
 [x] SumUpService : processCheckout (⚠️ manipule des données de carte), completeCheckout,
     getPaymentMethods (~60 l.)
 [x] Cart::order() — relation cassée, carts n'a pas de colonne order_id
 [x] Photo::getDownloadUrlAttribute() — raccourci de chemin, aucun appelant
-[ ] Photo::display_url — @deprecated mais dans $appends et exposé par OrderItemResource
+[~] Photo::display_url — @deprecated mais dans $appends
+    → CONSERVÉ : 4 vues front s'en servent comme repli intermédiaire. Le retirer n'est pas
+      iso-fonctionnel. PhotoResource l'expose donc encore explicitement.
 [x] Colonnes mortes : photos.file_path_web, photos.file_path_watermark, gift_cards.pdf_path
     (⚠️ confirmer vides au relevé 1.2 d'abord)
 [ ] Valeurs d'enum mortes : clients.source='contact', availability_slots.status='unavailable',
@@ -1058,7 +1065,7 @@ fonctionnalité n'ait bougé — **point de contrôle naturel** pour décider de
 ### Routes sans consommateur — 33 endpoints → §2.16
 
 ```
-[ ] Supprimer : /reservations CRUD client (5, mais garder si D3 finit le module),
+[x] Supprimer : /reservations CRUD client (5) — fait, seules les 6 routes admin restent,
     apiResource /admin/users (5), GET /gift-cards/{id}, /gift-cards/validate/{code},
     GET /galleries/{id}, /galleries/token/{token}, GET /photos/{photo},
     /my-galleries (2), POST /admin/notifications, GET /admin/health,
@@ -1075,15 +1082,18 @@ fonctionnalité n'ait bougé — **point de contrôle naturel** pour décider de
 [x] adminApi.uploadPhotos / uploadEventPhotos — pointent vers des routes inexistantes
 [x] api.getGalleryItems() — le portfolio est statique
 [x] api.getGiftCards() — appelle une route qui n'existe pas publiquement
-[ ] L'événement @sort du DataTable + les 8 déclarations sortable: true (si non branché)
+[x] L'événement @sort du DataTable + les 8 déclarations sortable: true — retirées en 2.1,
+    le tri est branché côté API en 2.4 (sort_by/sort_dir avec allowlist)
 ```
 
 ### Fichiers et dossiers
 
 ```
-[ ] api/storage/app/temp/*.zip — 140 Mo (fait en 0.5)
+[x] api/storage/app/temp/*.zip — 140 Mo → mesuré à 0 o
 [x] bootstrap/, database/, resources/, storage/ à la RACINE — squelette résiduel suivi par Git
 [ ] Purger storage/app/private/exports/ (les ZIP s'accumulent sans purge, §10.0)
+    🔴 **mesuré : 4,8 Go** sur cette machine. Le correctif est une purge planifiée, pas
+    une suppression manuelle — sinon le volume revient.
 ```
 
 ## 2.2 D1 — Traiter la couche booléenne — 1 à 3 j · #14
@@ -1092,7 +1102,7 @@ Selon la décision D1.
 
 ```
 [x] Appliquer l'option retenue (config/database.php)
-[ ] Si la lecture des booléens est correcte sans le trait :
+[x] Si la lecture des booléens est correcte sans le trait :
     [x] Supprimer Models/Concerns/CastsBooleansForPostgres.php
     [x] Retirer le trait des 12 modèles
     [x] Remplacer les 20 whereRaw par des where() natifs
@@ -1135,17 +1145,36 @@ sessions liées au système de fichiers. → §4.7, §5.11, §2.3
 1 000 lignes de types front et la tentation du `fetch()` sauvage. → §3.7
 
 ```
-[ ] Choisir UNE enveloppe et la documenter dans docs/api-conventions.md
-    Proposition : { data: …, meta?: { pagination }, message?: … }
-                  erreurs : { message: …, errors?: { champ: [messages] } }
-[ ] Créer une API Resource pour CHAQUE ressource exposée (aujourd'hui 4 pour 177 endpoints)
-[ ] Supprimer Admin/OrderController::formatOrder() (API Resource déguisée en méthode statique)
-[ ] Pagination : accepter per_page PARTOUT (aujourd'hui 4 endpoints sur 15), plafonné
-[ ] Ajouter sort_by / sort_dir sur les endpoints listés dans un DataTable (#65)
-[ ] Front : une seule couche d'accès (fusionner BaseApiService et BaseAdminService)
-[ ] Front : supprimer les 8 fetch() sauvages qui contournent la couche services (§2.0)
-    ⚠️ y compris les 3 fetch(download_url) sans vérification de statut (#§13.7-2)
+[x] Choisir UNE enveloppe et la documenter dans docs/api-conventions.md
+    Retenu : { data: …, meta?: { pagination }, message?: … } — SANS clé `success`
+             erreurs : { message: …, errors?: { champ: [messages] } }
+    ⚠️ documentée et arrêtée, mais PAS encore appliquée — voir la dernière ligne
+[~] Créer une API Resource pour CHAQUE ressource exposée (4 au départ, 11 aujourd'hui)
+    [x] OrderResource + AdminOrderResource + OrderItemResource
+    [x] GalleryResource + DownloadableGalleryResource + PhotoResource (endpoints publics)
+    [x] PrestationResource (public + admin)
+    [x] UserResource (4 endpoints d'authentification)
+    [x] ReservationResource (tableau de bord client)
+    [ ] formes ADMIN de galerie/photo, Client, SchoolSession
+        → laissées volontairement : leurs vues consomment beaucoup de champs calculés
+          (download_status, total_downloads_count, client_id, photos_count) et je ne peux
+          pas parcourir l'interface pour valider. Passage dédié.
+[x] Supprimer Admin/OrderController::formatOrder() (API Resource déguisée en méthode statique)
+[x] Pagination : accepter per_page PARTOUT (4 endpoints sur 15 au départ), plafonné à 100
+[~] Ajouter sort_by / sort_dir sur les endpoints listés dans un DataTable (#65)
+    [x] trait PaginatesQueries avec allowlist par endpoint
+    [x] /admin/reservations, /admin/galleries
+    [ ] les autres listes d'administration
+[x] Front : une seule couche d'accès (fusionner BaseApiService et BaseAdminService)
+    → l'audit annonçait 2 couches parallèles : faux, BaseAdminService héritait déjà.
+      Le vrai écart était request() imposant Content-Type: application/json et 10 s.
+[x] Front : supprimer les 8 fetch() sauvages qui contournent la couche services (§2.0)
+    → 12 trouvés, tous traités. Les 3 fetch(download_url) vérifient enfin response.ok.
 [ ] Régénérer types/ depuis la nouvelle convention (attendu : forte réduction des 1 000 lignes)
+    → dépend de l'enveloppe : la refaire avant serait à refaire après
+[ ] ⚠️ APPLIQUER l'enveloppe unique, back ET front ensemble — EN DERNIER
+    → rupture de contrat sur 143 endpoints ; les tests front couvrent les stores et les
+      utilitaires, pas le rendu des vues
 ```
 
 ## 2.5 D5 — Couche d'autorisation unique — 1,5 j · #21
@@ -1154,18 +1183,35 @@ Quatre mécanismes contradictoires aujourd'hui ; la règle des « 30 minutes » 
 → §3.5, §6.5
 
 ```
-[ ] Ajouter le trait AuthorizesRequests à la classe Controller de base (#37)
-[ ] Réécrire les 3 Policies et les invoquer TOUJOURS via le Gate ($this->authorize())
-[ ] Supprimer les vérifications inline dupliquées :
-    [ ] OrderController::show (l. 195-202)
-    [ ] OrderService::getOrderForDownload (l. 634-642)
-    [ ] GalleryController:364 (app(GalleryPolicy::class)->download — hors du Gate)
-[ ] #— Remplacer la règle « 30 minutes » par un token signé à courte durée émis au checkout
-[ ] #— Sécuriser POST /orders/by-email : envoyer un lien signé par email au lieu de répondre
+[x] Ajouter le trait AuthorizesRequests à la classe Controller de base (#37)
+[x] Réécrire les Policies et les invoquer TOUJOURS via le Gate
+    → 2 Policies et non 3 : ReservationPolicy est morte en 2.1 avec ses 5 routes clientes.
+      GalleryPolicy conservée, OrderPolicy créée.
+[x] Supprimer les vérifications inline dupliquées :
+    [x] OrderController::show — autorisait sur `created_at`
+    [x] OrderService::getOrderForDownload — autorisait sur `paid_at`
+        ⚠️ les deux règles DIVERGEAIENT : ce n'était pas une duplication mais deux
+           politiques différentes pour la même question
+    [x] GalleryController — app(GalleryPolicy::class)->download, hors du Gate
+[x] #— Remplacer la règle « 30 minutes » par un token signé à courte durée émis au checkout
+    → App\Support\OrderAccessSignature : HMAC de `id|expiration` sous APP_KEY, 2 h,
+      placé dans le return_url SumUp et renvoyé par confirmFreeOrder
+    ⚠️ la règle n'était PAS morte : le return_url ne portait que ?order=id, et le jeton de
+       téléchargement n'existe qu'À la confirmation du paiement. La supprimer sèchement
+       cassait le parcours invité.
+[x] #— Sécuriser POST /orders/by-email
+    → RETIRÉ plutôt que sécurisé : aucun consommateur ne l'appelait, et il renvoyait
+      toutes les commandes d'une adresse sans authentification. docs/authorization.md §6
+      décrit comment le rétablir sans en faire un oracle d'énumération.
 [ ] #34 Décider : soit preview/thumbnail passent derrière le token de galerie, soit documenter
-    que régénérer le code ne révoque pas l'accès aux previews 👤
-[ ] Documenter la matrice « qui a le droit de quoi » dans docs/authorization.md
+    que régénérer le code ne révoque pas l'accès aux previews 👤 DÉCISION PRODUIT
+[x] Documenter la matrice « qui a le droit de quoi » dans docs/authorization.md
 ```
+
+**Trouvé en chemin, hors périmètre annoncé** : `Gallery::isAccessible(null)` rendait `true`
+pour une galerie `type = 'public'`, et trois endpoints servant du contenu **sans filigrane**
+s'appuyaient dessus. Corrigé par `grantsCleanDerivatives()`. Piège latent — la production ne
+compte aucune galerie `public`. Détail en §1bis.
 
 ## 2.6 Déploiement reproductible — 1 j · #22, #8
 
