@@ -101,6 +101,12 @@ stable et un snapshot coherent, ce que le pooler *transaction* ne garantit pas.
 Une connexion unique de sauvegarde ne risque pas le `EMAXCONNSESSION` observe en
 production, qui venait de la charge web.
 
+**La version du client s'aligne seule.** `pg_dump` refuse de tourner contre un
+serveur plus recent que lui. Le script releve `server_version`, choisit
+`postgres:<majeur>-alpine` en consequence, et inscrit ce majeur dans le fichier
+`.counts` pour que `verify` restaure avec la meme version. Definir `POSTGRES_IMAGE`
+soi-meme epingle le client et desactive cet alignement.
+
 **Un dump non restaure n'est pas une sauvegarde.** `verify` restaure le dernier
 dump dans un conteneur jetable (tmpfs, `--network none`) et compare 9 tables
 temoins. Tant que cette etape n'est pas au vert, il n'y a pas de sauvegarde.

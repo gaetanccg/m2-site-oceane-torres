@@ -6,7 +6,8 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 ENV_FILE="${BACKUP_ENV_FILE:-${SCRIPT_DIR}/.env.prod}"
 BACKUP_DIR="${BACKUP_DIR:-${REPO_ROOT}/backups}"
-POSTGRES_IMAGE="${POSTGRES_IMAGE:-postgres:16-alpine}"
+POSTGRES_IMAGE_PINNED="${POSTGRES_IMAGE:-}"
+POSTGRES_IMAGE="${POSTGRES_IMAGE:-postgres:17-alpine}"
 RETENTION_DAYS="${RETENTION_DAYS:-30}"
 
 # pg_dump exige une session stable : le pooler transaction (6543) ne convient pas.
@@ -32,7 +33,9 @@ Sauvegarde base PostgreSQL + stockage objet MinIO.
 Cible : deploy/.env.prod par défaut. Pour la preprod :
   BACKUP_ENV_FILE=deploy/.env.preprod ./deploy/backup.sh all
 
-Surcharges : BACKUP_DIR, PGDUMP_PORT, POSTGRES_IMAGE, RETENTION_DAYS
+Surcharges : BACKUP_DIR, PGDUMP_PORT, RETENTION_DAYS
+POSTGRES_IMAGE s'aligne seul sur la version du serveur. Le définir l'épingle et
+désactive cet alignement.
 EOF
 }
 
@@ -83,9 +86,15 @@ cmd_db() {
     grn "  serveur PostgreSQL : ${server_version}"
     local server_major="${server_version%%.*}"
     local client_major="${POSTGRES_IMAGE##*:}"; client_major="${client_major%%-*}"
+
+    # pg_dump refuse de tourner contre un serveur plus recent que lui.
     if (( server_major > client_major )); then
-        die "pg_dump ${client_major} est antérieur au serveur ${server_major} : il refusera de tourner.
-   Relancer avec POSTGRES_IMAGE=postgres:${server_major}-alpine"
+        if [[ -n "${POSTGRES_IMAGE_PINNED}" ]]; then
+            die "pg_dump ${client_major} est antérieur au serveur ${server_major} : il refusera de tourner.
+   POSTGRES_IMAGE est épinglé à « ${POSTGRES_IMAGE_PINNED} » — relancer avec postgres:${server_major}-alpine."
+        fi
+        POSTGRES_IMAGE="postgres:${server_major}-alpine"
+        ylw "  client aligné sur le serveur : ${POSTGRES_IMAGE}"
     fi
 
     local stamp outfile
@@ -108,7 +117,7 @@ cmd_db() {
 
     step "Comptages de référence"
     local counts_file="${BACKUP_DIR}/oceane-$(target_label)-${stamp}.counts"
-    : > "${counts_file}"
+    printf '# server_major=%s\n' "${server_major}" > "${counts_file}"
     for t in "${WITNESS_TABLES[@]}"; do
         local n
         n="$(pg_in_docker psql -h "${DB_HOST}" -p "${PGDUMP_PORT}" \
@@ -129,6 +138,14 @@ cmd_verify() {
     dump="$(ls -t "${BACKUP_DIR}"/oceane-*.dump 2>/dev/null | head -1)" || true
     [[ -n "${dump}" ]] || die "Aucun dump dans ${BACKUP_DIR}. Lancer d'abord : $0 db"
     ylw "  dump : $(basename "${dump}")"
+
+    # Un dump produit par pg_dump N ne se restaure pas dans un serveur anterieur.
+    local recorded
+    recorded="$(grep -m1 '^# server_major=' "${dump%.dump}.counts" 2>/dev/null | cut -d= -f2 || true)"
+    if [[ -n "${recorded}" && -z "${POSTGRES_IMAGE_PINNED}" ]]; then
+        POSTGRES_IMAGE="postgres:${recorded}-alpine"
+        ylw "  base de contrôle : ${POSTGRES_IMAGE} (version du dump)"
+    fi
 
     local container="ot-restore-check-$$"
     docker run -d --rm --name "${container}" \
