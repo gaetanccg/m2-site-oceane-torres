@@ -240,7 +240,7 @@
                 @if($order->discount_amount > 0)
                 <tr>
                     <td style="text-align: right; color: #666;">
-                        Remise@if($order->gift_code) (code {{ $order->gift_code }})@endif
+                        Remise @if($order->gift_code)(code {{ $order->gift_code }})@endif
                     </td>
                     <td>-{{ number_format($order->discount_amount, 2, ',', ' ') }} €</td>
                 </tr>
