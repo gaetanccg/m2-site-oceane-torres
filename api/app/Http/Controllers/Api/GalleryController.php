@@ -29,6 +29,8 @@ class GalleryController extends Controller
 {
     use SyncsProductTypes;
 
+    private const ZIP_MAX_PHOTOS = 500;
+
     public function index(): JsonResponse
     {
         $page = request()->get('page', 1);
@@ -366,11 +368,23 @@ class GalleryController extends Controller
             'Accès non autorisé.'
         );
 
-        $photos = $gallery->photos()->downloadable()->limit(500)->get();
+        $downloadableCount = $gallery->photos()->downloadable()->count();
+        $photos = $gallery->photos()->downloadable()->limit(self::ZIP_MAX_PHOTOS)->get();
 
         abort_if($photos->isEmpty(), 404, 'Aucune photo téléchargeable.');
 
         $zipName = 'galerie_'.(Str::slug($gallery->title) ?: 'photos').'.zip';
+
+        if ($downloadableCount > self::ZIP_MAX_PHOTOS) {
+            $zipName = 'galerie_'.(Str::slug($gallery->title) ?: 'photos')
+                .'_1-'.self::ZIP_MAX_PHOTOS.'-sur-'.$downloadableCount.'.zip';
+
+            \Log::warning('Gallery ZIP truncated by the photo cap', [
+                'gallery_id' => $gallery->id,
+                'downloadable' => $downloadableCount,
+                'included' => self::ZIP_MAX_PHOTOS,
+            ]);
+        }
         $ip = $request->ip();
         $userAgent = $request->userAgent();
 
