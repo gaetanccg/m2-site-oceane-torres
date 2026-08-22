@@ -37,6 +37,8 @@ class SchoolSessionExportService
             return;
         }
 
+        $omitted = [];
+
         $export->update([
             'total_items' => $items->count(),
             'processed_items' => 0,
@@ -84,13 +86,17 @@ class SchoolSessionExportService
                 // Download the photo if not already done
                 $photoId = $photo->id;
                 if (! isset($photoTempPaths[$photoId])) {
-                    $sourcePath = $photo->file_path_hd ?? $photo->file_path;
+                    $sourcePath = $photo->resolved_storage_path;
                     $extension = pathinfo($sourcePath, PATHINFO_EXTENSION) ?: 'jpg';
                     $tempFile = $tempDir.'/'.$photoId.'.'.$extension;
 
                     $content = $this->storageService->getFileContent($sourcePath);
                     if ($content === null) {
-                        Log::warning('Export: failed to download photo', ['photo_id' => $photoId]);
+                        Log::warning('Export: failed to download photo', [
+                            'photo_id' => $photoId,
+                            'resolved_path' => $sourcePath,
+                        ]);
+                        $omitted[] = $photo->photo_title ?? $photoId;
                         $export->increment('processed_items');
 
                         continue;
@@ -152,7 +158,17 @@ class SchoolSessionExportService
                 'status' => 'completed',
                 'file_path' => $relativeZipPath,
                 'file_size_bytes' => filesize($zipPath),
+                'error_message' => $omitted === []
+                    ? null
+                    : count($omitted).' photo(s) achetée(s) absente(s) du ZIP : '.implode(', ', array_slice($omitted, 0, 20)),
             ]);
+
+            if ($omitted !== []) {
+                Log::error('SchoolSessionExport: photos omitted from a paid export', [
+                    'export_id' => $export->id,
+                    'omitted_count' => count($omitted),
+                ]);
+            }
 
             // 7. Cleanup temp files
             $this->cleanupTempDir($tempDir);
