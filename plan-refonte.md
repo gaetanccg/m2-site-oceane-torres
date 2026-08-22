@@ -326,7 +326,7 @@ Conséquence pour la suite : le choix du pooler n'est plus une dette. B et C de 
 | 2.5 Couche d'autorisation | 🔵 | `OrderPolicy` + `GalleryPolicy` **toujours via le Gate** · règle des 30 min supprimée, remplacée par une signature courte · `POST /orders/by-email` retiré · `docs/authorization.md`. Reste : #34 (décision produit) |
 | 2.6 Déploiement reproductible | ⏳ | à venir |
 
-**Suite de tests : 294 back + 49 front.**
+**Suite de tests : 310 back + 49 front.**
 
 Détail de 2.4, dans l'ordre fixé par `docs/api-conventions.md` §6 :
 
@@ -377,6 +377,39 @@ gratuite. 7 tests couvrent les bords, dont l'expiration repoussée en conservant
 `POST /orders/by-email` est retiré : il renvoyait **toutes les commandes d'une adresse**
 sans authentification, et aucun consommateur ne l'appelait. `docs/authorization.md` §6
 décrit comment rétablir la fonction sans en faire un oracle d'énumération.
+
+### 🔴 Une galerie `public` livrait les originaux sans filigrane, sans aucun jeton
+
+Trouvé en croisant l'inventaire des sérialisations avec les endpoints d'image.
+`Gallery::isAccessible(null)` rend **`true`** pour `type = 'public'`. Trois endpoints
+servant du contenu **sans filigrane** s'appuyaient dessus :
+
+- `GET /api/images/clean/{photo}`
+- `GET /api/images/clean-thumb/{photo}`
+- `GET /api/photos/{photo}/download`
+
+Sur une galerie `public`, toute photo marquée `is_downloadable` était donc servie propre,
+sans jeton. C'est exactement ce que le filigranage protège.
+
+**Piège latent, pas fuite active** : la production ne compte **aucune** galerie `public`
+— 151 `private` + 45 `event` = 196, mesuré sur le dump anonymisé. La première créée
+aurait suffi.
+
+Corrigé par `Gallery::grantsCleanDerivatives()`, qui exige le jeton sans exception.
+`isAccessible()` reste inchangée pour la **consultation** : une galerie publique doit bien
+rester consultable sans jeton. La distinction est le fond du sujet — voir une galerie
+n'est pas obtenir ses originaux.
+
+`CleanDerivativeAccessTest` couvre les 3 endpoints × 3 cas (sans jeton, jeton valide,
+jeton erroné). Un test existant asseyait l'ancien ordre de vérification : il demandait le
+message « photo non téléchargeable » sur une galerie publique **sans jeton**, donc il
+passait pour la mauvaise raison. Réécrit avec un jeton valide, il teste enfin le drapeau.
+
+**Trou dans mon propre test, signalé par l'inventaire.** `$hidden` ne filtre pas une
+chaîne : `getCleanThumbnailUrlAttribute()` recompose `?token={access_token}` dans l'URL de
+repli. Si `clean_thumbnail_url` entrait un jour dans `Photo::$appends`, le jeton
+repartirait par le payload des photos — que mes assertions sur la racine `gallery` ne
+voyaient pas. Test étendu.
 
 ### 🔴 Escalade de privilège : le code de partage livrait le jeton de téléchargement
 

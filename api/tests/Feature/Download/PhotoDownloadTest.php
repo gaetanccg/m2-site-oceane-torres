@@ -40,10 +40,13 @@ class PhotoDownloadTest extends TestCase
 
     public function test_non_downloadable_photo_is_forbidden(): void
     {
-        $gallery = Gallery::factory()->public()->create();
+        // Avec un jeton valide : c'est bien le drapeau `is_downloadable` qui refuse,
+        // et non la verification d'acces. Sans jeton le test passerait pour la mauvaise
+        // raison — et ne dirait rien du drapeau.
+        $gallery = Gallery::factory()->private()->create();
         $photo = Photo::factory()->notDownloadable()->create(['gallery_id' => $gallery->id]);
 
-        $this->getJson("/api/photos/{$photo->id}/download")
+        $this->getJson("/api/photos/{$photo->id}/download?token={$gallery->access_token}")
             ->assertStatus(403)
             ->assertJsonPath('message', 'Cette photo n\'est pas téléchargeable.');
     }

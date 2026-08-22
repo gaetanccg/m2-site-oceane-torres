@@ -70,7 +70,8 @@ class PhotoController extends Controller
         $token = $request->query('token');
         $gallery = $photo->gallery;
 
-        if (! $gallery->isAccessible($token)) {
+        // Sert le fichier d'origine : le jeton est exige, meme sur une galerie `public`.
+        if (! $gallery->grantsCleanDerivatives($token)) {
             return response()->json([
                 'message' => 'Accès non autorisé.',
             ], 403);

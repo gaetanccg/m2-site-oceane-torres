@@ -60,12 +60,12 @@ class ImageProxyController extends Controller
         $token = $request->query('token');
         $gallery = $model->gallery;
 
-        // Verify access via gallery token
-        if (! $gallery || ! $gallery->isAccessible($token)) {
+        // Ces deux endpoints servent le derive SANS filigrane : le jeton est exige,
+        // meme sur une galerie `public`.
+        if (! $gallery || ! $gallery->grantsCleanDerivatives($token)) {
             return $this->errorResponse('Accès non autorisé.', 403);
         }
 
-        // Only allow for downloadable photos
         if (! $model->is_downloadable) {
             return $this->errorResponse('Photo non téléchargeable.', 403);
         }
@@ -86,12 +86,12 @@ class ImageProxyController extends Controller
         $token = $request->query('token');
         $gallery = $model->gallery;
 
-        // Verify access via gallery token
-        if (! $gallery || ! $gallery->isAccessible($token)) {
+        // Ces deux endpoints servent le derive SANS filigrane : le jeton est exige,
+        // meme sur une galerie `public`.
+        if (! $gallery || ! $gallery->grantsCleanDerivatives($token)) {
             return $this->errorResponse('Accès non autorisé.', 403);
         }
 
-        // Only allow for downloadable photos
         if (! $model->is_downloadable) {
             return $this->errorResponse('Photo non téléchargeable.', 403);
         }

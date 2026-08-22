@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Gallery;
+use App\Models\Photo;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -117,5 +118,25 @@ class GalleryTokenExposureTest extends TestCase
 
         $this->assertArrayNotHasKey('access_token', $shared);
         $this->assertNotContains($gallery->access_token, array_map('strval', array_filter($shared, 'is_scalar')));
+    }
+
+    /**
+     * `$hidden` ne filtre pas une chaine : getCleanThumbnailUrlAttribute() recompose
+     * `?token={access_token}` dans l'URL de repli. Si `clean_thumbnail_url` entrait un
+     * jour dans Photo::$appends, le jeton repartirait par le payload des photos —
+     * que les assertions sur la racine `gallery` ne voient pas.
+     */
+    public function test_aucun_jeton_ne_transite_par_le_payload_des_photos(): void
+    {
+        $gallery = $this->gallery();
+        Photo::factory()->create([
+            'gallery_id' => $gallery->id,
+            'is_downloadable' => true,
+            'is_processed' => true,
+        ]);
+
+        $reponse = $this->getJson("/api/galleries/code/{$gallery->share_code}")->assertOk();
+
+        $reponse->assertDontSee($gallery->access_token, false);
     }
 }

@@ -164,7 +164,22 @@ class Gallery extends Model
             return true;
         }
 
-        return $token === $this->access_token;
+        return $this->holdsAccessToken($token);
+    }
+
+    /**
+     * Exigence renforcee pour les derives SANS filigrane. `isAccessible()` ne convient
+     * pas : elle rend true sans jeton pour une galerie `public`, ce qui livrerait les
+     * originaux propres — precisement ce que le filigranage protege.
+     */
+    public function grantsCleanDerivatives(?string $token = null): bool
+    {
+        return $this->holdsAccessToken($token);
+    }
+
+    private function holdsAccessToken(?string $token): bool
+    {
+        return $token !== null && $token !== '' && hash_equals($this->access_token, $token);
     }
 
     public function scopePublic($query)
