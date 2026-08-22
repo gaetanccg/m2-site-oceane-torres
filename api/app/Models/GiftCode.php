@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Models\Concerns\CastsBooleansForPostgres;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -14,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class GiftCode extends Model
 {
-    use CastsBooleansForPostgres, HasFactory, HasUuids;
+    use HasFactory, HasUuids;
 
     /** Sans caractères ambigus (O, 0, I, 1) : les codes sont saisis à la main. */
     private const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';

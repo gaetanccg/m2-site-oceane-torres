@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Models\Concerns\CastsBooleansForPostgres;
 use App\Services\MinioStorageService;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,7 +12,7 @@ use Illuminate\Support\Facades\Cache;
 
 class Photo extends Model
 {
-    use CastsBooleansForPostgres, HasFactory, HasUuids;
+    use HasFactory, HasUuids;
 
     protected static function booted(): void
     {
@@ -234,12 +233,12 @@ class Photo extends Model
 
     public function scopeImages($query)
     {
-        return $query->whereRaw('is_video = false');
+        return $query->where('is_video', false);
     }
 
     public function scopeVideos($query)
     {
-        return $query->whereRaw('is_video = true');
+        return $query->where('is_video', true);
     }
 
     public function scopeOrdered($query)
@@ -249,17 +248,17 @@ class Photo extends Model
 
     public function scopeDownloadable($query)
     {
-        return $query->whereRaw('is_downloadable = true');
+        return $query->where('is_downloadable', true);
     }
 
     public function scopeLiked($query)
     {
-        return $query->whereRaw('is_liked = true');
+        return $query->where('is_liked', true);
     }
 
     public function scopePurchasable($query)
     {
-        return $query->whereRaw('is_purchasable = true');
+        return $query->where('is_purchasable', true);
     }
 
     public function getEffectivePriceAttribute(): float

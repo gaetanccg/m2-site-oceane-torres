@@ -438,10 +438,10 @@ class GalleryController extends Controller
             ->withCount([
                 'photos',
                 'photos as downloadable_count' => function ($query) {
-                    $query->whereRaw('is_downloadable = true');
+                    $query->where('is_downloadable', true);
                 },
                 'photos as liked_photos_count' => function ($query) {
-                    $query->whereRaw('is_liked = true');
+                    $query->where('is_liked', true);
                 },
                 'photos as downloaded_photos_count' => function ($query) {
                     $query->where('downloads_count', '>', 0);

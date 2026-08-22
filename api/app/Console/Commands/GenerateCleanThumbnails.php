@@ -19,7 +19,7 @@ class GenerateCleanThumbnails extends Command
     {
         $query = Photo::query()
             ->downloadable()
-            ->whereRaw('is_video = false')
+            ->where('is_video', false)
             ->whereNull('file_path_thumbnail_clean');
 
         $total = $query->count();

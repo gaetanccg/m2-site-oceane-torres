@@ -414,7 +414,7 @@ class PersonalDataLocator
     private function downloadLogsQuery()
     {
         if ($this->galleryIds->isEmpty()) {
-            return DownloadLog::query()->whereRaw('1 = 0');
+            return DownloadLog::query()->whereIn('id', []);
         }
 
         return DownloadLog::query()->whereIn('gallery_id', $this->galleryIds->all());

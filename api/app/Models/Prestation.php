@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Models\Concerns\CastsBooleansForPostgres;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -10,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Prestation extends Model
 {
-    use CastsBooleansForPostgres, HasFactory, HasUuids;
+    use HasFactory, HasUuids;
 
     protected $fillable = [
         'title',
@@ -46,7 +45,7 @@ class Prestation extends Model
 
     public function scopeActive($query)
     {
-        return $query->whereRaw('is_active = true');
+        return $query->where('is_active', true);
     }
 
     public function scopeByCategory($query, string $category)

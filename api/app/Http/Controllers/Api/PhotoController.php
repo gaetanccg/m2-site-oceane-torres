@@ -158,17 +158,13 @@ class PhotoController extends Controller
     {
         $validated = $request->validated();
 
-        // Postgres (emulate prepares) rejette un booléen PHP transmis via un mass-update
-        // query-builder (« column is of type boolean but expression is of type integer »),
-        // car il court-circuite le mutateur CastsBooleansForPostgres. On passe donc la
-        // chaîne 'true'/'false' que le driver accepte — même stratégie que le trait.
         Photo::whereIn('id', $validated['photo_ids'])
-            ->update(['is_downloadable' => $validated['is_downloadable'] ? 'true' : 'false']);
+            ->update(['is_downloadable' => $validated['is_downloadable']]);
 
         // Pre-generate clean thumbnails for the newly-downloadable photos.
         if ($validated['is_downloadable']) {
             Photo::whereIn('id', $validated['photo_ids'])
-                ->whereRaw('is_video = false')
+                ->where('is_video', false)
                 ->whereNull('file_path_thumbnail_clean')
                 ->pluck('id')
                 ->each(fn (string $id) => GenerateCleanThumbnailJob::dispatch($id));

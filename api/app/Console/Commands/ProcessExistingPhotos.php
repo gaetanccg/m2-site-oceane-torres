@@ -41,10 +41,10 @@ class ProcessExistingPhotos extends Command
 
         // Build query
         $query = Photo::query()
-            ->whereRaw('is_video = false');
+            ->where('is_video', false);
 
         if (! $force) {
-            $query->whereRaw('is_processed = false');
+            $query->where('is_processed', false);
         }
 
         if ($galleryId) {

@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Models\Concerns\CastsBooleansForPostgres;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -10,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class AvailabilityPattern extends Model
 {
-    use CastsBooleansForPostgres, HasFactory, HasUuids;
+    use HasFactory, HasUuids;
 
     protected $fillable = [
         'name',
@@ -40,7 +39,7 @@ class AvailabilityPattern extends Model
 
     public function scopeActive($query)
     {
-        return $query->whereRaw('is_active = true');
+        return $query->where('is_active', true);
     }
 
     // Helpers
