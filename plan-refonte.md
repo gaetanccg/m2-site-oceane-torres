@@ -326,7 +326,7 @@ Conséquence pour la suite : le choix du pooler n'est plus une dette. B et C de 
 | 2.5 Couche d'autorisation | ⏳ | à venir |
 | 2.6 Déploiement reproductible | ⏳ | à venir |
 
-**Suite de tests : 281 back + 49 front.**
+**Suite de tests : 288 back + 49 front.**
 
 Détail de 2.4, dans l'ordre fixé par `docs/api-conventions.md` §6 :
 
@@ -338,7 +338,8 @@ Convention écrite | ✅ | enveloppe `{data, meta?, message?}`, **sans** clé `s
 `fetch()` hors couche de services | ✅ | 12 supprimés. Les 3 téléchargements MinIO vérifient enfin `response.ok` — un lien expiré enregistrait le XML d'erreur S3 sous le nom de la photo |
 Une seule couche d'accès HTTP | ✅ | l'audit annonçait 2 couches parallèles : faux, `BaseAdminService` héritait déjà. Le vrai écart était `request()` qui imposait `Content-Type: application/json` et 10 s — incompatible avec un envoi de fichiers |
 `formatOrder()` → API Resource | ✅ | méthode statique publique de contrôleur appelée depuis 3 autres contrôleurs. `AdminOrderResource` isole `user`/`payment`/`sumup_*`, qui ne doivent pas sortir sur les endpoints publics |
-Une Resource par ressource | ⏳ | ~28 sérialisations de modèle nu restantes (Gallery, Photo, Prestation, Client, SchoolSession, Reservation, User) |
+Fuite de `access_token` fermée | ✅ | 🔴 **escalade de privilège trouvée et prouvée** — voir ci-dessous |
+Une Resource par ressource | ⏳ | ~28 sérialisations de modèle nu restantes (Photo, Prestation, Client, SchoolSession, Reservation, User) |
 Enveloppe unique | ⏳ | **en dernier** : rupture de contrat sur 151 endpoints, à migrer avec le front |
 
 Deux défauts trouvés en chemin, hors périmètre annoncé :
@@ -353,6 +354,28 @@ Le **build de production était cassé** : `npm run build` échouait sur les tes
 2.7. Passé inaperçu parce que `npm run typecheck` lançait `vue-tsc --noEmit` sur un
 `tsconfig.json` à `"files": []` — sans `-b`, il ne vérifiait **aucun fichier**. Corrigé, plus
 une étape `typecheck` en CI.
+
+### 🔴 Escalade de privilège : le code de partage livrait le jeton de téléchargement
+
+Trouvée en cherchant les sérialisations de modèle nu. `Gallery` n'avait **aucun `$hidden`**,
+et les endpoints publics renvoyaient le modèle tel quel. Chaîne prouvée par test :
+
+1. `GET /api/galleries/code/{share_code}` — public, code à **6 caractères** — renvoyait
+   `access_token` en clair (64 caractères), ainsi que `assigned_email`, l'adresse de la cliente.
+2. `GET /api/galleries/download/{access_token}` → **HTTP 200, `mode: download`**.
+
+Or c'est ce second endpoint qui expose `clean_thumbnail_url`, les dérivés **sans filigrane**.
+Le code de partage ouvre la boutique en photos filigranées ; il donnait en réalité accès aux
+originaux propres. Les galeries publiques et d'événement fuitaient de la même façon.
+
+Correction en **exposition explicite** plutôt qu'en liste blanche : les trois champs sont
+`$hidden` sur le modèle, donc masqués partout par défaut, et rendus visibles aux seuls
+endroits légitimes — administration, propriétaire de la galerie, et l'endpoint de
+téléchargement lui-même (dont l'appelant détient déjà le jeton). Un nouvel endpoint public ne
+peut plus les exposer par oubli.
+
+`tests/Feature/GalleryTokenExposureTest.php` — 7 tests, qui vérifient les deux sens : la
+fermeture côté public **et** le maintien de l'accès pour l'admin et le propriétaire.
 
 Écarts assumés en 2.1, tous justifiés par une mesure ou par un test :
 

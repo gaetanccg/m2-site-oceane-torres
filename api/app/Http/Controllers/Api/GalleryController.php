@@ -71,7 +71,7 @@ class GalleryController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $gallery->load('galleryProductTypes.packTiers'),
+            'data' => $gallery->load('galleryProductTypes.packTiers')->withPrivateFields(),
             'message' => 'Galerie créée avec succès.',
         ], 201);
     }
@@ -106,7 +106,7 @@ class GalleryController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $gallery->fresh()->load('galleryProductTypes.packTiers'),
+            'data' => $gallery->fresh()->load('galleryProductTypes.packTiers')->withPrivateFields(),
             'message' => 'Galerie mise à jour avec succès.',
         ]);
     }
@@ -217,7 +217,7 @@ class GalleryController extends Controller
         ]);
 
         return response()->json([
-            'gallery' => $gallery->fresh(),
+            'gallery' => $gallery->fresh()->withPrivateFields(),
             'message' => 'Token régénéré avec succès.',
         ]);
     }
@@ -279,7 +279,7 @@ class GalleryController extends Controller
         });
 
         return response()->json([
-            'gallery' => $gallery,
+            'gallery' => $gallery->makeVisible('access_token'),
             'mode' => 'download',
         ]);
     }
@@ -289,7 +289,7 @@ class GalleryController extends Controller
         $newCode = $gallery->regenerateShareCode();
 
         return response()->json([
-            'gallery' => $gallery->fresh(),
+            'gallery' => $gallery->fresh()->withPrivateFields(),
             'share_code' => $newCode,
             'message' => 'Code de partage régénéré avec succès.',
         ]);
@@ -420,7 +420,7 @@ class GalleryController extends Controller
             $gallery->client_id = $gallery->user_id ? ($clientMap[$gallery->user_id] ?? null) : null;
             unset($gallery->photos_sum_downloads_count);
 
-            return $gallery;
+            return $gallery->withPrivateFields();
         });
 
         return response()->json($galleries);
@@ -450,7 +450,7 @@ class GalleryController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $gallery,
+            'data' => $gallery->withPrivateFields(),
         ]);
     }
 }

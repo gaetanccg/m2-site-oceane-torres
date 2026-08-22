@@ -127,7 +127,7 @@ class EventGalleryController extends Controller
         $galleries->getCollection()->transform(function ($gallery) {
             $gallery->cover_photo = $gallery->thumbnailPhoto ?? $gallery->photos->first();
 
-            return $gallery;
+            return $gallery->withPrivateFields();
         });
 
         return response()->json($galleries);
@@ -161,7 +161,7 @@ class EventGalleryController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data' => $gallery,
+                'data' => $gallery->withPrivateFields(),
                 'is_parent' => true,
             ]);
         }
@@ -176,7 +176,7 @@ class EventGalleryController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $gallery,
+            'data' => $gallery->withPrivateFields(),
             'is_parent' => false,
         ]);
     }
@@ -230,7 +230,7 @@ class EventGalleryController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $gallery->load('galleryProductTypes.packTiers'),
+            'data' => $gallery->load('galleryProductTypes.packTiers')->withPrivateFields(),
             'message' => 'Galerie événement créée avec succès.',
         ], 201);
     }
@@ -258,7 +258,7 @@ class EventGalleryController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $gallery->fresh()->load(['galleryProductTypes.packTiers', 'eventCategory']),
+            'data' => $gallery->fresh()->load(['galleryProductTypes.packTiers', 'eventCategory'])->withPrivateFields(),
             'message' => 'Galerie événement mise à jour avec succès.',
         ]);
     }
@@ -352,7 +352,7 @@ class EventGalleryController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $gallery->fresh()->load('thumbnailPhoto'),
+            'data' => $gallery->fresh()->load('thumbnailPhoto')->withPrivateFields(),
             'message' => $validated['photo_id']
                 ? 'Photo définie comme miniature.'
                 : 'Miniature supprimée.',
@@ -383,7 +383,7 @@ class EventGalleryController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $children,
+            'data' => $children->each->withPrivateFields(),
         ]);
     }
 }

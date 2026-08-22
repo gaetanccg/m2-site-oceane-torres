@@ -39,6 +39,23 @@ class Gallery extends Model
 
     protected $appends = [];
 
+    /**
+     * `access_token` ouvre la galerie telechargeable, donc les photos sans filigrane :
+     * il ne doit jamais sortir sur un endpoint public. Masques par defaut pour qu'un
+     * nouvel endpoint ne les expose pas par oubli — voir withPrivateFields().
+     */
+    protected $hidden = [
+        'access_token',
+        'assigned_email',
+        'sms_template',
+    ];
+
+    /** Administration et proprietaire uniquement. */
+    public function withPrivateFields(): static
+    {
+        return $this->makeVisible($this->getHidden());
+    }
+
     protected function casts(): array
     {
         return [

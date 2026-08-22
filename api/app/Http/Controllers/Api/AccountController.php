@@ -27,7 +27,8 @@ class AccountController extends Controller
             }])
             ->withCount('photos')
             ->latest()
-            ->get();
+            ->get()
+            ->each->makeVisible('access_token');
 
         // Reservations: by user_id, client_id, or guest_email
         $clientId = Client::where('user_id', $user->id)->value('id');
