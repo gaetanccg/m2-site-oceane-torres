@@ -226,11 +226,6 @@ class Photo extends Model
         return $this->file_path_web ?? $this->file_path;
     }
 
-    public function getDownloadUrlAttribute(): ?string
-    {
-        return $this->file_path_hd ?? $this->file_path;
-    }
-
     public function scopeImages($query)
     {
         return $query->where('is_video', false);

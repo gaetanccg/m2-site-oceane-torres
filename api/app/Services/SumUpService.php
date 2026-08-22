@@ -101,47 +101,6 @@ class SumUpService
     }
 
     /**
-     * Process a checkout with card details (for server-side processing)
-     * Note: For PCI compliance, prefer using the SumUp Card Widget on frontend
-     */
-    public function processCheckout(string $checkoutId, array $cardData): array
-    {
-        $response = Http::withHeaders([
-            'Authorization' => 'Bearer '.$this->apiKey,
-            'Content-Type' => 'application/json',
-        ])->put($this->apiUrl.'/v0.1/checkouts/'.$checkoutId, [
-            'payment_type' => 'card',
-            'card' => $cardData,
-        ]);
-
-        if (! $response->successful()) {
-            Log::error('SumUp process checkout failed', [
-                'checkout_id' => $checkoutId,
-                'status' => $response->status(),
-                'response' => $response->json(),
-            ]);
-
-            throw new \Exception('Erreur lors du traitement du paiement');
-        }
-
-        return $response->json();
-    }
-
-    /**
-     * Complete checkout from callback/redirect
-     */
-    public function completeCheckout(string $checkoutId): array
-    {
-        $checkout = $this->getCheckout($checkoutId);
-
-        return [
-            'status' => $checkout['status'] ?? 'UNKNOWN',
-            'transaction_id' => $checkout['transaction_id'] ?? null,
-            'amount' => $checkout['amount'] ?? null,
-        ];
-    }
-
-    /**
      * Deactivate/cancel a checkout
      */
     public function deactivateCheckout(string $checkoutId): bool
@@ -151,21 +110,5 @@ class SumUpService
         ])->delete($this->apiUrl.'/v0.1/checkouts/'.$checkoutId);
 
         return $response->successful();
-    }
-
-    /**
-     * Get available payment methods for merchant
-     */
-    public function getPaymentMethods(): array
-    {
-        $response = Http::withHeaders([
-            'Authorization' => 'Bearer '.$this->apiKey,
-        ])->get($this->apiUrl.'/v0.1/merchants/'.$this->merchantCode.'/payment-methods');
-
-        if (! $response->successful()) {
-            return [];
-        }
-
-        return $response->json();
     }
 }

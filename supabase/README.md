@@ -1,104 +1,32 @@
-# Configuration Supabase
+# Supabase
 
-## Création du projet
+Supabase ne sert que de **PostgreSQL managé**. Ni Auth, ni Storage, ni Realtime, ni
+les API REST/GraphQL — le stockage des fichiers est assuré par MinIO
+(`config/filesystems.php`, disque `minio`).
 
-1. Créer un compte sur [Supabase](https://supabase.com)
-2. Créer un nouveau projet
-3. Noter les informations de connexion :
-   - **Project URL** : `https://your-project.supabase.co`
-   - **API Key (anon)** : Pour le frontend
-   - **API Key (service_role)** : Pour le backend (à garder secret)
-   - **Database Password** : Pour la connexion PostgreSQL
+## Connexion
 
-## Configuration Laravel
+| Clé | Valeur |
+|---|---|
+`DB_CONNECTION` | `pgsql` |
+`DB_PORT` | `6543` — pooler **transaction** |
 
-Dans `api/.env` :
+Le port 6543 est un choix contraint : le pooler *session* (5432) a été essayé en
+production et a saturé (`EMAXCONNSESSION`, ~5000×/jour sous charge).
 
-```env
-DB_CONNECTION=pgsql
-DB_HOST=db.your-project.supabase.co
-DB_PORT=5432
-DB_DATABASE=postgres
-DB_USERNAME=postgres
-DB_PASSWORD=your_database_password
+Le pooler transaction impose `PDO::ATTR_EMULATE_PREPARES`, donc PDO interpole les
+paramètres côté client. Comme Laravel convertit les booléens en entiers et que
+PostgreSQL n'a pas d'opérateur `boolean = integer`, les booléens sont liés en
+littéraux `'true'` / `'false'` par `App\Database\PostgresConnection`.
 
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_KEY=your_anon_key
-SUPABASE_SERVICE_KEY=your_service_role_key
-```
+## Sauvegarde
 
-## Storage Buckets
+`pg_dump` ne peut pas passer par le pooler transaction : il exige une session stable
+et un snapshot cohérent. Voir `deploy/backup.sh`, qui force le port 5432 et se limite
+au schéma `public`.
 
-### Créer les buckets dans Supabase Dashboard :
+## Edge Functions
 
-1. **public-portfolio** (Public)
-   - Photos du portfolio public
-   - Watermarkées automatiquement
-
-2. **private-galleries** (Private)
-   - Structure : `{user_id}/{gallery_id}/`
-   - Accès via tokens signés
-
-### Policies à configurer :
-
-```sql
--- Bucket public-portfolio : lecture publique
-CREATE POLICY "Public read access"
-ON storage.objects FOR SELECT
-USING (bucket_id = 'public-portfolio');
-
--- Bucket private-galleries : accès authentifié
-CREATE POLICY "Authenticated users can access their galleries"
-ON storage.objects FOR SELECT
-USING (
-  bucket_id = 'private-galleries'
-  AND auth.uid()::text = (storage.foldername(name))[1]
-);
-```
-
-## Row Level Security (RLS)
-
-Les migrations Laravel créent les tables. Configurez les policies RLS dans Supabase :
-
-### Table galleries
-
-```sql
--- Les utilisateurs voient leurs propres galeries
-ALTER TABLE galleries ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can view own galleries"
-ON galleries FOR SELECT
-USING (user_id = auth.uid() OR type = 'public');
-
--- Seuls les admins peuvent créer/modifier
-CREATE POLICY "Admins can manage galleries"
-ON galleries FOR ALL
-USING (
-  EXISTS (
-    SELECT 1 FROM users
-    WHERE id = auth.uid() AND role = 'admin'
-  )
-);
-```
-
-### Table photos
-
-```sql
-ALTER TABLE photos ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Photos accessible via gallery"
-ON photos FOR SELECT
-USING (
-  EXISTS (
-    SELECT 1 FROM galleries g
-    WHERE g.id = gallery_id
-    AND (g.type = 'public' OR g.user_id = auth.uid())
-  )
-);
-```
-
-## Notes importantes
-
-- Les migrations Laravel gèrent le schéma de la base
-- Les policies RLS sont configurées manuellement dans Supabase
-- Le storage est géré via l'API Supabase depuis Laravel
+Aucune. La fonction `cleanup-gallery-files` a été supprimée : vestige de l'ancienne
+architecture Supabase Storage, elle n'était appelée ni par l'API, ni par le front, et
+visait un bucket qui n'existe plus.
