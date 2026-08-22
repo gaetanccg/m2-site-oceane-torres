@@ -22,6 +22,8 @@ export interface RequestConfig {
     withCredentials?: boolean
     /** Called on 401 responses before throwing */
     onUnauthorized?: () => void
+    /** Override the default timeout (ms) — un envoi de fichiers depasse les 10 s par defaut */
+    timeout?: number
 }
 
 export class BaseApiService {
@@ -42,13 +44,16 @@ export class BaseApiService {
         config: RequestConfig = {}
     ): Promise<T> {
         const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), this.timeout)
+        const timeoutId = setTimeout(() => controller.abort(), config.timeout ?? this.timeout)
 
         const headers: Record<string, string> = {
-            'Content-Type': 'application/json',
             'Accept': 'application/json',
             ...config.headers,
             ...(options.headers as Record<string, string>),
+        }
+
+        if (!(options.body instanceof FormData) && !headers['Content-Type']) {
+            headers['Content-Type'] = 'application/json'
         }
 
         try {
@@ -89,7 +94,7 @@ export class BaseApiService {
         config: RequestConfig = {}
     ): Promise<Blob> {
         const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), this.timeout)
+        const timeoutId = setTimeout(() => controller.abort(), config.timeout ?? this.timeout)
 
         try {
             const response = await fetch(`${this.baseUrl}${endpoint}`, {

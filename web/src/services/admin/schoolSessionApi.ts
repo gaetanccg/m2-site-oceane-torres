@@ -1,4 +1,5 @@
-import { BaseAdminService } from './baseAdmin'
+import { AdminApiError, BaseAdminService } from './baseAdmin'
+import { UPLOAD_CONFIG } from '@/config/constants'
 import type {
     AdminApiResponse,
     AdminOrder,
@@ -67,6 +68,11 @@ class SchoolSessionApiService extends BaseAdminService {
                 return await this.sendChunk(sessionId, chunk, chunkIndex, totalChunks, filename, offset)
             } catch (e) {
                 lastError = e instanceof Error ? e : new Error(String(e))
+
+                if (e instanceof AdminApiError && !e.apiError.isNetworkError && !e.apiError.isServerError) {
+                    throw e
+                }
+
                 if (attempt < MAX_RETRIES) {
                     await new Promise(resolve => setTimeout(resolve, BASE_DELAY_MS * 2 ** attempt))
                 }
@@ -91,24 +97,11 @@ class SchoolSessionApiService extends BaseAdminService {
         formData.append('offset', String(offset))
         formData.append('filename', filename)
 
-        const headers: Record<string, string> = {
-            'Accept': 'application/json',
-            ...this.authHeaders(),
-        }
-
-        const response = await fetch(`${this.baseUrl}/admin/school-sessions/${sessionId}/upload`, {
-            method: 'PUT',
-            headers,
-            credentials: 'include',
-            body: formData,
-        })
-
-        if (!response.ok) {
-            const error = await response.json().catch(() => ({ message: `HTTP ${response.status}` }))
-            throw new Error(error.message || `Erreur upload chunk ${chunkIndex}`)
-        }
-
-        return response.json()
+        return this.adminRequest(
+            `/admin/school-sessions/${sessionId}/upload`,
+            { method: 'PUT', body: formData },
+            UPLOAD_CONFIG.timeout,
+        )
     }
 
     async processSchoolSession(id: string): Promise<AdminApiResponse<SchoolSession>> {

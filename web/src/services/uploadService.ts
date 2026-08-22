@@ -1,4 +1,5 @@
-import { API_CONFIG, UPLOAD_CONFIG } from '@/config/constants'
+import { UPLOAD_CONFIG } from '@/config/constants'
+import { BaseAdminService } from './admin/baseAdmin'
 import { buildChunks, buildProgress, findFileState, generateBatchId } from './upload/uploadUtils'
 import { uploadChunkWithRetry } from './upload/chunkUploader'
 import type {
@@ -9,24 +10,10 @@ import type {
     ChunkUploadOptions,
 } from '@/types/upload'
 
-export class ChunkedUploadService {
-    private baseUrl: string
+export class ChunkedUploadService extends BaseAdminService {
     private pollingInterval: ReturnType<typeof setInterval> | null = null
     private isCancelled = false
     private activeXHRs: XMLHttpRequest[] = []
-
-    constructor() {
-        this.baseUrl = API_CONFIG.baseUrl
-    }
-
-    private getToken(): string | null {
-        return localStorage.getItem('auth_token')
-    }
-
-    private getXsrfToken(): string | null {
-        const match = document.cookie.match(/XSRF-TOKEN=([^;]+)/)
-        return match ? decodeURIComponent(match[1]) : null
-    }
 
     private get uploaderConfig() {
         return {
@@ -269,24 +256,11 @@ export class ChunkedUploadService {
     }
 
     private async fetchBatchStatus(batchId: string, includeUploads = true): Promise<BatchUploadStatus> {
-        const token = this.getToken()
-        const headers: Record<string, string> = {
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-        }
-        if (token) headers['Authorization'] = `Bearer ${token}`
-
         // Laravel `boolean` rule accepte "0"/"1"/true/false mais pas "true"/"false".
         const params = new URLSearchParams({ batch_id: batchId })
         if (!includeUploads) params.set('include_uploads', '0')
 
-        const response = await fetch(
-            `${this.baseUrl}/admin/upload-status?${params.toString()}`,
-            { headers, credentials: 'include' }
-        )
-
-        if (!response.ok) throw new Error(`Status check failed: ${response.status}`)
-        return response.json()
+        return this.adminRequest(`/admin/upload-status?${params.toString()}`)
     }
 
     private notifyProgress(fileStates: Map<string, FileUploadState>, callbacks: UploadCallbacks): void {
