@@ -122,7 +122,7 @@ class OrderService
                 'status' => 'pending',
                 'cgv_accepted' => true,
                 'cgv_accepted_at' => now(),
-                'cgv_version' => '1.0',
+                'cgv_version' => config('shop.cgv_version', '1.0'),
                 'consent_ip' => $consentIp,
             ]);
 

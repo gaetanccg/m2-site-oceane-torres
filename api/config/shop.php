@@ -1,6 +1,8 @@
 <?php
 
 return [
+
+    'cgv_version' => env('SHOP_CGV_VERSION', '1.0'),
     /*
      * Frais de port facturés une seule fois dès qu'une commande contient au
      * moins un tirage papier. Exprimé en euros.
