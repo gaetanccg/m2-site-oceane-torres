@@ -326,7 +326,7 @@ Conséquence pour la suite : le choix du pooler n'est plus une dette. B et C de 
 | 2.5 Couche d'autorisation | 🔵 | `OrderPolicy` + `GalleryPolicy` **toujours via le Gate** · règle des 30 min supprimée, remplacée par une signature courte · `POST /orders/by-email` retiré · `docs/authorization.md`. Reste : #34 (décision produit) |
 | 2.6 Déploiement reproductible | ⏳ | à venir |
 
-**Suite de tests : 310 back + 49 front.**
+**Suite de tests : 315 back + 49 front.**
 
 Détail de 2.4, dans l'ordre fixé par `docs/api-conventions.md` §6 :
 
@@ -339,7 +339,9 @@ Convention écrite | ✅ | enveloppe `{data, meta?, message?}`, **sans** clé `s
 Une seule couche d'accès HTTP | ✅ | l'audit annonçait 2 couches parallèles : faux, `BaseAdminService` héritait déjà. Le vrai écart était `request()` qui imposait `Content-Type: application/json` et 10 s — incompatible avec un envoi de fichiers |
 `formatOrder()` → API Resource | ✅ | méthode statique publique de contrôleur appelée depuis 3 autres contrôleurs. `AdminOrderResource` isole `user`/`payment`/`sumup_*`, qui ne doivent pas sortir sur les endpoints publics |
 Fuite de `access_token` fermée | ✅ | 🔴 **escalade de privilège trouvée et prouvée** — voir ci-dessous |
-Une Resource par ressource | ⏳ | ~28 sérialisations de modèle nu restantes (Photo, Prestation, Client, SchoolSession, Reservation, User) |
+Resources publiques galerie/photo | ✅ | `GalleryResource`, `PhotoResource`, `DownloadableGalleryResource` · galerie **23 → 10 clés**, photo **18 → 9** |
+Resources admin | ⏳ | forme conservée : les vues admin consomment beaucoup de champs calculés (`download_status`, `total_downloads_count`, `client_id`…) |
+Resources Prestation / Client / SchoolSession / Reservation / User | ⏳ | inventaire fait, aucune fuite publique confirmée |
 Enveloppe unique | ⏳ | **en dernier** : rupture de contrat sur 151 endpoints, à migrer avec le front |
 
 Deux défauts trouvés en chemin, hors périmètre annoncé :
@@ -377,6 +379,38 @@ gratuite. 7 tests couvrent les bords, dont l'expiration repoussée en conservant
 `POST /orders/by-email` est retiré : il renvoyait **toutes les commandes d'une adresse**
 sans authentification, et aucun consommateur ne l'appelait. `docs/authorization.md` §6
 décrit comment rétablir la fonction sans en faire un oracle d'énumération.
+
+### 2.4 — Resources publiques : la forme ne dépend plus du modèle
+
+`GalleryResource` + `PhotoResource` + `DownloadableGalleryResource` sur les 4 endpoints
+publics. La galerie passe de **23 à 10 clés**, la photo de **18 à 9**. Avant, la réponse
+dépendait de `$fillable` et `$appends` : ajouter un accesseur au modèle changeait tous les
+endpoints sans que rien ne le signale.
+
+Trois éléments morts retirés d'abord, pour ne pas avoir à les modéliser : `GET
+/api/galleries` (aucun consommateur — front, prerendu, tests), la clé `thumbnail_photo`
+de 5 réponses (le front ne lit que `thumbnail_photo_id` et `cover_photo`), et le fichier
+`GalleryResource.php` d'origine, jamais référencé et qui appelait `parent::toArray()` —
+donc reproduisait la sérialisation nue.
+
+`file_path` ne sort plus. Le front s'en servait comme dernier terme de chaînes
+`thumbnail_url || preview_url || display_url || file_path`, dans 9 emplacements des vues
+publiques. Terme inatteignable — `resolveImageUrl()` ne rend jamais vide pour une image —
+et un chemin de bucket n'est de toute façon pas une URL. Les 9 replis sont nettoyés.
+
+**Le typecheck a rattrapé la conséquence** : sans ce dernier terme non-optionnel, les
+chaînes devenaient `string | undefined`. J'ai terminé par `|| ''` en conservant l'ordre de
+priorité, plutôt que de déclarer non-nullables des champs qui peuvent être nuls pour une
+vidéo dont la signature échoue.
+
+**Piège rencontré** : `isset($this->cover_photo)` dans une Resource déclenche la
+résolution d'attribut du modèle et rendait `true` là où le contrôleur n'avait rien posé,
+ajoutant une clé absente auparavant. Remplacé par
+`array_key_exists('cover_photo', $this->resource->getAttributes())`, qui ne peut pas
+déclencher de résolution.
+
+`GallerySerializationTest` fige les deux formes et vérifie qu'aucun des 12 champs
+interdits n'apparaît dans le corps brut des 3 endpoints publics.
 
 ### 🔴 Une galerie `public` livrait les originaux sans filigrane, sans aucun jeton
 

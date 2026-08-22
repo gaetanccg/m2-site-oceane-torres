@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\GalleryResource;
 use App\Http\Requests\Admin\SetThumbnailRequest;
 use App\Http\Requests\Admin\StoreEventGalleryRequest;
 use App\Http\Requests\Admin\UpdateEventGalleryRequest;
@@ -53,6 +54,10 @@ class EventGalleryController extends Controller
             return $result;
         });
 
+        $galleries->setCollection(
+            GalleryResource::collection($galleries->getCollection())->collection
+        );
+
         return response()->json($galleries);
     }
 
@@ -86,7 +91,7 @@ class EventGalleryController extends Controller
             });
 
             return response()->json([
-                'gallery' => $gallery,
+                'gallery' => new GalleryResource($gallery),
                 'is_parent' => true,
             ]);
         }
@@ -100,7 +105,7 @@ class EventGalleryController extends Controller
         ]);
 
         return response()->json([
-            'gallery' => $gallery,
+            'gallery' => new GalleryResource($gallery),
             'is_parent' => false,
             'available_product_types' => $gallery->getAvailableProductTypes(),
             'pack_pricing' => $gallery->getPackPricing(),

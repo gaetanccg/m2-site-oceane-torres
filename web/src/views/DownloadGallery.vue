@@ -135,7 +135,6 @@ import type {LightboxImage} from '@/types'
 
 interface Photo {
     id: string
-    file_path: string
     display_url?: string
     preview_url?: string
     thumbnail_url?: string
@@ -168,15 +167,15 @@ const downloadingPhotos = ref(new Set<string>())
 
 // Grid thumbnail: prefer the clean thumbnail served directly from MinIO by the
 // backend (fast); fall back to the on-the-fly proxy if it hasn't been generated.
-const getThumbUrl = (photo: Photo) => {
+const getThumbUrl = (photo: Photo): string => {
     if (photo.clean_thumbnail_url) return photo.clean_thumbnail_url
-    if (!gallery.value) return photo.thumbnail_url || photo.preview_url || photo.file_path
+    if (!gallery.value) return photo.thumbnail_url || photo.preview_url || ''
     return `${API_CONFIG.baseUrl}/images/clean-thumb/${photo.id}?token=${gallery.value.access_token}`
 }
 
 // Full-size clean image (no watermark) — used by the lightbox
-const getCleanUrl = (photo: Photo) => {
-    if (!gallery.value) return photo.preview_url || photo.display_url || photo.file_path
+const getCleanUrl = (photo: Photo): string => {
+    if (!gallery.value) return photo.preview_url || photo.display_url || ''
     return `${API_CONFIG.baseUrl}/images/clean/${photo.id}?token=${gallery.value.access_token}`
 }
 

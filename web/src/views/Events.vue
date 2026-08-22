@@ -92,7 +92,7 @@
                                 <div class="aspect-[4/3] bg-gray-100 relative overflow-hidden">
                                     <img
                                         v-if="gallery.cover_photo"
-                                        :src="gallery.cover_photo.thumbnail_url || gallery.cover_photo.preview_url || gallery.cover_photo.display_url || gallery.cover_photo.file_path"
+                                        :src="gallery.cover_photo.thumbnail_url || gallery.cover_photo.preview_url || gallery.cover_photo.display_url"
                                         :alt="gallery.title"
                                         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                         loading="lazy"
@@ -181,7 +181,6 @@ import {api, ApiServiceError} from '@/services/api'
 
 interface Photo {
     id: string
-    file_path: string
     display_url?: string
     preview_url?: string
     thumbnail_url?: string

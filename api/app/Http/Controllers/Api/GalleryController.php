@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\DownloadableGalleryResource;
+use App\Http\Resources\GalleryResource;
 use App\Http\Requests\Admin\SendAccessEmailRequest;
 use App\Http\Requests\Admin\SendAccessSmsRequest;
 use App\Http\Requests\Admin\StoreGalleryRequest;
@@ -230,7 +232,7 @@ class GalleryController extends Controller
         ]);
 
         return response()->json([
-            'gallery' => $gallery,
+            'gallery' => new GalleryResource($gallery),
             'mode' => 'protected',
             'available_product_types' => $gallery->getAvailableProductTypes(),
             'pack_pricing' => $gallery->getPackPricing(),
@@ -266,7 +268,7 @@ class GalleryController extends Controller
         });
 
         return response()->json([
-            'gallery' => $gallery->makeVisible('access_token'),
+            'gallery' => new DownloadableGalleryResource($gallery),
             'mode' => 'download',
         ]);
     }

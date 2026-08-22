@@ -143,7 +143,7 @@
                             :key="photo.id"
                         >
                             <PhotoCard
-                                :src="photo.preview_url || photo.display_url || photo.file_path"
+                                :src="photo.preview_url || photo.display_url || ''"
                                 :thumbnail-url="photo.thumbnail_url"
                                 :alt="photo.title || 'Photo'"
                                 @click="openLightbox(index)"
@@ -205,7 +205,6 @@ import type {LightboxImage} from '@/types'
 
 interface Photo {
     id: string
-    file_path: string
     display_url?: string
     preview_url?: string
     thumbnail_url?: string
@@ -276,7 +275,7 @@ const sortedPhotos = computed<Photo[]>(() => {
 const lightboxImages = computed<LightboxImage[]>(() => {
     if (!sortedPhotos.value.length) return []
     return sortedPhotos.value.map(photo => ({
-        url: photo.preview_url || photo.display_url || photo.file_path,
+        url: photo.preview_url || photo.display_url || '',
         alt: photo.title || 'Photo',
         type: 'image' as const,
         title: photo.title
