@@ -154,14 +154,20 @@ export const useAuthStore = defineStore('auth', () => {
         }
     }
 
-    async function logout(): Promise<void> {
+    async function logout(): Promise<boolean> {
+        let revoked = true
+
         try {
             await authApi.logout()
-        } catch {
-            // Ignorer les erreurs de logout API
+            error.value = null
+        } catch (e) {
+            revoked = false
+            error.value = extractErrorMessage(e, 'La déconnexion côté serveur a échoué.')
         } finally {
             clearSession()
         }
+
+        return revoked
     }
 
     async function fetchUser(): Promise<void> {

@@ -84,7 +84,16 @@ class AuthController extends Controller
 
     public function logout(Request $request): JsonResponse
     {
-        $request->user()->currentAccessToken()->delete();
+        // Sous authentification par session, currentAccessToken() renvoie un
+        // TransientToken : cibler ce seul token laisserait le jeton 30 jours actif.
+        $request->user()?->tokens()->delete();
+
+        Auth::guard('web')->logout();
+
+        if ($request->hasSession()) {
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+        }
 
         return response()->json([
             'success' => true,
