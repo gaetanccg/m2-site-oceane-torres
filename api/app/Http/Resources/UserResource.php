@@ -5,11 +5,6 @@ namespace App\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-/**
- * Forme du compte. `password` et `remember_token` etaient deja couverts par $hidden,
- * mais la serialisation nue laissait sortir `email_verified_at`, un etat interne, et
- * dependait de $fillable — donc une colonne ajoutee a la table apparaissait d'office.
- */
 class UserResource extends JsonResource
 {
     public function toArray(Request $request): array

@@ -5,12 +5,6 @@ namespace App\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-/**
- * Le cast `decimal:2` du modele serialise `price` et `background_opacity` en CHAINES
- * (« 150.00 », « 0.50 »), alors que les types front les declarent `number`. Rien ne
- * cassait — Intl.NumberFormat coerce — mais la forme envoyee ne correspondait pas au
- * contrat declare.
- */
 class PrestationResource extends JsonResource
 {
     public function toArray(Request $request): array

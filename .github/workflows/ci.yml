@@ -197,7 +197,7 @@ jobs:
         with:
           php-version: '8.4'
           extensions: mbstring, pdo, pdo_pgsql, gd, zip, bcmath
-          coverage: none
+          coverage: pcov
 
       - name: Get Composer cache directory
         id: composer-cache
@@ -225,6 +225,17 @@ jobs:
 
       - name: Run PHPUnit
         run: php artisan test
+
+      - name: Coverage backend
+        run: php artisan test --coverage --coverage-clover=coverage.xml
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-coverage
+          path: api/coverage.xml
+          retention-days: 14
 
   # ===========================================
   # Summary

@@ -12,9 +12,10 @@ class GiftCardController extends Controller
 {
     public function index(): JsonResponse
     {
-        $giftCards = GiftCard::with('payment')
-            ->latest()
-            ->paginate(min((int) request()->integer('per_page', 20) ?: 20, 100));
+        $giftCards = $this->paginated(
+            $this->sorted(GiftCard::with('payment'), request(), ['created_at', 'status', 'expires_at']),
+            request()
+        );
 
         return response()->json($giftCards);
     }

@@ -566,7 +566,6 @@ class OrderService
             ->get();
     }
 
-
     private function sendOrderConfirmationEmail(Order $order, $invoice = null): void
     {
         try {

@@ -76,7 +76,6 @@ class RateLimitTest extends TestCase
             ->assertStatus(429);
     }
 
-
     public function test_gallery_share_code_lookup_is_throttled(): void
     {
         Gallery::factory()->create();

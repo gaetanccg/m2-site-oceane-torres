@@ -110,6 +110,12 @@ Schedule::command('privacy:purge-expired', ['--years' => 10])
     ->name('privacy-purge-expired')
     ->withoutOverlapping();
 
+Schedule::command('exports:purge', ['--delete-orphans' => true])
+    ->dailyAt('04:30')
+    ->name('exports-purge')
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/exports-purge.log'));
+
 Schedule::command('storage:clean-orphans')
     ->weekly()
     ->saturdays()

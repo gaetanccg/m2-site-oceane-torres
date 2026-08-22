@@ -7,12 +7,8 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
 /**
- * Accès à une commande juste après paiement, sans compte et sans email.
- *
- * Le `return_url` de SumUp ne peut pas porter le jeton de téléchargement : celui-ci
- * n'est généré qu'à la confirmation du paiement, donc après la construction de l'URL.
- * Faute de quoi, l'accès reposait sur « commande créée depuis moins de 30 minutes » —
- * une règle qui accorde la lecture à quiconque connaît l'identifiant, sans rien prouver.
+ * Le `return_url` de SumUp est construit AVANT que le jeton de téléchargement n'existe :
+ * celui-ci n'est généré qu'à la confirmation du paiement.
  */
 final class OrderAccessSignature
 {

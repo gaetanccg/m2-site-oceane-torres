@@ -41,7 +41,10 @@ class OrderController extends Controller
             });
         }
 
-        $orders = $this->paginated($query, $request);
+        $orders = $this->paginated(
+            $this->sorted($query, $request, ['created_at', 'total', 'status', 'order_number']),
+            $request
+        );
 
         return response()->json([
             'success' => true,

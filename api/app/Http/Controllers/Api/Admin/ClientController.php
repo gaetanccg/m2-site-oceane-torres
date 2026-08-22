@@ -28,7 +28,10 @@ class ClientController extends Controller
             $query->where('source', $request->source);
         }
 
-        $clients = $query->latest()->paginate($request->get('per_page', 20));
+        $clients = $this->paginated(
+            $this->sorted($query, $request, ['created_at', 'name', 'email', 'source']),
+            $request
+        );
 
         return response()->json($clients);
     }

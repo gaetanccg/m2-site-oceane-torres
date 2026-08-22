@@ -109,30 +109,6 @@ class Client extends Model
     // ========================================================================
 
     /**
-     * Clients créés depuis une réservation
-     */
-    public function scopeFromReservation($query)
-    {
-        return $query->where('source', 'reservation');
-    }
-
-    /**
-     * Clients créés manuellement
-     */
-    public function scopeManual($query)
-    {
-        return $query->where('source', 'manual');
-    }
-
-    /**
-     * Clients créés depuis un contact
-     */
-    public function scopeFromContact($query)
-    {
-        return $query->where('source', 'contact');
-    }
-
-    /**
      * Recherche par nom ou email
      */
     public function scopeSearch($query, string $search)

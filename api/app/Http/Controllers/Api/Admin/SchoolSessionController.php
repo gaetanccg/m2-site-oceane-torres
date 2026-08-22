@@ -30,9 +30,14 @@ class SchoolSessionController extends Controller
 {
     public function index(): JsonResponse
     {
-        $sessions = SchoolSession::withCount('galleries')
-            ->latest()
-            ->paginate(min((int) request()->integer('per_page', 20) ?: 20, 100));
+        $sessions = $this->paginated(
+            $this->sorted(
+                SchoolSession::withCount('galleries'),
+                request(),
+                ['created_at', 'title', 'event_date', 'status']
+            ),
+            request()
+        );
 
         return response()->json($sessions);
     }

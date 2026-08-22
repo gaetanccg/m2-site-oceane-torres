@@ -53,6 +53,14 @@ WORKDIR /var/www
 # ===========================================
 FROM base AS development
 
+# pcov et non xdebug : pas de ralentissement hors couverture.
+RUN apk add --no-cache --virtual .pcov-deps autoconf g++ make \
+    && pecl install pcov \
+    && docker-php-ext-enable pcov \
+    && pecl clear-cache \
+    && apk del .pcov-deps
+
+
 # Copy composer files first for caching
 COPY composer.json composer.lock ./
 
@@ -82,11 +90,10 @@ EXPOSE 9000
 CMD ["php-fpm"]
 
 # ===========================================
-# PRODUCTION-FPM STAGE - l'image EST l'artefact
+# PRODUCTION-FPM - l'image EST l'artefact
 # ===========================================
 FROM base AS production-fpm
 
-# Dependances d'abord, pour que le cache de couches survive a un changement de code.
 COPY composer.json composer.lock ./
 RUN mkdir -p bootstrap/cache storage/framework/cache/data storage/framework/sessions \
         storage/framework/views storage/logs \
@@ -98,12 +105,8 @@ RUN composer dump-autoload --optimize --no-dev \
     && chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
 
-# Aucun `config:cache` ici : il figerait l'environnement du BUILD, pas celui d'execution.
-# Les caches sont chauffes au deploiement, une fois les variables reelles presentes.
-#
-# Aucun `migrate` non plus. Une migration au demarrage du conteneur s'execute sans
-# surveillance a chaque redemarrage, et trois services (api, queue, scheduler) partagent
-# cette image : ils la lanceraient en parallele. C'est une etape explicite du deploiement.
+# Ni `config:cache` (il figerait l'environnement du BUILD) ni `migrate` : les deux sont
+# des etapes explicites du deploiement.
 
 EXPOSE 9000
 

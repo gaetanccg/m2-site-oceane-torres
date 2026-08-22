@@ -1058,8 +1058,16 @@ fonctionnalité n'ait bougé — **point de contrôle naturel** pour décider de
       iso-fonctionnel. PhotoResource l'expose donc encore explicitement.
 [x] Colonnes mortes : photos.file_path_web, photos.file_path_watermark, gift_cards.pdf_path
     (⚠️ confirmer vides au relevé 1.2 d'abord)
-[ ] Valeurs d'enum mortes : clients.source='contact', availability_slots.status='unavailable',
-    gift_cards.status='cancelled'   (⚠️ CONSERVER orders.status='refunded' — cf. D5)
+[~] Valeurs d'enum mortes   (⚠️ CONSERVER orders.status='refunded' — cf. D5)
+    [x] clients.source='contact' — aucune écriture, seul un scope mort le lisait. Migration
+        réversible, éprouvée par un aller-retour sur la preprod. Les 3 scopes
+        `fromReservation` / `manual` / `fromContact` partent avec : zéro appelant.
+        ⚠️ le plan oubliait que 'manual' est VIVANT — `Admin\ClientController::store`
+           l'écrit et c'est le défaut de la colonne.
+    [x] availability_slots.status — sans objet, la table est supprimée
+    [ ] gift_cards.status='cancelled' — laissé en attente de D4. Le module entier est
+        suspendu à cette décision produit ; si D4 retient l'option A, un statut annulé
+        est plausiblement voulu. Le retirer pour le remettre serait du bruit.
 ```
 
 ### Routes sans consommateur — 33 endpoints → §2.16
@@ -1070,10 +1078,13 @@ fonctionnalité n'ait bougé — **point de contrôle naturel** pour décider de
     GET /galleries/{id}, /galleries/token/{token}, GET /photos/{photo},
     /my-galleries (2), POST /admin/notifications, GET /admin/health,
     PUT /auth/profile, /admin/photos/bulk-downloadable, /admin/photos/sort-order
-[ ] FINIR au lieu de supprimer : forgot-password + reset-password (interface manquante),
+[~] FINIR au lieu de supprimer : forgot-password + reset-password (interface manquante),
+    → ce n'est pas une suppression mais la construction d'une interface : relève de la
+      phase 3, pas de 2.1. Laissé ici pour ne pas perdre la trace.
     GET /orders/{id}/invoice + /admin/orders/{id}/invoice (aucun bouton),
     POST /gift-cards (selon D4)
-[ ] BRANCHER au lieu de supprimer : GET /admin/dashboard + /admin/dashboard/stats (§13.2)
+[~] BRANCHER au lieu de supprimer : GET /admin/dashboard + /admin/dashboard/stats (§13.2)
+    → câblage, donc phase 3 (§3.6). Même remarque.
 ```
 
 ### Front
@@ -1091,9 +1102,15 @@ fonctionnalité n'ait bougé — **point de contrôle naturel** pour décider de
 ```
 [x] api/storage/app/temp/*.zip — 140 Mo → mesuré à 0 o
 [x] bootstrap/, database/, resources/, storage/ à la RACINE — squelette résiduel suivi par Git
-[ ] Purger storage/app/private/exports/ (les ZIP s'accumulent sans purge, §10.0)
-    🔴 **mesuré : 4,8 Go** sur cette machine. Le correctif est une purge planifiée, pas
-    une suppression manuelle — sinon le volume revient.
+[x] Purger storage/app/private/exports/ (les ZIP s'accumulent sans purge, §10.0)
+    → commande `exports:purge`, planifiée quotidiennement à 04h30. Conservation : 30 j
+      pour les exports scolaires, **7 j pour les exports RGPD** — un ZIP de données
+      personnelles n'a pas à traîner sur disque.
+    → `--delete-orphans` traite les ZIP sans ligne en base : c'est ce qu'étaient les
+      **4,8 Go mesurés** ici, 3 fichiers de mai 2026 sans aucune ligne correspondante.
+      Purgés, dossier à 0 o. Supprimer un ZIP est sans risque : `downloadExport` répond
+      410 et l'interface propose de régénérer.
+    → 6 tests, dont « un orphelin récent est épargné » (un export en cours d'écriture).
 ```
 
 ## 2.2 D1 — Traiter la couche booléenne — 1 à 3 j · #14
@@ -1164,7 +1181,10 @@ sessions liées au système de fichiers. → §4.7, §5.11, §2.3
 [~] Ajouter sort_by / sort_dir sur les endpoints listés dans un DataTable (#65)
     [x] trait PaginatesQueries avec allowlist par endpoint
     [x] /admin/reservations, /admin/galleries
-    [ ] les autres listes d'administration
+    [x] /admin/orders, /admin/clients, /admin/school-sessions, /admin/gift-codes,
+        /admin/privacy/audit, /gift-cards — toutes passent par `paginated()` + `sorted()`.
+        `latest()` valait `created_at desc`, soit le défaut de `sorted()` : l'ordre par
+        défaut est inchangé.
 [x] Front : une seule couche d'accès (fusionner BaseApiService et BaseAdminService)
     → l'audit annonçait 2 couches parallèles : faux, BaseAdminService héritait déjà.
       Le vrai écart était request() imposant Content-Type: application/json et 10 s.
@@ -1266,7 +1286,13 @@ permissions du `storage` monté depuis l'hôte du NAS.
 [x] Installer Vitest + @vue/test-utils (le README l'annonçait déjà, cf. §1.8)
 [x] Ajouter `npm run test` à la CI
 [x] Premiers tests : store panier (calculs), utils/format, utils/errorHandler
-[ ] Activer la mesure de couverture backend (make test-coverage existe déjà, §12.8)
+[x] Activer la mesure de couverture backend (make test-coverage existe déjà, §12.8)
+    → `coverage: pcov` dans la CI + étape de mesure et publication du rapport clover
+      en artefact (14 j). pcov ajouté à la cible `development` du Dockerfile, pas à
+      `base` : la production n'en a pas besoin.
+    ⚠️ aucun **seuil** n'est posé : il n'y a pas de driver de couverture sur cette
+      machine, donc pas de mesure fiable pour le fixer. À arrêter quand la CI aura
+      publié un premier chiffre — poser un `--min` au hasard bloquerait la CI.
 ```
 
 ## 2.8 Recette de la phase 2

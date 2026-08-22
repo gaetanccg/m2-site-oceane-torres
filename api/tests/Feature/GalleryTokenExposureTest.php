@@ -48,7 +48,6 @@ class GalleryTokenExposureTest extends TestCase
         }
     }
 
-
     public function test_la_galerie_d_evenement_publique_ne_livre_pas_le_jeton(): void
     {
         $gallery = $this->gallery(['type' => 'event', 'is_published' => true]);

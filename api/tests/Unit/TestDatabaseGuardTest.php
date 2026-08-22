@@ -43,7 +43,7 @@ class TestDatabaseGuardTest extends TestCase
         }
     }
 
-    public function test_la_garde_est_branchee_sur_le_TestCase_de_base(): void
+    public function test_la_garde_est_branchee_sur_le_test_case_de_base(): void
     {
         $this->assertContains(
             RefusesNonLocalDatabase::class,

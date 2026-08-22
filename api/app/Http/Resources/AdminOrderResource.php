@@ -4,10 +4,6 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 
-/**
- * Les identifiants SumUp et le bloc utilisateur ne sortent que par cette ressource :
- * les endpoints publics de commande sont accessibles par jeton, sans compte.
- */
 class AdminOrderResource extends OrderResource
 {
     public function toArray(Request $request): array

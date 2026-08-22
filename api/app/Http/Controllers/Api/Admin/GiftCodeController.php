@@ -27,7 +27,10 @@ class GiftCodeController extends Controller
             $query->where('is_active', $request->boolean('is_active'));
         }
 
-        $codes = $query->latest()->paginate($request->get('per_page', 20));
+        $codes = $this->paginated(
+            $this->sorted($query, $request, ['created_at', 'code', 'expires_at']),
+            $request
+        );
 
         $codes->getCollection()->transform(fn (GiftCode $code) => $this->formatGiftCode($code));
 

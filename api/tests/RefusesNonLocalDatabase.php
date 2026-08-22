@@ -5,17 +5,10 @@ namespace Tests;
 use RuntimeException;
 
 /**
- * RefreshDatabase execute `migrate:fresh`, qui supprime toutes les tables. Rien dans
- * PHPUnit ni dans Laravel ne verifie vers quelle base cela pointe.
- *
- * La cible peut deriver sans que rien ne le signale, et phpunit.xml ne protege pas :
- * ses `<env>`, meme avec force="true", n'ecrivent que getenv() et $_ENV, alors que le
- * helper env() de Laravel interroge $_SERVER en premier. Une variable d'environnement
- * reelle — celles que docker-compose fige au demarrage d'un conteneur, et qui survivent
- * a toute modification ulterieure du .env — l'emporte donc sur la configuration de test.
- *
- * La verification lit la configuration effectivement resolue, apres le demarrage de
- * l'application et avant setUpTraits(), donc avant toute migration.
+ * RefreshDatabase execute `migrate:fresh`. phpunit.xml ne protege pas de la cible :
+ * ses `<env>`, force="true" comprise, n'ecrivent que getenv() et $_ENV, alors que
+ * env() de Laravel lit $_SERVER en premier. D'ou la lecture de la config resolue,
+ * dans refreshApplication() car setUpTraits() s'execute juste apres.
  */
 trait RefusesNonLocalDatabase
 {

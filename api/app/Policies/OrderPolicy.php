@@ -6,12 +6,6 @@ use App\Models\Order;
 use App\Models\User;
 use App\Support\OrderAccessSignature;
 
-/**
- * Seul endroit qui décide qui accède à une commande. La règle vivait auparavant en deux
- * exemplaires divergents — OrderController::show autorisait sur `created_at`,
- * OrderService::getOrderForDownload sur `paid_at` — et aucun des deux ne passait par
- * le Gate.
- */
 class OrderPolicy
 {
     public function view(?User $user, Order $order, ?string $token = null, ?string $email = null): bool

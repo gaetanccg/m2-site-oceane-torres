@@ -1,31 +1,14 @@
 #!/bin/bash
 # ===========================================
-# SCRIPT DE DEPLOIEMENT PREPROD - NAS UGREEN
+# DEPLOIEMENT PREPROD - NAS UGREEN
 # ===========================================
 # Usage: ./deploy/deploy-preprod.sh [--no-pull] [--no-build] [--fresh]
-#        ./deploy/deploy-preprod.sh --rollback <tag>
-#        ./deploy/deploy-preprod.sh --list
+#        ./deploy/deploy-preprod.sh --rollback <tag>   |   --list
 #
-# L'IMAGE EST L'ARTEFACT. Le code n'est plus monte depuis l'hote : il est copie dans
-# l'image a la construction, avec ses dependances. Deux consequences :
-#   - ce qui tourne est exactement ce qui a ete construit, pas l'etat du repo ;
-#   - un retour arriere est un changement de tag, pas un git checkout.
+# L'image est l'artefact : le code y est copie, pas monte. Un retour arriere est donc un
+# changement de tag. Seul ./api/storage reste monte depuis l'hote.
 #
-# Seul ./api/storage reste monte depuis l'hote : il porte les exports generes et les
-# journaux, qui doivent survivre a un redeploiement.
-#
-# Les migrations ne tournent plus au demarrage des conteneurs. Elles sont une etape
-# explicite de ce script, apres confirmation : un `migrate --force` dans le `command:`
-# s'executait sans surveillance a chaque redemarrage, et les trois services partageant
-# l'image le lançaient en parallele.
-#
-# --fresh: rebuild sans cache Docker. A reserver aux cas ou une couche systeme doit
-#   repartir de zero, ou a un cache corrompu. Pour recuperer aussi une base
-#   php:8.4-fpm-alpine plus recente, il faut un `docker compose ... build --pull`.
-#
-# Prerequis:
-#   1. Le repo est clone sur le NAS
-#   2. deploy/.env.preprod existe (copie depuis .env.preprod.example)
+# Prerequis: le repo est clone sur le NAS, deploy/.env.preprod existe.
 # ===========================================
 
 set -euo pipefail
@@ -37,8 +20,8 @@ cd "$REPO_ROOT"
 COMPOSE_FILE="deploy/docker-compose.preprod.yml"
 IMAGE_NAME="oceane-api-preprod"
 
-# Compose V2 resout les chemins relatifs par rapport au dossier du fichier compose.
-# On force --project-directory a la RACINE pour que ./api et ./deploy/... pointent juste.
+# --project-directory a la RACINE : compose resout ./api et ./deploy/ par rapport au
+# dossier du fichier compose, pas du projet.
 DC=(docker compose --project-directory "$REPO_ROOT" -f "$COMPOSE_FILE")
 
 red() { printf '\033[31m%s\033[0m\n' "$*"; }
@@ -46,9 +29,6 @@ grn() { printf '\033[32m%s\033[0m\n' "$*"; }
 ylw() { printf '\033[33m%s\033[0m\n' "$*"; }
 die() { red "ERREUR: $*" >&2; exit 1; }
 
-# ─────────────────────────────────────────────────────────────────────────────
-# --list : quels tags sont disponibles pour un retour arriere
-# ─────────────────────────────────────────────────────────────────────────────
 if [[ "${1:-}" == "--list" ]]; then
     echo "Images disponibles :"
     docker images "${IMAGE_NAME}" --format '  {{.Tag}}\t{{.CreatedSince}}\t{{.Size}}'
@@ -58,10 +38,6 @@ if [[ "${1:-}" == "--list" ]]; then
     exit 0
 fi
 
-# ─────────────────────────────────────────────────────────────────────────────
-# --rollback <tag> : redemarre sur une image deja construite. Ne touche PAS la base :
-# annuler une migration n'est pas un changement de tag, c'est une decision a part.
-# ─────────────────────────────────────────────────────────────────────────────
 if [[ "${1:-}" == "--rollback" ]]; then
     TAG="${2:-}"
     [[ -n "$TAG" ]] || die "Usage: $0 --rollback <tag>   (voir $0 --list)"
@@ -80,8 +56,6 @@ fi
 [[ -f "deploy/.env.preprod" ]] || die "deploy/.env.preprod introuvable.
     Copier le template: cp deploy/.env.preprod.example deploy/.env.preprod, puis remplir les secrets."
 
-# Le tag identifie ce qui tourne. Le SHA court du commit est reproductible et permet de
-# remonter au code exact ; `latest` suit toujours le dernier deploiement.
 COMMIT="$(git rev-parse --short HEAD 2>/dev/null || echo 'nogit')"
 export API_IMAGE_TAG="$COMMIT"
 
@@ -110,8 +84,6 @@ if [[ "$*" != *"--no-build"* ]]; then
     else
         "${DC[@]}" build
     fi
-    # `latest` pointe sur ce qui vient d'etre construit, pour que le compose sans tag
-    # explicite demarre la meme chose.
     docker tag "${IMAGE_NAME}:${API_IMAGE_TAG}" "${IMAGE_NAME}:latest"
 else
     echo; echo "2/6 - Construction ignoree (--no-build)"
@@ -135,7 +107,7 @@ echo
 docker exec api-php-preprod php -r 'exit(@fsockopen("127.0.0.1", 9000) ? 0 : 1);' 2>/dev/null \
     || die "php-fpm n'a pas demarre. Voir: ${DC[*]} logs laravel"
 
-# ── 5. Migrations : etape explicite, jamais au demarrage d'un conteneur
+# ── 5. Migrations
 echo; echo "5/6 - Migrations"
 PENDING="$(docker exec api-php-preprod php artisan migrate:status 2>/dev/null | grep -c 'Pending' || true)"
 
@@ -145,13 +117,12 @@ else
     ylw "  ${PENDING} migration(s) en attente :"
     docker exec api-php-preprod php artisan migrate:status 2>/dev/null | grep 'Pending' | sed 's/^/    /'
     echo
-    # Pas de confirmation en preprod : c'est l'environnement fait pour casser, et c'est
-    # ici qu'une migration doit etre eprouvee avant d'atteindre la production.
-    ylw "  Application (preprod, sans confirmation)."
+    # Pas de confirmation : la preprod est faite pour eprouver une migration.
+    ylw "  Application (preprod)."
     docker exec api-php-preprod php artisan migrate --force
 fi
 
-# ── 6. Caches applicatifs, une fois les variables reelles presentes
+# ── 6. Caches applicatifs
 echo; echo "6/6 - Caches applicatifs..."
 docker exec api-php-preprod php artisan storage:link 2>/dev/null || true
 docker exec api-php-preprod php artisan config:cache

@@ -5,11 +5,6 @@ namespace App\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-/**
- * Forme d'une reservation pour son propre titulaire. `notes` en est absent : c'est le
- * commentaire interne de la photographe, ecrivable seulement par l'administration, et il
- * sortait sur le tableau de bord du client.
- */
 class ReservationResource extends JsonResource
 {
     public function toArray(Request $request): array

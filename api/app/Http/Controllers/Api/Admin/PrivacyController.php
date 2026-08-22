@@ -177,9 +177,10 @@ class PrivacyController extends Controller
      */
     public function audit(Request $request): JsonResponse
     {
-        $logs = PrivacyAuditLog::with('actor')
-            ->orderBy('created_at', 'desc')
-            ->paginate($request->input('per_page', 20));
+        $logs = $this->paginated(
+            $this->sorted(PrivacyAuditLog::with('actor'), $request, ['created_at', 'action']),
+            $request
+        );
 
         return response()->json([
             'success' => true,
