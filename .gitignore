@@ -119,3 +119,8 @@ PROJECT_REFERENCE_MVP.md
 
 .claude
 *.tar.gz
+
+# Sauvegardes (données clientes) — ne jamais committer
+/backups/
+*.dump
+*.dump.gz
