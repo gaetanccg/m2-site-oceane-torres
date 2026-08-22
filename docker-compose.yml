@@ -287,7 +287,7 @@ services:
   # Postgres de DÉVELOPPEMENT (base applicative locale)
   # ----------------------------
   postgres-dev:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     container_name: ot-postgres-dev
     restart: unless-stopped
     environment:
@@ -321,7 +321,7 @@ services:
   #
   # `tmpfs` : données en RAM → migrations + tests plus rapides, rien à nettoyer.
   postgres-test:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     container_name: ot-postgres-test
     profiles: [test]
     environment:

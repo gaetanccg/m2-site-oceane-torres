@@ -219,6 +219,10 @@ FROM invoices;
 
 
 \echo '## G. 🔴 Compte admin du seeder (action de sécurité immédiate)'
+\echo ''
+\echo '> ⚠️ Ce bloc cherche une adresse LITTÉRALE. Sur une copie anonymisée il renvoie'
+\echo '> toujours 0, ce qui ne prouve rien. À jouer sur une copie NON anonymisée.'
+\echo ''
 \echo '```'
 SELECT id, email, role, created_at, updated_at, email_verified_at FROM users
 WHERE email IN ('admin@oceanetorres.fr', 'client@test.com');
