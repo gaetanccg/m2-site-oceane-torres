@@ -28,7 +28,17 @@
             Base de test : Postgres dédié (service docker `postgres-test`, profil `test`).
             Le code utilise du SQL Postgres non portable (pg_advisory_xact_lock,
             FILTER (WHERE), scopes whereRaw booléens) → SQLite est exclu.
-            Démarrer la base avant : docker compose (profil test) up -d postgres-test
+
+            Lancer les tests DEPUIS L'HÔTE : `make test`. Dans le conteneur `laravel`,
+            127.0.0.1:55432 ne désigne pas postgres-test.
+
+            ⚠️ Ces valeurs ne protègent de rien. PHPUnit n'écrit que getenv() et $_ENV,
+            alors que env() de Laravel interroge $_SERVER en premier : une variable
+            d'environnement réelle l'emporte, y compris avec force="true". Un conteneur
+            démarré avec des identifiants distants imposerait donc sa base, et
+            RefreshDatabase (migrate:fresh) en supprimerait toutes les tables.
+            La protection réelle est Tests\RefusesNonLocalDatabase, qui vérifie la
+            configuration résolue avant toute migration.
         -->
         <env name="DB_CONNECTION" value="pgsql"/>
         <env name="DB_HOST" value="127.0.0.1"/>

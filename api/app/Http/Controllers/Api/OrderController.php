@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Exceptions\BusinessException;
-use App\Http\Controllers\Api\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\OrderResource;
 use App\Http\Requests\CreateCheckoutRequest;
 use App\Http\Requests\GetOrdersByEmailRequest;
 use App\Http\Requests\OrderIdRequest;
@@ -211,7 +211,7 @@ class OrderController extends Controller
 
             return response()->json([
                 'success' => true,
-                'order' => AdminOrderController::formatOrder($order),
+                'order' => new OrderResource($order),
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -239,7 +239,7 @@ class OrderController extends Controller
 
         return response()->json([
             'success' => true,
-            'orders' => $orders->map(fn ($order) => AdminOrderController::formatOrder($order)),
+            'orders' => OrderResource::collection($orders),
         ]);
     }
 
@@ -402,7 +402,7 @@ class OrderController extends Controller
 
         return response()->json([
             'success' => true,
-            'orders' => $orders->map(fn ($order) => AdminOrderController::formatOrder($order)),
+            'orders' => OrderResource::collection($orders),
         ]);
     }
 

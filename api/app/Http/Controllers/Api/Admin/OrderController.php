@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Exceptions\BusinessException;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\AdminOrderResource;
 use App\Http\Resources\OrderResource;
 use App\Models\Order;
 use App\Services\InvoiceService;
@@ -40,11 +41,11 @@ class OrderController extends Controller
             });
         }
 
-        $orders = $query->paginate($request->input('per_page', 20));
+        $orders = $this->paginated($query, $request);
 
         return response()->json([
             'success' => true,
-            'orders' => $orders->map(fn ($order) => self::formatOrder($order)),
+            'orders' => OrderResource::collection($orders->getCollection()),
             'pagination' => [
                 'current_page' => $orders->currentPage(),
                 'last_page' => $orders->lastPage(),
@@ -60,21 +61,7 @@ class OrderController extends Controller
 
         return response()->json([
             'success' => true,
-            'order' => array_merge(self::formatOrder($order), [
-                'user' => $order->user ? [
-                    'id' => $order->user->id,
-                    'email' => $order->user->email,
-                    'name' => trim($order->user->first_name.' '.$order->user->last_name),
-                ] : null,
-                'payment' => $order->payment ? [
-                    'id' => $order->payment->id,
-                    'provider' => $order->payment->provider,
-                    'status' => $order->payment->status,
-                    'provider_payment_id' => $order->payment->provider_payment_id,
-                ] : null,
-                'sumup_checkout_id' => $order->sumup_checkout_id,
-                'sumup_transaction_id' => $order->sumup_transaction_id,
-            ]),
+            'order' => new AdminOrderResource($order),
         ]);
     }
 
@@ -127,7 +114,7 @@ class OrderController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Commande marquée comme expédiée.',
-            'order' => self::formatOrder($order),
+            'order' => new OrderResource($order),
         ]);
     }
 
@@ -187,7 +174,7 @@ class OrderController extends Controller
                 'message' => $updatedOrder->isPaid()
                     ? 'Paiement confirmé. Facture generée et email envoyé.'
                     : 'Paiement non confirmé sur SumUp. Statut actuel : '.$updatedOrder->status,
-                'order' => self::formatOrder($updatedOrder->load('items.photo')),
+                'order' => new OrderResource($updatedOrder->load('items.photo')),
             ]);
         } catch (BusinessException $e) {
             return response()->json([
@@ -241,8 +228,4 @@ class OrderController extends Controller
     /**
      * Format order for API response
      */
-    public static function formatOrder(Order $order): array
-    {
-        return (new OrderResource($order))->resolve();
-    }
 }

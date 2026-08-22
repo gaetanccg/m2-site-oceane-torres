@@ -11,6 +11,8 @@ use Laravel\Sanctum\Sanctum;
 
 abstract class TestCase extends BaseTestCase
 {
+    use RefusesNonLocalDatabase;
+
     /**
      * Authentifie un utilisateur admin (middleware `admin`) et le retourne.
      */

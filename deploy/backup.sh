@@ -140,9 +140,14 @@ cmd_db() {
 cmd_verify() {
     step "Restauration de contrôle"
 
-    local dump
-    dump="$(ls -t "${BACKUP_DIR}"/oceane-*.dump 2>/dev/null | head -1)" || true
+    # Un argument explicite prime : `ls -t` prend le plus recent, qui peut etre une
+    # copie anonymisee et non le dump de reference.
+    local dump="${VERIFY_DUMP:-}"
+    if [[ -z "${dump}" ]]; then
+        dump="$(ls -t "${BACKUP_DIR}"/oceane-*.dump 2>/dev/null | grep -v -- '-anon-' | head -1)" || true
+    fi
     [[ -n "${dump}" ]] || die "Aucun dump dans ${BACKUP_DIR}. Lancer d'abord : $0 db"
+    [[ -f "${dump}" ]] || die "Dump introuvable : ${dump}"
     ylw "  dump : $(basename "${dump}")"
 
     # Un dump produit par pg_dump N ne se restaure pas dans un serveur anterieur.

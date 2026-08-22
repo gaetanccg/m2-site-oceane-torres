@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\OrderResource;
 use App\Http\Requests\Admin\SendSchoolSessionMessagesRequest;
 use App\Http\Requests\Admin\StoreSchoolSessionRequest;
 use App\Http\Requests\Admin\UpdateSchoolSessionRequest;
@@ -96,7 +97,7 @@ class SchoolSessionController extends Controller
 
         return response()->json([
             'success' => true,
-            'orders' => $orders->map(fn ($order) => OrderController::formatOrder($order)),
+            'orders' => OrderResource::collection($orders),
         ]);
     }
 
