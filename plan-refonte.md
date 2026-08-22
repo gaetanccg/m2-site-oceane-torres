@@ -77,9 +77,9 @@ fonctionnalité n'ait changé. Point de décision naturel pour continuer ou s'ar
 | Action | État | Vérification |
 |---|---|---|
 | 0.1 Commandes destructrices | ✅ | `make fresh`/`make seed` inexistants · garde-fou testé dans les 2 sens |
-| 0.2 Sauvegardes | 🟡 outillage prêt | `deploy/backup.sh` (db/verify/storage/all) + procédure dans `deploy/README.md` — **reste à exécuter** |
+| 0.2 Sauvegardes | ✅ | dump 20 Mo restauré et **vérifié** : 9 tables témoins concordent |
 | 0.3 Base de dev locale | ✅ | `postgres-dev` sur `127.0.0.1:55433`, 76 migrations + seed OK |
-| 0.4 Compte admin du seeder | ⛔ | **requiert une requête sur la prod** |
+| 0.4 Compte admin du seeder | ✅ | **0 compte du seeder en base** — mesuré sur le dump |
 | 0.5 `downloadFile()` | ✅ | route + méthode supprimées, 140 Mo purgés |
 | 0.6 `storage:clean-orphans` | ✅ | 6 tests — les 3 ciblant le correctif échouent sans lui |
 | 0.7 `ClientController::destroy` | ✅ | back + front supprimés, renvoi vers `/admin/privacy` préremplí |
@@ -111,18 +111,30 @@ frontière de mot : **ce `@if` n'était pas compilé** et restait du texte litt�
 que le `@endif` qui suit `)` l'était. Le fichier compilé se retrouvait avec un `endif`
 orphelin → `syntax error, unexpected token "endif"`.
 
-**Conséquence : le gabarit de facture ne compilait pas du tout.** Or `completeOrder()`
-avale l'échec de `generateForOrder()` (→ §7.5) : la ligne `invoices` était créée avec son
-numéro, puis la génération du PDF échouait en silence. Donc **aucune facture PDF n'a
-jamais été produite**, et chaque email de confirmation partait sans sa pièce jointe.
+**Conséquence : le gabarit ne compilait plus.** Or `completeOrder()` avale l'échec de
+`generateForOrder()` (→ §7.5) : la ligne `invoices` était créée avec son numéro, puis
+la génération du PDF échouait en silence.
 
-Vérifié : le gabarit issu de `git show HEAD` échoue à rendre. Correctif = une espace.
-Couvert par `tests/Feature/InvoiceGenerationTest.php` (4 tests) — dont 2 échouent si l'on
-remet la version d'origine. Aucun autre gabarit ne porte ce motif (balayage effectué).
+**Portée exacte, mesurée sur le dump du 2026-08-22** — et elle corrige une première
+formulation trop large de ce document, qui affirmait qu'aucune facture n'avait jamais
+été produite :
 
-**À relever en phase 1** : `SELECT count(*) FROM invoices WHERE file_path IS NULL;`
-— l'audit posait déjà la requête (§3bis.14-F) en supposant quelques cas ; l'attendu réel
-est *toutes les lignes*. Décider avec la photographe s'il faut régénérer l'historique.
+| | |
+|---|---|
+Commit fautif | `30cfa58` « Add gift code functionality », **2026-06-04** |
+Factures **avec** PDF | **114**, du 2026-03-04 au 2026-06-01 |
+Factures **sans** PDF | **5**, du 2026-06-05 au 2026-06-18 |
+
+La facturation fonctionnait donc, et **la fonctionnalité codes promo l'a cassée**. Les
+dégâts se sont arrêtés à 5 factures faute de ventes depuis juin — la prochaine commande
+payée aurait heurté le même mur.
+
+C'est une régression livrée sans qu'aucun test ne rende la facture, ce qui confirme la
+thèse de l'audit : les bugs sont dans les domaines non testés.
+
+**Reste à décider** 👤 : régénérer les 5 factures manquantes. Les données sont
+intactes, `Admin/OrderController::downloadInvoice()` sait déjà régénérer à la demande —
+mais son endpoint n'est appelé par aucun bouton (→ 3.1).
 
 ### Écarts assumés par rapport au plan
 
@@ -212,11 +224,65 @@ cause du filigrane potentiellement illisible sur les photos vendues (→ §5.4).
 
 Build vérifié par Gaëtan le 2026-08-22.
 
+### 📊 Premières mesures réelles — l'audit n'en avait aucune
+
+Dump du 2026-08-22, restauré et vérifié.
+
+| Table | Lignes | Ce que ça change |
+|---|---|---|
+`photos` | **5 350** | dont **0** avec `supabase_path` — voir ci-dessous |
+`galleries` | 196 | |
+`orders` | 211 · 120 payées | |
+`invoices` | 119 | 114 avec PDF, 5 sans (→ #69) |
+`users` | 18 | dont **2 admins**, non 1 comme supposé |
+`clients` | 17 | |
+`reservations` | **0** | le formulaire public n'a jamais produit une ligne |
+`gift_cards` | **0** | aucun bon cadeau vendu → pèse sur D4 |
+`availability_slots` / `_patterns` | **0** / **0** | D3 « supprimer » sans enjeu de données |
+`client_forms` | **0** | R3 « absorber » sans objet |
+`subscriptions` / `_items` | **0** / **0** | suppression Cashier sans risque |
+`privacy_audit_logs` | **0** | rien à migrer — contrainte C4 sans objet |
+
+**🟢 L'aléa n°1 de la phase 4 n'existe pas.** Le risque n°1 de l'audit (§3bis.15) était
+`photos.metadata->supabase_path` dans la chaîne de résolution des fichiers, susceptible
+de doubler la phase 4. Mesure : **0 photo sur 5 350** en dépend. Toutes ont
+`file_path_hd` **et** `storage_path`, aucune n'a d'URL absolue, aucune n'est non traitée.
+Population A uniquement, la seule saine.
+
+**✅ Action 0.4 répondue.** `SELECT count(*) … WHERE email IN ('admin@oceanetorres.fr',
+'client@test.com')` → **0**. Le compte `admin123` n'a jamais existé en production. Le
+constat critique #2 est fermé par la preuve.
+
+⚠️ Ce contrôle a dû être joué sur une copie **non** anonymisée : il cherche une adresse
+littérale, que l'anonymisation détruit précisément. Une mise en garde est inscrite dans
+le bloc G du relevé.
+
+### Base de développement sur données réelles anonymisées
+
+`deploy/anonymize.sql` + `deploy/load-dev-db.sh` : restauration jetable →
+anonymisation → dump anonymisé réutilisable → chargement dans `postgres-dev`. La base
+de développement ne voit jamais les données réelles, et le chargement est annulé si une
+adresse réelle subsiste.
+
+Pseudonymisation **déterministe** : une même valeur réelle produit toujours le même
+substitut, dans toutes les tables — sinon la carte des identités du relevé (bloc O)
+deviendrait fausse. Vérifié : **138 emails distincts avant comme après**.
+
+Préservé octet pour octet : UUID, les 7 colonnes de chemin, `metadata->storage_path`,
+montants, dates, statuts, `order_number`, `invoice_number`, et la nullité de chaque
+colonne. `share_code` et `access_token` sont en revanche **régénérés** — ce sont des
+accès vivants. Corollaire : la répétition générale de la phase 4, qui vérifie qu'une
+galerie s'ouvre avec son ancien code, se fait sur une copie non anonymisée.
+
+PostgreSQL aligné sur la production (**17**) pour `postgres-dev`, `postgres-test` et la
+CI : ils étaient en 16 alors que la prod tourne en 17.6.
+
 ### Bloqué sur intervention manuelle
 
 ```
-[ ] 0.2  ./deploy/backup.sh all   (puis `verify` au vert)
-[ ] 0.4  Requête SQL sur la production — compte admin du seeder
+[x] 0.2  ./deploy/backup.sh all — dump vérifié
+[x] 0.4  Compte admin du seeder — 0 occurrence
+[ ] 0.2b ./deploy/backup.sh storage — miroir MinIO, non fait
 [ ] 0.15 UptimeRobot + 2 checks healthchecks.io (créations de compte)
 [ ] 0.19 Les 6 lignes de recette qui exigent la production
 [ ] 1.x  Lancer ./deploy/releve-production.sh sur la copie restaurée
