@@ -102,8 +102,6 @@ return [
                 // in transaction/statement pooling mode
                 PDO::ATTR_EMULATE_PREPARES => true,
                 PDO::ATTR_PERSISTENT => false,
-                // Stringify fetches to help with boolean handling
-                PDO::ATTR_STRINGIFY_FETCHES => true,
             ],
         ],
 

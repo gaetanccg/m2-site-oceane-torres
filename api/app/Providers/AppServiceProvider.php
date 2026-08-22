@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Database\PostgresConnection;
 use App\Events\BookingRequested;
 use App\Events\ContactMessageSent;
 use App\Listeners\SendBookingNotifications;
@@ -10,6 +11,7 @@ use App\Models\User;
 use App\Observers\UserObserver;
 use App\Services\Supervision\HeartbeatService;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Database\Connection;
 use Illuminate\Http\Request;
 use Illuminate\Queue\Events\Looping;
 use Illuminate\Support\Facades\Event;
@@ -27,6 +29,8 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(HeartbeatService::class);
+
+        Connection::resolverFor('pgsql', fn ($pdo, $database, $prefix, $config) => new PostgresConnection($pdo, $database, $prefix, $config));
     }
 
     /**
