@@ -322,11 +322,37 @@ Conséquence pour la suite : le choix du pooler n'est plus une dette. B et C de 
 | 2.2 Couche booléenne (D1) | ✅ | 31 contournements → 1 surcharge de connexion |
 | 2.3 Redis | ✅ | cache + sessions + URL signées cachées + binaires sortis du cache |
 | 2.7 Vitest | ✅ | 25 tests · a attrapé une régression de 2.1 dès le 1er lancement |
-| 2.4 Convention de réponse API | ⏳ | à venir |
+| 2.4 Convention de réponse API | 🔵 | `docs/api-conventions.md` écrit · `per_page`/`sort_by` partout · 12 `fetch()` sauvages supprimés · une seule couche d'accès HTTP · `formatOrder()` → API Resources. Reste : les autres Resources, puis l'enveloppe |
 | 2.5 Couche d'autorisation | ⏳ | à venir |
 | 2.6 Déploiement reproductible | ⏳ | à venir |
 
-**Suite de tests : 267 back + 25 front.**
+**Suite de tests : 281 back + 49 front.**
+
+Détail de 2.4, dans l'ordre fixé par `docs/api-conventions.md` §6 :
+
+| Étape | État | Note |
+|---|---|---|
+Convention écrite | ✅ | enveloppe `{data, meta?, message?}`, **sans** clé `success` ; codes HTTP ; règles front |
+`per_page` plafonné à 100 | ✅ | 8 sites en dur (5 tailles différentes) → paramétrable partout |
+`sort_by`/`sort_dir` + allowlist | ✅ | trait `PaginatesQueries` ; sans allowlist, `sort_by` atteint le `ORDER BY` |
+`fetch()` hors couche de services | ✅ | 12 supprimés. Les 3 téléchargements MinIO vérifient enfin `response.ok` — un lien expiré enregistrait le XML d'erreur S3 sous le nom de la photo |
+Une seule couche d'accès HTTP | ✅ | l'audit annonçait 2 couches parallèles : faux, `BaseAdminService` héritait déjà. Le vrai écart était `request()` qui imposait `Content-Type: application/json` et 10 s — incompatible avec un envoi de fichiers |
+`formatOrder()` → API Resource | ✅ | méthode statique publique de contrôleur appelée depuis 3 autres contrôleurs. `AdminOrderResource` isole `user`/`payment`/`sumup_*`, qui ne doivent pas sortir sur les endpoints publics |
+Une Resource par ressource | ⏳ | ~28 sérialisations de modèle nu restantes (Gallery, Photo, Prestation, Client, SchoolSession, Reservation, User) |
+Enveloppe unique | ⏳ | **en dernier** : rupture de contrat sur 151 endpoints, à migrer avec le front |
+
+Deux défauts trouvés en chemin, hors périmètre annoncé :
+
+`Events.vue` lisait `data.meta.current_page` — l'API renvoie un paginateur Laravel à plat,
+sans clé `meta`. `hasMore` valait donc toujours faux et « charger plus » ne s'activait jamais.
+Latent aujourd'hui (11 galeries publiées pour une page de 12), la 12e serait devenue
+invisible. Le type `PaginatedResponse<T>` décrivait cette même forme inexistante et n'était
+utilisé par personne — vraisemblablement l'origine de l'erreur.
+
+Le **build de production était cassé** : `npm run build` échouait sur les tests ajoutés en
+2.7. Passé inaperçu parce que `npm run typecheck` lançait `vue-tsc --noEmit` sur un
+`tsconfig.json` à `"files": []` — sans `-b`, il ne vérifiait **aucun fichier**. Corrigé, plus
+une étape `typecheck` en CI.
 
 Écarts assumés en 2.1, tous justifiés par une mesure ou par un test :
 
@@ -348,10 +374,10 @@ latents de plus, en sus des trois corrigés en 0.18.
 ```
 [x] 0.2  ./deploy/backup.sh all — dump vérifié
 [x] 0.4  Compte admin du seeder — 0 occurrence
-[ ] 0.2b ./deploy/backup.sh storage — miroir MinIO, non fait
+[~] 0.2b ./deploy/backup.sh storage — miroir MinIO : écarté (plusieurs centaines de Go)
 [ ] 0.15 UptimeRobot + 2 checks healthchecks.io (créations de compte)
 [ ] 0.19 Les 6 lignes de recette qui exigent la production
-[ ] 1.x  Lancer ./deploy/releve-production.sh sur la copie restaurée
+[~] 1.x  Relevé de production — fait le 2026-08-22, phase 1 réduite ensuite
 ```
 
 ---
@@ -814,172 +840,45 @@ vérifier que l'email de confirmation arrive **pendant** l'export.
 ```
 
 ---
+# PHASE 1 — Relever et décider — **RÉDUITE, non exécutée**
 
-# PHASE 1 — Relever et décider
+**En quoi elle consistait.** L'audit n'avait consulté aucune donnée réelle : tout le plan
+reposait sur des hypothèses. La phase prévoyait 2,5 jours pour les confirmer — 14 blocs de
+requêtes sur une copie restaurée de la production, un document « Relevé de production », puis
+huit décisions à trancher. Elle prévoyait aussi de constituer une base de développement
+complète sur données réelles anonymisées.
 
-**2,5 jours. ⛔ Bloquante pour les phases 2 à 4.**
+**Pourquoi on ne la fait pas.** On travaille sur la base et le MinIO de **preprod** : c'est un
+environnement de test, le casser temporairement est sans conséquence. Une base de test
+complète n'apporterait rien au travail réel, qui est d'améliorer et de corriger le code. La
+production n'est pas touchée.
 
-Aucune donnée réelle n'a été consultée pendant l'audit. **Tout ce qui suit dans ce plan repose sur des
-hypothèses que cette phase doit confirmer.** → §10.3
+**Ce qui a quand même été mesuré**, et qui reste utile parce que les phases 2 à 4 s'appuient
+dessus — détail en §1bis :
 
-## 1.1 Environnement de relevé
+- 5350 photos, 196 galeries, 211 commandes, 119 factures, 18 utilisateurs, 17 clients
+- `reservations`, `gift_cards`, `availability_slots`/`_patterns`, `client_forms`,
+  `subscriptions`/`_items`, `privacy_audit_logs` : **toutes vides**
+- `supabase_path` renseigné sur **0 des 5350 photos** → le risque n°1 de l'audit et le
+  principal danger de la phase 4 n'existent pas
+- 0 photo dont le fichier manque dans MinIO ; 114/114 PDF de facture présents
+- 0 compte issu du seeder en production
 
-```
-[ ] Travailler exclusivement sur la COPIE restaurée (action 0.2), jamais sur la production
-[ ] Ouvrir un document « Relevé de production — <date> » qui recevra tous les résultats bruts
-```
+**Les huit décisions** — conservées ici parce que les phases suivantes les référencent par
+leur identifiant. Seules D1 et D3 sont tranchées ; les autres attendent un arbitrage produit.
 
-## 1.2 Les 14 blocs de requêtes
-
-| # | Bloc | Source | Décision conditionnée |
-|---|---|---|---|
-`[ ]` | Structure réelle : colonnes, types, contraintes CHECK, index, migrations appliquées | §3bis.14-A | Schéma cible · **noms réels des contraintes** · **type réel des colonnes booléennes** (D1) |
-`[ ]` | Volumétrie & tables mortes | §3bis.14-B | Confirmer que `subscriptions`, `subscription_items`, `availability_*`, `client_forms` sont vides |
-`[ ]` | 🔴 **Chemins des photos** | §3bis.14-C | **Le point bloquant** : combien de photos ne se résolvent que par `supabase_path` ou `file_path` |
-`[ ]` | Valeurs réelles des colonnes non contraintes | §3bis.14-D | Enums cibles (`product_type`, `status`, `provider`, `type`, `print_status`) |
-`[ ]` | Orphelins des 6 FK manquantes | §3bis.14-E | Nettoyage préalable |
-`[ ]` | Backfills incomplets | §3bis.14-F | Faut-il rejouer `photos:process-existing`, `orders:backfill-customer-info` |
-`[ ]` | Compte admin du seeder | §3bis.14-G | *(fait en 0.4)* |
-`[ ]` | Travail restant des backfills photo | §5.14 | Photos non traitées / sans vignette clean · **distribution des `photo_uploads.error_message`** |
-`[ ]` | Activité commerciale : CA mensuel, mix produit | §7.14-A | Dimensionnement de D4, D5, D6 |
-`[ ]` | 🔴 **Portée du bug de quantité** | §7.14-B | Quelles factures émises sont fausses · faut-il réémettre 👤 |
-`[ ]` | Cohérence comptable : totaux, factures manquantes, **continuité de la séquence** | §7.14-C | Initialisation des séquences en phase 4 |
-`[ ]` | Santé du tunnel de paiement | §7.14-D | Taux de conversion réel, causes d'échec |
-`[ ]` | Anomalies structurelles : commandes mixtes, doublons de paiement, backlog d'expédition | §7.14-E | Correctifs de la phase 3 |
-`[ ]` | File d'attente, `failed_jobs`, **preuve que la purge RGPD tourne** | §8.14 | Vider la file avant bascule |
-
-**Trois requêtes ajoutées par les passes de relecture** :
-
-```sql
-[ ] -- Carte des identités (§10.3) — combien de personnes, par quelle ancre
-[ ] -- Emails orphelins : présents dans orders/galleries/reservations sans user ni client (§10.3)
-[ ] -- Trace d'un passage de ClientController::destroy (§12.3)
-    SELECT count(*) FROM orders WHERE guest_first_name = 'Supprimé' AND status = 'paid';
-```
-
-## 1.3 📋 Les huit décisions
-
-**Aucune ligne des phases 2 à 5 ne doit être écrite avant que ces huit points soient tranchés et
-écrits.** Recommandation de l'audit en gras ; case « décision retenue » à remplir.
-
-### D1 🔴 Pooler PostgreSQL — technique, bloquante · #14
-
-Le pooler transaction (6543) impose `EMULATE_PREPARES` → trait `CastsBooleansForPostgres` sur
-12 modèles + 20 `whereRaw`. Le pooler session (5432) **a été essayé et a saturé** en production
-(`EMAXCONNSESSION`, ~5000×/jour). → §5.0.1
-
-| | Option | Coût |
+| # | Sujet | État |
 |---|---|---|
-| **A** | **Rester en 6543 et tester si retirer `STRINGIFY_FETCHES` suffit** ← recommandé | 1 j de test |
-| B | Réduire le besoin de connexions puis passer en 5432 | 2-3 j |
-| C | Postgres auto-hébergé | 3-5 j, à écarter (sauvegardes) |
+| D1 🔴 | Couche booléenne / pooler PostgreSQL · #14 | ✅ **tranchée** — option C, `PostgresConnection::prepareBindings()`. Ni A ni B du plan : voir §1bis « D1 tranchée » |
+| D2 🟠 | Modélisation de `galleries` · #39 | ⏳ recommandation : table unique + discriminant explicite + scopes obligatoires + contrôleurs séparés par audience |
+| D3 👤 | Module Disponibilités · code mort | ✅ **tranchée** — tables vides, supprimées en phase 2.1 |
+| D4 👤 | Bons cadeaux | ⏳ recommandation : outiller le registre manuel (PDF + email depuis l'admin). Table vide, donc sans urgence |
+| D5 👤 | Remboursement et avoir · #16 | ⏳ recommandation : remboursement déclaratif + avoir numéroté `AV-YYYY-NNNNN` |
+| D6 👤 | Portfolio administrable · #40 | ⏳ recommandation : portfolio en base servi par l'API, en dernière position |
+| D7 👤 | Contacts scolaires · #29 | ⏳ recommandation : persister dans `school_session_contacts` avec purge automatique |
+| D8 🔴 | Périmètre de l'authentification · #13, #28 | ⏳ à trancher — impacte 2.5 |
 
-```
-[x] Test A réalisé — résultat : **RÉFUTÉ**. Retirer STRINGIFY_FETCHES corrige la lecture, pas l'écriture ni les filtres.
-[x] Décision retenue : **option C** — surcharger `prepareBindings()` sur la connexion Postgres.
-```
-
-### D2 🟠 Modélisation de `galleries` — technique, structurante · #39
-
-Une table, quatre concepts. → §11.2-D2
-
-| | Option |
-|---|---|
-| **A** | **Table unique + discriminant explicite + scopes obligatoires + contrôleurs séparés par audience** ← recommandé |
-| B | Séparer en 3 tables (migration lourde, perd le cumul cross-galerie des packs) |
-
-```
-[ ] Décision retenue : ______________________________
-```
-
-### D3 👤 Module Disponibilités · #— (code mort)
-
-543 lignes, 2 tables, 12 endpoints, **zéro interface** depuis 9 mois. → §11.2-D3
-**Recommandation : supprimer**, sauf demande explicite. Confirmer d'abord que les tables sont vides.
-
-```
-[ ] COUNT(*) availability_slots = ____  ·  availability_patterns = ____
-[ ] Décision retenue : ______________________________
-```
-
-### D4 👤 Bons cadeaux · #—
-
-La page publique promet « envoi par mail sous 24 h » ; l'API est un registre manuel, `pdf_path` jamais
-alimenté. → §11.2-D4
-
-| | Option | Coût |
-|---|---|---|
-| **A** | **Outiller le registre manuel** : génération du PDF + envoi email depuis l'admin ← recommandé | 2-3 j |
-| B | Tunnel d'achat complet | 8-10 j |
-| C | Retirer la page publique | 0,5 j |
-
-```
-[ ] Volume réel de bons vendus (relevé 1.2) : ____
-[ ] Décision retenue : ______________________________
-```
-
-### D5 👤 Remboursement et avoir · #16
-
-Aucun mécanisme ; `orders.status='refunded'` jamais écrit. Un remboursement se fait dans SumUp et **ne
-laisse aucune trace en base**. → §11.2-D5
-
-| | Option | Coût |
-|---|---|---|
-| **A** | **Remboursement déclaratif + avoir numéroté (`AV-YYYY-NNNNN`)** ← recommandé | 3-4 j |
-| B | Intégration de l'API de remboursement SumUp | 6-8 j |
-
-```
-[ ] Nombre de remboursements effectués à ce jour (à demander) : ____
-[ ] Décision retenue : ______________________________
-```
-
-### D6 👤 Portfolio administrable · #40
-
-Ajouter une photo = un commit + un build. → §11.2-D6
-
-| | Option | Coût |
-|---|---|---|
-| A | Statu quo | 0 |
-| **B** | **Portfolio en base, servi par l'API** ← recommandé, en dernière position | 4-5 j |
-| C | Script de génération simplifié | 1 j |
-
-```
-[ ] Fréquence souhaitée de mise à jour du portfolio (à demander) : ____ / an
-[ ] Décision retenue : ______________________________
-```
-
-### D7 👤 Contacts scolaires · #29
-
-Les contacts des parents vivent dans la mémoire du navigateur et sont perdus après envoi. → §11.2-D7
-**Recommandation : persister** dans `school_session_contacts`, purge automatique à
-`closed_at + 3 mois`. **Nouveau traitement à inscrire au registre RGPD.**
-
-```
-[ ] Décision retenue : ______________________________
-[ ] Rétention retenue : ______________________________
-```
-
-### D8 🔴 Périmètre de l'authentification · #13, #28
-
-→ §11.2-D8. **Recommandation, sans alternative** :
-
-```
-[ ] Supprimer le token Bearer (inutile : la session authentifie déjà)
-[ ] Session cookie seule, SESSION_DOMAIN sur le domaine exact
-[ ] Password::min(12)->uncompromised()          (fait en 0.13)
-[ ] TOTP sur le compte admin
-[ ] Finir la réinitialisation de mot de passe (API prête, interface manquante)
-[ ] Journal des connexions (réussies et échouées)
-```
-
-## 1.4 Livrables de la phase 1
-
-```
-[ ] Document « Relevé de production » daté, avec les résultats bruts des 14 blocs
-[ ] Les 8 décisions écrites, datées, avec leur justification
-[ ] Liste des écarts constatés entre l'audit et la réalité mesurée
-[ ] Estimation révisée de la phase 4 (selon le résultat du bloc « chemins des photos »)
-```
+👤 = décision produit, nécessite la photographe.
 
 ---
 
