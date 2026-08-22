@@ -110,6 +110,14 @@ Schedule::command('privacy:purge-expired', ['--years' => 10])
     ->name('privacy-purge-expired')
     ->withoutOverlapping();
 
+Schedule::command('storage:clean-orphans')
+    ->weekly()
+    ->saturdays()
+    ->at('06:00')
+    ->name('storage-clean-orphans-report')
+    ->withoutOverlapping(60)
+    ->appendOutputTo(storage_path('logs/clean-orphans.log'));
+
 /*
 |--------------------------------------------------------------------------
 | Supervision — cf. docs/supervision.md
