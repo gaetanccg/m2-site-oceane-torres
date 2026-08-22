@@ -55,6 +55,20 @@ class Photo extends Model
 
     protected $appends = ['display_url', 'preview_url', 'thumbnail_url'];
 
+    /**
+     * Chemins de stockage MinIO et metadonnees internes. Le bucket n'est pas lisible
+     * anonymement (403 verifie), donc les exposer n'ouvrait pas l'acces aux fichiers —
+     * mais cela publiait la structure du bucket, dont le chemin du derive miniature
+     * SANS filigrane. Aucun n'est lu par le front.
+     */
+    protected $hidden = [
+        'file_path_hd',
+        'file_path_preview',
+        'file_path_thumbnail',
+        'file_path_thumbnail_clean',
+        'metadata',
+    ];
+
     protected function casts(): array
     {
         return [
