@@ -12,14 +12,25 @@ use Illuminate\Support\Facades\Cache;
 
 class Photo extends Model
 {
+    private const SIGNED_URL_CACHE_TTL = 43200;
+
     use HasFactory, HasUuids;
+
+    public function forgetCachedUrls(): void
+    {
+        Cache::forget("photo_meta_{$this->id}");
+
+        foreach (['preview', 'thumbnail'] as $version) {
+            Cache::forget("photo:{$this->id}:url:{$version}");
+        }
+    }
 
     protected static function booted(): void
     {
         // Invalidate ImageProxyController metadata cache when photo changes
         // (upload processing flips is_processed, admin edits title/price, etc.).
-        static::saved(fn (self $photo) => Cache::forget("photo_meta_{$photo->id}"));
-        static::deleted(fn (self $photo) => Cache::forget("photo_meta_{$photo->id}"));
+        static::saved(fn (self $photo) => $photo->forgetCachedUrls());
+        static::deleted(fn (self $photo) => $photo->forgetCachedUrls());
     }
 
     protected $fillable = [
@@ -171,13 +182,16 @@ class Photo extends Model
             return $proxyUrl;
         }
 
-        // Génération directe : la signature est du pur calcul (HMAC local, aucune I/O).
-        // PAS de cache ici — un cache fichier ajoutait 400 accès au disque du NAS (2 par
-        // photo × 200) à la réponse JSON, soit ~19 s de latence. Conséquence : l'URL
-        // change à chaque chargement (pas de cache navigateur entre 2 visites) ; c'est
-        // un compromis assumé tant qu'on n'a pas de cache rapide (Redis) ou de signature
-        // déterministe. Voir aussi le mécanisme vidéo dans getVideoUrl().
-        return app(MinioStorageService::class)->getSignedUrl($processedPath, 86400) ?: $proxyUrl;
+        // TTL de cache 12 h pour une signature valable 24 h : l'URL servie a donc au
+        // moins 12 h de validite restante. Sans ce cache l'URL changeait a chaque
+        // reponse JSON, ce qui interdisait tout cache navigateur entre deux visites.
+        $cached = Cache::remember(
+            "photo:{$this->id}:url:{$version}",
+            self::SIGNED_URL_CACHE_TTL,
+            fn () => app(MinioStorageService::class)->getSignedUrl($processedPath, 86400)
+        );
+
+        return $cached ?: $proxyUrl;
     }
 
     /**

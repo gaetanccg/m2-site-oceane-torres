@@ -180,6 +180,17 @@ services:
     networks:
       - oceane-network-preprod
 
+  redis:
+    image: redis:7-alpine
+    container_name: preprod-redis
+    restart: unless-stopped
+    command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru --save ""
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 networks:
   oceane-network-preprod:
     driver: bridge

@@ -66,6 +66,11 @@ services:
       - SESSION_LIFETIME=${SESSION_LIFETIME}
       - CACHE_STORE=${CACHE_STORE}
       - QUEUE_CONNECTION=${QUEUE_CONNECTION}
+      - REDIS_CLIENT=${REDIS_CLIENT:-predis}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-null}
+      - REDIS_PREFIX=${REDIS_PREFIX:-}
       # STORAGE
       - FILESYSTEM_DISK=${FILESYSTEM_DISK}
       - MINIO_ENDPOINT=${MINIO_ENDPOINT}
@@ -141,6 +146,11 @@ services:
       - SESSION_LIFETIME=${SESSION_LIFETIME}
       - CACHE_STORE=${CACHE_STORE}
       - QUEUE_CONNECTION=${QUEUE_CONNECTION}
+      - REDIS_CLIENT=${REDIS_CLIENT:-predis}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-null}
+      - REDIS_PREFIX=${REDIS_PREFIX:-}
       # STORAGE
       - FILESYSTEM_DISK=${FILESYSTEM_DISK}
       - MINIO_ENDPOINT=${MINIO_ENDPOINT}
@@ -177,6 +187,7 @@ services:
       start_period: 60s
     depends_on:
       - laravel
+      - redis
     networks:
       - app-network
 
@@ -219,6 +230,11 @@ services:
       - SESSION_LIFETIME=${SESSION_LIFETIME}
       - CACHE_STORE=${CACHE_STORE}
       - QUEUE_CONNECTION=${QUEUE_CONNECTION}
+      - REDIS_CLIENT=${REDIS_CLIENT:-predis}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-null}
+      - REDIS_PREFIX=${REDIS_PREFIX:-}
       # STORAGE
       - FILESYSTEM_DISK=${FILESYSTEM_DISK}
       - MINIO_ENDPOINT=${MINIO_ENDPOINT}
@@ -256,6 +272,7 @@ services:
       start_period: 60s
     depends_on:
       - laravel
+      - redis
     networks:
       - app-network
 
@@ -280,6 +297,25 @@ services:
       start_period: 30s
     depends_on:
       - laravel
+      - redis
+    networks:
+      - app-network
+
+  # ----------------------------
+  # Redis (cache + sessions)
+  # ----------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: ot-redis
+    restart: unless-stopped
+    command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru --save ""
+    ports:
+      - "56379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
     networks:
       - app-network
 
