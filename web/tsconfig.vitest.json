@@ -1,0 +1,15 @@
+{
+    "extends": "./tsconfig.app.json",
+    "compilerOptions": {
+        "composite": true,
+        "types": [
+            "vitest/globals"
+        ]
+    },
+    "include": [
+        "src/**/*.spec.ts",
+        "src/**/*.ts",
+        "src/**/*.vue"
+    ],
+    "exclude": []
+}

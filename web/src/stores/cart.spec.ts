@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
-import type { Cart } from '@/services/cartApi'
+import type { ApiError } from '@/utils/errorHandler'
+import type { Cart, CartItem, ProductType } from '@/services/cartApi'
 
 vi.mock('@/services/cartApi', () => ({
     cartApi: {
@@ -15,7 +16,7 @@ vi.mock('@/services/cartApi', () => ({
         mergeGuestCart: vi.fn(),
     },
     CartApiError: class CartApiError extends Error {
-        constructor(public apiError: { message: string }) {
+        constructor(public apiError: ApiError) {
             super(apiError.message)
         }
     },
@@ -44,14 +45,34 @@ function makeCart(overrides: Partial<Cart> = {}): Cart {
     } as Cart
 }
 
-const item = (o: Record<string, unknown> = {}) => ({
+const item = (o: Partial<CartItem> = {}): CartItem => ({
     id: 'item-1',
     photo_id: 'photo-1',
-    product_type: 'digital',
+    photo: {
+        id: 'photo-1',
+        title: 'Portrait',
+        gallery_title: 'Galerie',
+        gallery_id: 'gallery-1',
+    },
+    product_type: 'digital' as ProductType,
+    product_type_label: 'Numérique',
+    is_print: false,
     quantity: 1,
     price: 13,
+    line_total: 13,
     ...o,
 })
+
+function apiError(message: string, status = 400): ApiError {
+    return {
+        status,
+        message,
+        isNetworkError: false,
+        isValidationError: status === 422,
+        isAuthError: status === 401,
+        isServerError: status >= 500,
+    }
+}
 
 describe('store panier — état initial', () => {
     beforeEach(() => {
@@ -154,7 +175,7 @@ describe('store panier — gestion des erreurs', () => {
     })
 
     it('remonte le message d une CartApiError', async () => {
-        vi.mocked(cartApi.addToCart).mockRejectedValue(new CartApiError({ message: 'Photo indisponible.' }))
+        vi.mocked(cartApi.addToCart).mockRejectedValue(new CartApiError(apiError('Photo indisponible.')))
 
         const s = useCartStore()
         const ok = await s.addItem('photo-1')
