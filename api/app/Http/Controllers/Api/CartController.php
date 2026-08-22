@@ -252,7 +252,7 @@ class CartController extends Controller
         $sessionId = $request->header('X-Cart-Session') ?? $request->input('session_id');
 
         // Anti brute-force, 2e couche après le throttle:gift-code : seuls les échecs comptent.
-        $throttleKey = 'gift-code-failures:'.sha1((string) $request->ip());
+        $throttleKey = 'gift-code-failures:'.sha1($request->ip().'|'.($sessionId ?? $user?->id ?? 'anonyme'));
 
         if (RateLimiter::tooManyAttempts($throttleKey, self::GIFT_CODE_MAX_FAILURES)) {
             Log::warning('Gift code brute-force lockout', [
