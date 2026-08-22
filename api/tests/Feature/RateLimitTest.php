@@ -76,15 +76,6 @@ class RateLimitTest extends TestCase
             ->assertStatus(429);
     }
 
-    public function test_orders_by_email_is_throttled(): void
-    {
-        for ($i = 0; $i < 5; $i++) {
-            $this->postJson('/api/orders/by-email', ['email' => 'enumeration@example.com']);
-        }
-
-        $this->postJson('/api/orders/by-email', ['email' => 'enumeration@example.com'])
-            ->assertStatus(429);
-    }
 
     public function test_gallery_share_code_lookup_is_throttled(): void
     {

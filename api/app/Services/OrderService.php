@@ -566,14 +566,6 @@ class OrderService
             ->get();
     }
 
-    public function getOrdersForEmail(string $email): Collection
-    {
-        return Order::forEmail($email)
-            ->with('items.photo')
-            ->orderBy('created_at', 'desc')
-            ->limit(100)
-            ->get();
-    }
 
     private function sendOrderConfirmationEmail(Order $order, $invoice = null): void
     {

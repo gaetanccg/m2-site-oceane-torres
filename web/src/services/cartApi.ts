@@ -285,12 +285,6 @@ class CartApiService extends BaseApiService {
         return this.cartRequest('/orders')
     }
 
-    async getOrdersByEmail(email: string): Promise<{ success: boolean; orders: Order[] }> {
-        return this.cartRequest('/orders/by-email', {
-            method: 'POST',
-            body: JSON.stringify({ email }),
-        })
-    }
 
     async downloadPhoto(orderId: string, itemId: string, token?: string): Promise<{ success: boolean; download_url: string; filename: string }> {
         const params = token ? `?token=${encodeURIComponent(token)}` : ''

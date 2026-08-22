@@ -323,10 +323,10 @@ Conséquence pour la suite : le choix du pooler n'est plus une dette. B et C de 
 | 2.3 Redis | ✅ | cache + sessions + URL signées cachées + binaires sortis du cache |
 | 2.7 Vitest | ✅ | 25 tests · a attrapé une régression de 2.1 dès le 1er lancement |
 | 2.4 Convention de réponse API | 🔵 | `docs/api-conventions.md` écrit · `per_page`/`sort_by` partout · 12 `fetch()` sauvages supprimés · une seule couche d'accès HTTP · `formatOrder()` → API Resources. Reste : les autres Resources, puis l'enveloppe |
-| 2.5 Couche d'autorisation | ⏳ | à venir |
+| 2.5 Couche d'autorisation | 🔵 | `OrderPolicy` + `GalleryPolicy` **toujours via le Gate** · règle des 30 min supprimée, remplacée par une signature courte · `POST /orders/by-email` retiré · `docs/authorization.md`. Reste : #34 (décision produit) |
 | 2.6 Déploiement reproductible | ⏳ | à venir |
 
-**Suite de tests : 288 back + 49 front.**
+**Suite de tests : 294 back + 49 front.**
 
 Détail de 2.4, dans l'ordre fixé par `docs/api-conventions.md` §6 :
 
@@ -354,6 +354,29 @@ Le **build de production était cassé** : `npm run build` échouait sur les tes
 2.7. Passé inaperçu parce que `npm run typecheck` lançait `vue-tsc --noEmit` sur un
 `tsconfig.json` à `"files": []` — sans `-b`, il ne vérifiait **aucun fichier**. Corrigé, plus
 une étape `typecheck` en CI.
+
+### 2.5 — la règle des « 30 minutes » n'était pas du code mort
+
+Deux vérifications inline décidaient l'accès à une commande, avec des règles
+**différentes** : `OrderController::show` autorisait sur `created_at`,
+`OrderService::getOrderForDownload` sur `paid_at`. Aucune ne passait par le Gate.
+
+`created_at < 30 min` accordait la lecture d'une commande — email du client, nom, adresse
+de livraison — à quiconque connaissait son identifiant, sans rien prouver.
+
+Mais la supprimer sèchement aurait cassé le parcours invité : le `return_url` de SumUp ne
+porte que `?order=id`, et le jeton de téléchargement n'existe pas encore à ce moment-là
+puisqu'il est généré **à** la confirmation du paiement (`OrderService:414`). C'est donc
+cette règle qui faisait fonctionner la page de confirmation après paiement.
+
+Remplacée par `OrderAccessSignature` — HMAC de `id|expiration` sous `APP_KEY`, 2 h, placé
+dans le `return_url` et renvoyé par `confirmFreeOrder`. Le front lisait déjà
+`route.query.token` : seul `Checkout.vue` change, pour propager le jeton de la commande
+gratuite. 7 tests couvrent les bords, dont l'expiration repoussée en conservant le digest.
+
+`POST /orders/by-email` est retiré : il renvoyait **toutes les commandes d'une adresse**
+sans authentification, et aucun consommateur ne l'appelait. `docs/authorization.md` §6
+décrit comment rétablir la fonction sans en faire un oracle d'énumération.
 
 ### 🔴 Escalade de privilège : le code de partage livrait le jeton de téléchargement
 

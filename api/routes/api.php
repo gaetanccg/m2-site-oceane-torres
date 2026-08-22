@@ -121,7 +121,6 @@ Route::get('/orders/{order}', [OrderController::class, 'show']);
 Route::get('/orders/{order}/download/{item}', [OrderController::class, 'downloadPhoto']);
 Route::get('/orders/{order}/download-all', [OrderController::class, 'downloadAll']);
 Route::get('/orders/{order}/invoice', [OrderController::class, 'downloadInvoice']);
-Route::middleware('throttle:auth')->post('/orders/by-email', [OrderController::class, 'getByEmail']);
 
 // SumUp Payment (public)
 Route::prefix('payments/sumup')->group(function () {

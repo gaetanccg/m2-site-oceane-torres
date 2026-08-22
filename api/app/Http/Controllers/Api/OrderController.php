@@ -6,7 +6,6 @@ use App\Exceptions\BusinessException;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\OrderResource;
 use App\Http\Requests\CreateCheckoutRequest;
-use App\Http\Requests\GetOrdersByEmailRequest;
 use App\Http\Requests\OrderIdRequest;
 use App\Models\Order;
 use App\Support\OrderAccessSignature;
@@ -375,21 +374,6 @@ class OrderController extends Controller
 
     /**
      * Get orders by guest email
-     */
-    public function getByEmail(GetOrdersByEmailRequest $request): JsonResponse
-    {
-        $validated = $request->validated();
-
-        $orders = $this->orderService->getOrdersForEmail($validated['email']);
-
-        return response()->json([
-            'success' => true,
-            'orders' => OrderResource::collection($orders),
-        ]);
-    }
-
-    /**
-     * Download invoice for a paid order (public with token)
      */
     public function downloadInvoice(Request $request, string $orderId): JsonResponse
     {
