@@ -93,11 +93,17 @@
                                                 <span style="display: inline-block; margin-top: 5px; padding: 3px 8px; background-color: #D4AF37; color: white; border-radius: 4px; font-size: 12px;">
                                                     {{ $item->getProductTypeLabel() }}
                                                 </span>
+                                                <span style="display: inline-block; margin-top: 5px; margin-left: 6px; padding: 3px 10px; background-color: #b3261e; color: white; border-radius: 4px; font-size: 13px; font-weight: 700;">
+                                                    {{ $item->quantity }} exemplaire{{ $item->quantity > 1 ? 's' : '' }}
+                                                </span>
                                             </td>
                                             <td style="padding: 12px; border: 1px solid #eee; text-align: right; background-color: #fff9e6;">
                                                 <span style="color: #333333; font-size: 14px; font-weight: 600;">
-                                                    {{ number_format($item->price, 2, ',', ' ') }} €
+                                                    {{ number_format($item->price * $item->quantity, 2, ',', ' ') }} €
                                                 </span>
+                                                @if($item->quantity > 1)
+                                                <br><small style="color: #888;">{{ $item->quantity }} × {{ number_format($item->price, 2, ',', ' ') }} €</small>
+                                                @endif
                                             </td>
                                         </tr>
                                         @endif
@@ -111,7 +117,7 @@
                                 </h3>
                                 <ul style="margin: 0; padding-left: 20px; color: #666;">
                                     @foreach($order->digitalItems() as $item)
-                                    <li style="margin-bottom: 5px;">{{ $item->photo_title ?? 'Photo' }}</li>
+                                    <li style="margin-bottom: 5px;">{{ $item->photo_title ?? 'Photo' }}@if($item->quantity > 1) — {{ $item->quantity }} exemplaires @endif</li>
                                     @endforeach
                                 </ul>
                                 @endif

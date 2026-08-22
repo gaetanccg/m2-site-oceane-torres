@@ -54,11 +54,14 @@
                                                     @if($item->gallery_title)
                                                     <br><small style="color: #888;">{{ $item->gallery_title }}</small>
                                                     @endif
+                                                    @if($item->quantity > 1)
+                                                    <br><small style="color: #888;">{{ $item->quantity }} × {{ number_format($item->price, 2, ',', ' ') }} €</small>
+                                                    @endif
                                                 </span>
                                             </td>
                                             <td style="padding: 10px 0; border-bottom: 1px solid #eee; text-align: right;">
                                                 <span style="color: #333333; font-size: 14px; font-weight: 600;">
-                                                    {{ number_format($item->price, 2, ',', ' ') }} €
+                                                    {{ number_format($item->price * $item->quantity, 2, ',', ' ') }} €
                                                 </span>
                                             </td>
                                         </tr>

@@ -225,8 +225,11 @@
                         <br><span class="gallery-name">{{ $item->gallery_title }}</span>
                         @endif
                         <br><span class="product-type">{{ $item->getProductTypeLabel() }}</span>
+                        @if($item->quantity > 1)
+                        <br><span class="product-type">{{ $item->quantity }} × {{ number_format($item->price, 2, ',', ' ') }} €</span>
+                        @endif
                     </td>
-                    <td>{{ number_format($item->price, 2, ',', ' ') }} €</td>
+                    <td>{{ number_format($item->price * $item->quantity, 2, ',', ' ') }} €</td>
                 </tr>
                 @endforeach
             </tbody>
