@@ -39,7 +39,10 @@
                             </div>
                             <div>
                                 <h3 class="font-medium text-gray-900">Confirmation envoyée</h3>
-                                <p class="text-sm text-gray-600 mt-1" v-html="confirmationMessage"></p>
+                                <p class="text-sm text-gray-600 mt-1">
+                                    {{ confirmationIntro }} <strong>{{ order.customer_email }}</strong>.
+                                    <template v-if="confirmationOutro"><br>{{ confirmationOutro }}</template>
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -355,19 +358,32 @@ const orderType = computed(() => {
     return 'print'
 })
 
-// Message de confirmation dynamique selon le type de commande
-const confirmationMessage = computed(() => {
+const confirmationIntro = computed(() => {
     if (!order.value) return ''
 
     switch (orderType.value) {
         case 'digital':
-            return `Un email avec votre lien de téléchargement a été envoyé à <strong>${order.value.customer_email}</strong>.<br>Merci de conserver cet email.`
+            return 'Un email avec votre lien de téléchargement a été envoyé à'
         case 'print':
-            return `Un email de confirmation de votre commande a été envoyé à <strong>${order.value.customer_email}</strong>.<br>Merci de conserver cet email jusqu'à la réception de vos photos.`
+            return 'Un email de confirmation de votre commande a été envoyé à'
         case 'mixed':
-            return `Un email récapitulatif avec votre lien de téléchargement et les informations de livraison a été envoyé à <strong>${order.value.customer_email}</strong>.<br>Merci de conserver cet email.`
+            return 'Un email récapitulatif avec votre lien de téléchargement et les informations de livraison a été envoyé à'
         default:
-            return `Un email de confirmation a été envoyé à <strong>${order.value.customer_email}</strong>.`
+            return 'Un email de confirmation a été envoyé à'
+    }
+})
+
+const confirmationOutro = computed(() => {
+    if (!order.value) return ''
+
+    switch (orderType.value) {
+        case 'print':
+            return 'Merci de conserver cet email jusqu\'à la réception de vos photos.'
+        case 'digital':
+        case 'mixed':
+            return 'Merci de conserver cet email.'
+        default:
+            return ''
     }
 })
 
