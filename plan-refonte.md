@@ -55,7 +55,7 @@ d'attente, sessions scolaires — sont réécrites ; le reste est conservé et d
 |---|---|---|---|---|
 | **0** | Sécuriser l'existant | **3 j** | 3 j | Production sûre, 9 constats critiques fermés |
 | **1** | Relever & décider | 2,5 j | 5,5 j | Document de relevé + 8 décisions écrites |
-| **2** | Fondations | 8 j | 13,5 j | Dette structurelle traitée, iso-fonctionnel |
+| **2** | Fondations | 8 j | 13,5 j | Dette structurelle traitée, iso-fonctionnel · **2.2 fait** |
 | **3** | Réécriture des domaines fragiles | 15 j | 28,5 j | Facturation, auth, panier, scolaire testés |
 | **4** | Migration des données | 13-16 j | 42-45 j | Bascule effectuée |
 | **5** | Valeur ajoutée | 8 j | **50-53 j** | Portfolio administrable, avoirs, export compta |
@@ -276,6 +276,43 @@ galerie s'ouvre avec son ancien code, se fait sur une copie non anonymisée.
 
 PostgreSQL aligné sur la production (**17**) pour `postgres-dev`, `postgres-test` et la
 CI : ils étaient en 16 alors que la prod tourne en 17.6.
+
+### 🔴 D1 tranchée — et le diagnostic de l'audit était incomplet
+
+L'audit proposait deux voies : rester en pooler transaction en retirant
+`STRINGIFY_FETCHES` (option A, recommandée), ou réduire le besoin de connexions pour
+repasser en pooler session (B). **A est réfutée par la mesure**, et il existe une
+option C que le plan n'envisageait pas.
+
+**Ce qui se passe réellement.** `EMULATE_PREPARES`, qu'impose le pooler transaction,
+fait interpoler les paramètres côté client par PDO. Or `prepareBindings()` de Laravel
+convertit tout booléen en **entier**. Le SQL produit est donc `where "flag" = 0`, et
+PostgreSQL n'a pas d'opérateur `boolean = integer`. En `INSERT` : *« column is of type
+boolean but expression is of type integer »*.
+
+Retirer `STRINGIFY_FETCHES` ne touche pas à cela — c'était un défaut **distinct**, qui
+faisait remonter les booléens en chaînes et cassait les comparaisons strictes.
+
+**Option C retenue.** PostgreSQL accepte les littéraux quotés `'true'` et `'false'`, en
+lecture comme en écriture. Une seule surcharge de `prepareBindings()` sur la connexion
+remplace les 31 contournements dispersés : le trait sur 11 modèles, 19 `whereRaw`, et
+un contournement manuel dans `PhotoController`.
+
+| | Avant | Après |
+|---|---|---|
+Trait sur des modèles | 11 | **0** — fichier supprimé |
+`whereRaw` booléens | 19 | **0** |
+Contournements manuels | 1 | **0** |
+Lignes | — | **−111 / +36** |
+
+**Vérifié sur les 5 350 photos réelles** : les six scopes concordent exactement avec
+leur équivalent SQL littéral (downloadable 327, images 5350, liked 352, purchasable
+5350, published 196, prestations actives 6). Les booléens remontent en `bool` natif,
+donc `=== false` fonctionne enfin. 8 tests de régression, qui échouent tous si l'on
+retire la surcharge. Suite complète : **263 tests**.
+
+Conséquence pour la suite : le choix du pooler n'est plus une dette. B et C de l'audit
+(pooler session, Postgres auto-hébergé) deviennent sans objet.
 
 ### Bloqué sur intervention manuelle
 
@@ -809,8 +846,8 @@ Le pooler transaction (6543) impose `EMULATE_PREPARES` → trait `CastsBooleansF
 | C | Postgres auto-hébergé | 3-5 j, à écarter (sauvegardes) |
 
 ```
-[ ] Test A réalisé — résultat : ______________________________
-[ ] Décision retenue : ______________________________
+[x] Test A réalisé — résultat : **RÉFUTÉ**. Retirer STRINGIFY_FETCHES corrige la lecture, pas l'écriture ni les filtres.
+[x] Décision retenue : **option C** — surcharger `prepareBindings()` sur la connexion Postgres.
 ```
 
 ### D2 🟠 Modélisation de `galleries` — technique, structurante · #39
@@ -988,14 +1025,14 @@ fonctionnalité n'ait bougé — **point de contrôle naturel** pour décider de
 Selon la décision D1.
 
 ```
-[ ] Appliquer l'option retenue (config/database.php)
+[x] Appliquer l'option retenue (config/database.php)
 [ ] Si la lecture des booléens est correcte sans le trait :
-    [ ] Supprimer Models/Concerns/CastsBooleansForPostgres.php
-    [ ] Retirer le trait des 12 modèles
-    [ ] Remplacer les 20 whereRaw par des where() natifs
-    [ ] Supprimer le whereRaw('1 = 0') (garde « ne renvoie rien »)
-[ ] Faire tourner la suite de tests complète (226 méthodes) — c'est le filet de cette étape
-[ ] Vérifier manuellement les scopes booléens : galeries publiées, photos téléchargeables,
+    [x] Supprimer Models/Concerns/CastsBooleansForPostgres.php
+    [x] Retirer le trait des 12 modèles
+    [x] Remplacer les 20 whereRaw par des where() natifs
+    [x] Supprimer le whereRaw('1 = 0') (garde « ne renvoie rien »)
+[x] Faire tourner la suite de tests complète (226 méthodes) — c'est le filet de cette étape
+[x] Vérifier manuellement les scopes booléens : galeries publiées, photos téléchargeables,
     photos aimées, prestations actives
 ```
 
@@ -1697,7 +1734,7 @@ Le projet est considéré comme refondu quand **tout** ce qui suit est vrai.
 
 | Date | Réf. | Décision | Par | Justification |
 |---|---|---|---|---|
-| | D1 | | | |
+| 2026-08-22 | D1 | **Option C nouvelle** : surcharge de `prepareBindings()` sur la connexion. Ni A ni B. | mesure | A réfutée par test ; voir §1bis |
 | | D2 | | | |
 | | D3 | | | |
 | | D4 | | | |
