@@ -33,7 +33,6 @@ class Reservation extends Model
         'guest_email',
         'guest_phone',
         'date_preferences',
-        'availability_slot_id',
     ];
 
     protected function casts(): array
@@ -66,11 +65,6 @@ class Reservation extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
-    }
-
-    public function availabilitySlot(): BelongsTo
-    {
-        return $this->belongsTo(AvailabilitySlot::class);
     }
 
     // Accesseurs pour obtenir les infos client (user ou guest)

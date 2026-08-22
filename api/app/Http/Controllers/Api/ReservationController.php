@@ -27,7 +27,7 @@ class ReservationController extends Controller
     public function adminIndex(Request $request): JsonResponse
     {
         // Charger les relations necessaires pour les accesseurs
-        $query = Reservation::with(['user', 'prestation', 'clientForm', 'availabilitySlot']);
+        $query = Reservation::with(['user', 'prestation', 'clientForm']);
 
         if ($request->has('status')) {
             $query->where('status', $request->status);

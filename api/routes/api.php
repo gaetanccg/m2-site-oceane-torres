@@ -12,7 +12,6 @@ use App\Http\Controllers\Api\Admin\PrivacyController;
 use App\Http\Controllers\Api\Admin\SchoolSessionController;
 use App\Http\Controllers\Api\Admin\UserController;
 use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\AvailabilityController;
 use App\Http\Controllers\Api\BookingRequestController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\ContactController;
@@ -235,24 +234,6 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::put('/reservations/{reservation}', [ReservationController::class, 'adminUpdate']);
     Route::put('/reservations/{reservation}/status', [ReservationController::class, 'updateStatus']);
     Route::delete('/reservations/{reservation}', [ReservationController::class, 'adminDestroy']);
-
-    // Availability management
-    Route::prefix('availability')->group(function () {
-        // Slots
-        Route::get('/slots', [AvailabilityController::class, 'indexSlots']);
-        Route::get('/slots/available', [AvailabilityController::class, 'availableSlots']);
-        Route::post('/slots', [AvailabilityController::class, 'storeSlot']);
-        Route::put('/slots/{slot}', [AvailabilityController::class, 'updateSlot']);
-        Route::delete('/slots/{slot}', [AvailabilityController::class, 'destroySlot']);
-
-        // Patterns
-        Route::get('/patterns', [AvailabilityController::class, 'indexPatterns']);
-        Route::post('/patterns', [AvailabilityController::class, 'storePattern']);
-        Route::put('/patterns/{pattern}', [AvailabilityController::class, 'updatePattern']);
-        Route::delete('/patterns/{pattern}', [AvailabilityController::class, 'destroyPattern']);
-        Route::post('/patterns/{pattern}/generate', [AvailabilityController::class, 'generateSlots']);
-        Route::put('/patterns/{pattern}/toggle', [AvailabilityController::class, 'togglePattern']);
-    });
 
     // Galleries management
     Route::get('/galleries', [GalleryController::class, 'adminIndex']);
