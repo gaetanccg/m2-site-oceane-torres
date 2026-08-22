@@ -39,6 +39,12 @@ class AppServiceProvider extends ServiceProvider
             URL::forceScheme('https');
         }
 
+        Password::defaults(function () {
+            $rule = Password::min(12);
+
+            return $this->app->environment('testing') ? $rule : $rule->uncompromised();
+        });
+
         // Observer pour synchroniser Users -> Clients
         User::observe(UserObserver::class);
 
