@@ -55,7 +55,7 @@ d'attente, sessions scolaires — sont réécrites ; le reste est conservé et d
 |---|---|---|---|---|
 | **0** | Sécuriser l'existant | **3 j** | 3 j | Production sûre, 9 constats critiques fermés |
 | **1** | Relever & décider | 2,5 j | 5,5 j | Document de relevé + 8 décisions écrites |
-| **2** | Fondations | 8 j | 13,5 j | Dette structurelle traitée, iso-fonctionnel · **2.2 fait** |
+| **2** | Fondations | 8 j | 13,5 j | Dette structurelle traitée, iso-fonctionnel · **2.1 · 2.2 · 2.3 · 2.7 faits** |
 | **3** | Réécriture des domaines fragiles | 15 j | 28,5 j | Facturation, auth, panier, scolaire testés |
 | **4** | Migration des données | 13-16 j | 42-45 j | Bascule effectuée |
 | **5** | Valeur ajoutée | 8 j | **50-53 j** | Portfolio administrable, avoirs, export compta |
@@ -313,6 +313,35 @@ retire la surcharge. Suite complète : **263 tests**.
 
 Conséquence pour la suite : le choix du pooler n'est plus une dette. B et C de l'audit
 (pooler session, Postgres auto-hébergé) deviennent sans objet.
+
+### Phase 2 — avancement
+
+| Action | État | Résultat |
+|---|---|---|
+| 2.1 Suppressions | ✅ | **−3 345 lignes** · 181 → 151 routes · 38 → 34 tables |
+| 2.2 Couche booléenne (D1) | ✅ | 31 contournements → 1 surcharge de connexion |
+| 2.3 Redis | ✅ | cache + sessions + URL signées cachées + binaires sortis du cache |
+| 2.7 Vitest | ✅ | 25 tests · a attrapé une régression de 2.1 dès le 1er lancement |
+| 2.4 Convention de réponse API | ⏳ | à venir |
+| 2.5 Couche d'autorisation | ⏳ | à venir |
+| 2.6 Déploiement reproductible | ⏳ | à venir |
+
+**Suite de tests : 267 back + 25 front.**
+
+Écarts assumés en 2.1, tous justifiés par une mesure ou par un test :
+
+| Élément | Plan | Décision | Raison |
+|---|---|---|---|
+`/admin/health` | supprimer | **conservé** | 3 tests le couvrent ; niveau 3 d'un dispositif conçu |
+`bulk-downloadable`, `sort-order` | supprimer | **conservés** | le bon correctif est de les brancher (3.6), pas de les retirer |
+`gift_cards.pdf_path` | supprimer | **conservée** | utilisée par `PersonalDataEraser`, et requise par D4 option A |
+`Photo::display_url` | retirer de `$appends` | **conservé** | 4 composants front s'en servent comme repli — pas iso-fonctionnel |
+`ReservationPolicy` | supprimer | **supprimée** | ses 5 routes clientes le sont aussi, donc elle redevient morte |
+Cache de filigrane | supprimer **ou** réactiver | **supprimé** | réactiver exige de juger le rendu visuel, hors iso-fonctionnel |
+
+Deux routes pointaient vers des méthodes **inexistantes** —
+`GalleryController::downloadPhotos` et `Admin\NotificationController::store` : deux 500
+latents de plus, en sus des trois corrigés en 0.18.
 
 ### Bloqué sur intervention manuelle
 
@@ -968,22 +997,22 @@ fonctionnalité n'ait bougé — **point de contrôle naturel** pour décider de
 ### Backend
 
 ```
-[ ] Module Disponibilités (si D3 = supprimer) — 543 l.
-    [ ] AvailabilityController (199 l.) + les 12 routes
-    [ ] Models AvailabilitySlot, AvailabilityPattern (217 l.)
-    [ ] 5 FormRequests Admin/*Availability* (127 l.)
-    [ ] Migration de suppression des 2 tables + reservations.availability_slot_id
-[ ] 6 migrations Cashier/Stripe (200 l.) + 2 tables + 4 colonnes de users
-[ ] OrderPolicy (65 l.) — jamais appelée, logique recopiée ailleurs
+[x] Module Disponibilités (si D3 = supprimer) — 543 l.
+    [x] AvailabilityController (199 l.) + les 12 routes
+    [x] Models AvailabilitySlot, AvailabilityPattern (217 l.)
+    [x] 5 FormRequests Admin/*Availability* (127 l.)
+    [x] Migration de suppression des 2 tables + reservations.availability_slot_id
+[x] 6 migrations Cashier/Stripe (200 l.) + 2 tables + 4 colonnes de users
+[x] OrderPolicy (65 l.) — jamais appelée, logique recopiée ailleurs
 [ ] ReservationPolicy (37 l.) — si les 3 routes mortes sont supprimées
-[ ] Edge Function Supabase (82 l.) + réécrire supabase/README.md
-[ ] Cache de filigrane désactivé (~45 l.) — OU le réactiver et mesurer (Imagick, ÷21 rendus)
-[ ] SumUpService : processCheckout (⚠️ manipule des données de carte), completeCheckout,
+[x] Edge Function Supabase (82 l.) + réécrire supabase/README.md
+[x] Cache de filigrane désactivé (~45 l.) — OU le réactiver et mesurer (Imagick, ÷21 rendus)
+[x] SumUpService : processCheckout (⚠️ manipule des données de carte), completeCheckout,
     getPaymentMethods (~60 l.)
-[ ] Cart::order() — relation cassée, carts n'a pas de colonne order_id
-[ ] Photo::getDownloadUrlAttribute() — raccourci de chemin, aucun appelant
+[x] Cart::order() — relation cassée, carts n'a pas de colonne order_id
+[x] Photo::getDownloadUrlAttribute() — raccourci de chemin, aucun appelant
 [ ] Photo::display_url — @deprecated mais dans $appends et exposé par OrderItemResource
-[ ] Colonnes mortes : photos.file_path_web, photos.file_path_watermark, gift_cards.pdf_path
+[x] Colonnes mortes : photos.file_path_web, photos.file_path_watermark, gift_cards.pdf_path
     (⚠️ confirmer vides au relevé 1.2 d'abord)
 [ ] Valeurs d'enum mortes : clients.source='contact', availability_slots.status='unavailable',
     gift_cards.status='cancelled'   (⚠️ CONSERVER orders.status='refunded' — cf. D5)
@@ -1006,9 +1035,9 @@ fonctionnalité n'ait bougé — **point de contrôle naturel** pour décider de
 ### Front
 
 ```
-[ ] adminApi.uploadPhotos / uploadEventPhotos — pointent vers des routes inexistantes
-[ ] api.getGalleryItems() — le portfolio est statique
-[ ] api.getGiftCards() — appelle une route qui n'existe pas publiquement
+[x] adminApi.uploadPhotos / uploadEventPhotos — pointent vers des routes inexistantes
+[x] api.getGalleryItems() — le portfolio est statique
+[x] api.getGiftCards() — appelle une route qui n'existe pas publiquement
 [ ] L'événement @sort du DataTable + les 8 déclarations sortable: true (si non branché)
 ```
 
@@ -1016,7 +1045,7 @@ fonctionnalité n'ait bougé — **point de contrôle naturel** pour décider de
 
 ```
 [ ] api/storage/app/temp/*.zip — 140 Mo (fait en 0.5)
-[ ] bootstrap/, database/, resources/, storage/ à la RACINE — squelette résiduel suivi par Git
+[x] bootstrap/, database/, resources/, storage/ à la RACINE — squelette résiduel suivi par Git
 [ ] Purger storage/app/private/exports/ (les ZIP s'accumulent sans purge, §10.0)
 ```
 
@@ -1043,23 +1072,23 @@ l'impossibilité de cacher les URL signées MinIO (~19 s de latence évitée sur
 sessions liées au système de fichiers. → §4.7, §5.11, §2.3
 
 ```yaml
-[ ] # docker-compose (dev et prod)
+[x] # docker-compose (dev et prod)
     redis:
       image: redis:7-alpine
       command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru
       healthcheck: { test: ["CMD", "redis-cli", "ping"] }
 ```
 ```dotenv
-[ ] CACHE_STORE=redis
+[x] CACHE_STORE=redis
     SESSION_DRIVER=redis
     REDIS_HOST=redis
 ```
 ```
-[ ] Vérifier que les heartbeats de supervision restent lisibles par api-php
+[x] Vérifier que les heartbeats de supervision restent lisibles par api-php
     (c'est justement le couplage que Redis supprime)
-[ ] Réactiver le cache des URL signées MinIO dans Photo::resolveImageUrl (TTL 12 h,
+[x] Réactiver le cache des URL signées MinIO dans Photo::resolveImageUrl (TTL 12 h,
     signature valable 24 h → marge de 12 h) → §2.3
-[ ] #17 — NE PLUS mettre les binaires d'images en cache : persister le dérivé sur MinIO
+[x] #17 — NE PLUS mettre les binaires d'images en cache : persister le dérivé sur MinIO
     (comme generateAndStoreCleanThumbnail) et servir une URL signée
 ```
 
@@ -1116,9 +1145,9 @@ Quatre mécanismes contradictoires aujourd'hui ; la règle des « 30 minutes » 
 ## 2.7 Tests front — 0,5 j
 
 ```
-[ ] Installer Vitest + @vue/test-utils (le README l'annonçait déjà, cf. §1.8)
-[ ] Ajouter `npm run test` à la CI
-[ ] Premiers tests : store panier (calculs), utils/format, utils/errorHandler
+[x] Installer Vitest + @vue/test-utils (le README l'annonçait déjà, cf. §1.8)
+[x] Ajouter `npm run test` à la CI
+[x] Premiers tests : store panier (calculs), utils/format, utils/errorHandler
 [ ] Activer la mesure de couverture backend (make test-coverage existe déjà, §12.8)
 ```
 
