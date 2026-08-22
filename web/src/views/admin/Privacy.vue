@@ -216,6 +216,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import AdminHeader from '@/components/admin/AdminHeader.vue'
 import Button from '@/components/admin/ui/Button.vue'
 import Modal from '@/components/admin/ui/Modal.vue'
@@ -234,8 +235,11 @@ const tabs = [
 type TabKey = (typeof tabs)[number]['key']
 const activeTab = ref<TabKey>('search')
 
+const route = useRoute()
+const prefill = typeof route.query.q === 'string' ? route.query.q : ''
+
 const searchType = ref<'email' | 'phone' | 'order_number'>('email')
-const searchValue = ref('')
+const searchValue = ref(prefill)
 const isLoading = ref(false)
 const result = ref<PrivacySearchResult | null>(null)
 

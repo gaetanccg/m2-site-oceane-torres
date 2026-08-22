@@ -202,7 +202,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::apiResource('users', UserController::class);
 
     // Clients management
-    Route::apiResource('clients', ClientController::class);
+    Route::apiResource('clients', ClientController::class)->except(['destroy']);
     Route::get('/clients/{client}/reservations', [ClientController::class, 'reservations']);
     Route::post('/clients/{client}/gdpr-export', [ClientController::class, 'gdprExport']);
 

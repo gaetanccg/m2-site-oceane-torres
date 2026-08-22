@@ -91,15 +91,15 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
               </svg>
             </button>
-            <button
-              @click="confirmDelete(row)"
+            <RouterLink
+              :to="{ path: '/admin/privacy', query: { q: row.email } }"
               class="p-2 text-red-500 hover:text-red-700 rounded-lg hover:bg-red-50"
-              title="Supprimer (RGPD)"
+              title="Effacement RGPD (écran dédié)"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
-            </button>
+            </RouterLink>
           </div>
         </template>
       </DataTable>
@@ -335,35 +335,7 @@
         <Button :loading="isSaving" @click="saveClient">Enregistrer</Button>
       </template>
     </Modal>
-
-    <!-- Delete Confirmation Modal -->
-    <Modal v-model="showDeleteModal" title="Suppression RGPD" size="sm">
-      <div class="space-y-4">
-        <div class="bg-red-50 border border-red-200 rounded-lg p-4">
-          <div class="flex items-start gap-3">
-            <svg class="w-5 h-5 text-red-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <div class="text-sm">
-              <p class="font-medium text-red-900">Attention</p>
-              <p class="text-red-700 mt-1">
-                Cette action supprimera definitivement toutes les données personnelles du client
-                <strong>{{ clientToDelete?.name }}</strong> conformement au RGPD (droit a l'oubli).
-              </p>
-            </div>
-          </div>
-        </div>
-        <p class="text-gray-600 text-sm">
-          Les reservations seront conservées de maniere anonymisée pour la comptabilite.
-        </p>
-      </div>
-
-      <template #footer>
-        <Button variant="secondary" @click="showDeleteModal = false">Annuler</Button>
-        <Button variant="danger" :loading="isDeleting" @click="deleteClient">Supprimer definitivement</Button>
-      </template>
-    </Modal>
-  </div>
+</div>
 </template>
 
 <script setup lang="ts">
@@ -390,13 +362,10 @@ const to = ref(0)
 const showCreateModal = ref(false)
 const showDetailModal = ref(false)
 const showEditModal = ref(false)
-const showDeleteModal = ref(false)
 const showReservationsModal = ref(false)
 const selectedClient = ref<Client | null>(null)
-const clientToDelete = ref<Client | null>(null)
 const isCreating = ref(false)
 const isSaving = ref(false)
-const isDeleting = ref(false)
 const isExporting = ref(false)
 const isLoadingReservations = ref(false)
 const clientReservations = ref<Reservation[]>([])
@@ -551,11 +520,6 @@ function openEditModal(client: Client) {
   showEditModal.value = true
 }
 
-function confirmDelete(client: Client) {
-  clientToDelete.value = client
-  showDeleteModal.value = true
-}
-
 async function saveClient() {
   isSaving.value = true
   try {
@@ -573,23 +537,6 @@ async function saveClient() {
     toast.error('Erreur', 'Impossible de modifier le client')
   } finally {
     isSaving.value = false
-  }
-}
-
-async function deleteClient() {
-  if (!clientToDelete.value) return
-
-  isDeleting.value = true
-  try {
-    await adminApi.deleteClient(clientToDelete.value.id)
-    showDeleteModal.value = false
-    clientToDelete.value = null
-    toast.success('Client supprimé')
-    fetchClients()
-  } catch {
-    toast.error('Erreur', 'Impossible de supprimer le client')
-  } finally {
-    isDeleting.value = false
   }
 }
 

@@ -27,10 +27,6 @@ class ClientApiService extends BaseAdminService {
         })
     }
 
-    async deleteClient(id: string): Promise<{ message: string }> {
-        return this.adminRequest<{ message: string }>(`/admin/clients/${id}`, { method: 'DELETE' })
-    }
-
     async getClientReservations(id: string, page = 1): Promise<AdminPaginatedResponse<Reservation>> {
         return this.adminRequest<AdminPaginatedResponse<Reservation>>(`/admin/clients/${id}/reservations?page=${page}`)
     }

@@ -43,7 +43,6 @@ export const adminApi = {
     getClient: clientApi.getClient.bind(clientApi),
     createClient: clientApi.createClient.bind(clientApi),
     updateClient: clientApi.updateClient.bind(clientApi),
-    deleteClient: clientApi.deleteClient.bind(clientApi),
     getClientReservations: clientApi.getClientReservations.bind(clientApi),
     exportClientGdpr: clientApi.exportClientGdpr.bind(clientApi),
 

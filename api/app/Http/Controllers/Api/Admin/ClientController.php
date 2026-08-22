@@ -6,10 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreClientRequest;
 use App\Http\Requests\Admin\UpdateClientRequest;
 use App\Models\Client;
-use App\Models\ContactMessage;
-use App\Models\DownloadLog;
-use App\Models\Gallery;
-use App\Models\Order;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -93,46 +89,6 @@ class ClientController extends Controller
      * Suppression d'un client (RGPD - droit à l'oubli)
      * Anonymise toutes les données personnelles liées
      */
-    public function destroy(Client $client): JsonResponse
-    {
-        $email = $client->email;
-
-        // Anonymiser les reservations
-        $client->reservations()->update([
-            'client_id' => null,
-            'guest_name' => 'Client supprimé',
-            'guest_email' => null,
-            'guest_phone' => null,
-        ]);
-
-        // Anonymiser les commandes par email
-        Order::where('guest_email', $email)->update([
-            'guest_email' => null,
-            'guest_first_name' => 'Supprimé',
-            'guest_last_name' => null,
-        ]);
-
-        // Anonymiser les messages de contact
-        ContactMessage::where('email', $email)->update([
-            'name' => 'Supprimé',
-            'email' => null,
-            'phone' => null,
-        ]);
-
-        // Supprimer les logs de téléchargement lies aux galeries du client
-        if ($client->user_id) {
-            $galleryIds = Gallery::where('user_id', $client->user_id)->pluck('id');
-            if ($galleryIds->isNotEmpty()) {
-                DownloadLog::whereIn('gallery_id', $galleryIds)->delete();
-            }
-        }
-
-        $client->delete();
-
-        return response()->json([
-            'message' => 'Client supprimé et données anonymisées conformément au RGPD.',
-        ]);
-    }
 
     /**
      * Historique des réservations d'un client
