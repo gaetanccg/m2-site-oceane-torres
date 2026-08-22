@@ -200,7 +200,7 @@ import LikeButton from '@/components/LikeButton.vue'
 import Lightbox from '@/components/Lightbox.vue'
 import PhotoCard from '@/components/PhotoCard.vue'
 import AddToCartButton from '@/components/cart/AddToCartButton.vue'
-import {API_CONFIG} from '@/config/constants'
+import {api, ApiServiceError} from '@/services/api'
 import type {LightboxImage} from '@/types'
 
 interface Photo {
@@ -239,6 +239,14 @@ interface Gallery {
     description?: string
     class_name?: string | null
     photos: Photo[]
+}
+
+interface ShareCodeResponse {
+    gallery: Gallery
+    available_product_types?: Record<ProductTypeKey, AvailableProductType>
+    pack_pricing?: Record<ProductTypeKey, PackPricingEntry>
+    school_message?: string | null
+    school_closed?: boolean
 }
 
 const route = useRoute()
@@ -298,33 +306,25 @@ const fetchGallery = async () => {
     }
 
     try {
-        const response = await fetch(`${API_CONFIG.baseUrl}/galleries/code/${code}`, {
-            headers: {
-                'Accept': 'application/json'
-            }
-        })
+        const data = await api.getGalleryByShareCode<ShareCodeResponse>(code)
 
-        if (response.ok) {
-            const data = await response.json()
-            gallery.value = data.gallery
-            if (data.available_product_types) {
-                availableProductTypes.value = data.available_product_types
-            }
-            if (data.pack_pricing && Object.keys(data.pack_pricing).length > 0) {
-                packPricing.value = data.pack_pricing
-            }
-            if (data.school_message) {
-                schoolMessage.value = data.school_message
-            }
-            if (data.school_closed) {
-                schoolClosed.value = true
-            }
-        } else {
-            const data = await response.json()
-            error.value = data.message || 'Galerie non trouvee'
+        gallery.value = data.gallery
+        if (data.available_product_types) {
+            availableProductTypes.value = data.available_product_types
         }
-    } catch (_err) {
-        error.value = 'Erreur de connexion'
+        if (data.pack_pricing && Object.keys(data.pack_pricing).length > 0) {
+            packPricing.value = data.pack_pricing
+        }
+        if (data.school_message) {
+            schoolMessage.value = data.school_message
+        }
+        if (data.school_closed) {
+            schoolClosed.value = true
+        }
+    } catch (e) {
+        error.value = e instanceof ApiServiceError && !e.apiError.isNetworkError
+            ? e.apiError.message
+            : 'Erreur de connexion'
     } finally {
         isLoading.value = false
     }

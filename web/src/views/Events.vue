@@ -177,7 +177,7 @@
 
 <script setup lang="ts">
 import {ref, computed, onMounted} from 'vue'
-import {API_CONFIG} from '@/config/constants'
+import {api, ApiServiceError} from '@/services/api'
 
 interface Photo {
     id: string
@@ -296,24 +296,19 @@ function formatDate(dateStr: string): string {
 
 async function fetchGalleries(page = 1) {
     try {
-        const response = await fetch(`${API_CONFIG.baseUrl}/events?page=${page}`, {
-            headers: {'Accept': 'application/json'}
-        })
+        const data = await api.getEvents<Gallery>(page)
 
-        if (response.ok) {
-            const data = await response.json()
-            if (page === 1) {
-                galleries.value = data.data
-            } else {
-                galleries.value.push(...data.data)
-            }
-            currentPage.value = data.meta?.current_page || page
-            hasMore.value = data.meta?.current_page < data.meta?.last_page
+        if (page === 1) {
+            galleries.value = data.data
         } else {
-            error.value = 'Impossible de charger les galeries'
+            galleries.value.push(...data.data)
         }
-    } catch {
-        error.value = 'Erreur de connexion'
+        currentPage.value = data.current_page
+        hasMore.value = data.current_page < data.last_page
+    } catch (e) {
+        error.value = e instanceof ApiServiceError && !e.apiError.isNetworkError
+            ? 'Impossible de charger les galeries'
+            : 'Erreur de connexion'
     } finally {
         isLoading.value = false
         isLoadingMore.value = false

@@ -30,7 +30,7 @@
 
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
-import { API_CONFIG } from '@/config/constants'
+import { api } from '@/services/api'
 
 interface Props {
     photoId: string
@@ -67,21 +67,11 @@ const handleLike = async () => {
     isAnimating.value = true
 
     try {
-        const response = await fetch(`${API_CONFIG.baseUrl}/photos/${props.photoId}/like`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            }
-        })
-
-        if (response.ok) {
-            const data = await response.json()
-            isLiked.value = data.is_liked
-            emit('like', props.photoId, data.is_liked)
-        }
+        const data = await api.likePhoto(props.photoId)
+        isLiked.value = data.is_liked
+        emit('like', props.photoId, data.is_liked)
     } catch {
-        // Silently fail
+        isLiked.value = props.liked
     } finally {
         isLoading.value = false
         setTimeout(() => {

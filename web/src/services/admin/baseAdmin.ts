@@ -14,6 +14,16 @@ export class BaseAdminService extends BaseApiService {
         })
     }
 
+    protected adminBlob(endpoint: string, options: RequestInit = {}): Promise<Blob> {
+        return this.requestBlob(endpoint, options, {
+            headers: this.authHeaders(),
+            withCredentials: true,
+            onUnauthorized: () => {
+                emitSessionExpired()
+            },
+        })
+    }
+
     protected async uploadFiles<T>(path: string, files: File[]): Promise<T> {
         const formData = new FormData()
         files.forEach((file) => formData.append('photos[]', file))

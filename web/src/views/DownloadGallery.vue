@@ -128,7 +128,9 @@ import {useRoute} from 'vue-router'
 import Lightbox from '@/components/Lightbox.vue'
 import PhotoCard from '@/components/PhotoCard.vue'
 import {API_CONFIG} from '@/config/constants'
-import {isInAppBrowser} from '@/utils/download'
+import {isInAppBrowser, downloadFile} from '@/utils/download'
+import {api, ApiServiceError} from '@/services/api'
+import {useToast} from '@/composables/useToast'
 import type {LightboxImage} from '@/types'
 
 interface Photo {
@@ -149,7 +151,12 @@ interface Gallery {
     photos: Photo[]
 }
 
+interface DownloadGalleryResponse {
+    gallery: Gallery
+}
+
 const route = useRoute()
+const toast = useToast()
 
 const gallery = ref<Gallery | null>(null)
 const isLoading = ref(true)
@@ -199,32 +206,10 @@ const downloadPhoto = async (photo: Photo) => {
             return
         }
 
-        const response = await fetch(
-            `${API_CONFIG.baseUrl}/photos/${photo.id}/download?token=${gallery.value.access_token}`,
-            {
-                headers: {'Accept': 'application/json'}
-            }
-        )
-
-        if (response.ok) {
-            const data = await response.json()
-            const filename = data.filename || 'photo.jpg'
-
-            // Fetch the actual file and create blob for download
-            const fileResponse = await fetch(data.download_url)
-            const blob = await fileResponse.blob()
-            const blobUrl = URL.createObjectURL(blob)
-
-            const link = document.createElement('a')
-            link.href = blobUrl
-            link.download = filename
-            document.body.appendChild(link)
-            link.click()
-            document.body.removeChild(link)
-            URL.revokeObjectURL(blobUrl)
-        }
+        const data = await api.getPhotoDownloadUrl(photo.id, gallery.value.access_token)
+        await downloadFile(data.download_url, data.filename || 'photo.jpg')
     } catch {
-        // Download failed
+        toast.error('Erreur', 'Le téléchargement a échoué')
     } finally {
         downloadingPhotos.value.delete(photo.id)
     }
@@ -266,21 +251,12 @@ const fetchGallery = async () => {
     }
 
     try {
-        const response = await fetch(`${API_CONFIG.baseUrl}/galleries/download/${token}`, {
-            headers: {
-                'Accept': 'application/json'
-            }
-        })
-
-        if (response.ok) {
-            const data = await response.json()
-            gallery.value = data.gallery
-        } else {
-            const data = await response.json()
-            error.value = data.message || 'Galerie non trouvee'
-        }
-    } catch (_err) {
-        error.value = 'Erreur de connexion'
+        const data = await api.getDownloadableGallery<DownloadGalleryResponse>(token)
+        gallery.value = data.gallery
+    } catch (e) {
+        error.value = e instanceof ApiServiceError && !e.apiError.isNetworkError
+            ? e.apiError.message
+            : 'Erreur de connexion'
     } finally {
         isLoading.value = false
     }

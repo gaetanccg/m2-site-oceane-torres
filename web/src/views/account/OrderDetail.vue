@@ -146,6 +146,7 @@ import { authApi } from '@/services/authApi'
 import { cartApi, CartApiError } from '@/services/cartApi'
 import { useToast } from '@/composables/useToast'
 import { formatPrice } from '@/utils/format'
+import { downloadFile } from '@/utils/download'
 import type { AccountOrder, AccountOrderItem } from '@/types/account'
 
 const route = useRoute()
@@ -204,16 +205,7 @@ async function downloadPhoto(item: AccountOrderItem) {
         const token = order.value.download_token ?? undefined
         const response = await cartApi.downloadPhoto(order.value.id, item.id, token)
         if (response.success && response.download_url) {
-            const fileResponse = await fetch(response.download_url)
-            const blob = await fileResponse.blob()
-            const url = window.URL.createObjectURL(blob)
-            const link = document.createElement('a')
-            link.href = url
-            link.download = response.filename || `${item.photo_title || 'photo'}.jpg`
-            document.body.appendChild(link)
-            link.click()
-            document.body.removeChild(link)
-            window.URL.revokeObjectURL(url)
+            await downloadFile(response.download_url, response.filename || `${item.photo_title || 'photo'}.jpg`)
         }
     } catch (e) {
         if (e instanceof CartApiError && e.apiError.status === 403) {

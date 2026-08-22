@@ -318,7 +318,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { cartApi, CartApiError, type Order } from '@/services/cartApi'
 import { API_CONFIG } from '@/config/constants'
-import { isInAppBrowser } from '@/utils/download'
+import { isInAppBrowser, downloadFile, saveBlob } from '@/utils/download'
 import { useToast } from '@/composables/useToast'
 import { useGtag } from '@/composables/useGtag'
 import { useAuthStore } from '@/stores/auth'
@@ -501,19 +501,7 @@ async function downloadPhoto(itemId: string, photoId: string, photoTitle?: strin
 
         const response = await cartApi.downloadPhoto(order.value.id, itemId, token)
         if (response.success && response.download_url) {
-            // Fetch the file as blob to force download
-            const fileResponse = await fetch(response.download_url)
-            const blob = await fileResponse.blob()
-
-            // Create download link
-            const url = window.URL.createObjectURL(blob)
-            const link = document.createElement('a')
-            link.href = url
-            link.download = response.filename || `${photoTitle || 'photo'}.jpg`
-            document.body.appendChild(link)
-            link.click()
-            document.body.removeChild(link)
-            window.URL.revokeObjectURL(url)
+            await downloadFile(response.download_url, response.filename || `${photoTitle || 'photo'}.jpg`)
         }
     } catch (e) {
         if (e instanceof CartApiError && e.apiError.status === 403) {
@@ -541,37 +529,14 @@ async function downloadAllPhotos() {
             return
         }
 
-        // Get auth token if available
-        const authToken = localStorage.getItem('auth_token')
-        const headers: Record<string, string> = {}
-        if (authToken) {
-            headers['Authorization'] = `Bearer ${authToken}`
+        const blob = await cartApi.downloadAllPhotos(order.value.id, token)
+        saveBlob(blob, `commande_${order.value.order_number}.zip`)
+    } catch (e) {
+        if (e instanceof CartApiError && e.apiError.status === 403) {
+            toast.error('Lien expire', 'Votre lien de téléchargement a expire. Consultez votre email de confirmation pour un nouveau lien.')
+        } else {
+            toast.error('Erreur', 'Erreur lors du téléchargement')
         }
-
-        const response = await fetch(
-            `${API_CONFIG.baseUrl}/orders/${order.value.id}/download-all${params}`,
-            { headers }
-        )
-
-        if (!response.ok) {
-            if (response.status === 403) {
-                toast.error('Lien expire', 'Votre lien de téléchargement a expire. Consultez votre email de confirmation pour un nouveau lien.')
-                return
-            }
-            throw new Error('Erreur lors du téléchargement')
-        }
-
-        const blob = await response.blob()
-        const url = window.URL.createObjectURL(blob)
-        const link = document.createElement('a')
-        link.href = url
-        link.download = `commande_${order.value.order_number}.zip`
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-        window.URL.revokeObjectURL(url)
-    } catch {
-        toast.error('Erreur', 'Erreur lors du téléchargement')
     } finally {
         isDownloadingAll.value = false
     }

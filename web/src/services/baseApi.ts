@@ -83,6 +83,47 @@ export class BaseApiService {
         }
     }
 
+    protected async requestBlob(
+        endpoint: string,
+        options: RequestInit = {},
+        config: RequestConfig = {}
+    ): Promise<Blob> {
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), this.timeout)
+
+        try {
+            const response = await fetch(`${this.baseUrl}${endpoint}`, {
+                ...options,
+                signal: controller.signal,
+                credentials: config.withCredentials ? 'include' : undefined,
+                headers: {
+                    ...config.headers,
+                    ...(options.headers as Record<string, string>),
+                },
+            })
+
+            clearTimeout(timeoutId)
+
+            if (response.status === 401 && config.onUnauthorized) {
+                config.onUnauthorized()
+            }
+
+            if (!response.ok) {
+                throw new ApiError(await extractErrorFromResponse(response))
+            }
+
+            return await response.blob()
+        } catch (error) {
+            clearTimeout(timeoutId)
+
+            if (error instanceof ApiError) {
+                throw error
+            }
+
+            throw new ApiError(parseApiError(error))
+        }
+    }
+
     protected getToken(): string | null {
         return localStorage.getItem('auth_token')
     }

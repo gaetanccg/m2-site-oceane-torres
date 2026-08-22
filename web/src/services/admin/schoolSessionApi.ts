@@ -171,8 +171,8 @@ class SchoolSessionApiService extends BaseAdminService {
         )
     }
 
-    getSchoolSessionExportDownloadUrl(exportId: string): string {
-        return `${this.baseUrl}/admin/school-session-exports/${exportId}/download`
+    downloadSchoolSessionExport(exportId: string): Promise<Blob> {
+        return this.adminBlob(`/admin/school-session-exports/${exportId}/download`)
     }
 
     async sendSchoolSessionMessages(

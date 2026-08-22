@@ -580,6 +580,7 @@ import SmsTemplateField from '@/components/admin/SmsTemplateField.vue'
 import PhotosManager from '@/components/admin/PhotosManager.vue'
 import {adminApi} from '@/services/adminApi'
 import {AdminApiError} from '@/services/admin/baseAdmin'
+import {saveBlob} from '@/utils/download'
 import {useToast} from '@/composables/useToast'
 import {useConfirm} from '@/composables/useConfirm'
 import {useEta} from '@/composables/useEta'
@@ -1107,34 +1108,20 @@ function stopExportPolling() {
 
 async function downloadExport() {
     if (!latestExport.value) return
-    const url = adminApi.getSchoolSessionExportDownloadUrl(latestExport.value.id)
-    const token = localStorage.getItem('auth_token')
 
     try {
-        const res = await fetch(url, {headers: token ? {'Authorization': `Bearer ${token}`} : {}})
-
-        if (!res.ok) {
-            // Le backend a marqué l'export comme `failed` si le fichier n'est plus disponible
-            // (410 Gone, cf. SchoolSessionController::downloadExport). On rafraîchit l'état
-            // pour que le bouton "Réessayer" apparaisse naturellement.
-            if (res.status === 410) {
-                await fetchLatestExport()
-                toast.error("Fichier expiré", "Le ZIP n'est plus disponible. Cliquez sur « Réessayer » pour le régénérer.")
-            } else {
-                toast.error('Erreur', 'Impossible de télécharger le ZIP')
-            }
-            return
+        const blob = await adminApi.downloadSchoolSessionExport(latestExport.value.id)
+        saveBlob(blob, session.value ? `${session.value.title.replace(/\s+/g, '_')}_commandes.zip` : 'export.zip')
+    } catch (e) {
+        // Le backend a marqué l'export comme `failed` si le fichier n'est plus disponible
+        // (410 Gone, cf. SchoolSessionController::downloadExport). On rafraîchit l'état
+        // pour que le bouton "Réessayer" apparaisse naturellement.
+        if (e instanceof AdminApiError && e.apiError.status === 410) {
+            await fetchLatestExport()
+            toast.error("Fichier expiré", "Le ZIP n'est plus disponible. Cliquez sur « Réessayer » pour le régénérer.")
+        } else {
+            toast.error('Erreur', 'Impossible de télécharger le ZIP')
         }
-
-        const blob = await res.blob()
-        const blobUrl = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = blobUrl
-        a.download = session.value ? `${session.value.title.replace(/\s+/g, '_')}_commandes.zip` : 'export.zip'
-        a.click()
-        URL.revokeObjectURL(blobUrl)
-    } catch {
-        toast.error('Erreur', 'Impossible de télécharger le ZIP')
     }
 }
 

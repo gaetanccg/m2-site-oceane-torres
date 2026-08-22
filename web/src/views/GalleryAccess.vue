@@ -49,7 +49,7 @@
 import {ref} from 'vue'
 import {useRouter} from 'vue-router'
 import ShareCodeInput from '@/components/ShareCodeInput.vue'
-import {API_CONFIG} from '@/config/constants'
+import {api, ApiServiceError} from '@/services/api'
 
 const router = useRouter()
 
@@ -66,23 +66,17 @@ const handleSubmit = async () => {
     hasError.value = false
 
     try {
-        const response = await fetch(`${API_CONFIG.baseUrl}/galleries/code/${code.value}`, {
-            headers: {
-                'Accept': 'application/json'
-            }
-        })
-
-        if (response.ok) {
-            router.push(`/gallery/${code.value}`)
-        } else {
-            const data = await response.json()
-            hasError.value = true
-            errorMessage.value = data.message || 'Code invalide'
-            codeInputRef.value?.clear()
-        }
-    } catch (_error) {
+        await api.getGalleryByShareCode(code.value)
+        router.push(`/gallery/${code.value}`)
+    } catch (e) {
         hasError.value = true
-        errorMessage.value = 'Erreur de connexion'
+
+        if (e instanceof ApiServiceError && !e.apiError.isNetworkError) {
+            errorMessage.value = e.apiError.message
+            codeInputRef.value?.clear()
+        } else {
+            errorMessage.value = 'Erreur de connexion'
+        }
     } finally {
         isLoading.value = false
     }

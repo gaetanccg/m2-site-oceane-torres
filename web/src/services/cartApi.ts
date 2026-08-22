@@ -297,6 +297,15 @@ class CartApiService extends BaseApiService {
         return this.cartRequest(`/orders/${orderId}/download/${itemId}${params}`)
     }
 
+    async downloadAllPhotos(orderId: string, token?: string): Promise<Blob> {
+        const params = token ? `?token=${encodeURIComponent(token)}` : ''
+        const headers: Record<string, string> = {}
+        const authToken = this.getToken()
+        if (authToken) headers['Authorization'] = `Bearer ${authToken}`
+
+        return this.requestBlob(`/orders/${orderId}/download-all${params}`, {}, { headers })
+    }
+
     // ============================================================================
     // SumUp Payment
     // ============================================================================

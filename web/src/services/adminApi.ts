@@ -120,7 +120,7 @@ export const adminApi = {
     reopenSchoolSession: schoolSessionApi.reopenSchoolSession.bind(schoolSessionApi),
     createSchoolSessionExport: schoolSessionApi.createSchoolSessionExport.bind(schoolSessionApi),
     getLatestSchoolSessionExport: schoolSessionApi.getLatestSchoolSessionExport.bind(schoolSessionApi),
-    getSchoolSessionExportDownloadUrl: schoolSessionApi.getSchoolSessionExportDownloadUrl.bind(schoolSessionApi),
+    downloadSchoolSessionExport: schoolSessionApi.downloadSchoolSessionExport.bind(schoolSessionApi),
 
     // RGPD / Données personnelles
     searchPrivacy: privacyApi.search.bind(privacyApi),

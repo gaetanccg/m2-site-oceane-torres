@@ -259,7 +259,7 @@ import Lightbox from '@/components/Lightbox.vue'
 import PhotoCard from '@/components/PhotoCard.vue'
 import AddToCartButton from '@/components/cart/AddToCartButton.vue'
 import CopyrightNotice from '@/components/CopyrightNotice.vue'
-import {API_CONFIG} from '@/config/constants'
+import {api, ApiServiceError} from '@/services/api'
 import type {LightboxImage} from '@/types'
 
 interface Photo {
@@ -314,6 +314,13 @@ interface Gallery {
 }
 
 type ProductTypeKey = 'digital' | 'print_10x15' | 'print_15x20' | 'print_scolaire'
+
+interface EventGalleryResponse {
+    gallery: Gallery
+    is_parent: boolean
+    available_product_types?: Record<ProductTypeKey, AvailableProductType>
+    pack_pricing?: Record<ProductTypeKey, PackPricingEntry>
+}
 
 const route = useRoute()
 
@@ -376,28 +383,20 @@ const fetchGallery = async (id: string) => {
     lightboxOpen.value = false
 
     try {
-        const response = await fetch(`${API_CONFIG.baseUrl}/events/${id}`, {
-            headers: {
-                'Accept': 'application/json'
-            }
-        })
+        const data = await api.getEvent<EventGalleryResponse>(id)
 
-        if (response.ok) {
-            const data = await response.json()
-            gallery.value = data.gallery
-            isParent.value = data.is_parent === true
-            if (data.available_product_types) {
-                availableProductTypes.value = data.available_product_types
-            }
-            if (data.pack_pricing && Object.keys(data.pack_pricing).length > 0) {
-                packPricing.value = data.pack_pricing
-            }
-        } else {
-            const data = await response.json()
-            error.value = data.message || 'Galerie non trouvée'
+        gallery.value = data.gallery
+        isParent.value = data.is_parent === true
+        if (data.available_product_types) {
+            availableProductTypes.value = data.available_product_types
         }
-    } catch (_err) {
-        error.value = 'Erreur de connexion'
+        if (data.pack_pricing && Object.keys(data.pack_pricing).length > 0) {
+            packPricing.value = data.pack_pricing
+        }
+    } catch (e) {
+        error.value = e instanceof ApiServiceError && !e.apiError.isNetworkError
+            ? e.apiError.message
+            : 'Erreur de connexion'
     } finally {
         isLoading.value = false
     }
