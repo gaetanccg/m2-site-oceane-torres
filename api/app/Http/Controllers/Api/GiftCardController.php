@@ -19,13 +19,6 @@ class GiftCardController extends Controller
         return response()->json($giftCards);
     }
 
-    public function show(GiftCard $giftCard): JsonResponse
-    {
-        return response()->json([
-            'gift_card' => $giftCard->load('payment'),
-        ]);
-    }
-
     public function store(StoreGiftCardRequest $request): JsonResponse
     {
         $validated = $request->validated();
@@ -53,31 +46,6 @@ class GiftCardController extends Controller
         return response()->json([
             'gift_card' => $giftCard->fresh(),
             'message' => 'Bon cadeau mis à jour.',
-        ]);
-    }
-
-    public function validate(string $code): JsonResponse
-    {
-        $giftCard = GiftCard::where('code', $code)->first();
-
-        if (! $giftCard) {
-            return response()->json([
-                'valid' => false,
-                'message' => 'Code invalide.',
-            ], 404);
-        }
-
-        if (! $giftCard->isValid()) {
-            return response()->json([
-                'valid' => false,
-                'message' => 'Ce bon cadeau a expiré ou a déjà été utilisé.',
-            ]);
-        }
-
-        return response()->json([
-            'valid' => true,
-            'remaining_amount' => $giftCard->remaining_amount,
-            'expires_at' => $giftCard->expires_at,
         ]);
     }
 }

@@ -10,7 +10,6 @@ use App\Http\Controllers\Api\Admin\NotificationController;
 use App\Http\Controllers\Api\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Api\Admin\PrivacyController;
 use App\Http\Controllers\Api\Admin\SchoolSessionController;
-use App\Http\Controllers\Api\Admin\UserController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BookingRequestController;
 use App\Http\Controllers\Api\CartController;
@@ -68,14 +67,11 @@ Route::get('/prestations/{prestation}', [PrestationController::class, 'show']);
 
 // Galleries (public)
 Route::get('/galleries', [GalleryController::class, 'index']);
-Route::get('/galleries/{gallery}', [GalleryController::class, 'show']);
-Route::get('/galleries/token/{token}', [GalleryController::class, 'showByToken']);
 Route::middleware('throttle:gallery-code')->get('/galleries/code/{code}', [GalleryController::class, 'showByShareCode']);
 Route::get('/galleries/download/{token}', [GalleryController::class, 'showDownloadableByToken']);
 Route::get('/galleries/{gallery}/download-zip', [GalleryController::class, 'downloadZip']);
 
 // Photos (public - watermarked)
-Route::get('/photos/{photo}', [PhotoController::class, 'show']);
 Route::post('/photos/{photo}/like', [PhotoController::class, 'like']);
 Route::get('/photos/{photo}/download', [PhotoController::class, 'download']);
 
@@ -98,7 +94,6 @@ Route::get('/events', [EventGalleryController::class, 'index']);
 Route::get('/events/{gallery}', [EventGalleryController::class, 'show']);
 
 // Gift cards (public)
-Route::get('/gift-cards/validate/{code}', [GiftCardController::class, 'validate']);
 
 // Booking request (public - sans authentification)
 Route::middleware('throttle:public-form')->post('/booking-request', [BookingRequestController::class, 'store']);
@@ -154,22 +149,13 @@ Route::middleware('auth:sanctum')->group(function () {
     // Auth
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('/auth/user', [AuthController::class, 'user']);
-    Route::put('/auth/profile', [AuthController::class, 'updateProfile']);
 
     // Reservations
-    Route::get('/reservations', [ReservationController::class, 'index']);
-    Route::post('/reservations', [ReservationController::class, 'store']);
-    Route::get('/reservations/{reservation}', [ReservationController::class, 'show']);
-    Route::put('/reservations/{reservation}', [ReservationController::class, 'update']);
-    Route::delete('/reservations/{reservation}', [ReservationController::class, 'destroy']);
 
     // Gift cards
     Route::post('/gift-cards', [GiftCardController::class, 'store']);
-    Route::get('/gift-cards/{giftCard}', [GiftCardController::class, 'show']);
 
     // User galleries (private)
-    Route::get('/my-galleries', [GalleryController::class, 'myGalleries']);
-    Route::get('/my-galleries/{gallery}/download', [GalleryController::class, 'downloadPhotos']);
 
     // Notifications
     Route::get('/notifications', [NotificationController::class, 'index']);
@@ -198,9 +184,6 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::get('/dashboard/stats', [DashboardController::class, 'stats']);
 
     Route::get('/health', [HealthController::class, 'details']);
-
-    // Users management
-    Route::apiResource('users', UserController::class);
 
     // Clients management
     Route::apiResource('clients', ClientController::class)->except(['destroy']);
@@ -281,7 +264,6 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::apiResource('gift-codes', GiftCodeController::class);
 
     // Notifications
-    Route::post('/notifications', [NotificationController::class, 'store']);
 
     // School Sessions management
     Route::get('/school-sessions', [SchoolSessionController::class, 'index']);

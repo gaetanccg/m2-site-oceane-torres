@@ -24,13 +24,6 @@ class PhotoController extends Controller
 {
     use ClearsEventGalleriesCache;
 
-    public function show(Photo $photo): JsonResponse
-    {
-        return response()->json([
-            'photo' => $photo,
-        ]);
-    }
-
     public function destroy(Photo $photo): JsonResponse
     {
         $isEventGallery = $photo->gallery?->type === 'event';

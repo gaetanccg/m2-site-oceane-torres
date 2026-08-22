@@ -45,58 +45,6 @@ class GalleryController extends Controller
         return response()->json($galleries);
     }
 
-    public function show(Gallery $gallery): JsonResponse
-    {
-        if ($gallery->type === 'private') {
-            return response()->json([
-                'message' => 'Cette galerie est privée.',
-            ], 403);
-        }
-
-        $gallery->load('photos');
-        $gallery->recordView();
-
-        return response()->json([
-            'gallery' => $gallery,
-        ]);
-    }
-
-    public function showByToken(string $token): JsonResponse
-    {
-        $gallery = Gallery::where('access_token', $token)->first();
-
-        if (! $gallery || ! $gallery->isAccessible($token)) {
-            return response()->json([
-                'message' => 'Galerie non trouvée.',
-            ], 404);
-        }
-
-        $gallery->load(['photos', 'galleryProductTypes.packTiers']);
-        $gallery->recordView();
-
-        return response()->json([
-            'gallery' => $gallery,
-            'available_product_types' => $gallery->getAvailableProductTypes(),
-            'pack_pricing' => $gallery->getPackPricing(),
-        ]);
-    }
-
-    public function myGalleries(Request $request): JsonResponse
-    {
-        $user = $request->user();
-
-        $galleries = Gallery::where('user_id', $user->id)
-            ->orWhere('assigned_email', $user->email)
-            ->with('photos')
-            ->latest()
-            ->limit(50)
-            ->get();
-
-        return response()->json([
-            'galleries' => $galleries,
-        ]);
-    }
-
     public function store(StoreGalleryRequest $request): JsonResponse
     {
         $validated = $request->validated();

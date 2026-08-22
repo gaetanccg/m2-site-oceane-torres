@@ -5,8 +5,6 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\AdminUpdateReservationRequest;
 use App\Http\Requests\Admin\UpdateReservationStatusRequest;
-use App\Http\Requests\StoreReservationRequest;
-use App\Http\Requests\UpdateReservationRequest;
 use App\Http\Resources\CalendarEventResource;
 use App\Models\Reservation;
 use Illuminate\Http\JsonResponse;
@@ -14,16 +12,6 @@ use Illuminate\Http\Request;
 
 class ReservationController extends Controller
 {
-    public function index(Request $request): JsonResponse
-    {
-        $reservations = Reservation::where('user_id', $request->user()->id)
-            ->with(['prestation', 'clientForm'])
-            ->latest()
-            ->paginate(10);
-
-        return response()->json($reservations);
-    }
-
     public function adminIndex(Request $request): JsonResponse
     {
         // Charger les relations necessaires pour les accesseurs
@@ -48,17 +36,6 @@ class ReservationController extends Controller
         return response()->json($reservations);
     }
 
-    public function show(Request $request, Reservation $reservation): JsonResponse
-    {
-        $this->authorize('view', $reservation);
-
-        $reservation->load(['user', 'prestation', 'clientForm', 'payments']);
-
-        return response()->json([
-            'reservation' => $reservation,
-        ]);
-    }
-
     /**
      * Afficher une reservation pour l'admin avec tous les details
      */
@@ -72,40 +49,6 @@ class ReservationController extends Controller
         return response()->json([
             'success' => true,
             'data' => $reservation,
-        ]);
-    }
-
-    public function store(StoreReservationRequest $request): JsonResponse
-    {
-        $validated = $request->validated();
-
-        $reservation = Reservation::create([
-            'user_id' => $request->user()->id,
-            'prestation_id' => $validated['prestation_id'],
-            'date' => $validated['date'],
-            'notes' => $validated['notes'] ?? null,
-            'status' => 'pending',
-        ]);
-
-        $reservation->clientForm()->create($validated['client_form']);
-
-        return response()->json([
-            'reservation' => $reservation->load(['prestation', 'clientForm']),
-            'message' => 'Réservation créée avec succès.',
-        ], 201);
-    }
-
-    public function update(UpdateReservationRequest $request, Reservation $reservation): JsonResponse
-    {
-        $this->authorize('update', $reservation);
-
-        $validated = $request->validated();
-
-        $reservation->update($validated);
-
-        return response()->json([
-            'reservation' => $reservation->fresh(),
-            'message' => 'Réservation mise à jour avec succès.',
         ]);
     }
 
@@ -144,17 +87,6 @@ class ReservationController extends Controller
             'success' => true,
             'data' => $reservation,
             'message' => 'Reservation mise a jour avec succes.',
-        ]);
-    }
-
-    public function destroy(Request $request, Reservation $reservation): JsonResponse
-    {
-        $this->authorize('delete', $reservation);
-
-        $reservation->delete();
-
-        return response()->json([
-            'message' => 'Réservation supprimée avec succès.',
         ]);
     }
 

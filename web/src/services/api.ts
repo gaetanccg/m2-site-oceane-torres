@@ -3,32 +3,11 @@
  */
 
 import { BaseApiService, ApiError as BaseApiError } from './baseApi'
-import type { ApiResponse, PaginatedResponse, GalleryItem, Prestation, GiftCard } from '@/types'
+import type { ApiResponse, Prestation } from '@/types'
 
 export { BaseApiError as ApiServiceError }
 
 class ApiService extends BaseApiService {
-    // ========================================================================
-    // Gallery
-    // ========================================================================
-
-    async getGalleryItems(category?: string): Promise<ApiResponse<GalleryItem[]>> {
-        const query = category ? `?category=${encodeURIComponent(category)}` : ''
-        return this.request<ApiResponse<GalleryItem[]>>(`/galleries${query}`)
-    }
-
-    async getGalleryItemsPaginated(
-        page = 1,
-        perPage = 20,
-        category?: string
-    ): Promise<PaginatedResponse<GalleryItem>> {
-        let query = `?page=${page}&per_page=${perPage}`
-        if (category) {
-            query += `&category=${encodeURIComponent(category)}`
-        }
-        return this.request<PaginatedResponse<GalleryItem>>(`/galleries${query}`)
-    }
-
     // ========================================================================
     // Prestations
     // ========================================================================
@@ -39,14 +18,6 @@ class ApiService extends BaseApiService {
 
     async getPrestation(id: number): Promise<ApiResponse<Prestation>> {
         return this.request<ApiResponse<Prestation>>(`/prestations/${id}`)
-    }
-
-    // ========================================================================
-    // Gift Cards
-    // ========================================================================
-
-    async getGiftCards(): Promise<ApiResponse<GiftCard[]>> {
-        return this.request<ApiResponse<GiftCard[]>>('/gift-cards')
     }
 
     // ========================================================================

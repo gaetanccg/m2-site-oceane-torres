@@ -1,6 +1,5 @@
 import { BaseApiService, ApiError as BaseApiError } from '../baseApi'
 import { emitSessionExpired } from '@/utils/authEvents'
-import type { AdminApiResponse, AdminPhoto } from '@/types/admin'
 
 export class AdminApiError extends BaseApiError {}
 
@@ -36,13 +35,5 @@ export class BaseAdminService extends BaseApiService {
         }
 
         return response.json()
-    }
-
-    async uploadPhotos(galleryId: string, files: File[]): Promise<AdminApiResponse<AdminPhoto[]>> {
-        return this.uploadFiles<AdminApiResponse<AdminPhoto[]>>(`/admin/galleries/${galleryId}/photos`, files)
-    }
-
-    async uploadEventPhotos(galleryId: string, files: File[]): Promise<AdminApiResponse<AdminPhoto[]>> {
-        return this.uploadFiles<AdminApiResponse<AdminPhoto[]>>(`/admin/events/${galleryId}/photos`, files)
     }
 }

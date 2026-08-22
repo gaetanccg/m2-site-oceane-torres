@@ -7,7 +7,6 @@ use App\Http\Requests\Auth\ForgotPasswordRequest;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Requests\Auth\ResetPasswordRequest;
-use App\Http\Requests\Auth\UpdateProfileRequest;
 use App\Models\Gallery;
 use App\Models\Order;
 use App\Models\Reservation;
@@ -107,20 +106,6 @@ class AuthController extends Controller
         return response()->json([
             'success' => true,
             'data' => $request->user(),
-        ]);
-    }
-
-    public function updateProfile(UpdateProfileRequest $request): JsonResponse
-    {
-        $user = $request->user();
-
-        $validated = $request->validated();
-
-        $user->update($validated);
-
-        return response()->json([
-            'user' => $user->fresh(),
-            'message' => 'Profil mis à jour avec succès.',
         ]);
     }
 
