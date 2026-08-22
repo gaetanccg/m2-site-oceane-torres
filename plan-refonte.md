@@ -89,7 +89,7 @@ fonctionnalité n'ait changé. Point de décision naturel pour continuer ou s'ar
 | 0.11 Quantité sur les 4 documents | ✅ | 7 tests · **a mis au jour #69, voir ci-dessous** |
 | 0.14 Export scolaire | ✅ | `resolved_storage_path` + compteur d'omissions visible |
 | 0.15 Supervision externe | ⛔ | **créations de compte requises** |
-| 0.16 Veille de vulnérabilités | ✅ | job `security-audit` bloquant + `dependabot.yml` — **rouge d'emblée, voir ci-dessous** |
+| 0.16 Veille de vulnérabilités | ✅ | job `security-audit` bloquant + `dependabot.yml` · **les deux audits sont verts** |
 | 0.17 Files d'attente | ✅ | 3 files, routage vérifié à l'exécution, `--memory=1024` < `memory_limit` |
 | 0.18 Correctifs courts | 🟡 | 10/10 écrits · ⚠️ **build Docker d'imagick NON vérifié** |
 | 0.12 XSS `v-html` | ✅ | aucune directive `v-html` dans `web/src` |
@@ -136,19 +136,31 @@ Chacun a été constaté à l'exécution ; le plan avait raison sur l'intention,
 | 0.10 | `throw e` côté front | 3 appelants, dont un `.then()` sans `.catch()` → redirection perdue, utilisateur bloqué | Retour booléen + `error.value`, parcours préservé |
 | 0.11 | Ajouter la quantité aux 4 gabarits | Le gabarit de facture **ne compilait pas** (#69) — corriger la quantité seule n'aurait rien produit | Espace avant `@if` + 4 tests de génération |
 
-### ⚠️ La CI passe au rouge dès l'ajout de `security-audit`
+### Audit de dépendances — vert
 
-`composer audit` → **18 avis sur 3 paquets** : `dompdf/dompdf`, `guzzlehttp/guzzle`,
-`league/commonmark`. `npm audit` → **20 vulnérabilités** (1 critique, 18 hautes), toutes
-avec un correctif disponible, essentiellement dans la chaîne puppeteer/vite.
+Le job `security-audit` était rouge d'emblée : 18 avis Composer et 20 vulnérabilités
+npm. Les deux chaînes ont été montées.
 
-C'est le comportement attendu par la recette de la phase 0 (« la CI échoue sur une
-dépendance vulnérable connue »), mais cela **bloque toute fusion** jusqu'à mise à jour.
-`dompdf` mérite l'attention en premier : il rend des chaînes influencées par
-l'utilisateur (titres de photo, nom du client) dans la facture PDF.
+| Paquet | Avant | Après | Nature |
+|---|---|---|---|
+`dompdf/dompdf` | v3.1.5 | v3.1.6 | 6 avis · **rend des chaînes utilisateur dans la facture** |
+`league/commonmark` | 2.8.2 | 2.10.0 | 6 avis, corrigés en 2.9.0 |
+`guzzlehttp/guzzle` | 7.13.2 | 7.15.3 | — |
+`puppeteer` | ^24.35.0 | ^25.8.0 | majeur · pré-rendu SEO |
+`sharp` | ^0.34.5 | ^0.35.3 | majeur · vignettes |
+`vite` | 6.4.1 | 6.4.3 | correctif, épinglage strict conservé |
 
-Trois options : monter les dépendances maintenant · rendre le job non bloquant
-temporairement (`continue-on-error: true`) · assumer le rouge. **À trancher.**
+`composer.json` est resté inchangé : les trois cibles PHP tenaient dans les contraintes
+existantes. Quatorze vulnérabilités npm transitives ont été résolues par `npm audit fix`
+sans changement de version déclarée.
+
+Les deux sauts majeurs ne touchent que des `devDependencies` de scripts d'assets, et
+les API employées (`launch`/`goto`/`content`, `resize`/`avif`/`webp`) sont inchangées
+entre ces versions.
+
+Vérifié : `composer audit` et `npm audit --audit-level=high` ne signalent plus rien ·
+255 tests · `build:prerender` génère les 11 routes avec titre et contenu · `vue-tsc` et
+ESLint propres.
 
 ### ⚠️ imagick : échec de build désormais BLOQUANT, et non vérifié
 
