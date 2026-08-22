@@ -82,7 +82,7 @@ class CleanOrphanFiles extends Command
         // Top-level MinIO folders qui ne sont PAS des galeries — ne jamais les flagger comme orphelins.
         // - invoices/        : PDFs de factures (cf. InvoiceService)
         // - school-sessions/ : photos partagées entre commandes photo scolaire (cf. SchoolSessionService)
-        $ignoredPrefixes = ['invoices', 'school-sessions'];
+        $ignoredPrefixes = ['invoices', 'school-sessions', 'derived'];
 
         foreach ($files as $file) {
             // Extract gallery ID (first path segment)

@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class ImageProxyController extends Controller
 {
@@ -114,22 +115,46 @@ class ImageProxyController extends Controller
     /**
      * Stream clean image (resized but no watermark)
      */
+    /**
+     * Persiste le derive sur MinIO au lieu du cache applicatif.
+     *
+     * Le cache est plafonne en memoire avec eviction LRU : y mettre des previews de
+     * 2560 px evincerait les heartbeats de supervision, qui y vivent aussi. Le prefixe
+     * derived/ est exclu de storage:clean-orphans.
+     */
+    private function derivative(string $key, string $extension, callable $generate): ?string
+    {
+        $path = "derived/{$key}.{$extension}";
+
+        $existing = $this->storageService->getFileContent($path);
+        if ($existing) {
+            return $existing;
+        }
+
+        $content = $generate();
+        if (! $content) {
+            return null;
+        }
+
+        Storage::disk('minio')->put($path, $content);
+
+        return $content;
+    }
+
     private function streamCleanImage(Photo $photo): Response
     {
         $originalPath = $photo->resolved_storage_path;
+        $extension = pathinfo($photo->file_path, PATHINFO_EXTENSION) ?: 'jpg';
 
-        // Generate clean preview on-the-fly with caching
-        $cacheKey = "image_clean_{$photo->id}";
-
-        $content = Cache::remember($cacheKey, 3600, function () use ($originalPath) {
-            return $this->imageProcessingService->generateCleanPreviewOnTheFly($originalPath);
-        });
+        $content = $this->derivative(
+            "clean_{$photo->id}",
+            $extension,
+            fn () => $this->imageProcessingService->generateCleanPreviewOnTheFly($originalPath)
+        );
 
         if (! $content) {
             return $this->errorResponse('Image non disponible.', 404);
         }
-
-        $extension = pathinfo($photo->file_path, PATHINFO_EXTENSION) ?: 'jpg';
 
         return $this->createImageResponse($content, "image.{$extension}");
     }
@@ -140,19 +165,17 @@ class ImageProxyController extends Controller
     private function streamCleanThumbnail(Photo $photo): Response
     {
         $originalPath = $photo->resolved_storage_path;
+        $extension = pathinfo($photo->file_path, PATHINFO_EXTENSION) ?: 'jpg';
 
-        // Generate clean thumbnail on-the-fly with caching
-        $cacheKey = "image_clean_thumb_{$photo->id}";
-
-        $content = Cache::remember($cacheKey, 3600, function () use ($originalPath) {
-            return $this->imageProcessingService->generateCleanThumbnailOnTheFly($originalPath);
-        });
+        $content = $this->derivative(
+            "clean_thumb_{$photo->id}",
+            $extension,
+            fn () => $this->imageProcessingService->generateCleanThumbnailOnTheFly($originalPath)
+        );
 
         if (! $content) {
             return $this->errorResponse('Image non disponible.', 404);
         }
-
-        $extension = pathinfo($photo->file_path, PATHINFO_EXTENSION) ?: 'jpg';
 
         return $this->createImageResponse($content, "image.{$extension}");
     }
@@ -234,10 +257,9 @@ class ImageProxyController extends Controller
             }
         }
 
-        // Fallback: generate on-the-fly with caching
-        $cacheKey = "image_{$version}_{$photo->id}";
+        $extension = pathinfo($photo->file_path, PATHINFO_EXTENSION) ?: 'jpg';
 
-        $content = Cache::remember($cacheKey, 3600, function () use ($photo, $version) {
+        $content = $this->derivative("{$version}_{$photo->id}", $extension, function () use ($photo, $version) {
             $originalPath = $photo->resolved_storage_path;
 
             if ($version === 'preview') {
@@ -250,8 +272,6 @@ class ImageProxyController extends Controller
         if (! $content) {
             return $this->errorResponse('Image non disponible.', 404);
         }
-
-        $extension = pathinfo($photo->file_path, PATHINFO_EXTENSION) ?: 'jpg';
 
         return $this->createImageResponse($content, "image.{$extension}");
     }
