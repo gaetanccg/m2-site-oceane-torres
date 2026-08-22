@@ -82,75 +82,29 @@ EXPOSE 9000
 CMD ["php-fpm"]
 
 # ===========================================
-# PRODUCTION STAGE - For Render (artisan serve)
+# PRODUCTION-FPM STAGE - l'image EST l'artefact
 # ===========================================
-FROM php:8.4-cli-alpine AS production
+FROM base AS production-fpm
 
-ARG IMAGICK_VERSION
+# Dependances d'abord, pour que le cache de couches survive a un changement de code.
+COPY composer.json composer.lock ./
+RUN mkdir -p bootstrap/cache storage/framework/cache/data storage/framework/sessions \
+        storage/framework/views storage/logs \
+    && composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
 
-# Install system dependencies
-RUN apk add --no-cache \
-    git \
-    curl \
-    libpng-dev \
-    libjpeg-turbo-dev \
-    freetype-dev \
-    libzip-dev \
-    zip \
-    unzip \
-    postgresql-dev \
-    oniguruma-dev \
-    icu-dev \
-    libwebp-dev
+COPY . .
 
-# Install fonts for watermarks (separate step, optional)
-RUN apk add --no-cache ttf-dejavu || echo "Font installation skipped"
+RUN composer dump-autoload --optimize --no-dev \
+    && chown -R www-data:www-data storage bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache
 
-# Install PHP extensions
-RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
-    && docker-php-ext-install pdo pdo_pgsql pgsql mbstring exif pcntl bcmath gd zip intl opcache
+# Aucun `config:cache` ici : il figerait l'environnement du BUILD, pas celui d'execution.
+# Les caches sont chauffes au deploiement, une fois les variables reelles presentes.
+#
+# Aucun `migrate` non plus. Une migration au demarrage du conteneur s'execute sans
+# surveillance a chaque redemarrage, et trois services (api, queue, scheduler) partagent
+# cette image : ils la lanceraient en parallele. C'est une etape explicite du deploiement.
 
-# Imagick est le driver EFFECTIF (ImageProcessingService::USE_IMAGICK_DRIVER = true).
-# Version épinglée et échec bloquant : sans cela deux builds du même commit peuvent
-# produire deux moteurs de rendu différents (filigrane et performances différents).
-RUN apk add --no-cache --virtual .build-deps autoconf g++ make \
-    && apk add --no-cache imagemagick imagemagick-dev \
-    && yes '' | pecl install imagick-${IMAGICK_VERSION} \
-    && docker-php-ext-enable imagick \
-    && php -m | grep -q '^imagick$' \
-    && pecl clear-cache \
-    && apk del .build-deps
+EXPOSE 9000
 
-# Install Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
-
-# Set working directory
-WORKDIR /var/www
-
-# Copy application files
-COPY . /var/www
-
-# bootstrap/cache n'est pas versionne : le creer avant composer install
-# (post-autoload-dump -> package:discover exige ce dossier).
-RUN mkdir -p /var/www/bootstrap/cache
-
-# Install dependencies (production only)
-RUN composer install --no-dev --optimize-autoloader --no-interaction
-
-# Set permissions
-RUN chmod -R 755 /var/www/storage \
-    && chmod -R 755 /var/www/bootstrap/cache
-
-# Create storage symlink
-RUN php artisan storage:link || true
-
-# Cache config for production
-RUN php artisan config:cache || true
-RUN php artisan route:cache || true
-RUN php artisan view:cache || true
-
-# Expose port (Render uses PORT env variable)
-EXPOSE 8000
-
-# Start scheduler in background, then artisan serve - run migrations first
-CMD php artisan migrate --force && php artisan schedule:work >> /var/www/storage/logs/scheduler.log 2>&1 & php artisan serve --host=0.0.0.0 --port=${PORT:-8000}
+CMD ["php-fpm"]

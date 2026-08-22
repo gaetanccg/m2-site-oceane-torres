@@ -17,10 +17,11 @@ services:
   # Backend Laravel (PHP-FPM)
   # ----------------------------
   laravel:
+    image: oceane-api:${API_IMAGE_TAG:-latest}
     build:
       context: ./api
       dockerfile: Dockerfile
-      target: development
+      target: production-fpm
     container_name: api-php-preprod
     restart: unless-stopped
     working_dir: /var/www
@@ -32,7 +33,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-      - ./api:/var/www
+      - ./api/storage:/var/www/storage
       - ./deploy/docker/php.ini:/usr/local/etc/php/conf.d/custom.ini
       - ./deploy/docker/www.conf:/usr/local/etc/php-fpm.d/zz-custom.conf
       - php-logs:/var/log/php
@@ -42,22 +43,9 @@ services:
       - oceane-network-preprod
     command: >
       sh -c "
-        mkdir -p /var/log/php &&
-        mkdir -p /var/www/storage/framework/sessions &&
-        mkdir -p /var/www/storage/framework/views &&
-        mkdir -p /var/www/storage/framework/cache &&
-        mkdir -p /var/www/storage/logs &&
-        mkdir -p /var/www/bootstrap/cache &&
-        chmod -R 755 /var/www &&
-        chmod -R 777 /var/www/storage /var/www/bootstrap/cache &&
+        mkdir -p /var/log/php /var/www/storage/framework/sessions /var/www/storage/framework/views /var/www/storage/framework/cache/data /var/www/storage/logs &&
         chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache &&
-        composer install --no-dev --optimize-autoloader --no-interaction &&
-        php artisan migrate --force &&
-        php artisan storage:link 2>/dev/null || true &&
-        php artisan config:cache &&
-        php artisan route:cache &&
-        php artisan view:cache &&
-        php-fpm
+        exec php-fpm
       "
     healthcheck:
       test: [ "CMD-SHELL", "(SCRIPT_NAME=/ping SCRIPT_FILENAME=/ping REQUEST_METHOD=GET cgi-fcgi -bind -connect 127.0.0.1:9000 2>/dev/null | grep -q pong) || php -r 'exit(@fsockopen(\"127.0.0.1\", 9000) ? 0 : 1);'" ]
@@ -70,10 +58,11 @@ services:
   # Queue Worker (Background Jobs)
   # ----------------------------
   queue:
+    image: oceane-api:${API_IMAGE_TAG:-latest}
     build:
       context: ./api
       dockerfile: Dockerfile
-      target: development
+      target: production-fpm
     container_name: api-queue-preprod
     restart: unless-stopped
     working_dir: /var/www
@@ -84,7 +73,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-      - ./api:/var/www
+      - ./api/storage:/var/www/storage
       - ./deploy/docker/php.ini:/usr/local/etc/php/conf.d/custom.ini
     env_file:
       - ./deploy/.env.preprod
@@ -92,15 +81,9 @@ services:
       - oceane-network-preprod
     command: >
       sh -c "
-        mkdir -p /var/www/storage/framework/sessions &&
-        mkdir -p /var/www/storage/framework/views &&
-        mkdir -p /var/www/storage/framework/cache &&
-        mkdir -p /var/www/storage/logs &&
-        mkdir -p /var/www/bootstrap/cache &&
-        chmod -R 755 /var/www &&
-        chmod -R 777 /var/www/storage /var/www/bootstrap/cache &&
+        mkdir -p /var/www/storage/framework/sessions /var/www/storage/framework/views /var/www/storage/framework/cache/data /var/www/storage/logs &&
         chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache &&
-        php artisan queue:work --queue=realtime,default,heavy --sleep=3 --tries=3 --max-time=3600 --timeout=3600 --memory=1024
+        exec php artisan queue:work --queue=realtime,default,heavy --sleep=3 --tries=3 --max-time=3600 --timeout=3600 --memory=1024
       "
     healthcheck:
       test: [ "CMD-SHELL", "php artisan supervision:heartbeat:check queue --max-age=600" ]
@@ -116,10 +99,11 @@ services:
   # Scheduler (Cron Jobs)
   # ----------------------------
   scheduler:
+    image: oceane-api:${API_IMAGE_TAG:-latest}
     build:
       context: ./api
       dockerfile: Dockerfile
-      target: development
+      target: production-fpm
     container_name: api-scheduler-preprod
     restart: unless-stopped
     working_dir: /var/www
@@ -130,7 +114,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-      - ./api:/var/www
+      - ./api/storage:/var/www/storage
       - ./deploy/docker/php.ini:/usr/local/etc/php/conf.d/custom.ini
     env_file:
       - ./deploy/.env.preprod
@@ -139,8 +123,7 @@ services:
     command: >
       sh -c "
         mkdir -p /var/www/storage/logs &&
-        mkdir -p /var/www/bootstrap/cache &&
-        chmod -R 777 /var/www/storage /var/www/bootstrap/cache &&
+        chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache &&
         php artisan schedule:clear-cache &&
         php artisan supervision:heartbeat scheduler &&
         php artisan schedule:work

@@ -329,7 +329,7 @@ Conséquence pour la suite : le choix du pooler n'est plus une dette. B et C de 
 | 2.7 Vitest | ✅ | 25 tests · a attrapé une régression de 2.1 dès le 1er lancement |
 | 2.4 Convention de réponse API | 🔵 | `docs/api-conventions.md` écrit · `per_page`/`sort_by` partout · 12 `fetch()` sauvages supprimés · une seule couche d'accès HTTP · `formatOrder()` → API Resources. Reste : les autres Resources, puis l'enveloppe |
 | 2.5 Couche d'autorisation | 🔵 | `OrderPolicy` + `GalleryPolicy` **toujours via le Gate** · règle des 30 min supprimée, remplacée par une signature courte · `POST /orders/by-email` retiré · `docs/authorization.md`. Reste : #34 (décision produit) |
-| 2.6 Déploiement reproductible | ⏳ | à venir |
+| 2.6 Déploiement reproductible | 🔵 | l'image **est** l'artefact : code copié, plus de bind mount du code, `migrate` sorti du démarrage des conteneurs, rollback par tag. Non validé par un déploiement réel |
 
 **Suite de tests : 329 back + 49 front.**
 
@@ -1216,14 +1216,49 @@ compte aucune galerie `public`. Détail en §1bis.
 ## 2.6 Déploiement reproductible — 1 j · #22, #8
 
 ```
-[ ] Créer une cible Dockerfile `production-fpm` (php-fpm, composer --no-dev, code COPIÉ)
-[ ] deploy/docker-compose.prod.yml : target production-fpm, image taguée, PLUS de bind mount ./api
-[ ] Sortir `php artisan migrate --force` du command: → étape explicite du deploy.sh,
+[x] Créer une cible Dockerfile `production-fpm` (php-fpm, composer --no-dev, code COPIÉ)
+    → bâtie sur `base`, qui est déjà php-fpm. Image construite et vérifiée : code présent,
+      vendor sans dépendances de dev, imagick chargé, `artisan --version` répond sans
+      aucun montage. Volontairement PAS de `config:cache` au build : il figerait
+      l'environnement de construction, pas celui d'exécution.
+    → la cible `production` (php-cli + artisan serve, destinée à Render) est SUPPRIMÉE :
+      référencée par aucun compose ni script, elle dupliquait tout le socle de `base` et
+      portait `migrate --force` dans son CMD.
+[x] deploy/docker-compose.prod.yml : target production-fpm, image taguée, PLUS de bind mount ./api
+    → `image: oceane-api:${API_IMAGE_TAG:-latest}` sur les 3 services (api, queue, scheduler)
+    → `./api:/var/www` remplacé par `./api/storage:/var/www/storage` seul. Choix
+      délibéré : les exports générés et les journaux vivent là et doivent survivre à un
+      redéploiement. Un volume nommé aurait coupé l'accès aux fichiers déjà présents.
+    → appliqué aussi à la PREPROD : une préprod qui ne déploie pas comme la production ne
+      valide pas le déploiement.
+[x] Sortir `php artisan migrate --force` du command: → étape explicite du deploy.sh,
     après confirmation
-[ ] Récupérer et versionner la configuration Render (#56) → render.yaml
-[ ] Vérifier que le rollback est un changement de tag d'image, pas un git checkout
-[ ] #55 Supprimer les directives [Session] inertes de php.ini
+    → il tournait au démarrage de CHAQUE conteneur, donc à chaque redémarrage, sans
+      surveillance — et les 3 services partageant l'image le lançaient en parallèle.
+    → `deploy.sh` affiche les migrations en attente, rappelle la sauvegarde, et demande
+      une confirmation explicite (`--yes` pour l'usage non interactif). En préprod,
+      pas de confirmation : c'est l'environnement fait pour éprouver une migration.
+[x] Récupérer et versionner la configuration Render (#56) → render.yaml
+    ⚠️ Render ne reprend pas un service existant à partir du fichier : il faut le
+      rattacher via Blueprints. Tant que ce n'est pas fait, le fichier documente la cible
+      sans la piloter — c'est écrit en tête du fichier.
+[x] Vérifier que le rollback est un changement de tag d'image, pas un git checkout
+    → `deploy.sh --list` montre les tags disponibles et celui qui tourne ;
+      `deploy.sh --rollback <tag>` redémarre dessus sans reconstruire. Les deux chemins de
+      garde sont testés. Le tag est le SHA court du commit.
+    → le retour arrière ne touche PAS la base : annuler une migration est une décision
+      distincte, et le script le dit explicitement.
+[x] #55 Supprimer les directives [Session] inertes de php.ini
+    → Laravel gère ses sessions via SESSION_DRIVER et n'appelle jamais session_start().
+      Les 6 directives `session.*` ne servaient qu'au gestionnaire natif de PHP. La raison
+      est consignée dans le fichier, parce que `session.cookie_secure = 0` pouvait faire
+      croire à une régression de sécurité.
 ```
+
+**Ce qui reste vrai et non couvert** : rien de tout ceci n'est validé par un déploiement
+réel. L'image est construite et exécutée localement, les scripts sont testés sur leurs
+chemins de garde, mais le premier `deploy-preprod.sh` sera le vrai test — notamment les
+permissions du `storage` monté depuis l'hôte du NAS.
 
 ## 2.7 Tests front — 0,5 j
 

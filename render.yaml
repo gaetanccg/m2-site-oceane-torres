@@ -1,0 +1,47 @@
+# Configuration Render versionnee — #56
+#
+# Jusqu'ici la configuration du site vivait uniquement dans l'interface Render : elle
+# n'etait ni relisible ni reproductible, et une modification manuelle ne laissait aucune
+# trace. Ce fichier la rend explicite.
+#
+# ⚠️ Render ne reprend PAS automatiquement un service existant a partir de ce fichier.
+# Pour le rattacher : Render Dashboard → Blueprints → New Blueprint Instance, en pointant
+# ce depot. Sans cela le fichier documente la cible sans la piloter — verifier que les
+# valeurs ci-dessous correspondent bien a ce que montre l'interface avant de s'y fier.
+#
+# Seul le FRONT est heberge ici. L'API tourne sur le NAS via deploy/docker-compose.prod.yml.
+
+services:
+  - type: web
+    name: oceane-torres-web
+    runtime: static
+    # Le prerendu Puppeteer est indispensable au referencement : le SPA ne rend rien
+    # sans JavaScript. `build:prerender` enchaine vue-tsc, vite build, puis le prerendu.
+    buildCommand: cd web && npm ci && npm run build:prerender
+    staticPublishPath: web/dist
+    # Sans cette regle, une URL profonde rechargee renvoie 404 : le serveur cherche un
+    # fichier qui n'existe pas. Equivalent de web/public/_redirects, exprime ici pour que
+    # la configuration soit lisible au meme endroit que le reste.
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    headers:
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+    envVars:
+      - key: VITE_API_URL
+        value: https://api.oceanetorresphotographie.fr/api
+      # Vide = @sentry/vue n'est meme pas charge (import dynamique conditionnel).
+      # A renseigner dans l'interface Render : c'est un secret, il n'a rien a faire ici.
+      - key: VITE_SENTRY_DSN
+        sync: false
+      - key: NODE_VERSION
+        value: "20"
