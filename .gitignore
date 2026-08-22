@@ -124,3 +124,9 @@ PROJECT_REFERENCE_MVP.md
 /backups/
 *.dump
 *.dump.gz
+
+# Squelette Laravel residuel a la racine (l'application vit dans api/)
+/bootstrap/
+/database/
+/resources/
+/storage/
