@@ -288,8 +288,8 @@ const columns: TableColumn<AdminGiftCard>[] = [
     {key: 'amount', label: 'Valeur', align: 'right'},
     {key: 'purchaser_email', label: 'Acheteur'},
     {key: 'status', label: 'Statut'},
-    {key: 'expires_at', label: 'Expiration', sortable: true},
-    {key: 'created_at', label: 'Créé le', sortable: true},
+    {key: 'expires_at', label: 'Expiration'},
+    {key: 'created_at', label: 'Créé le'},
 ]
 
 function formatCurrency(amount: number): string {

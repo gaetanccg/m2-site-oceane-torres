@@ -388,12 +388,12 @@ const editForm = reactive({
 })
 
 const columns: TableColumn<Client>[] = [
-  { key: 'name', label: 'Client', sortable: true },
+  { key: 'name', label: 'Client' },
   { key: 'source', label: 'Source' },
   { key: 'phone', label: 'Telephone' },
   { key: 'reservations_count', label: 'Reservations', align: 'center' },
   { key: 'total_paid', label: 'Total verse', align: 'right' },
-  { key: 'created_at', label: 'Crée le', sortable: true },
+  { key: 'created_at', label: 'Crée le' },
 ]
 
 function getInitials(name: string): string {

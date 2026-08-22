@@ -337,7 +337,7 @@ const columns: TableColumn<AdminGiftCode>[] = [
     { key: 'validity', label: 'Validité' },
     { key: 'uses', label: 'Utilisations' },
     { key: 'status', label: 'Statut' },
-    { key: 'created_at', label: 'Créé le', sortable: true },
+    { key: 'created_at', label: 'Créé le' },
 ]
 
 const stats = computed(() => ({

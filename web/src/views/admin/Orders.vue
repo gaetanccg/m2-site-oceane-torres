@@ -419,7 +419,7 @@ const columns: TableColumn<AdminOrder>[] = [
     {key: 'items', label: 'Articles'},
     {key: 'total', label: 'Total', align: 'right'},
     {key: 'status', label: 'Statut'},
-    {key: 'created_at', label: 'Date', sortable: true},
+    {key: 'created_at', label: 'Date'},
 ]
 
 function formatCurrency(amount: number): string {
