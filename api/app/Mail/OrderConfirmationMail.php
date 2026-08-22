@@ -24,7 +24,9 @@ class OrderConfirmationMail extends Mailable implements ShouldQueue
         public Order $order,
         public string $downloadUrl,
         public ?Invoice $invoice = null,
-    ) {}
+    ) {
+        $this->onQueue('realtime');
+    }
 
     public function envelope(): Envelope
     {

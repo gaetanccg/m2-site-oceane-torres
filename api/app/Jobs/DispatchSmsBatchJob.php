@@ -26,7 +26,9 @@ class DispatchSmsBatchJob implements ShouldQueue
     public function __construct(
         public array $messages,
         public int $perSecond = 10,
-    ) {}
+    ) {
+        $this->onQueue('realtime');
+    }
 
     public function handle(): void
     {

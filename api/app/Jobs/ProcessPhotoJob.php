@@ -29,7 +29,9 @@ class ProcessPhotoJob implements ShouldQueue
         public string $tempFilePath,
         public string $originalFilename,
         public string $mimeType
-    ) {}
+    ) {
+        $this->onQueue('heavy');
+    }
 
     public function handle(): void
     {

@@ -21,7 +21,9 @@ class ProcessSchoolSessionJob implements ShouldQueue
 
     public function __construct(
         public string $sessionId,
-    ) {}
+    ) {
+        $this->onQueue('heavy');
+    }
 
     public function handle(SchoolSessionService $service): void
     {

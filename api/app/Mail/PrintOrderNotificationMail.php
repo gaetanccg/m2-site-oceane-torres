@@ -20,7 +20,9 @@ class PrintOrderNotificationMail extends Mailable implements ShouldQueue
 
     public function __construct(
         public Order $order,
-    ) {}
+    ) {
+        $this->onQueue('realtime');
+    }
 
     public function envelope(): Envelope
     {

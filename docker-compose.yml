@@ -168,7 +168,7 @@ services:
     # max-time=300 forces the worker to exit every 5min so Docker restarts it
     # (restart: unless-stopped). This auto-reloads job class code after any edit,
     # which a long-running `queue:work` would otherwise keep cached in memory.
-    command: php artisan queue:work --sleep=3 --tries=3 --max-time=300
+    command: php artisan queue:work --queue=realtime,default,heavy --sleep=3 --tries=3 --max-time=300
     healthcheck:
       test: [ "CMD-SHELL", "php artisan supervision:heartbeat:check queue --max-age=600" ]
       interval: 60s

@@ -19,7 +19,9 @@ class GalleryAccessMail extends Mailable
         public string $galleryUrl,
         public string $shareCode,
         public bool $isDirectLink = false,
-    ) {}
+    ) {
+        $this->onQueue('realtime');
+    }
 
     public function envelope(): Envelope
     {

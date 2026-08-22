@@ -20,7 +20,9 @@ class GeneratePrivacyExportJob implements ShouldQueue
 
     public function __construct(
         public string $exportId,
-    ) {}
+    ) {
+        $this->onQueue('heavy');
+    }
 
     public function handle(PrivacyExportService $service): void
     {

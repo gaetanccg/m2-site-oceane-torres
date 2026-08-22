@@ -20,7 +20,9 @@ class GenerateSchoolSessionExportJob implements ShouldQueue
 
     public function __construct(
         public string $exportId,
-    ) {}
+    ) {
+        $this->onQueue('heavy');
+    }
 
     public function handle(SchoolSessionExportService $service): void
     {

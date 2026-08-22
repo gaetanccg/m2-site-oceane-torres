@@ -24,7 +24,10 @@ class GenerateCleanThumbnailJob implements ShouldQueue
 
     public array $backoff = [10, 30, 60];
 
-    public function __construct(public string $photoId) {}
+    public function __construct(public string $photoId)
+    {
+        $this->onQueue('heavy');
+    }
 
     public function handle(ImageProcessingService $imageProcessingService): void
     {

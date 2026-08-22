@@ -20,7 +20,9 @@ class SendSchoolSessionSmsJob implements ShouldQueue
     public function __construct(
         public string $recipient,
         public string $content,
-    ) {}
+    ) {
+        $this->onQueue('realtime');
+    }
 
     public function handle(BrevoSmsService $sms): void
     {
