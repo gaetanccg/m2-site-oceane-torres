@@ -68,6 +68,117 @@ fonctionnalité n'ait changé. Point de décision naturel pour continuer ou s'ar
 
 ---
 
+## 1bis. Avancement réel
+
+> Mis à jour au fil de l'exécution. Dernière mise à jour : 2026-08-22.
+
+### Phase 0 — fait et vérifié
+
+| Action | État | Vérification |
+|---|---|---|
+| 0.1 Commandes destructrices | ✅ | `make fresh`/`make seed` inexistants · garde-fou testé dans les 2 sens |
+| 0.2 Sauvegardes | 🟡 outillage prêt | `deploy/backup.sh` (db/verify/storage/all) + procédure dans `deploy/README.md` — **reste à exécuter** |
+| 0.3 Base de dev locale | ✅ | `postgres-dev` sur `127.0.0.1:55433`, 76 migrations + seed OK |
+| 0.4 Compte admin du seeder | ⛔ | **requiert une requête sur la prod** |
+| 0.5 `downloadFile()` | ✅ | route + méthode supprimées, 140 Mo purgés |
+| 0.6 `storage:clean-orphans` | ✅ | 6 tests — les 3 ciblant le correctif échouent sans lui |
+| 0.7 `ClientController::destroy` | ✅ | back + front supprimés, renvoi vers `/admin/privacy` préremplí |
+| 0.8 IP cliente réelle | ✅ | `real_ip` sur prod **et** preprod, `nginx -t` OK, `trustProxies` restreint |
+| 0.9 Rate limits | ✅ | 8 tests, dont clé par email à IP tournante + témoin négatif |
+| 0.10 Déconnexion | ✅ | 4 tests, révocation réelle sous session **et** sous Bearer |
+| 0.11 Quantité sur les 4 documents | ✅ | 7 tests · **a mis au jour #69, voir ci-dessous** |
+| 0.14 Export scolaire | ✅ | `resolved_storage_path` + compteur d'omissions visible |
+| 0.15 Supervision externe | ⛔ | **créations de compte requises** |
+| 0.16 Veille de vulnérabilités | ✅ | job `security-audit` bloquant + `dependabot.yml` — **rouge d'emblée, voir ci-dessous** |
+| 0.17 Files d'attente | ✅ | 3 files, routage vérifié à l'exécution, `--memory=1024` < `memory_limit` |
+| 0.18 Correctifs courts | 🟡 | 10/10 écrits · ⚠️ **build Docker d'imagick NON vérifié** |
+| 0.12 XSS `v-html` | ✅ | aucune directive `v-html` dans `web/src` |
+| 0.13 Politique de mot de passe | ✅ | `min(12)->uncompromised()`, `StoreUserRequest` aligné |
+
+**Suite de tests : 255 méthodes** (226 au départ, +29 écrites en phase 0).
+
+### 🔴 #69 — NOUVEAU constat critique, manqué par les 3 passes de l'audit
+
+`resources/views/pdf/invoice.blade.php:246` contenait :
+
+```blade
+Remise@if($order->gift_code) (code {{ $order->gift_code }})@endif
+```
+
+La regex de directives de Blade impose `\B` avant le `@`. Entre `e` et `@` il y a une
+frontière de mot : **ce `@if` n'était pas compilé** et restait du texte littéral, alors
+que le `@endif` qui suit `)` l'était. Le fichier compilé se retrouvait avec un `endif`
+orphelin → `syntax error, unexpected token "endif"`.
+
+**Conséquence : le gabarit de facture ne compilait pas du tout.** Or `completeOrder()`
+avale l'échec de `generateForOrder()` (→ §7.5) : la ligne `invoices` était créée avec son
+numéro, puis la génération du PDF échouait en silence. Donc **aucune facture PDF n'a
+jamais été produite**, et chaque email de confirmation partait sans sa pièce jointe.
+
+Vérifié : le gabarit issu de `git show HEAD` échoue à rendre. Correctif = une espace.
+Couvert par `tests/Feature/InvoiceGenerationTest.php` (4 tests) — dont 2 échouent si l'on
+remet la version d'origine. Aucun autre gabarit ne porte ce motif (balayage effectué).
+
+**À relever en phase 1** : `SELECT count(*) FROM invoices WHERE file_path IS NULL;`
+— l'audit posait déjà la requête (§3bis.14-F) en supposant quelques cas ; l'attendu réel
+est *toutes les lignes*. Décider avec la photographe s'il faut régénérer l'historique.
+
+### Écarts assumés par rapport au plan
+
+Chacun a été constaté à l'exécution ; le plan avait raison sur l'intention, pas sur le détail.
+
+| § | Le plan disait | Réalité | Décision |
+|---|---|---|---|
+| 0.1 | `abort_if(app()->environment('production'))` | `APP_ENV=local` alors que la base pointait ailleurs → le garde ne se déclenche **jamais** | Garde sur l'**hôte réellement connecté**, allowlist |
+| 0.2 | `pg_dump … "$PROD_DSN"` | Le pooler transaction (6543) ne convient pas à `pg_dump` (pas de snapshot cohérent) | Port forcé à **5432** ; aucun client PG local → tout passe par conteneur |
+| 0.8 | `set_real_ip_from <plages Cloudflare>` | Le pair immédiat est `cloudflared` **sur le NAS**, pas une IP publique CF → la règle ne matcherait jamais | Réseaux privés + `real_ip_header CF-Connecting-IP` |
+| 0.10 | Supprimer `currentAccessToken()` si `PersonalAccessToken` | Sous session, c'est un `TransientToken` → le jeton 30 j **survivait** | `$user->tokens()->delete()` |
+| 0.10 | `throw e` côté front | 3 appelants, dont un `.then()` sans `.catch()` → redirection perdue, utilisateur bloqué | Retour booléen + `error.value`, parcours préservé |
+| 0.11 | Ajouter la quantité aux 4 gabarits | Le gabarit de facture **ne compilait pas** (#69) — corriger la quantité seule n'aurait rien produit | Espace avant `@if` + 4 tests de génération |
+
+### ⚠️ La CI passe au rouge dès l'ajout de `security-audit`
+
+`composer audit` → **18 avis sur 3 paquets** : `dompdf/dompdf`, `guzzlehttp/guzzle`,
+`league/commonmark`. `npm audit` → **20 vulnérabilités** (1 critique, 18 hautes), toutes
+avec un correctif disponible, essentiellement dans la chaîne puppeteer/vite.
+
+C'est le comportement attendu par la recette de la phase 0 (« la CI échoue sur une
+dépendance vulnérable connue »), mais cela **bloque toute fusion** jusqu'à mise à jour.
+`dompdf` mérite l'attention en premier : il rend des chaînes influencées par
+l'utilisateur (titres de photo, nom du client) dans la facture PDF.
+
+Trois options : monter les dépendances maintenant · rendre le job non bloquant
+temporairement (`continue-on-error: true`) · assumer le rouge. **À trancher.**
+
+### ⚠️ imagick : échec de build désormais BLOQUANT, et non vérifié
+
+`api/Dockerfile` épingle `IMAGICK_VERSION=3.8.1` (stable courante sur PECL, vérifiée) et
+retire le `|| echo "skipped"` qui laissait le build réussir avec un repli GD silencieux —
+cause du filigrane potentiellement illisible sur les photos vendues (→ §5.4).
+
+**Le build n'a pas pu être vérifié** (registre Docker trop lent sur ce poste). Avant tout
+déploiement :
+
+```bash
+cd api && docker build --target base -t ot-verif .
+docker run --rm ot-verif php -m | grep imagick
+```
+
+Si le build échoue, deux issues : ajuster `IMAGICK_VERSION`, ou restaurer la tolérance —
+mais alors le driver redevient non déterministe.
+
+### Bloqué sur intervention manuelle
+
+```
+[ ] 0.2  ./deploy/backup.sh all   (puis `verify` au vert)
+[ ] 0.4  Requête SQL sur la production — compte admin du seeder
+[ ] 0.15 UptimeRobot + 2 checks healthchecks.io (créations de compte)
+[ ] 0.18 Vérifier le build Docker (imagick épinglé, échec désormais bloquant)
+[ ] 0.19 Recette de phase 0 — les points qui exigent la production
+```
+
+---
+
 # PHASE 0 — Sécuriser l'existant
 
 **3 jours. Indépendante de la refonte. À livrer sur la production actuelle.**
@@ -81,12 +192,12 @@ aucune base de développement locale, et `api/.env` pointe la prod. La cible est
 `make help`, deux lignes au-dessus de `make test`. → §12.1
 
 ```bash
-[ ] # 1. Supprimer les deux cibles du Makefile
+[x] # 1. Supprimer les deux cibles du Makefile
     #    (ou les conditionner à un APP_ENV local ET un DB_HOST non-prod)
 ```
 
 ```php
-[ ] // 2. database/seeders/DatabaseSeeder.php — garde-fou en tête de run()
+[x] // 2. database/seeders/DatabaseSeeder.php — garde-fou en tête de run()
     public function run(): void
     {
         abort_if(app()->environment('production'), 500, 'Seeder interdit en production.');
@@ -95,7 +206,7 @@ aucune base de développement locale, et `api/.env` pointe la prod. La cible est
 ```
 
 ```php
-[ ] // 3. Retirer les mots de passe en dur (#2) — les tirer de l'environnement
+[x] // 3. Retirer les mots de passe en dur (#2) — les tirer de l'environnement
     'password' => Hash::make(env('SEED_ADMIN_PASSWORD') ?? Str::random(32)),
 ```
 
@@ -123,7 +234,7 @@ migration (phase 4) **exige un dump**. → §4.2, §10.2
     mc ls --recursive src/galleries | wc -l    # comparer à la copie
 
 [ ] # Rendre récurrent : pg_dump quotidien (rétention 30 j) + mc mirror hebdomadaire
-[ ] # Documenter la procédure de restauration dans deploy/README.md
+[x] # Documenter la procédure de restauration dans deploy/README.md
 ```
 
 **Recette** : une restauration complète réussie sur une base séparée, avec comptages identiques.
@@ -134,7 +245,7 @@ migration (phase 4) **exige un dump**. → §4.2, §10.2
 pas d'alternative locale — c'est la cause racine du risque `make fresh`. → §12.1
 
 ```yaml
-[ ] # docker-compose.yml — ajouter un service SANS profil
+[x] # docker-compose.yml — ajouter un service SANS profil
     postgres-dev:
       image: postgres:16-alpine
       container_name: ot-postgres-dev
@@ -177,10 +288,10 @@ Le mot de passe du seeder est `admin123`, et `/auth/login` n'a aucun rate limit.
 arbitraire (`deleteFileAfterSend(true)`). La fonctionnalité est morte. → §5.9, §6.10.1
 
 ```bash
-[ ] # Supprimer routes/api.php:75
+[x] # Supprimer routes/api.php:75
     #   Route::get('/galleries/{gallery}/download-file', [GalleryController::class, 'downloadFile']);
-[ ] # Supprimer GalleryController::downloadFile() (lignes 419-431)
-[ ] # Purger les vestiges : 140 Mo de ZIP oubliés
+[x] # Supprimer GalleryController::downloadFile() (lignes 419-431)
+[x] # Purger les vestiges : 140 Mo de ZIP oubliés
     rm api/storage/app/temp/*.zip
 ```
 
@@ -192,7 +303,7 @@ arbitraire (`deleteFileAfterSend(true)`). La fonctionnalité est morte. → §5.
 (irrécupérables, et achetées par des clientes). → §12.2
 
 ```php
-[ ] // app/Console/Commands/CleanOrphanFiles.php
+[x] // app/Console/Commands/CleanOrphanFiles.php
     Photo::query()
         ->select(['id', 'file_path', 'file_path_hd', 'file_path_preview', 'file_path_thumbnail',
                   'file_path_thumbnail_clean',   // ← AJOUT
@@ -209,10 +320,10 @@ arbitraire (`deleteFileAfterSend(true)`). La fonctionnalité est morte. → §5.
 ```
 
 ```bash
-[ ] # Écrire un test (aucun n'existe) : une photo dont l'original est référencé
+[x] # Écrire un test (aucun n'existe) : une photo dont l'original est référencé
     #  uniquement par metadata->supabase_path ne doit PAS être listée comme orpheline
 [ ] # Vérifier en dry-run sur la production AVANT toute autre action
-[ ] # NE PAS planifier en --delete. Planifier en dry-run hebdomadaire avec rapport (#43)
+[x] # NE PAS planifier en --delete. Planifier en dry-run hebdomadaire avec rapport (#43)
 ```
 
 ## 0.7 🔴 Supprimer `ClientController::destroy()` — 30 min · #59
@@ -223,10 +334,10 @@ partiel irréversible, **sans audit**, **sans confirmation**. Le module RGPD fai
 correctement. → §12.3
 
 ```bash
-[ ] # Supprimer Admin/ClientController::destroy() et la route apiResource correspondante
+[x] # Supprimer Admin/ClientController::destroy() et la route apiResource correspondante
     #   Route::apiResource('clients', ClientController::class)->except(['destroy']);
-[ ] # Supprimer clientApi.deleteClient() côté front + le bouton de suppression
-[ ] # Rediriger l'admin vers /admin/privacy (écran RGPD) avec un lien explicite
+[x] # Supprimer clientApi.deleteClient() côté front + le bouton de suppression
+[x] # Rediriger l'admin vers /admin/privacy (écran RGPD) avec un lien explicite
 ```
 
 ```sql
@@ -243,14 +354,14 @@ déni de service, #61), et `orders.consent_ip` / `privacy_audit_logs.ip_address`
 probante. → §4.7, §6.7, §12.5
 
 ```nginx
-[ ] # deploy/nginx.prod.conf — bloc location ~ \.php$
+[x] # deploy/nginx.prod.conf — bloc location ~ \.php$
     fastcgi_param HTTP_X_FORWARDED_FOR $http_cf_connecting_ip;
     fastcgi_param REMOTE_ADDR          $http_cf_connecting_ip;
     # (ou set_real_ip_from <plages Cloudflare>; real_ip_header CF-Connecting-IP;)
 ```
 
 ```php
-[ ] // bootstrap/app.php — restreindre au lieu de faire confiance à tout
+[x] // bootstrap/app.php — restreindre au lieu de faire confiance à tout
     $middleware->trustProxies(at: [
         '173.245.48.0/20', '103.21.244.0/22', /* … plages Cloudflare … */
         '172.16.0.0/12',   // réseau Docker
@@ -267,7 +378,7 @@ IP publiques variées · aucun `429` inexpliqué dans les logs Nginx.
 commandes par email, ni l'énumération des codes de galerie (36⁶/N essais). → §6.7
 
 ```php
-[ ] // AppServiceProvider::configureRateLimiting()
+[x] // AppServiceProvider::configureRateLimiting()
     RateLimiter::for('auth',     fn (Request $r) => [
         Limit::perMinute(5)->by($r->ip()),
         Limit::perMinute(5)->by((string) $r->input('email')),   // par compte aussi
@@ -277,7 +388,7 @@ commandes par email, ni l'énumération des codes de galerie (36⁶/N essais). �
 ```
 
 ```php
-[ ] // routes/api.php
+[x] // routes/api.php
     Route::middleware('throttle:auth')->group(function () {
         Route::post('/auth/register',        …);
         Route::post('/auth/login',           …);
@@ -302,7 +413,7 @@ la session — classe qui **n'a pas de méthode `delete()`** → 500. Le front a
 → §6.2.2
 
 ```php
-[ ] // AuthController::logout()
+[x] // AuthController::logout()
     public function logout(Request $request): JsonResponse
     {
         $token = $request->user()->currentAccessToken();
@@ -318,7 +429,7 @@ la session — classe qui **n'a pas de méthode `delete()`** → 500. Le front a
 ```
 
 ```js
-[ ] // web/src/stores/auth.ts — retirer le catch silencieux qui a masqué le bug
+[x] // web/src/stores/auth.ts — retirer le catch silencieux qui a masqué le bug
     async function logout(): Promise<void> {
         try { await authApi.logout() }
         catch (e) { toast.error('Déconnexion partielle', 'Réessayez.'); throw e }
@@ -336,7 +447,7 @@ totalisent pas le sous-total, et surtout **l'email de notification des tirages f
 nombre d'exemplaires**. → §7.6
 
 ```blade
-[ ] {{-- Dans les 4 gabarits : pdf/invoice, emails/order-confirmation,
+[x] {{-- Dans les 4 gabarits : pdf/invoice, emails/order-confirmation,
          emails/school-order-confirmation, emails/print-order-notification --}}
     <td>
         {{ $item->photo_title ?? 'Photo' }}
@@ -367,23 +478,23 @@ nombre d'exemplaires**. → §7.6
 par `v-html`. Sink XSS, aggravé par l'absence de CSP et le token 30 jours en `localStorage`. → §13.1
 
 ```vue
-[ ] <!-- views/OrderConfirmation.vue:42 — remplacer le v-html par du balisage -->
+[x] <!-- views/OrderConfirmation.vue:42 — remplacer le v-html par du balisage -->
     <p class="text-sm text-gray-600 mt-1">
         {{ confirmationIntro }} <strong>{{ order.customer_email }}</strong>.<br>
         {{ confirmationOutro }}
     </p>
 ```
-[ ] Réécrire `confirmationMessage` en deux computed de **texte brut** (`confirmationIntro`, `confirmationOutro`).
-[ ] Vérifier par recherche qu'il ne reste **aucun** `v-html` dans `web/src`.
+[x] Réécrire `confirmationMessage` en deux computed de **texte brut** (`confirmationIntro`, `confirmationOutro`).
+[x] Vérifier par recherche qu'il ne reste **aucun** `v-html` dans `web/src`.
 
 ## 0.13 🔴 Durcir la politique de mot de passe — 15 min · #27
 
 ```php
-[ ] // AppServiceProvider::boot()
+[x] // AppServiceProvider::boot()
     Password::defaults(fn () => Password::min(12)->uncompromised());
 ```
 ```php
-[ ] // Admin/StoreUserRequest — aligner (aujourd'hui min:8, sans `confirmed`)
+[x] // Admin/StoreUserRequest — aligner (aujourd'hui min:8, sans `confirmed`)
     'password' => ['required', 'confirmed', PasswordRule::defaults()],
 ```
 
@@ -393,10 +504,10 @@ par `v-html`. Sink XSS, aggravé par l'absence de CSP et le token 30 jours en `l
 peut être silencieusement absente du ZIP de production**. → §12.4
 
 ```php
-[ ] // SchoolSessionExportService:87
+[x] // SchoolSessionExportService:87
     $sourcePath = $photo->resolved_storage_path;   // au lieu de file_path_hd ?? file_path
 ```
-[ ] Ajouter un compteur d'omissions au rapport d'export, pour rendre le silence visible.
+[x] Ajouter un compteur d'omissions au rapport d'export, pour rendre le silence visible.
 
 ## 0.15 🟠 Brancher la supervision externe — 2 h · #12
 
@@ -427,7 +538,7 @@ gratuites. → §8.10, `docs/supervision.md` §5 et §11
 ## 0.16 🟠 Veille de vulnérabilités — 1 h · #26
 
 ```yaml
-[ ] # .github/workflows/ci.yml — 2 étapes
+[x] # .github/workflows/ci.yml — 2 étapes
     - name: Composer audit
       working-directory: ./api
       run: composer audit --no-interaction
@@ -436,7 +547,7 @@ gratuites. → §8.10, `docs/supervision.md` §5 et §11
       run: npm audit --audit-level=high
 ```
 ```yaml
-[ ] # .github/dependabot.yml (nouveau)
+[x] # .github/dependabot.yml (nouveau)
     version: 2
     updates:
       - package-ecosystem: composer
@@ -453,17 +564,17 @@ gratuites. → §8.10, `docs/supervision.md` §5 et §11
 de commande, factures et SMS. → §8.3
 
 ```php
-[ ] // Temps réel
+[x] // Temps réel
     Mail::to($email)->queue((new OrderConfirmationMail(…))->onQueue('realtime'));
     SendSmsJob::dispatch(…)->onQueue('realtime');
-[ ] // Traitements lourds
+[x] // Traitements lourds
     GenerateSchoolSessionExportJob::dispatch($id)->onQueue('heavy');
     GeneratePrivacyExportJob::dispatch($id)->onQueue('heavy');
     ProcessSchoolSessionJob::dispatch($id)->onQueue('heavy');
     ProcessPhotoJob::dispatch(…)->onQueue('heavy');
 ```
 ```yaml
-[ ] # deploy/docker-compose.prod.yml — service queue
+[x] # deploy/docker-compose.prod.yml — service queue
     command: php artisan queue:work --queue=realtime,default,heavy
              --sleep=3 --max-time=3600 --timeout=3600 --memory=1024
     #                                                        ↑ #9 §8.15 : sous memory_limit
@@ -474,12 +585,12 @@ vérifier que l'email de confirmation arrive **pendant** l'export.
 ## 0.18 🟡 Correctifs courts complémentaires
 
 ```php
-[ ] // #61 — l'anti-bruteforce des codes promo devient un DoS avec une IP constante.
+[x] // #61 — l'anti-bruteforce des codes promo devient un DoS avec une IP constante.
     //        Corrigé par 0.8, mais durcir la clé : combiner IP + session panier.
     $throttleKey = 'gift-code-failures:'.sha1($request->ip().'|'.$cart->id);
 ```
 ```php
-[ ] // #36 — EventCategoryController::reorder est cassé (DB::raw n'accepte pas de bindings).
+[x] // #36 — EventCategoryController::reorder est cassé (DB::raw n'accepte pas de bindings).
     //        Appliquer le correctif déjà fait dans PhotoController::updateSortOrder.
     DB::transaction(function () use ($validated) {
         foreach ($validated['categories'] as $c) {
@@ -488,21 +599,21 @@ vérifier que l'email de confirmation arrive **pendant** l'export.
     });
 ```
 ```php
-[ ] // #37 — $this->authorize() sans le trait → 500 sur 3 routes de réservation.
+[x] // #37 — $this->authorize() sans le trait → 500 sur 3 routes de réservation.
     class Controller { use \Illuminate\Foundation\Auth\Access\AuthorizesRequests; }
     //  (ou supprimer les 3 routes mortes — cf. phase 2)
 ```
 ```php
-[ ] // #32 — cgv_version en dur à '1.0' → traçabilité inopérante.
+[x] // #32 — cgv_version en dur à '1.0' → traçabilité inopérante.
     'cgv_version' => config('shop.cgv_version', '1.0'),   // + clé dans config/shop.php
 ```
 ```php
-[ ] // #42 — plafond ZIP de 500 photos silencieux → le rendre explicite dans la réponse
-[ ] // #46 — SESSION_DOMAIN=api.oceanetorresphotographie.fr (au lieu du wildcard)
-[ ] // #54 — retirer les add_header de nginx.prod.conf (X-Frame-Options contradictoire)
-[ ] // #53 — aligner APP_VERSION sur la version réelle
-[ ] // #65 — retirer `sortable: true` des 8 colonnes (tri non branché) → §13.4
-[ ] // #19 — épingler la version d'imagick dans le Dockerfile (driver non déterministe)
+[x] // #42 — plafond ZIP de 500 photos silencieux → le rendre explicite dans la réponse
+[x] // #46 — SESSION_DOMAIN=api.oceanetorresphotographie.fr (au lieu du wildcard)
+[x] // #54 — retirer les add_header de nginx.prod.conf (X-Frame-Options contradictoire)
+[x] // #53 — aligner APP_VERSION sur la version réelle
+[x] // #65 — retirer `sortable: true` des 8 colonnes (tri non branché) → §13.4
+[x] // #19 — épingler la version d'imagick dans le Dockerfile (driver non déterministe)
 ```
 
 ## 0.19 Recette de la phase 0
