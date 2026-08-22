@@ -31,19 +31,6 @@ class GalleryController extends Controller
 
     private const ZIP_MAX_PHOTOS = 500;
 
-    public function index(): JsonResponse
-    {
-        $page = request()->get('page', 1);
-
-        $galleries = Cache::remember("public_galleries_page_{$page}", 300, function () {
-            return Gallery::public()
-                ->with('photos')
-                ->latest()
-                ->paginate(min((int) request()->integer('per_page', 12) ?: 12, 100));
-        });
-
-        return response()->json($galleries);
-    }
 
     public function store(StoreGalleryRequest $request): JsonResponse
     {

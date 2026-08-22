@@ -66,7 +66,6 @@ Route::get('/prestations', [PrestationController::class, 'index']);
 Route::get('/prestations/{prestation}', [PrestationController::class, 'show']);
 
 // Galleries (public)
-Route::get('/galleries', [GalleryController::class, 'index']);
 Route::middleware('throttle:gallery-code')->get('/galleries/code/{code}', [GalleryController::class, 'showByShareCode']);
 Route::get('/galleries/download/{token}', [GalleryController::class, 'showDownloadableByToken']);
 Route::get('/galleries/{gallery}/download-zip', [GalleryController::class, 'downloadZip']);

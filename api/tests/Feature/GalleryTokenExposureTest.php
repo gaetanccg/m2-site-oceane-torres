@@ -48,16 +48,6 @@ class GalleryTokenExposureTest extends TestCase
         }
     }
 
-    public function test_la_galerie_publique_ne_livre_pas_le_jeton(): void
-    {
-        $this->gallery(['type' => 'public', 'is_published' => true]);
-
-        $body = $this->getJson('/api/galleries')->assertOk()->json('data.0');
-
-        foreach (self::PRIVATE_FIELDS as $field) {
-            $this->assertArrayNotHasKey($field, $body ?? []);
-        }
-    }
 
     public function test_la_galerie_d_evenement_publique_ne_livre_pas_le_jeton(): void
     {

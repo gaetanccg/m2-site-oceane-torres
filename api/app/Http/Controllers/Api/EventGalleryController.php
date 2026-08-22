@@ -45,6 +45,7 @@ class EventGalleryController extends Controller
 
             $result->getCollection()->transform(function ($gallery) {
                 $gallery->cover_photo = $gallery->thumbnailPhoto ?? $gallery->photos->first();
+                $gallery->unsetRelation('thumbnailPhoto');
 
                 return $gallery;
             });
@@ -81,6 +82,7 @@ class EventGalleryController extends Controller
 
             $gallery->children->each(function ($child) {
                 $child->cover_photo = $child->thumbnailPhoto ?? $child->photos->first();
+                $child->unsetRelation('thumbnailPhoto');
             });
 
             return response()->json([
@@ -126,6 +128,7 @@ class EventGalleryController extends Controller
 
         $galleries->getCollection()->transform(function ($gallery) {
             $gallery->cover_photo = $gallery->thumbnailPhoto ?? $gallery->photos->first();
+            $gallery->unsetRelation('thumbnailPhoto');
 
             return $gallery->withPrivateFields();
         });
@@ -157,6 +160,7 @@ class EventGalleryController extends Controller
 
             $gallery->children->each(function ($child) {
                 $child->cover_photo = $child->thumbnailPhoto ?? $child->photos->first();
+                $child->unsetRelation('thumbnailPhoto');
             });
 
             return response()->json([
@@ -379,6 +383,7 @@ class EventGalleryController extends Controller
 
         $children->each(function ($child) {
             $child->cover_photo = $child->thumbnailPhoto ?? $child->photos->first();
+            $child->unsetRelation('thumbnailPhoto');
         });
 
         return response()->json([
