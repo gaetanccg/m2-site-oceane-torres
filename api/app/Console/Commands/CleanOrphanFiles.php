@@ -38,8 +38,6 @@ class CleanOrphanFiles extends Command
                 'file_path_preview',
                 'file_path_thumbnail',
                 'file_path_thumbnail_clean',
-                'file_path_web',
-                'file_path_watermark',
                 'metadata',
             ])
             ->chunkById(500, function ($photos) use (&$referencedPaths) {
@@ -49,8 +47,6 @@ class CleanOrphanFiles extends Command
                     $referencedPaths->push($photo->file_path_preview);
                     $referencedPaths->push($photo->file_path_thumbnail);
                     $referencedPaths->push($photo->file_path_thumbnail_clean);
-                    $referencedPaths->push($photo->file_path_web);
-                    $referencedPaths->push($photo->file_path_watermark);
                     $referencedPaths->push($photo->metadata['storage_path'] ?? null);
                     $referencedPaths->push($photo->metadata['supabase_path'] ?? null);
                 }

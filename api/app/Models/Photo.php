@@ -25,9 +25,7 @@ class Photo extends Model
     protected $fillable = [
         'gallery_id',
         'file_path',
-        'file_path_web',
         'file_path_hd',
-        'file_path_watermark',
         'file_path_preview',
         'file_path_thumbnail',
         'file_path_thumbnail_clean',
@@ -219,11 +217,6 @@ class Photo extends Model
     public function gallery(): BelongsTo
     {
         return $this->belongsTo(Gallery::class);
-    }
-
-    public function getWebUrlAttribute(): ?string
-    {
-        return $this->file_path_web ?? $this->file_path;
     }
 
     public function scopeImages($query)

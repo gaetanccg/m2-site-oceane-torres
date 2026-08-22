@@ -48,13 +48,8 @@ class ImageProcessingService
      * and re-use it across photos. Disabled: GD's transparent-canvas behavior is unreliable;
      * enable once visual output has been validated.
      */
-    private const USE_WATERMARK_LAYER_CACHE = false;
-
-    private const WATERMARK_LAYER_CACHE_LIMIT = 8;
 
     /** @var array<string, ImageInterface> */
-    private static array $watermarkLayerCache = [];
-
     public function __construct(?MinioStorageService $storageService = null)
     {
         $driver = self::USE_IMAGICK_DRIVER && class_exists(\Imagick::class)
@@ -354,47 +349,7 @@ class ImageProcessingService
         $width = $image->width();
         $height = $image->height();
 
-        if (self::USE_WATERMARK_LAYER_CACHE) {
-            try {
-                $layer = $this->getOrBuildWatermarkLayer($width, $height, $gridOpacity, $centralOpacity);
-                $image->place($layer, 'top-left', 0, 0);
-
-                return;
-            } catch (\Throwable $e) {
-                Log::warning('Watermark layer caching failed, falling back to inline drawing', [
-                    'error' => $e->getMessage(),
-                    'width' => $width,
-                    'height' => $height,
-                ]);
-            }
-        }
-
         $this->drawWatermarkOn($image, $width, $height, $gridOpacity, $centralOpacity);
-    }
-
-    private function getOrBuildWatermarkLayer(int $width, int $height, float $gridOpacity, float $centralOpacity): ImageInterface
-    {
-        $key = "{$width}x{$height}_g{$gridOpacity}_c{$centralOpacity}";
-
-        if (! isset(self::$watermarkLayerCache[$key])) {
-            // FIFO eviction : empêche un worker qui voit beaucoup de ratios différents de fuir.
-            if (count(self::$watermarkLayerCache) >= self::WATERMARK_LAYER_CACHE_LIMIT) {
-                self::$watermarkLayerCache = array_slice(self::$watermarkLayerCache, 1, null, true);
-            }
-            self::$watermarkLayerCache[$key] = $this->buildWatermarkLayer($width, $height, $gridOpacity, $centralOpacity);
-        }
-
-        // Clone : le cache ne doit pas être muté par place() côté appelant.
-        return clone self::$watermarkLayerCache[$key];
-    }
-
-    private function buildWatermarkLayer(int $width, int $height, float $gridOpacity, float $centralOpacity): ImageInterface
-    {
-        $layer = $this->rawManager->create($width, $height)->fill('rgba(0, 0, 0, 0)');
-
-        $this->drawWatermarkOn($layer, $width, $height, $gridOpacity, $centralOpacity);
-
-        return $layer;
     }
 
     private function drawWatermarkOn(ImageInterface $image, int $width, int $height, float $gridOpacity, float $centralOpacity): void
