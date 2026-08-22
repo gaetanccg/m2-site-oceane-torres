@@ -3,12 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Resources\DownloadableGalleryResource;
-use App\Http\Resources\GalleryResource;
 use App\Http\Requests\Admin\SendAccessEmailRequest;
 use App\Http\Requests\Admin\SendAccessSmsRequest;
 use App\Http\Requests\Admin\StoreGalleryRequest;
 use App\Http\Requests\Admin\UpdateGalleryRequest;
+use App\Http\Resources\DownloadableGalleryResource;
+use App\Http\Resources\GalleryResource;
 use App\Jobs\SendSchoolSessionSmsJob;
 use App\Mail\GalleryAccessMail;
 use App\Models\Client;
@@ -18,7 +18,6 @@ use App\Services\SmsTemplateService;
 use App\Traits\SyncsProductTypes;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
@@ -32,7 +31,6 @@ class GalleryController extends Controller
     use SyncsProductTypes;
 
     private const ZIP_MAX_PHOTOS = 500;
-
 
     public function store(StoreGalleryRequest $request): JsonResponse
     {

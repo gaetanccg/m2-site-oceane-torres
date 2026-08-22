@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Resources\GalleryResource;
 use App\Http\Requests\Admin\SetThumbnailRequest;
 use App\Http\Requests\Admin\StoreEventGalleryRequest;
 use App\Http\Requests\Admin\UpdateEventGalleryRequest;
+use App\Http\Resources\GalleryResource;
 use App\Models\Gallery;
 use App\Models\Photo;
 use App\Services\MinioStorageService;

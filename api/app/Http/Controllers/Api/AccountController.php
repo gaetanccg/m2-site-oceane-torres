@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\ReservationResource;
+use App\Http\Resources\UserResource;
 use App\Models\Client;
 use App\Models\Gallery;
 use App\Models\Order;
@@ -80,9 +82,9 @@ class AccountController extends Controller
         return response()->json([
             'success' => true,
             'data' => [
-                'user' => $user,
+                'user' => new UserResource($user),
                 'galleries' => $galleries,
-                'reservations' => $reservations,
+                'reservations' => ReservationResource::collection($reservations),
                 'orders' => $orders,
             ],
         ]);

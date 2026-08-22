@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StorePrestationRequest;
 use App\Http\Requests\Admin\UpdatePrestationRequest;
+use App\Http\Resources\PrestationResource;
 use App\Models\Prestation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
@@ -21,7 +22,7 @@ class PrestationController extends Controller
         });
 
         return response()->json([
-            'prestations' => $prestations,
+            'prestations' => PrestationResource::collection($prestations),
         ]);
     }
 
@@ -33,14 +34,14 @@ class PrestationController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $prestations,
+            'data' => PrestationResource::collection($prestations),
         ]);
     }
 
     public function show(Prestation $prestation): JsonResponse
     {
         return response()->json([
-            'prestation' => $prestation,
+            'prestation' => new PrestationResource($prestation),
         ]);
     }
 
@@ -53,7 +54,7 @@ class PrestationController extends Controller
         Cache::forget('prestations_public');
 
         return response()->json([
-            'prestation' => $prestation,
+            'prestation' => new PrestationResource($prestation),
             'message' => 'Prestation créée avec succès.',
         ], 201);
     }
@@ -67,7 +68,7 @@ class PrestationController extends Controller
         Cache::forget('prestations_public');
 
         return response()->json([
-            'prestation' => $prestation->fresh(),
+            'prestation' => new PrestationResource($prestation->fresh()),
             'message' => 'Prestation mise à jour avec succès.',
         ]);
     }
@@ -92,7 +93,7 @@ class PrestationController extends Controller
         Cache::forget('prestations_public');
 
         return response()->json([
-            'prestation' => $prestation->fresh(),
+            'prestation' => new PrestationResource($prestation->fresh()),
             'message' => 'Statut de la prestation modifié.',
         ]);
     }

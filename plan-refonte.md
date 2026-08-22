@@ -326,7 +326,7 @@ Conséquence pour la suite : le choix du pooler n'est plus une dette. B et C de 
 | 2.5 Couche d'autorisation | 🔵 | `OrderPolicy` + `GalleryPolicy` **toujours via le Gate** · règle des 30 min supprimée, remplacée par une signature courte · `POST /orders/by-email` retiré · `docs/authorization.md`. Reste : #34 (décision produit) |
 | 2.6 Déploiement reproductible | ⏳ | à venir |
 
-**Suite de tests : 315 back + 49 front.**
+**Suite de tests : 329 back + 49 front.**
 
 Détail de 2.4, dans l'ordre fixé par `docs/api-conventions.md` §6 :
 
@@ -341,7 +341,10 @@ Une seule couche d'accès HTTP | ✅ | l'audit annonçait 2 couches parallèles 
 Fuite de `access_token` fermée | ✅ | 🔴 **escalade de privilège trouvée et prouvée** — voir ci-dessous |
 Resources publiques galerie/photo | ✅ | `GalleryResource`, `PhotoResource`, `DownloadableGalleryResource` · galerie **23 → 10 clés**, photo **18 → 9** |
 Resources admin | ⏳ | forme conservée : les vues admin consomment beaucoup de champs calculés (`download_status`, `total_downloads_count`, `client_id`…) |
-Resources Prestation / Client / SchoolSession / Reservation / User | ⏳ | inventaire fait, aucune fuite publique confirmée |
+`PrestationResource` | ✅ | public + admin · `price` et `background_opacity` cessent de sortir en **chaînes** |
+`UserResource` | ✅ | 4 endpoints d'authentification · `email_verified_at` ne sort plus |
+`ReservationResource` | ✅ | tableau de bord client · 🔴 `notes` (commentaire interne) ne sort plus |
+Resources Client / SchoolSession | ⏳ | **admin uniquement**, aucune audience publique |
 Enveloppe unique | ⏳ | **en dernier** : rupture de contrat sur 151 endpoints, à migrer avec le front |
 
 Deux défauts trouvés en chemin, hors périmètre annoncé :
@@ -379,6 +382,28 @@ gratuite. 7 tests couvrent les bords, dont l'expiration repoussée en conservant
 `POST /orders/by-email` est retiré : il renvoyait **toutes les commandes d'une adresse**
 sans authentification, et aucun consommateur ne l'appelait. `docs/authorization.md` §6
 décrit comment rétablir la fonction sans en faire un oracle d'énumération.
+
+### 2.4 — trois défauts trouvés en écrivant les Resources restantes
+
+**🔴 `notes` sortait sur le tableau de bord du client.** C'est le commentaire interne de la
+photographe sur une réservation, écrivable seulement par l'administration
+(`AdminUpdateReservationRequest`). Le client concerné le lisait sur son propre espace.
+`ReservationResource` expose les 7 champs que le front déclare ; `notes`, `guest_*`,
+`user_id`, `client_id` et les 4 `$appends` n'en font pas partie.
+
+**`price` et `background_opacity` sortaient en chaînes.** Le cast `decimal:2` du modèle
+sérialise `"150.00"` et `"0.50"`, alors que les types front déclarent `number`. Rien ne
+cassait — `Intl.NumberFormat` coerce — mais la forme envoyée contredisait le contrat
+déclaré. `PrestationResource` les envoie en nombres.
+
+**`email_verified_at` sortait sur les 4 endpoints d'authentification.** État interne, lu
+par personne. `password` et `remember_token` étaient déjà couverts par `$hidden`, mais la
+sérialisation nue dépendait de `$fillable` : une colonne ajoutée à `users` apparaissait
+d'office dans les réponses.
+
+Un piège d'outillage rencontré deux fois : mes motifs de remplacement à faible indentation
+sont des **sous-chaînes** de ceux à forte indentation, ce qui produit des substitutions en
+double ou des assertions fausses. Corrigé en ciblant par ligne complète.
 
 ### 2.4 — Resources publiques : la forme ne dépend plus du modèle
 
