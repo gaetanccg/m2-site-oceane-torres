@@ -1705,7 +1705,28 @@ vrais PDF : `memory_limit` passe à 512 Mo dans `phpunit.xml` (la production est
       correspondante des accesseurs est donc morte. Migration de schéma sans urgence.
 ```
 
-## 3.6 Front — véracité de l'affichage — 1 j · #63, #64, #65, #66, #67, #68
+## 3.6 Front — véracité de l'affichage — ✅ **faite** · #63, #64, #65, #66, #67, #68
+
+> **Ce que cette section a réellement trouvé.** Le titre parlait de « véracité de
+> l'affichage » ; le compte est plus lourd que ce que le plan annonçait :
+>
+> | Ce qui mentait | Conséquence |
+> |---|---|
+> | 7 compteurs déduits de 100 lignes | faux dès la 101e |
+> | chiffre d'affaires sur la date de **création** du paiement | mauvais mois |
+> | « Bons expirés » | valait **structurellement zéro** |
+> | recherche et filtre des bons cadeaux | **jamais envoyés** au serveur |
+> | en-têtes « triables » | changeaient une flèche, rien d'autre |
+> | `min_order_amount` absent de l'API | rouvrir un code promo **effaçait** son minimum |
+> | allowlist de tri nommant `expires_at` | 500 au premier clic |
+> | inscription : « minimum 8 caractères » | le serveur en exige **12** |
+> | grille de la galerie cliente | chargeait l'aperçu **2560 px** par vignette (9×) |
+> | `display_url` | doublon exact de `preview_url`, 30 % du poids |
+>
+> Aucun de ces défauts ne lève d'erreur : ils affichent tranquillement un chiffre faux ou
+> téléchargent dix fois trop. C'est pourquoi chaque correctif est adossé à un test qui
+> compare au **réel** — le compteur au total de sa liste, le tri à la colonne existante,
+> le libellé à l'identifiant qu'il désigne.
 
 ```
 [x] #63 Dashboard : deux appels au lieu de six listes de 100 lignes
