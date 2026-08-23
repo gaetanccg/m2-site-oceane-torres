@@ -1843,8 +1843,22 @@ vrais PDF : `memory_limit` passe à 512 Mo dans `phpunit.xml` (la production est
 ## 3.7 Divers — 0,5 j
 
 ```
-[ ] #18 deletePhotoVersions + deleteGalleryFolder doivent inclure thumbnail-clean
-        (des dérivés SANS FILIGRANE survivent aujourd'hui à la suppression)
+[x] #18 Les dérivés sans filigrane survivaient à la suppression
+    🔴 le défaut est réel, mais **pas là où le plan le situe**. Le vrai chemin de
+      suppression est `PhotoController::destroy`, qui énumérait quatre chemins à la main et
+      oubliait `file_path_thumbnail_clean` : la miniature **sans filigrane** restait sur
+      MinIO après la suppression de la photo, accessible par URL signée. C'est exactement la
+      fuite que le filigrane est censé empêcher.
+    → corrigé **à la source** : `Photo::storagePaths()` est désormais la seule liste des
+      fichiers d'une photo. Une liste recopiée chez l'appelant finit toujours par diverger
+      de la table — c'est ce qui s'est passé.
+    → un test dérive ses attentes du **schéma** : ajouter une colonne `file_path_*` sans la
+      déclarer fait tomber le test. C'est ce qui protège l'avenir.
+    → **deux affirmations du plan étaient fausses** : `deleteGalleryFolder` utilise
+      `allFiles()`, qui est récursif — il emportait déjà `thumbnail-clean`. Et
+      `deletePhotoVersions` n'avait **aucun appelant** : du code mort, avec une liste
+      incomplète qui n'attendait qu'un appelant pour devenir un bug. Supprimée.
+    → les trois tests ont été éprouvés en retirant le correctif : ils tombent.
 [ ] #23 Séparer les buckets MinIO : photos / invoices, rétentions distinctes
 [ ] #25 Webhooks de délivrabilité Brevo (email et SMS) + table de suivi des envois
 [ ] #30 Sortir le traitement photo de la requête HTTP (storeAsync est synchrone malgré son

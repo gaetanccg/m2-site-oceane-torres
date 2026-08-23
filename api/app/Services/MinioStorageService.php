@@ -73,7 +73,10 @@ class MinioStorageService
 
             // Also try to delete the empty directories
             // Note: S3/MinIO doesn't have real directories, but this cleans up any markers
-            foreach (['original', 'preview', 'thumbnail'] as $subdir) {
+            // `allFiles` est recursif : les objets sont deja supprimes. Cette boucle ne
+            // nettoie que les marqueurs de dossier — `thumbnail-clean` y figure pour ne pas
+            // laisser croire que la liste des derives s'arrete a trois.
+            foreach (['original', 'preview', 'thumbnail', 'thumbnail-clean'] as $subdir) {
                 try {
                     Storage::disk($this->disk)->deleteDirectory("{$galleryId}/{$subdir}");
                 } catch (\Exception $e) {

@@ -249,6 +249,38 @@ class Photo extends Model
             ?? $this->file_path;
     }
 
+    /**
+     * TOUS les fichiers que cette photo possede sur le stockage objet.
+     *
+     * A poser ici et nulle part ailleurs : la suppression enumerait ses chemins a la main
+     * et oubliait `file_path_thumbnail_clean`. Le derive SANS FILIGRANE survivait donc a la
+     * suppression de la photo, accessible par URL signee. Une liste recopiee chez l'appelant
+     * finit toujours par diverger de la table ; celle-ci est la seule source.
+     *
+     * Les URL externes (anciennes photos hebergees ailleurs) sont ecartees : rien a
+     * supprimer chez nous.
+     *
+     * @return list<string>
+     */
+    public function storagePaths(): array
+    {
+        $chemins = [
+            $this->resolved_storage_path,
+            $this->file_path,
+            $this->file_path_hd,
+            $this->file_path_preview,
+            $this->file_path_thumbnail,
+            $this->file_path_thumbnail_clean,
+        ];
+
+        $chemins = array_filter(
+            $chemins,
+            fn (?string $chemin) => is_string($chemin) && $chemin !== '' && ! str_starts_with($chemin, 'http'),
+        );
+
+        return array_values(array_unique($chemins));
+    }
+
     public function gallery(): BelongsTo
     {
         return $this->belongsTo(Gallery::class);

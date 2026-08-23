@@ -30,17 +30,10 @@ class PhotoController extends Controller
 
         $storageService = app(MinioStorageService::class);
 
-        $pathsToDelete = array_filter([
-            $photo->resolved_storage_path,
-            $photo->file_path_preview,
-            $photo->file_path_thumbnail,
-            $photo->file_path_hd,
-        ]);
-
-        foreach ($pathsToDelete as $path) {
-            if ($path && ! str_starts_with($path, 'http')) {
-                $storageService->deletePhoto($path);
-            }
+        // La liste vient du modele : elle etait enumeree ici et oubliait la miniature
+        // SANS FILIGRANE, qui survivait donc a la suppression.
+        foreach ($photo->storagePaths() as $path) {
+            $storageService->deletePhoto($path);
         }
 
         $photo->delete();

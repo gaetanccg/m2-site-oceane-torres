@@ -470,20 +470,4 @@ class ImageProcessingService
             'ContentType' => $mimeType,
         ]);
     }
-
-    public function deletePhotoVersions(string $galleryId, string $hdPath, ?string $previewPath, ?string $thumbnailPath): void
-    {
-        $paths = array_filter([$hdPath, $previewPath, $thumbnailPath]);
-
-        foreach ($paths as $path) {
-            try {
-                Storage::disk($this->disk)->delete($path);
-            } catch (\Exception $e) {
-                Log::error('Failed to delete photo version', [
-                    'path' => $path,
-                    'error' => $e->getMessage(),
-                ]);
-            }
-        }
-    }
 }
