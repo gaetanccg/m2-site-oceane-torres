@@ -58,8 +58,12 @@ class PurgeExpiredPrivacyData extends Command
         }
 
         Payment::whereIn('order_id', $orderIds)->delete();
-        // La suppression des commandes cascade sur invoices + order_items (FK DB).
-        $deleted = Order::whereIn('id', $orderIds)->delete();
+
+        // La purge est une obligation legale : elle doit reellement supprimer. Les
+        // commandes sont en SoftDeletes et invoices.order_id est en RESTRICT — donc la
+        // facture part d'abord, puis la commande en forceDelete.
+        Invoice::whereIn('order_id', $orderIds)->delete();
+        $deleted = Order::whereIn('id', $orderIds)->forceDelete();
 
         $this->info("Purge terminée : {$deleted} commande(s) supprimée(s).");
 

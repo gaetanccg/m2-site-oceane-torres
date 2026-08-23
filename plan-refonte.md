@@ -1327,6 +1327,11 @@ permissions du `storage` monté depuis l'hôte du NAS.
 
 ## 2.8 Recette de la phase 2
 
+> **Écartée sur décision** (2026-08-23). Les 228 lignes de recette ne sont pas jouées.
+> Le filet de sécurité de la phase 2 reste les **351 tests back + 49 front**, le typecheck
+> et le build. Ce qui n'est pas couvert par eux ne l'est donc pas du tout : le rendu des
+> vues, et tout ce qui exige la production ou un déploiement réel.
+
 ```
 [ ] La suite de tests backend passe intégralement (226 méthodes)
 [ ] Aucun whereRaw booléen ne subsiste (si D1 = A réussie)
@@ -1348,17 +1353,38 @@ sans test, → §9.6).
 ## 3.1 Facturation — 4 j · #9, #16, #33, #48
 
 ```
-[ ] #9  invoices.order_id → RESTRICT + SoftDeletes sur orders
-        [ ] Migration de changement de contrainte
-        [ ] Confirmation explicite dans l'UI admin avant suppression de commande
-        [ ] Vérifier qu'une commande payée ne peut plus être supprimée du tout
+[x] #9  invoices.order_id → RESTRICT + SoftDeletes sur orders
+        [x] Migration de changement de contrainte — réversible, aller-retour éprouvé
+        [x] Confirmation explicite dans l'UI admin — **existait déjà** (Orders.vue:530).
+            Mais une confirmation n'est pas une protection : le back acceptait toujours.
+        [x] Vérifier qu'une commande payée ne peut plus être supprimée du tout — 409
+        🔴 `destroy()` n'avait AUCUNE garde : il supprimait les lignes, le paiement, la
+           commande, et la facture par cascade. Sur 120 commandes payées en production.
+        ⚠️ SoftDeletes a cassé la purge RGPD, et le test l'a attrapé : la cascade ne
+           partait plus, donc la facture survivait à la purge — avec ses données
+           personnelles. `privacy:purge-expired` supprime maintenant la facture puis
+           force-delete la commande.
 [ ] #16 Avoirs (selon D5) : table `credit_notes`, séquence AV-YYYY-NNNNN sous advisory lock,
         statut orders.refunded écrit, gabarit PDF d'avoir
 [ ] #33 Adresse du client sur la facture (les données existent dans orders.shipping_*)
 [ ] #—  Libellés « Prix TTC » / « Total TTC » → « Montant » / « Total »
         (impropres en franchise de TVA, juste au-dessus de la mention art. 293 B)
-[ ] #—  Ne plus avaler l'échec de génération de facture : alerter, et ne pas envoyer
-        l'email de confirmation sans facture (§7.5)
+[x] #—  Ne plus avaler l'échec de génération de facture
+        🔴 **Cause trouvée, plus grave que « avalé »** : `generateForOrder` retournait la
+           facture existante SANS regénérer son PDF. Or le bouton « télécharger la
+           facture » de l'admin l'appelle justement pour réparer — il ne réparait donc
+           jamais rien, et une facture sans fichier l'était définitivement. C'est ce qui
+           a laissé 5 factures sur 119 sans PDF en production.
+        [x] une facture sans PDF est régénérée, **en conservant son numéro** — en
+            réallouer un créerait un trou dans la séquence
+        [x] `invoices:repair-pdf` (avec `--dry-run`) détecte et répare le stock existant
+        🔴 **`Log::error` n'atteignait pas Sentry** : `LOG_STACK=daily` et aucun canal
+           `sentry` déclaré. Les **70** `Log::error` du projet finissaient dans un fichier
+           sur le NAS. Canal branché — tous deviennent visibles d'un coup.
+        [~] l'email de confirmation part toujours, même sans facture : il porte le lien de
+            téléchargement du client. Le bloquer punirait la cliente d'un défaut
+            technique. Le PDF est une pièce jointe conditionnelle, et son absence est
+            désormais visible et réparable.
 [ ] #—  Brancher GET /orders/{id}/invoice et /admin/orders/{id}/invoice (boutons manquants)
 [ ] #48 Export comptable CSV (ventes, avoirs, encaissements) — format à valider 👤
 [ ] #50 Registre des advisory locks (42, 43, + celui des avoirs) dans docs/

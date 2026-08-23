@@ -58,6 +58,15 @@ return [
             'ignore_exceptions' => false,
         ],
 
+        // Les 70 Log::error du projet n'atteignaient que le fichier : Sentry ne capturait
+        // que les exceptions non rattrapees. C'est ce qui a laisse passer des factures
+        // sans PDF pendant des mois.
+        'sentry' => [
+            'driver' => 'sentry',
+            'level' => env('LOG_LEVEL_SENTRY', 'error'),
+            'bubble' => true,
+        ],
+
         'single' => [
             'driver' => 'single',
             'path' => storage_path('logs/laravel.log'),

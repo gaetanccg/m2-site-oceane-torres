@@ -72,6 +72,13 @@ class OrderController extends Controller
     {
         $order = Order::findOrFail($orderId);
 
+        if ($order->isPaid() || $order->invoice) {
+            throw new BusinessException(
+                'Une commande payée ne peut pas être supprimée : sa facture doit être conservée.',
+                409
+            );
+        }
+
         if ($order->sumup_checkout_id) {
             try {
                 $this->sumUpService->deactivateCheckout($order->sumup_checkout_id);
@@ -84,8 +91,6 @@ class OrderController extends Controller
             }
         }
 
-        $order->items()->delete();
-        $order->payment?->delete();
         $order->delete();
 
         return response()->json([
