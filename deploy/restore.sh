@@ -10,7 +10,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-ENV_FILE="${RESTORE_ENV_FILE:-${SCRIPT_DIR}/.env.prod}"
+# Cible par DEFAUT : la preproduction. Ce script ECRASE une base ; viser la production
+# exige de la nommer, en plus du CONFIRM=<project-ref> deja obligatoire.
+ENV_FILE="${RESTORE_ENV_FILE:-${SCRIPT_DIR}/.env.preprod}"
 BACKUP_DIR="${BACKUP_DIR:-${REPO_ROOT}/backups}"
 POSTGRES_IMAGE="${POSTGRES_IMAGE:-postgres:17-alpine}"
 
@@ -36,7 +38,7 @@ Usage : ./deploy/restore.sh --dump <fichier> [options]
 
 Variables :
   CONFIRM=<ref>        obligatoire hors --dry-run : doit egaler la ref du projet cible
-  RESTORE_ENV_FILE     fichier d'environnement de la cible (defaut deploy/.env.prod)
+  RESTORE_ENV_FILE     fichier d'environnement de la cible (defaut deploy/.env.preprod)
   PGPORT_RESTORE       port de la cible (defaut 5432 — pas le pooler 6543)
 EOF
 }

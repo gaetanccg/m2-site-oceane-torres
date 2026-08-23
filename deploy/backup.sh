@@ -4,7 +4,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-ENV_FILE="${BACKUP_ENV_FILE:-${SCRIPT_DIR}/.env.prod}"
+# Cible par DEFAUT : la preproduction. Viser la production exige de la nommer.
+# Une faute de frappe ou un oubli d'argument ne doit jamais atteindre les donnees reelles.
+ENV_FILE="${BACKUP_ENV_FILE:-${SCRIPT_DIR}/.env.preprod}"
 BACKUP_DIR="${BACKUP_DIR:-${REPO_ROOT}/backups}"
 POSTGRES_IMAGE_PINNED="${POSTGRES_IMAGE:-}"
 POSTGRES_IMAGE="${POSTGRES_IMAGE:-postgres:17-alpine}"
@@ -35,8 +37,11 @@ Sauvegarde base PostgreSQL + stockage objet MinIO.
   ./deploy/backup.sh storage   miroir du bucket MinIO
   ./deploy/backup.sh all       les trois, dans l'ordre
 
-Cible : deploy/.env.prod par défaut. Pour la preprod :
-  BACKUP_ENV_FILE=deploy/.env.preprod ./deploy/backup.sh all
+Cible : deploy/.env.preprod par défaut. Pour la PRODUCTION, la nommer :
+  BACKUP_ENV_FILE=deploy/.env.prod ./deploy/backup.sh all
+
+Sur le poste de développement, deploy/.env.prod n'existe pas : les identifiants de
+production sont hors de l'arborescence du projet (voir docs/isolation-production.md).
 
 Surcharges : BACKUP_DIR, PGDUMP_PORT, RETENTION_DAYS, DUMP_SCHEMA
 POSTGRES_IMAGE s'aligne seul sur la version du serveur. Le définir l'épingle et

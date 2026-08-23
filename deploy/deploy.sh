@@ -54,7 +54,16 @@ if [[ "${1:-}" == "--rollback" ]]; then
 fi
 
 [[ -f "deploy/.env.prod" ]] || die "deploy/.env.prod introuvable.
-    Copier le template: cp deploy/.env.prod.example deploy/.env.prod, puis remplir les secrets."
+
+    Ce script se lance depuis le NAS, ou ce fichier existe.
+
+    Sur un poste de developpement il est ABSENT volontairement : les identifiants de
+    production ont ete sortis de l'arborescence du projet, pour qu'aucune commande lancee
+    ici ne puisse atteindre les donnees reelles (cf. docs/isolation-production.md).
+    Deployer depuis un poste de dev n'est pas prevu.
+
+    Sur le NAS, si le fichier manque vraiment :
+      cp deploy/.env.prod.example deploy/.env.prod  puis remplir les secrets."
 
 COMMIT="$(git rev-parse --short HEAD 2>/dev/null || echo 'nogit')"
 export API_IMAGE_TAG="$COMMIT"

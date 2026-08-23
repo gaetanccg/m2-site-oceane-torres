@@ -10,6 +10,7 @@ use App\Listeners\SendContactEmails;
 use App\Models\User;
 use App\Observers\UserObserver;
 use App\Services\Supervision\HeartbeatService;
+use App\Support\ProductionTargetGuard;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Connection;
@@ -29,6 +30,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // Avant tout le reste : un environnement de developpement ne doit pas pouvoir
+        // s'executer contre la production. Place dans register() pour se declencher avant
+        // le moindre acces a la base ou au stockage.
+        ProductionTargetGuard::assert(
+            (string) config('app.env'),
+            fn (string $cle) => config($cle),
+        );
+
         $this->app->singleton(HeartbeatService::class);
 
         Connection::resolverFor('pgsql', fn ($pdo, $database, $prefix, $config) => new PostgresConnection($pdo, $database, $prefix, $config));
