@@ -1590,11 +1590,25 @@ vrais PDF : `memory_limit` passe à 512 Mo dans `phpunit.xml` (la production est
 ## 3.4 Sessions scolaires — 3 j · #29, #35
 
 ```
-[ ] D7 — table school_session_contacts + purge à closed_at + 3 mois
-        [ ] Import CSV persisté · historique des envois (sent_at, channel, statut)
-        [ ] Réenvoi individuel possible · relance des non-envoyés
-        [ ] ⚠️ Inscrire le traitement au registre RGPD
-        [ ] Intégrer à PersonalDataLocator et PersonalDataEraser
+[x] D7 — table school_session_contacts + purge à closed_at + 3 mois
+        [x] contacts persistés · historique d'envoi (`channel`, `status`, `sent_at`,
+            `send_attempts`, `error_message`). Clé unique (galerie, coordonnée) : une
+            seconde diffusion met à jour au lieu de dupliquer.
+        [x] réenvoi individuel (`contact_ids`) · relance des non-envoyés par défaut
+            → `GET /admin/school-sessions/{id}/contacts` et `POST .../resend-messages`
+        [x] purge à **clôture + 3 mois**, portée par `privacy:purge-expired`
+            (`--school-contact-months`). Une session non clôturée conserve ses contacts.
+        [x] intégré à `PersonalDataLocator` **et** `PersonalDataEraser` — sans le premier
+            une recherche ne voit pas ces contacts, sans le second un effacement les
+            laisse en place.
+        [x] `docs/rgpd-registre.md` — inventaire technique des 13 traitements, relevé dans
+            le schéma. Il dit ce qui est stocké, où, combien de temps et par quel chemin
+            l'effacer ; les bases légales restent à confirmer par la photographe.
+        ⚠️ mon premier `resendMessages` réutilisait `SendSchoolSessionMessagesRequest::createFrom()`,
+          qui ne déclenche pas la validation : erreur 500. La logique d'envoi est extraite
+          dans une méthode privée que les deux endpoints appellent.
+        📋 l'import CSV n'est pas fait : le front envoie déjà une liste de contacts, et
+          rien ne montre qu'un CSV soit le format attendu. À trancher avec la photographe.
 [x] #35 Rendre le filtre « commande scolaire » SYMÉTRIQUE
         🔴 `index` excluait dès **un** article scolaire, tandis que la vue de session
           n'affiche que les commandes **payées**. Une commande mixte non payée
@@ -1699,7 +1713,10 @@ vrais PDF : `memory_limit` passe à 512 Mo dans `phpunit.xml` (la production est
 [ ] #49 Uniformiser les précisions décimales (10,2 partout)
 [ ] #51 ClearsEventGalleriesCache : purger par tag/préfixe, pas par boucle bornée à 10
 [ ] #52 Centraliser adresse de contact et SIRET (3 sources de vérité aujourd'hui)
-[ ] #— Générer un registre des traitements RGPD (art. 30) + procédure de notification (art. 33)
+[x] #— Générer un registre des traitements RGPD (art. 30) + procédure de notification (art. 33)
+    → `docs/rgpd-registre.md`, écrit à l'occasion de D7. Signale une limite connue :
+      aucun journal des **lectures**, donc en cas de compromission d'un compte
+      d'administration on saurait dire qu'il y a eu accès mais pas à quoi.
 [ ] #— youtube-nocookie.com + clic-pour-charger (cookies YouTube avant consentement)
 [ ] #— PHPStan/Larastan niveau 5+ dans la CI (aurait trouvé 3 des bugs de l'audit)
 ```

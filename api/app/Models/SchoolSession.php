@@ -3,12 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class SchoolSession extends Model
 {
-    use HasUuids;
+    use HasFactory, HasUuids;
 
     const STATUSES = [
         'uploading',
@@ -50,6 +51,11 @@ class SchoolSession extends Model
     public function isClosed(): bool
     {
         return $this->closed_at !== null;
+    }
+
+    public function contacts(): HasMany
+    {
+        return $this->hasMany(SchoolSessionContact::class);
     }
 
     public function galleries(): HasMany

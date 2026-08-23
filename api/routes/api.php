@@ -274,6 +274,8 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::post('/school-sessions/{schoolSession}/process', [SchoolSessionController::class, 'process']);
     Route::post('/school-sessions/{schoolSession}/retry-failed-photos', [SchoolSessionController::class, 'retryFailedPhotos']);
     Route::post('/school-sessions/{schoolSession}/send-messages', [SchoolSessionController::class, 'sendMessages']);
+    Route::get('/school-sessions/{schoolSession}/contacts', [SchoolSessionController::class, 'contacts']);
+    Route::post('/school-sessions/{schoolSession}/resend-messages', [SchoolSessionController::class, 'resendMessages']);
     Route::post('/school-sessions/{schoolSession}/close', [SchoolSessionController::class, 'close']);
     Route::post('/school-sessions/{schoolSession}/reopen', [SchoolSessionController::class, 'reopen']);
     Route::post('/school-sessions/{schoolSession}/exports', [SchoolSessionController::class, 'createExport']);

@@ -14,6 +14,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\Reservation;
+use App\Models\SchoolSessionContact;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -80,6 +81,7 @@ class PersonalDataLocator
         // 3. Catégories dérivées.
         $carts = $this->resolveCarts();
         $contacts = $this->resolveContactMessages();
+        $schoolContacts = $this->resolveSchoolContacts();
         $giftCards = $this->resolveGiftCards();
         $clientForms = $this->resolveClientForms();
         $downloadLogs = $this->downloadLogsQuery()->count();
@@ -148,6 +150,16 @@ class PersonalDataLocator
                 'recipient_email' => $g->recipient_email,
                 'created_at' => $g->created_at?->toIso8601String(),
             ])->values(),
+            'school_session_contacts' => $schoolContacts->map(fn (SchoolSessionContact $c) => [
+                'id' => $c->id,
+                'recipient_name' => $c->recipient_name,
+                'email' => $c->email,
+                'phone' => $c->phone,
+                'gallery' => $c->gallery?->title,
+                'status' => $c->status,
+                'sent_at' => $c->sent_at?->toIso8601String(),
+            ])->all(),
+
             'client_forms' => $clientForms->map(fn (ClientForm $f) => [
                 'id' => $f->id,
                 'fullname' => $f->fullname,
@@ -362,6 +374,26 @@ class PersonalDataLocator
     }
 
     /** @return Collection<int, ContactMessage> */
+    /** @return Collection<int, SchoolSessionContact> */
+    private function resolveSchoolContacts(): Collection
+    {
+        if ($this->emails->isEmpty() && $this->phones->isEmpty()) {
+            return collect();
+        }
+
+        return SchoolSessionContact::query()
+            ->with('gallery:id,title')
+            ->where(function ($q) {
+                if ($this->emails->isNotEmpty()) {
+                    $q->orWhereIn(DB::raw('lower(email)'), $this->emails->all());
+                }
+                if ($this->phones->isNotEmpty()) {
+                    $q->orWhereIn('phone', $this->phones->all());
+                }
+            })
+            ->get();
+    }
+
     private function resolveContactMessages(): Collection
     {
         if ($this->emails->isEmpty() && $this->phones->isEmpty()) {

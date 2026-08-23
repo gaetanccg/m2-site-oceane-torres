@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Exceptions\BusinessException;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\ResendSchoolSessionMessagesRequest;
 use App\Http\Requests\Admin\SendSchoolSessionMessagesRequest;
 use App\Http\Requests\Admin\StoreSchoolSessionRequest;
 use App\Http\Requests\Admin\UpdateSchoolSessionRequest;
@@ -17,6 +18,7 @@ use App\Models\Gallery;
 use App\Models\Order;
 use App\Models\PhotoUpload;
 use App\Models\SchoolSession;
+use App\Models\SchoolSessionContact;
 use App\Models\SchoolSessionExport;
 use App\Services\SchoolSessionExportService;
 use App\Services\SchoolSessionService;
@@ -310,14 +312,105 @@ class SchoolSessionController extends Controller
         ]);
     }
 
+    /**
+     * Les contacts sont conserves pour permettre le reenvoi et la relance : sans eux,
+     * chaque diffusion repartait d'un formulaire vierge. La cle est (galerie, coordonnee)
+     * pour qu'une seconde diffusion mette a jour au lieu de dupliquer.
+     */
+    private function rememberContact(
+        SchoolSession $schoolSession,
+        Gallery $gallery,
+        array $contact,
+        string $channel
+    ): SchoolSessionContact {
+        $cle = $channel === 'sms'
+            ? ['gallery_id' => $gallery->id, 'phone' => $contact['phone']]
+            : ['gallery_id' => $gallery->id, 'email' => $contact['email']];
+
+        return SchoolSessionContact::updateOrCreate($cle, [
+            'school_session_id' => $schoolSession->id,
+            'recipient_name' => $contact['recipient_name'],
+            'email' => $contact['email'] ?? null,
+            'phone' => $contact['phone'] ?? null,
+        ]);
+    }
+
+    /** Contacts deja enregistres, pour rouvrir la diffusion sans resaisir. */
+    public function contacts(SchoolSession $schoolSession): JsonResponse
+    {
+        $contacts = $schoolSession->contacts()
+            ->with('gallery:id,title,class_name,share_code')
+            ->orderBy('recipient_name')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $contacts,
+            'meta' => [
+                'total' => $contacts->count(),
+                'sent' => $contacts->where('status', 'sent')->count(),
+                'not_sent' => $contacts->whereIn('status', ['pending', 'failed'])->count(),
+            ],
+        ]);
+    }
+
+    /**
+     * Relance : rejoue la diffusion sur les seuls contacts jamais partis ou en echec.
+     * Sans les contacts persistes, il fallait resaisir la liste entiere.
+     */
+    public function resendMessages(
+        ResendSchoolSessionMessagesRequest $request,
+        SchoolSession $schoolSession,
+        SmsTemplateService $smsTemplate
+    ): JsonResponse {
+        $canal = $request->validated()['channel'];
+        $ids = $request->validated()['contact_ids'] ?? null;
+
+        $contacts = $schoolSession->contacts()
+            ->when($ids !== null, fn ($q) => $q->whereIn('id', $ids), fn ($q) => $q->notSent())
+            ->when($canal === 'sms', fn ($q) => $q->whereNotNull('phone'))
+            ->when($canal === 'email', fn ($q) => $q->whereNotNull('email'))
+            ->get();
+
+        if ($contacts->isEmpty()) {
+            return response()->json([
+                'success' => true,
+                'sent' => 0,
+                'errors' => [],
+                'message' => 'Aucun contact à relancer.',
+            ]);
+        }
+
+        $charge = $contacts->map(fn (SchoolSessionContact $c) => [
+            'gallery_id' => $c->gallery_id,
+            'recipient_name' => $c->recipient_name,
+            'email' => $c->email,
+            'phone' => $c->phone,
+        ])->all();
+
+        return $this->dispatchMessages($schoolSession, $canal, $charge, $smsTemplate);
+    }
+
     public function sendMessages(SendSchoolSessionMessagesRequest $request, SchoolSession $schoolSession, SmsTemplateService $smsTemplate): JsonResponse
     {
         $validated = $request->validated();
-        $channel = $validated['channel'];
+
+        return $this->dispatchMessages($schoolSession, $validated['channel'], $validated['contacts'], $smsTemplate);
+    }
+
+    /**
+     * @param  list<array{gallery_id: string, recipient_name: string, email?: ?string, phone?: ?string}>  $contacts
+     */
+    private function dispatchMessages(
+        SchoolSession $schoolSession,
+        string $channel,
+        array $contacts,
+        SmsTemplateService $smsTemplate
+    ): JsonResponse {
         $frontendUrl = config('app.frontend_url', 'https://oceanetorresphotographie.fr');
 
         // Pré-charge en une query (évite N+1 sur 100+ contacts).
-        $galleryIds = collect($validated['contacts'])->pluck('gallery_id')->unique();
+        $galleryIds = collect($contacts)->pluck('gallery_id')->unique();
         $galleries = Gallery::whereIn('id', $galleryIds)
             ->where('school_session_id', $schoolSession->id)
             ->get()
@@ -327,7 +420,7 @@ class SchoolSessionController extends Controller
         $errors = [];
         $smsBatch = [];
 
-        foreach ($validated['contacts'] as $contact) {
+        foreach ($contacts as $contact) {
             $gallery = $galleries->get($contact['gallery_id']);
 
             if (! $gallery) {
@@ -337,6 +430,8 @@ class SchoolSessionController extends Controller
             }
 
             $directUrl = $frontendUrl.'/gallery/'.$gallery->share_code;
+
+            $persiste = $this->rememberContact($schoolSession, $gallery, $contact, $channel);
 
             try {
                 if ($channel === 'email') {
@@ -360,6 +455,7 @@ class SchoolSessionController extends Controller
                     $smsBatch[] = ['phone' => $contact['phone'], 'content' => $content];
                 }
 
+                $persiste->markSent($channel);
                 $sent++;
             } catch (\Exception $e) {
                 \Log::error('SchoolSession: failed to queue message', [
@@ -368,6 +464,7 @@ class SchoolSessionController extends Controller
                     'channel' => $channel,
                     'error' => $e->getMessage(),
                 ]);
+                $persiste->markFailed($channel, $e->getMessage());
                 $errors[] = "Erreur pour {$contact['recipient_name']}.";
             }
         }

@@ -12,6 +12,7 @@ use App\Models\GiftCard;
 use App\Models\Notification;
 use App\Models\PhotoUpload;
 use App\Models\Reservation;
+use App\Models\SchoolSessionContact;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -133,6 +134,19 @@ class PersonalDataEraser
                 : 0;
 
             // Formulaires client restants (matchés par téléphone, non rattachés).
+            // Coordonnees de parents d'eleves : rien ne les rattache a un compte, donc
+            // seule la correspondance email/telephone permet de les effacer.
+            $out['school_session_contacts'] = ($emails || $phones)
+                ? SchoolSessionContact::query()->where(function ($q) use ($emails, $phones) {
+                    if ($emails) {
+                        $q->orWhereIn(DB::raw('lower(email)'), $emails);
+                    }
+                    if ($phones) {
+                        $q->orWhereIn('phone', $phones);
+                    }
+                })->delete()
+                : 0;
+
             $out['client_forms'] = $phones
                 ? ClientForm::whereIn('phone', $phones)->delete()
                 : 0;
