@@ -85,6 +85,12 @@ jobs:
       - name: Éprouver la Content-Security-Policy
         run: npm run check:csp
 
+      # Aucun tiers ne doit etre sollicite avant consentement. Le controle parcourt les
+      # filtres du portfolio : sans cela il passe a cote des vignettes YouTube, qui ne sont
+      # demandees qu'au survol ou au clic d'une categorie.
+      - name: Éprouver l'absence de tiers avant consentement
+        run: npm run check:privacy
+
       - name: Verify prerendered pages
         run: |
           echo "Checking prerendered pages..."

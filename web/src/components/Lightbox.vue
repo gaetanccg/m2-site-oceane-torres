@@ -47,7 +47,7 @@
                         <template v-else-if="images[currentIndex]?.type === 'youtube'">
                             <iframe
                                 v-if="consentStore.marketingEnabled"
-                                :src="`https://www.youtube.com/embed/${images[currentIndex].youtubeId}?autoplay=1&rel=0`"
+                                :src="`https://www.youtube-nocookie.com/embed/${images[currentIndex].youtubeId}?autoplay=1&rel=0`"
                                 class="youtube-iframe"
                                 frameborder="0"
                                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"

@@ -51,7 +51,14 @@
 
                 <!-- Video YouTube -->
                 <div v-else-if="item.type === 'youtube'" class="relative w-full bg-black aspect-video">
+                    <!--
+                      La vignette est servie par img.youtube.com, un domaine de Google : la
+                      charger avant consentement transmet l'adresse IP du visiteur et les
+                      cookies Google presents. On ne la demande donc qu'apres consentement,
+                      et on affiche d'ici la un fond local — aucune requete tierce.
+                    -->
                     <img
+                        v-if="consentStore.marketingEnabled"
                         :src="item.url"
                         :alt="item.alt"
                         draggable="false"
@@ -59,6 +66,9 @@
                         class="absolute inset-0 w-full h-full object-cover"
                         @error="(e) => handleYoutubeError(e, item)"
                     />
+                    <div v-else class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-neutral-800 to-neutral-900">
+                        <span class="sr-only">{{ item.alt }}</span>
+                    </div>
                     <div class="absolute inset-0 flex items-center justify-center pointer-events-none bg-black/20">
                         <div class="w-16 h-12 bg-red-600 rounded-xl flex items-center justify-center shadow-lg">
                             <svg class="w-8 h-8 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
@@ -155,6 +165,7 @@ import {
     getShuffledAllItems
 } from '@/utils/gallery'
 import Lightbox from './Lightbox.vue'
+import {useConsentStore} from '@/stores/consent'
 
 interface Props {
     items: GalleryItem[]
@@ -200,6 +211,8 @@ const precachedFilters = new Set<string>()
 const priorityCount = computed(() => Math.max(6, columnCount.value * 2))
 
 // Computed
+const consentStore = useConsentStore()
+
 const toolbarFilters = computed(() => {
     return props.showAllTab ? ['Tous', ...props.filters] : [...props.filters]
 })
@@ -391,6 +404,11 @@ const precacheFilter = (filter: string) => {
 
     // Preload first 6 thumbnails and previews
     items.slice(0, 6).forEach(item => {
+        // Une vignette YouTube est servie par un domaine de Google : la precharger au
+        // SURVOL de l'onglet enverrait l'adresse IP du visiteur avant tout consentement,
+        // et sans meme qu'il ait clique. Ce chemin contournait la condition du gabarit.
+        if (item.type === 'youtube' && !consentStore.marketingEnabled) return
+
         if (item.thumbnailUrl) preloadImage(item.thumbnailUrl)
         preloadImage(item.previewUrl || item.url)
     })

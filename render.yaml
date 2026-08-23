@@ -64,7 +64,7 @@ services:
           connect-src 'self' https://api.oceanetorresphotographie.fr
             https://s3.oceanetorresphotographie.fr https://www.google-analytics.com
             https://*.google-analytics.com https://*.ingest.de.sentry.io;
-          frame-src https://www.youtube.com https://gateway.sumup.com;
+          frame-src https://www.youtube-nocookie.com https://gateway.sumup.com;
           object-src 'none';
           base-uri 'self';
           form-action 'self';

@@ -1889,7 +1889,29 @@ vrais PDF : `memory_limit` passe à 512 Mo dans `phpunit.xml` (la production est
     → `docs/rgpd-registre.md`, écrit à l'occasion de D7. Signale une limite connue :
       aucun journal des **lectures**, donc en cas de compromission d'un compte
       d'administration on saurait dire qu'il y a eu accès mais pas à quoi.
-[ ] #— youtube-nocookie.com + clic-pour-charger (cookies YouTube avant consentement)
+[x] #— YouTube : nocookie + aucune sollicitation de Google avant consentement
+    → le **clic-pour-charger existait déjà** pour l'iframe (`Lightbox.vue` ne la rend que si
+      `consentStore.marketingEnabled`). L'affirmation du plan était donc à moitié faite.
+    → l'iframe passe de `youtube.com` à `youtube-nocookie.com`, CSP `frame-src` alignée.
+    🔴 **le vrai défaut était ailleurs, et c'est un survol.** `precacheFilter`, déclenché au
+      `@mouseenter` de l'onglet « Vidéos », préchargeait six vignettes
+      `img.youtube.com` — donc l'adresse IP du visiteur partait chez Google **avant tout
+      clic**, et ce chemin contournait la condition du gabarit. Trouvé parce que le contrôle
+      refusait de passer au vert alors que j'avais « corrigé » le rendu.
+    → `npm run check:privacy` (Puppeteer, dans la CI) : contexte neuf, aucun consentement
+      stocké, et il **parcourt les filtres du portfolio**. Sans ce parcours il validait une
+      page qui sollicitait bien Google — les vidéos ne sont pas rendues au chargement.
+      Mesuré avant correctif : 7 requêtes. Après : 0.
+    👤 **DÉCISION PRODUIT en attente** — Google Analytics est chargé sur chaque page avant
+      consentement, en **Consent Mode v2** : `denied` posé sur tout avant le script,
+      `anonymize_ip`, `send_page_view: false`. C'est **délibéré** et Google le présente comme
+      conforme ; aucun cookie n'est posé (vérifié par le contrôle). Mais la CNIL est plus
+      stricte : même sans cookie, le ping transmet l'IP à Google. Deux options —
+      **(a)** garder l'état actuel (posture contestée, modélisation Consent Mode conservée) ;
+      **(b)** ne charger `gtag.js` qu'après acceptation (position CNIL respectée, on perd la
+      modélisation et les visiteurs qui refusent deviennent invisibles).
+      Le contrôle tolère explicitement GA/GTM en attendant l'arbitrage, et échoue sur tout
+      autre tiers.
 [ ] #— PHPStan/Larastan niveau 5+ dans la CI (aurait trouvé 3 des bugs de l'audit)
 ```
 
