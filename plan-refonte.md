@@ -1468,8 +1468,24 @@ sans test, → §9.6).
       fonctionnalité, pas un remplissage de colonne.
 ```
 
-**Tests** : login/logout révoquent réellement · rate limit · mot de passe faible refusé ·
-énumération impossible · TOTP · réinitialisation de bout en bout.
+**Tests** :
+```
+[x] login/logout révoquent réellement — LogoutTest, 4 tests (phase 0)
+[x] rate limit — RateLimitTest, 8 tests dont la limite horaire
+[x] mot de passe faible refusé — PasswordPolicyTest, 8 tests.
+    ⚠️ `Password::defaults()` porte min(12) + uncompromised() ; uncompromised() est
+       désactivé en test, il interroge l'API HIBP. Le test couvre donc min(12) et
+       `confirmed`, sur l'inscription ET la réinitialisation.
+[x] énumération impossible — PasswordResetTest
+[ ] TOTP — la fonctionnalité n'existe pas
+[x] réinitialisation de bout en bout — jeton extrait de la notification réellement
+    envoyée, pas de `Password::createToken`. Couvre aussi le rejeu du jeton et le fait
+    que l'ancien mot de passe cesse de fonctionner.
+```
+
+⚠️ La suite dépassait les 128 Mo du CLI depuis les tests de facturation, qui génèrent de
+vrais PDF : `memory_limit` passe à 512 Mo dans `phpunit.xml` (la production est à 2048).
+405 tests en 21 s, dont la moitié dans les tests de limite de débit — inhérent.
 
 ## 3.3 Panier et tarification — 3 j · #45
 

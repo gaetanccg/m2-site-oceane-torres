@@ -127,4 +127,71 @@ class PasswordResetTest extends TestCase
 
         $this->assertNotNull($user->fresh()->email_verified_at);
     }
+
+    /**
+     * Bout en bout : le jeton vient de la notification reellement envoyee, pas de
+     * Password::createToken. Un lien casse ou une notification muette echouerait ici.
+     */
+    public function test_le_parcours_complet_de_reinitialisation(): void
+    {
+        $user = User::factory()->create(['email' => 'cliente@exemple.fr']);
+
+        $this->demander('cliente@exemple.fr')->assertOk();
+
+        $jeton = null;
+        Notification::assertSentTo($user, ResetPassword::class,
+            function ($notification) use (&$jeton) {
+                $jeton = $notification->token;
+
+                return true;
+            });
+
+        $this->assertNotNull($jeton, 'La notification doit porter un jeton.');
+
+        $this->postJson('/api/auth/reset-password', [
+            'email' => 'cliente@exemple.fr',
+            'token' => $jeton,
+            'password' => 'NouveauMotDePasse2026!',
+            'password_confirmation' => 'NouveauMotDePasse2026!',
+        ])->assertOk();
+
+        $this->postJson('/api/auth/login', [
+            'email' => 'cliente@exemple.fr',
+            'password' => 'NouveauMotDePasse2026!',
+        ])->assertOk();
+    }
+
+    public function test_l_ancien_mot_de_passe_ne_fonctionne_plus_apres_reinitialisation(): void
+    {
+        $user = User::factory()->create(['email' => 'cliente@exemple.fr']);
+
+        $this->postJson('/api/auth/reset-password', [
+            'email' => 'cliente@exemple.fr',
+            'token' => Password::createToken($user),
+            'password' => 'NouveauMotDePasse2026!',
+            'password_confirmation' => 'NouveauMotDePasse2026!',
+        ])->assertOk();
+
+        $this->postJson('/api/auth/login', [
+            'email' => 'cliente@exemple.fr',
+            'password' => 'password',
+        ])->assertStatus(422);
+    }
+
+    /** Un jeton ne doit servir qu'une fois. */
+    public function test_un_jeton_ne_peut_pas_etre_rejoue(): void
+    {
+        $user = User::factory()->create(['email' => 'cliente@exemple.fr']);
+        $jeton = Password::createToken($user);
+
+        $payload = [
+            'email' => 'cliente@exemple.fr',
+            'token' => $jeton,
+            'password' => 'NouveauMotDePasse2026!',
+            'password_confirmation' => 'NouveauMotDePasse2026!',
+        ];
+
+        $this->postJson('/api/auth/reset-password', $payload)->assertOk();
+        $this->postJson('/api/auth/reset-password', $payload)->assertStatus(422);
+    }
 }

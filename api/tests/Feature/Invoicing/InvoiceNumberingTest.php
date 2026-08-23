@@ -33,15 +33,22 @@ class InvoiceNumberingTest extends TestCase
         return $order;
     }
 
+    /** La numerotation seule : generer 5 PDF reels pour verifier des numeros est inutile. */
     public function test_la_numerotation_est_sequentielle_et_sans_trou(): void
     {
-        $service = app(InvoiceService::class);
-
-        $numeros = collect(range(1, 5))
-            ->map(fn () => $service->generateForOrder($this->paidOrder())->invoice_number)
-            ->all();
-
         $annee = date('Y');
+
+        $numeros = collect(range(1, 5))->map(function () {
+            $numero = Invoice::generateInvoiceNumber();
+            Invoice::create([
+                'order_id' => $this->paidOrder()->id,
+                'invoice_number' => $numero,
+                'generated_at' => now(),
+            ]);
+
+            return $numero;
+        })->all();
+
         $this->assertSame([
             "F-{$annee}-00001", "F-{$annee}-00002", "F-{$annee}-00003",
             "F-{$annee}-00004", "F-{$annee}-00005",
