@@ -73,6 +73,7 @@
                                         <div class="mt-2">
                                             <select
                                                 :value="item.product_type"
+                                                :aria-label="`Format pour ${item.photo?.title ?? 'cette photo'}`"
                                                 @change="cartStore.updateItemType(item.id, ($event.target as HTMLSelectElement).value as ProductType)"
                                                 class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold"
                                                 :disabled="cartStore.isLoading"
@@ -188,11 +189,13 @@
                                     </button>
                                 </div>
                                 <div v-else>
-                                    <label class="block text-sm text-gray-600 mb-1.5">Code promo</label>
+                                    <label for="promo-code" class="block text-sm text-gray-600 mb-1.5">Code promo</label>
                                     <div class="flex gap-2">
                                         <div class="relative flex-1 min-w-0">
                                             <input
                                                 v-model="promoInput"
+                                                id="promo-code"
+                                                autocomplete="off"
                                                 type="text"
                                                 placeholder="Votre code"
                                                 maxlength="24"

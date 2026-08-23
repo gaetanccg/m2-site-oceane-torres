@@ -1747,11 +1747,24 @@ vrais PDF : `memory_limit` passe à 512 Mo dans `phpunit.xml` (la production est
       clavier, ce qu'un `@click` sur `<th>` ne permettait pas.
     → un test parcourt **chaque** colonne déclarée triable sur les 8 listes : c'est ce qui
       manquait pour attraper le `expires_at` fantôme.
-[ ] #66 Associer les libellés (for/id) sur les 5 formulaires publics — AuthModal (9 labels,
-        0 for), Checkout (4/0), BookingRequestModal (7/0), GalleryAccess (0 label)
-        + role/tabindex sur les 5 <div @click>
-[ ] #67 Ajouter les autocomplete : email, current-password, new-password, name, tel,
-        street-address, postal-code, address-level2 → friction directe dans le tunnel
+[x] #66 Libellés rattachés + zones cliquables au clavier
+    → AuthModal, Checkout, BookingRequestModal, Contact, Cart, ShippingAddressFields,
+      CookieBanner, et le champ de code de galerie (`ShareCodeInput`) — six champs d'un
+      caractère qui n'annonçaient rien : `role="group"` et un libellé par caractère.
+    → au-delà de `for`/`id` : `aria-invalid` et `aria-describedby` relient chaque message
+      d'erreur à son champ, sinon un lecteur d'écran signale une erreur sans dire laquelle.
+    → `PhotoCard` portait deux zones cliquables inatteignables au clavier (ouvrir la photo,
+      recharger une image en échec) : `role`, `tabindex` et gestion Entrée/Espace. Pas un
+      `<button>` — il n'accepte que du contenu phrasé, et ces blocs contiennent des `<div>`.
+    → la lightbox était déjà correcte : vrais boutons, `aria-label`, fermeture par Échap.
+      Les `@click.stop` restants n'y sont pas des commandes mais des arrêts de propagation.
+[x] #67 autocomplete sur les champs d'identité et d'adresse
+    🔴 trouvé en passant : le formulaire d'inscription annonçait « minimum 8 caractères »
+      et posait `minlength="8"`, alors que le serveur exige **12** (`Password::defaults()`).
+      Tout mot de passe de 8 à 11 caractères était refusé **après** envoi.
+    → trois tests figent le tout côté front : aucun `for` orphelin, aucun champ public sans
+      rattachement, et les `autocomplete` attendus présents. Éprouvés en cassant chaque
+      invariant pour vérifier qu'ils tombent.
 [x] #68 onUnmounted + clearTimeout
     → `useDebouncedSearch` porte le minuteur et le libère au démontage : le défaut ne peut
       plus se reproduire par oubli. Adopté par Orders, PromoCodes et GiftCards.

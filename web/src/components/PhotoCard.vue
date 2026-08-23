@@ -1,7 +1,17 @@
 <template>
     <div class="photo-card bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow">
-        <!-- Image container - always rendered for loading to work -->
-        <div class="photo-wrapper cursor-pointer" @click="$emit('click')" @contextmenu.prevent>
+        <!-- Un <button> n'accepte que du contenu phrase, et ce bloc porte des <div> :
+             role + tabindex + clavier plutot qu'un imbriquement invalide. -->
+        <div
+            class="photo-wrapper cursor-pointer"
+            role="button"
+            tabindex="0"
+            :aria-label="`Agrandir ${alt}`"
+            @click="$emit('click')"
+            @keydown.enter.prevent="$emit('click')"
+            @keydown.space.prevent="$emit('click')"
+            @contextmenu.prevent
+        >
             <!-- Skeleton overlay (on top until loaded) -->
             <div v-if="!isLoaded" class="skeleton-overlay">
                 <img
@@ -16,7 +26,16 @@
             </div>
 
             <!-- Failed state overlay -->
-            <div v-if="hasFailed" class="failed-overlay" @click.stop="retryLoad">
+            <div
+                v-if="hasFailed"
+                class="failed-overlay"
+                role="button"
+                tabindex="0"
+                aria-label="Recharger l'image"
+                @click.stop="retryLoad"
+                @keydown.enter.stop.prevent="retryLoad"
+                @keydown.space.stop.prevent="retryLoad"
+            >
                 <svg class="w-8 h-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
@@ -132,6 +151,12 @@ watch(() => props.src, (newSrc) => {
     overflow: hidden;
     aspect-ratio: 3/2;
     background: #f5f5f5;
+}
+
+.photo-wrapper:focus-visible,
+.failed-overlay:focus-visible {
+    outline: 2px solid #c9a227;
+    outline-offset: 2px;
 }
 
 /* Once loaded, let natural image dimensions take over */

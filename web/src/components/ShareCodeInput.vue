@@ -1,9 +1,13 @@
 <template>
     <div class="share-code-input">
-        <div class="code-inputs">
+        <!-- Six champs d'un caractere : sans libelle groupe, un lecteur d'ecran annonce six
+             zones de saisie anonymes. -->
+        <div class="code-inputs" role="group" aria-label="Code d'accès à la galerie, 6 caractères">
             <input
                 v-for="(_, index) in 6"
                 :key="index"
+                :aria-label="`Caractère ${index + 1} sur 6`"
+                :aria-invalid="hasError"
                 :ref="el => inputRefs[index] = el as HTMLInputElement"
                 type="text"
                 maxlength="1"
@@ -19,7 +23,7 @@
                 inputmode="text"
             />
         </div>
-        <p v-if="hasError" class="error-message">{{ errorMessage }}</p>
+        <p v-if="hasError" role="alert" class="error-message">{{ errorMessage }}</p>
     </div>
 </template>
 

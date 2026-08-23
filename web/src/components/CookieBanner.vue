@@ -105,6 +105,7 @@
                                             type="checkbox"
                                             checked
                                             disabled
+                                            aria-label="Cookies essentiels, toujours actifs"
                                             class="sr-only peer"
                                         />
                                         <div class="w-11 h-6 bg-green-500 rounded-full"></div>
@@ -134,6 +135,7 @@
                                         <input
                                             v-model="localAnalytics"
                                             type="checkbox"
+                                            aria-label="Autoriser les cookies analytiques"
                                             class="sr-only peer"
                                         />
                                         <div class="w-11 h-6 bg-gray-300 peer-checked:bg-gold rounded-full transition-colors"></div>
@@ -164,6 +166,7 @@
                                         <input
                                             v-model="localMarketing"
                                             type="checkbox"
+                                            aria-label="Autoriser les cookies marketing"
                                             class="sr-only peer"
                                         />
                                         <div class="w-11 h-6 bg-gray-300 peer-checked:bg-gold rounded-full transition-colors"></div>

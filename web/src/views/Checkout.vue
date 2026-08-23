@@ -41,11 +41,13 @@
                                 <form v-else @submit.prevent="createOrder" class="space-y-4">
                                     <div class="grid grid-cols-2 gap-4">
                                         <div>
-                                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                            <label for="checkout-first-name" class="block text-sm font-medium text-gray-700 mb-1">
                                                 Prenom *
                                             </label>
                                             <input
                                                 v-model="form.firstName"
+                                                id="checkout-first-name"
+                                                autocomplete="given-name"
                                                 type="text"
                                                 required
                                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-transparent"
@@ -53,11 +55,13 @@
                                             />
                                         </div>
                                         <div>
-                                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                            <label for="checkout-last-name" class="block text-sm font-medium text-gray-700 mb-1">
                                                 Nom *
                                             </label>
                                             <input
                                                 v-model="form.lastName"
+                                                id="checkout-last-name"
+                                                autocomplete="family-name"
                                                 type="text"
                                                 required
                                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-transparent"
@@ -67,11 +71,13 @@
                                     </div>
 
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                                        <label for="checkout-email" class="block text-sm font-medium text-gray-700 mb-1">
                                             Email *
                                         </label>
                                         <input
                                             v-model="form.email"
+                                            id="checkout-email"
+                                            autocomplete="email"
                                             type="email"
                                             required
                                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-transparent"
@@ -126,9 +132,10 @@
 
                                 <!-- CGV Acceptance (RGPD) -->
                                 <div class="mt-6 bg-gray-50 border border-gray-200 rounded-lg p-4">
-                                    <label class="flex items-start gap-3 cursor-pointer">
+                                    <label for="checkout-cgv" class="flex items-start gap-3 cursor-pointer">
                                         <input
                                             v-model="form.cgv_accepted"
+                                            id="checkout-cgv"
                                             type="checkbox"
                                             required
                                             class="mt-1 w-4 h-4 text-gold border-gray-300 rounded focus:ring-gold"

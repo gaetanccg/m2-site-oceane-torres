@@ -43,6 +43,7 @@
                                 </label>
                                 <input
                                     id="name"
+                                    autocomplete="name"
                                     v-model="form.name"
                                     type="text"
                                     required
@@ -60,6 +61,7 @@
                                 </label>
                                 <input
                                     id="email"
+                                    autocomplete="email"
                                     v-model="form.email"
                                     type="email"
                                     required
@@ -77,6 +79,7 @@
                                 </label>
                                 <input
                                     id="phone"
+                                    autocomplete="tel"
                                     v-model="form.phone"
                                     type="tel"
                                     class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-gold/50 focus:border-gold transition-colors"
@@ -127,8 +130,9 @@
 
                             <!-- GDPR Consent -->
                             <div>
-                                <label class="flex items-start gap-3 cursor-pointer">
+                                <label for="gdpr-consent" class="flex items-start gap-3 cursor-pointer">
                                     <input
+                                        id="gdpr-consent"
                                         v-model="form.gdprConsent"
                                         type="checkbox"
                                         required

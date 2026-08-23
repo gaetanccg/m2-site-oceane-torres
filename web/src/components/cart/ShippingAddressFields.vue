@@ -11,11 +11,14 @@
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">
+            <label for="shipping-phone" class="block text-sm font-medium text-gray-700 mb-1">
                 Téléphone *
             </label>
             <input
                 :value="modelValue.shipping_phone"
+                id="shipping-phone"
+                :aria-invalid="Boolean(errors.shipping_phone)"
+                :aria-describedby="errors.shipping_phone ? 'shipping-phone-error' : undefined"
                 @input="update('shipping_phone', ($event.target as HTMLInputElement).value)"
                 type="tel"
                 required
@@ -23,16 +26,19 @@
                 :class="inputClass('shipping_phone')"
                 placeholder="0612345678"
             />
-            <p v-if="errors.shipping_phone" class="mt-1 text-xs text-red-600">{{ errors.shipping_phone }}</p>
+            <p id="shipping-phone-error" v-if="errors.shipping_phone" class="mt-1 text-xs text-red-600">{{ errors.shipping_phone }}</p>
             <p v-else class="mt-1 text-xs text-gray-500">Numéro français à 10 chiffres.</p>
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">
+            <label for="shipping-address-line1" class="block text-sm font-medium text-gray-700 mb-1">
                 Adresse *
             </label>
             <input
                 :value="modelValue.shipping_address_line1"
+                id="shipping-address-line1"
+                :aria-invalid="Boolean(errors.shipping_address_line1)"
+                :aria-describedby="errors.shipping_address_line1 ? 'shipping-address-line1-error' : undefined"
                 @input="update('shipping_address_line1', ($event.target as HTMLInputElement).value)"
                 type="text"
                 required
@@ -40,15 +46,16 @@
                 :class="inputClass('shipping_address_line1')"
                 placeholder="12 rue des Photographes"
             />
-            <p v-if="errors.shipping_address_line1" class="mt-1 text-xs text-red-600">{{ errors.shipping_address_line1 }}</p>
+            <p id="shipping-address-line1-error" v-if="errors.shipping_address_line1" class="mt-1 text-xs text-red-600">{{ errors.shipping_address_line1 }}</p>
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">
+            <label for="shipping-address-line2" class="block text-sm font-medium text-gray-700 mb-1">
                 Complément d'adresse (appt, bâtiment, etc.)
             </label>
             <input
                 :value="modelValue.shipping_address_line2 ?? ''"
+                id="shipping-address-line2"
                 @input="update('shipping_address_line2', ($event.target as HTMLInputElement).value)"
                 type="text"
                 autocomplete="address-line2"
@@ -59,11 +66,14 @@
 
         <div class="grid grid-cols-3 gap-4">
             <div class="col-span-1">
-                <label class="block text-sm font-medium text-gray-700 mb-1">
+                <label for="shipping-postal-code" class="block text-sm font-medium text-gray-700 mb-1">
                     Code postal *
                 </label>
                 <input
                     :value="modelValue.shipping_postal_code"
+                    id="shipping-postal-code"
+                    :aria-invalid="Boolean(errors.shipping_postal_code)"
+                    :aria-describedby="errors.shipping_postal_code ? 'shipping-postal-code-error' : undefined"
                     @input="update('shipping_postal_code', ($event.target as HTMLInputElement).value)"
                     type="text"
                     required
@@ -72,14 +82,17 @@
                     :class="inputClass('shipping_postal_code')"
                     placeholder="42000"
                 />
-                <p v-if="errors.shipping_postal_code" class="mt-1 text-xs text-red-600">{{ errors.shipping_postal_code }}</p>
+                <p id="shipping-postal-code-error" v-if="errors.shipping_postal_code" class="mt-1 text-xs text-red-600">{{ errors.shipping_postal_code }}</p>
             </div>
             <div class="col-span-2">
-                <label class="block text-sm font-medium text-gray-700 mb-1">
+                <label for="shipping-city" class="block text-sm font-medium text-gray-700 mb-1">
                     Ville *
                 </label>
                 <input
                     :value="modelValue.shipping_city"
+                    id="shipping-city"
+                    :aria-invalid="Boolean(errors.shipping_city)"
+                    :aria-describedby="errors.shipping_city ? 'shipping-city-error' : undefined"
                     @input="update('shipping_city', ($event.target as HTMLInputElement).value)"
                     type="text"
                     required
@@ -87,18 +100,20 @@
                     :class="inputClass('shipping_city')"
                     placeholder="Saint-Étienne"
                 />
-                <p v-if="errors.shipping_city" class="mt-1 text-xs text-red-600">{{ errors.shipping_city }}</p>
+                <p id="shipping-city-error" v-if="errors.shipping_city" class="mt-1 text-xs text-red-600">{{ errors.shipping_city }}</p>
             </div>
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">
+            <label for="shipping-country" class="block text-sm font-medium text-gray-700 mb-1">
                 Pays
             </label>
             <input
+                id="shipping-country"
                 type="text"
                 value="France"
                 readonly
+                autocomplete="country-name"
                 class="w-full px-4 py-2 border border-gray-200 bg-gray-50 text-gray-500 rounded-lg cursor-not-allowed"
             />
         </div>

@@ -67,9 +67,13 @@
                         <!-- Login Form -->
                         <form v-if="activeTab === 'login'" @submit.prevent="handleLogin" class="space-y-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                <label for="login-email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
                                 <input
                                     v-model="loginForm.email"
+                                    id="login-email"
+                                    autocomplete="username"
+                                    :aria-invalid="Boolean(authStore.fieldErrors.email)"
+                                    :aria-describedby="authStore.fieldErrors.email ? 'login-email-error' : undefined"
                                     type="email"
                                     required
                                     :class="[
@@ -78,12 +82,16 @@
                                     ]"
                                     placeholder="votre@email.com"
                                 />
-                                <p v-if="authStore.fieldErrors.email" class="mt-1 text-sm text-red-600">{{ authStore.fieldErrors.email }}</p>
+                                <p id="login-email-error" v-if="authStore.fieldErrors.email" class="mt-1 text-sm text-red-600">{{ authStore.fieldErrors.email }}</p>
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Mot de passe</label>
+                                <label for="login-password" class="block text-sm font-medium text-gray-700 mb-1">Mot de passe</label>
                                 <input
                                     v-model="loginForm.password"
+                                    id="login-password"
+                                    autocomplete="current-password"
+                                    :aria-invalid="Boolean(authStore.fieldErrors.password)"
+                                    :aria-describedby="authStore.fieldErrors.password ? 'login-password-error' : undefined"
                                     type="password"
                                     required
                                     :class="[
@@ -92,7 +100,7 @@
                                     ]"
                                     placeholder="********"
                                 />
-                                <p v-if="authStore.fieldErrors.password" class="mt-1 text-sm text-red-600">{{ authStore.fieldErrors.password }}</p>
+                                <p id="login-password-error" v-if="authStore.fieldErrors.password" class="mt-1 text-sm text-red-600">{{ authStore.fieldErrors.password }}</p>
                             </div>
                             <button
                                 type="submit"
@@ -111,9 +119,13 @@
                         <form v-else @submit.prevent="handleRegister" class="space-y-4">
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Prenom</label>
+                                    <label for="register-first-name" class="block text-sm font-medium text-gray-700 mb-1">Prenom</label>
                                     <input
                                         v-model="registerForm.first_name"
+                                        id="register-first-name"
+                                        autocomplete="given-name"
+                                        :aria-invalid="Boolean(authStore.fieldErrors.first_name)"
+                                        :aria-describedby="authStore.fieldErrors.first_name ? 'register-first-name-error' : undefined"
                                         type="text"
                                         required
                                         :class="[
@@ -122,12 +134,16 @@
                                         ]"
                                         placeholder="Prenom"
                                     />
-                                    <p v-if="authStore.fieldErrors.first_name" class="mt-1 text-sm text-red-600">{{ authStore.fieldErrors.first_name }}</p>
+                                    <p id="register-first-name-error" v-if="authStore.fieldErrors.first_name" class="mt-1 text-sm text-red-600">{{ authStore.fieldErrors.first_name }}</p>
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Nom</label>
+                                    <label for="register-last-name" class="block text-sm font-medium text-gray-700 mb-1">Nom</label>
                                     <input
                                         v-model="registerForm.last_name"
+                                        id="register-last-name"
+                                        autocomplete="family-name"
+                                        :aria-invalid="Boolean(authStore.fieldErrors.last_name)"
+                                        :aria-describedby="authStore.fieldErrors.last_name ? 'register-last-name-error' : undefined"
                                         type="text"
                                         required
                                         :class="[
@@ -136,13 +152,17 @@
                                         ]"
                                         placeholder="Nom"
                                     />
-                                    <p v-if="authStore.fieldErrors.last_name" class="mt-1 text-sm text-red-600">{{ authStore.fieldErrors.last_name }}</p>
+                                    <p id="register-last-name-error" v-if="authStore.fieldErrors.last_name" class="mt-1 text-sm text-red-600">{{ authStore.fieldErrors.last_name }}</p>
                                 </div>
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                <label for="register-email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
                                 <input
                                     v-model="registerForm.email"
+                                    id="register-email"
+                                    autocomplete="email"
+                                    :aria-invalid="Boolean(authStore.fieldErrors.email)"
+                                    :aria-describedby="authStore.fieldErrors.email ? 'register-email-error' : undefined"
                                     type="email"
                                     required
                                     :class="[
@@ -151,12 +171,16 @@
                                     ]"
                                     placeholder="votre@email.com"
                                 />
-                                <p v-if="authStore.fieldErrors.email" class="mt-1 text-sm text-red-600">{{ authStore.fieldErrors.email }}</p>
+                                <p id="register-email-error" v-if="authStore.fieldErrors.email" class="mt-1 text-sm text-red-600">{{ authStore.fieldErrors.email }}</p>
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Telephone (optionnel)</label>
+                                <label for="register-phone" class="block text-sm font-medium text-gray-700 mb-1">Telephone (optionnel)</label>
                                 <input
                                     v-model="registerForm.phone"
+                                    id="register-phone"
+                                    autocomplete="tel"
+                                    :aria-invalid="Boolean(authStore.fieldErrors.phone)"
+                                    :aria-describedby="authStore.fieldErrors.phone ? 'register-phone-error' : undefined"
                                     type="tel"
                                     :class="[
                                         'w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-gold/50 focus:border-gold transition-colors',
@@ -164,27 +188,35 @@
                                     ]"
                                     placeholder="06 XX XX XX XX"
                                 />
-                                <p v-if="authStore.fieldErrors.phone" class="mt-1 text-sm text-red-600">{{ authStore.fieldErrors.phone }}</p>
+                                <p id="register-phone-error" v-if="authStore.fieldErrors.phone" class="mt-1 text-sm text-red-600">{{ authStore.fieldErrors.phone }}</p>
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Mot de passe</label>
+                                <label for="register-password" class="block text-sm font-medium text-gray-700 mb-1">Mot de passe</label>
                                 <input
                                     v-model="registerForm.password"
+                                    id="register-password"
+                                    autocomplete="new-password"
+                                    :aria-invalid="Boolean(authStore.fieldErrors.password)"
+                                    :aria-describedby="authStore.fieldErrors.password ? 'register-password-error' : undefined"
                                     type="password"
                                     required
-                                    minlength="8"
+                                    minlength="12"
                                     :class="[
                                         'w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-gold/50 focus:border-gold transition-colors',
                                         authStore.fieldErrors.password ? 'border-red-300 bg-red-50' : 'border-gray-300'
                                     ]"
-                                    placeholder="Minimum 8 caractères"
+                                    placeholder="Minimum 12 caractères"
                                 />
-                                <p v-if="authStore.fieldErrors.password" class="mt-1 text-sm text-red-600">{{ authStore.fieldErrors.password }}</p>
+                                <p id="register-password-error" v-if="authStore.fieldErrors.password" class="mt-1 text-sm text-red-600">{{ authStore.fieldErrors.password }}</p>
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Confirmer le mot de passe</label>
+                                <label for="register-password-confirm" class="block text-sm font-medium text-gray-700 mb-1">Confirmer le mot de passe</label>
                                 <input
                                     v-model="registerForm.password_confirmation"
+                                    id="register-password-confirm"
+                                    autocomplete="new-password"
+                                    :aria-invalid="Boolean(authStore.fieldErrors.password_confirmation)"
+                                    :aria-describedby="authStore.fieldErrors.password_confirmation ? 'register-password-confirm-error' : undefined"
                                     type="password"
                                     required
                                     :class="[
@@ -193,16 +225,17 @@
                                     ]"
                                     placeholder="********"
                                 />
-                                <p v-if="authStore.fieldErrors.password_confirmation" class="mt-1 text-sm text-red-600">{{ authStore.fieldErrors.password_confirmation }}</p>
+                                <p id="register-password-confirm-error" v-if="authStore.fieldErrors.password_confirmation" class="mt-1 text-sm text-red-600">{{ authStore.fieldErrors.password_confirmation }}</p>
                             </div>
                             <div class="flex items-start gap-2">
                                 <input
                                     v-model="registerForm.gdpr_consent"
+                                    id="register-gdpr-consent"
                                     type="checkbox"
                                     required
                                     class="mt-1 w-4 h-4 text-gold border-gray-300 rounded focus:ring-gold"
                                 />
-                                <label class="text-sm text-gray-600">
+                                <label for="register-gdpr-consent" class="text-sm text-gray-600">
                                     J'accepte que mes données soient traitées conformement a la
                                     <router-link to="/mentions-legales" class="text-gold hover:underline" @click="close">
                                         politique de confidentialite

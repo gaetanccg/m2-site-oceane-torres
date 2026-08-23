@@ -53,11 +53,15 @@
 
                         <!-- Nom -->
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                            <label for="booking-name" class="block text-sm font-medium text-gray-700 mb-1">
                                 Nom complet <span class="text-red-500">*</span>
                             </label>
                             <input
                                 v-model="form.name"
+                                id="booking-name"
+                                autocomplete="name"
+                                :aria-invalid="Boolean(fieldErrors.name)"
+                                :aria-describedby="fieldErrors.name ? 'booking-name-error' : undefined"
                                 type="text"
                                 required
                                 :class="[
@@ -66,16 +70,20 @@
                                 ]"
                                 placeholder="Votre nom"
                             />
-                            <p v-if="fieldErrors.name" class="mt-1 text-sm text-red-600">{{ fieldErrors.name }}</p>
+                            <p id="booking-name-error" v-if="fieldErrors.name" class="mt-1 text-sm text-red-600">{{ fieldErrors.name }}</p>
                         </div>
 
                         <!-- Email -->
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                            <label for="booking-email" class="block text-sm font-medium text-gray-700 mb-1">
                                 Email <span class="text-red-500">*</span>
                             </label>
                             <input
                                 v-model="form.email"
+                                id="booking-email"
+                                autocomplete="email"
+                                :aria-invalid="Boolean(fieldErrors.email)"
+                                :aria-describedby="fieldErrors.email ? 'booking-email-error' : undefined"
                                 type="email"
                                 required
                                 :class="[
@@ -84,16 +92,20 @@
                                 ]"
                                 placeholder="votre@email.com"
                             />
-                            <p v-if="fieldErrors.email" class="mt-1 text-sm text-red-600">{{ fieldErrors.email }}</p>
+                            <p id="booking-email-error" v-if="fieldErrors.email" class="mt-1 text-sm text-red-600">{{ fieldErrors.email }}</p>
                         </div>
 
                         <!-- Telephone -->
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                            <label for="booking-phone" class="block text-sm font-medium text-gray-700 mb-1">
                                 Telephone
                             </label>
                             <input
                                 v-model="form.phone"
+                                id="booking-phone"
+                                autocomplete="tel"
+                                :aria-invalid="Boolean(fieldErrors.phone)"
+                                :aria-describedby="fieldErrors.phone ? 'booking-phone-error' : undefined"
                                 type="tel"
                                 :class="[
                                     'w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-gold/50 focus:border-gold transition-colors',
@@ -101,16 +113,19 @@
                                 ]"
                                 placeholder="06 XX XX XX XX"
                             />
-                            <p v-if="fieldErrors.phone" class="mt-1 text-sm text-red-600">{{ fieldErrors.phone }}</p>
+                            <p id="booking-phone-error" v-if="fieldErrors.phone" class="mt-1 text-sm text-red-600">{{ fieldErrors.phone }}</p>
                         </div>
 
                         <!-- Prestation -->
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                            <label for="booking-prestation" class="block text-sm font-medium text-gray-700 mb-1">
                                 Type de prestation <span class="text-red-500">*</span>
                             </label>
                             <select
                                 v-model="form.prestation_id"
+                                id="booking-prestation"
+                                :aria-invalid="Boolean(fieldErrors.prestation_id)"
+                                :aria-describedby="fieldErrors.prestation_id ? 'booking-prestation-error' : undefined"
                                 required
                                 :class="[
                                     'w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-gold/50 focus:border-gold transition-colors bg-white',
@@ -122,16 +137,19 @@
                                     {{ p.title }}
                                 </option>
                             </select>
-                            <p v-if="fieldErrors.prestation_id" class="mt-1 text-sm text-red-600">{{ fieldErrors.prestation_id }}</p>
+                            <p id="booking-prestation-error" v-if="fieldErrors.prestation_id" class="mt-1 text-sm text-red-600">{{ fieldErrors.prestation_id }}</p>
                         </div>
 
                         <!-- Dates souhaitées -->
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                            <label for="booking-dates" class="block text-sm font-medium text-gray-700 mb-1">
                                 Dates souhaitées <span class="text-red-500">*</span>
                             </label>
                             <textarea
                                 v-model="form.date_preferences"
+                                id="booking-dates"
+                                :aria-invalid="Boolean(fieldErrors.date_preferences)"
+                                :aria-describedby="fieldErrors.date_preferences ? 'booking-dates-error' : undefined"
                                 required
                                 rows="3"
                                 :class="[
@@ -140,16 +158,19 @@
                                 ]"
                                 placeholder="Ex: Week-end du 15 fevrier, ou en semaine entre le 10 et le 20 mars..."
                             />
-                            <p v-if="fieldErrors.date_preferences" class="mt-1 text-sm text-red-600">{{ fieldErrors.date_preferences }}</p>
+                            <p id="booking-dates-error" v-if="fieldErrors.date_preferences" class="mt-1 text-sm text-red-600">{{ fieldErrors.date_preferences }}</p>
                         </div>
 
                         <!-- Message -->
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                            <label for="booking-message" class="block text-sm font-medium text-gray-700 mb-1">
                                 Message (optionnel)
                             </label>
                             <textarea
                                 v-model="form.message"
+                                id="booking-message"
+                                :aria-invalid="Boolean(fieldErrors.message)"
+                                :aria-describedby="fieldErrors.message ? 'booking-message-error' : undefined"
                                 rows="3"
                                 class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-gold/50 focus:border-gold transition-colors resize-none"
                                 placeholder="Parlez-moi de votre projet, vos idées..."
@@ -158,8 +179,9 @@
 
                         <!-- RGPD Consent -->
                         <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                            <label class="flex items-start gap-3 cursor-pointer">
+                            <label for="booking-gdpr-consent" class="flex items-start gap-3 cursor-pointer">
                                 <input
+                                    id="booking-gdpr-consent"
                                     type="checkbox"
                                     v-model="form.gdpr_consent"
                                     required
