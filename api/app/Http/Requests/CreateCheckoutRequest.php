@@ -2,8 +2,8 @@
 
 namespace App\Http\Requests;
 
-use App\Models\CartItem;
 use App\Services\CartService;
+use App\Services\PricingService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 
@@ -83,14 +83,7 @@ class CreateCheckoutRequest extends FormRequest
             $cart = app(CartService::class)->getOrCreateCart($user, $sessionId);
             $cart->loadMissing('items.photo.gallery.galleryProductTypes');
 
-            return $cart->items->contains(function ($item) {
-                $gallery = $item->photo?->gallery;
-                $productType = $item->product_type ?? 'digital';
-
-                return $gallery
-                    ? $gallery->getRequiresShippingForProductType($productType)
-                    : CartItem::requiresShipping($productType);
-            });
+            return app(PricingService::class)->requiresShipping($cart->items);
         } catch (\Exception) {
             return false;
         }

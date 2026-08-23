@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\CartItem;
 use App\Models\Gallery;
+use Illuminate\Support\Collection;
 
 class PricingService
 {
@@ -105,5 +106,50 @@ class PricingService
         }
 
         return $configured->effective_price;
+    }
+
+    /**
+     * Frais de port d'un panier ou d'une commande. Le calcul vivait en trois copies
+     * (CreateCheckoutRequest, OrderService, CartService) : une divergence produirait un
+     * ecart entre le prix affiche et le prix debite.
+     *
+     * @param  iterable<object>  $items  articles portant product_type et photo.gallery
+     */
+    public function shippingFeeFor(iterable $items): float
+    {
+        $shippingItems = $this->shippingItems($items);
+
+        if ($shippingItems->isEmpty()) {
+            return 0.0;
+        }
+
+        // Le maximum et non la somme : un panier melangeant deux galeries ne paie qu'une
+        // expedition, mais au tarif le plus eleve pour ne pas sous-facturer.
+        return (float) $shippingItems
+            ->map(fn ($item) => $item->photo?->gallery?->getShippingFee()
+                ?? (float) config('shop.shipping_fee_print', 0))
+            ->max();
+    }
+
+    /** @param  iterable<object>  $items */
+    public function requiresShipping(iterable $items): bool
+    {
+        return $this->shippingItems($items)->isNotEmpty();
+    }
+
+    /**
+     * @param  iterable<object>  $items
+     * @return Collection<int, object>
+     */
+    private function shippingItems(iterable $items): Collection
+    {
+        return collect($items)->filter(function ($item) {
+            $gallery = $item->photo?->gallery;
+            $productType = $item->product_type ?? 'digital';
+
+            return $gallery
+                ? $gallery->getRequiresShippingForProductType($productType)
+                : CartItem::requiresShipping($productType);
+        })->values();
     }
 }

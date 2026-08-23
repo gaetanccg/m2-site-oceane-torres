@@ -16,6 +16,10 @@ class CartService
 {
     private const MAX_ITEM_QUANTITY = 50;
 
+    public function __construct(
+        private PricingService $pricing = new PricingService,
+    ) {}
+
     /**
      * Garantit EXACTEMENT UN cart actif par user : merge le cart guest correspondant
      * (matching session_id) et expire les doublons. Sans ça, le user peut avoir 2-3 carts
@@ -107,7 +111,7 @@ class CartService
             throw new BusinessException('Ce type de produit n\'est pas disponible pour cette galerie.', 400);
         }
 
-        $quantity = max(1, min(self::MAX_ITEM_QUANTITY, $quantity));
+        $quantity = $this->cappedQuantity($quantity);
 
         $existing = $cart->items()
             ->where('photo_id', $photoId)
@@ -115,8 +119,10 @@ class CartService
             ->first();
 
         if ($existing) {
-            $existing->increment('quantity', $quantity);
-            $existing->update(['price' => $price]);
+            $existing->update([
+                'quantity' => $this->cappedQuantity((int) $existing->quantity + $quantity),
+                'price' => $price,
+            ]);
             $cart->unsetRelation('items');
 
             return $existing->fresh();
@@ -133,6 +139,11 @@ class CartService
         $cart->unsetRelation('items');
 
         return $item->fresh();
+    }
+
+    private function cappedQuantity(int $quantity): int
+    {
+        return max(1, min(self::MAX_ITEM_QUANTITY, $quantity));
     }
 
     /** Si quantity <= 0 l'item est supprimé. */
@@ -230,7 +241,7 @@ class CartService
 
             if ($existing) {
                 $existing->update([
-                    'quantity' => (int) $existing->quantity + $guestQuantity,
+                    'quantity' => $this->cappedQuantity((int) $existing->quantity + $guestQuantity),
                 ]);
             } else {
                 CartItem::create([
@@ -334,21 +345,8 @@ class CartService
 
         $subtotal = (float) $items->sum('line_total');
         $hasPrints = $items->contains('is_print', true);
-        $shippingItems = $cart->items->filter(function ($cartItem) {
-            $gallery = $cartItem->photo?->gallery;
-            $productType = $cartItem->product_type ?? 'digital';
-
-            return $gallery
-                ? $gallery->getRequiresShippingForProductType($productType)
-                : CartItem::requiresShipping($productType);
-        });
-        $requiresShipping = $shippingItems->isNotEmpty();
-        // Per-gallery fee; take the highest among shipping items to avoid undercharging mixed carts.
-        $shippingFee = $requiresShipping
-            ? (float) $shippingItems->map(fn ($cartItem) => $cartItem->photo?->gallery
-                ? $cartItem->photo->gallery->getShippingFee()
-                : (float) config('shop.shipping_fee_print', 0))->max()
-            : 0.0;
+        $requiresShipping = $this->pricing->requiresShipping($cart->items);
+        $shippingFee = $this->pricing->shippingFeeFor($cart->items);
 
         [$discount, $giftCode] = $this->resolveGiftCode($cart, $subtotal);
 
