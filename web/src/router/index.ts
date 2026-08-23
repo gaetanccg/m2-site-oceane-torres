@@ -224,6 +224,26 @@ export const routes: RouteRecordRaw[] = [
     },
     // Account routes (client)
     {
+        path: '/mot-de-passe-oublie',
+        name: 'forgot-password',
+        component: () => import('@/views/MotDePasseOublie.vue'),
+        meta: {
+            title: 'Mot de passe oublié',
+            robots: 'noindex, nofollow'
+        }
+    },
+    {
+        // Chemin fixe par ResetPassword::createUrlUsing (AppServiceProvider) : un test
+        // back verifie qu'ils restent alignes.
+        path: '/reinitialiser-mot-de-passe',
+        name: 'reset-password',
+        component: () => import('@/views/ReinitialiserMotDePasse.vue'),
+        meta: {
+            title: 'Nouveau mot de passe',
+            robots: 'noindex, nofollow'
+        }
+    },
+    {
         path: '/mon-compte',
         name: 'account',
         component: AccountDashboard,

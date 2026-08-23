@@ -50,7 +50,9 @@ return [
     |
     */
 
-    'expiration' => 60 * 24 * 30, // 30 days in minutes
+    // Le jeton vit dans localStorage : toute XSS l'exfiltre. Sept jours au lieu de trente
+    // reduit d'autant la fenetre, le cookie de session couvrant la navigation active.
+    'expiration' => (int) env('SANCTUM_TOKEN_MINUTES', 60 * 24 * 7),
 
     /*
     |--------------------------------------------------------------------------

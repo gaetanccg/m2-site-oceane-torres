@@ -10,6 +10,7 @@ use App\Listeners\SendContactEmails;
 use App\Models\User;
 use App\Observers\UserObserver;
 use App\Services\Supervision\HeartbeatService;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Connection;
 use Illuminate\Http\Request;
@@ -42,6 +43,16 @@ class AppServiceProvider extends ServiceProvider
         if ($this->app->environment('production')) {
             URL::forceScheme('https');
         }
+
+        // Sans cela, la notification construit son lien vers la route web
+        // `password.reset`, qui n'existe pas dans une API : le rendu de l'email levait
+        // RouteNotFoundException et le parcours entier etait inoperant.
+        ResetPassword::createUrlUsing(fn ($user, string $token) => sprintf(
+            '%s/reinitialiser-mot-de-passe?token=%s&email=%s',
+            rtrim((string) config('app.frontend_url'), '/'),
+            $token,
+            urlencode($user->getEmailForPasswordReset()),
+        ));
 
         Password::defaults(function () {
             $rule = Password::min(12);

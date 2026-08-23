@@ -91,7 +91,7 @@ class AuthController extends Controller
     public function logout(Request $request): JsonResponse
     {
         // Sous authentification par session, currentAccessToken() renvoie un
-        // TransientToken : cibler ce seul token laisserait le jeton 30 jours actif.
+        // TransientToken : cibler ce seul token laisserait le jeton porteur actif.
         $request->user()?->tokens()->delete();
 
         Auth::guard('web')->logout();
@@ -145,6 +145,10 @@ class AuthController extends Controller
                     'password' => Hash::make($password),
                     'email_verified_at' => $user->email_verified_at ?? now(),
                 ])->save();
+
+                // Sans cela, le jeton d'un compte compromis restait valable jusqu'a son
+                // expiration : reinitialiser le mot de passe ne rendait pas l'acces.
+                $user->tokens()->delete();
             }
         );
 

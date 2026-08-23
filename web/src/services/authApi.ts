@@ -53,6 +53,25 @@ class AuthApiService extends BaseApiService {
     async getDashboard(): Promise<AdminApiResponse<AccountDashboard>> {
         return this.authRequest<AdminApiResponse<AccountDashboard>>('/account/dashboard')
     }
+
+    async forgotPassword(email: string): Promise<{ message: string }> {
+        return this.request('/auth/forgot-password', {
+            method: 'POST',
+            body: JSON.stringify({ email }),
+        })
+    }
+
+    async resetPassword(payload: {
+        email: string
+        token: string
+        password: string
+        password_confirmation: string
+    }): Promise<{ message: string }> {
+        return this.request('/auth/reset-password', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+        })
+    }
 }
 
 export const authApi = new AuthApiService()

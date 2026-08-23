@@ -194,4 +194,65 @@ class PasswordResetTest extends TestCase
         $this->postJson('/api/auth/reset-password', $payload)->assertOk();
         $this->postJson('/api/auth/reset-password', $payload)->assertStatus(422);
     }
+
+    /**
+     * Sur un compte compromis, reinitialiser le mot de passe doit rendre l'acces : sinon
+     * le jeton de l'attaquant reste valable jusqu'a son expiration.
+     */
+    public function test_la_reinitialisation_revoque_les_jetons_existants(): void
+    {
+        $user = User::factory()->create(['email' => 'cliente@exemple.fr']);
+        $jetonPorteur = $user->createToken('appareil-attaquant')->plainTextToken;
+
+        $this->withHeader('Authorization', "Bearer {$jetonPorteur}")
+            ->getJson('/api/auth/user')->assertOk();
+
+        $this->postJson('/api/auth/reset-password', [
+            'email' => 'cliente@exemple.fr',
+            'token' => Password::createToken($user),
+            'password' => 'NouveauMotDePasse2026!',
+            'password_confirmation' => 'NouveauMotDePasse2026!',
+        ])->assertOk();
+
+        $this->assertSame(0, $user->tokens()->count());
+
+        $this->app['auth']->forgetGuards();
+        $this->withHeader('Authorization', "Bearer {$jetonPorteur}")
+            ->getJson('/api/auth/user')->assertStatus(401);
+    }
+
+    public function test_la_duree_de_vie_du_jeton_est_bornee(): void
+    {
+        // Le jeton vit dans localStorage : sa duree est la fenetre d'exploitation d'une XSS.
+        $this->assertNotNull(config('sanctum.expiration'), 'Un jeton sans expiration ne meurt jamais.');
+        $this->assertLessThanOrEqual(60 * 24 * 7, config('sanctum.expiration'));
+    }
+
+    /**
+     * Notification::fake() n'effectue aucun rendu : le lien pouvait etre casse sans
+     * qu'aucun test ne le voie. Il l'etait — la notification pointait vers la route web
+     * `password.reset`, absente d'une API.
+     */
+    public function test_l_email_de_reinitialisation_se_rend_et_pointe_vers_le_front(): void
+    {
+        $user = User::factory()->create(['email' => 'cliente@exemple.fr']);
+
+        $mail = (new ResetPassword('jeton-de-test'))->toMail($user);
+
+        $this->assertStringStartsWith((string) config('app.frontend_url'), $mail->actionUrl);
+        $this->assertStringContainsString('/reinitialiser-mot-de-passe', $mail->actionUrl);
+        $this->assertStringContainsString('token=jeton-de-test', $mail->actionUrl);
+        $this->assertStringContainsString('email=cliente%40exemple.fr', $mail->actionUrl);
+    }
+
+    public function test_le_lien_de_l_email_correspond_a_la_route_du_front(): void
+    {
+        $user = User::factory()->create(['email' => 'cliente@exemple.fr']);
+
+        $url = (new ResetPassword('t'))->toMail($user)->actionUrl;
+        $chemin = parse_url($url, PHP_URL_PATH);
+
+        // Doit rester aligne sur web/src/router/index.ts.
+        $this->assertSame('/reinitialiser-mot-de-passe', $chemin);
+    }
 }

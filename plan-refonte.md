@@ -1414,12 +1414,18 @@ sans test, → §9.6).
 ## 3.2 Authentification — 3 j · #13, #27, #28, D8
 
 ```
-[ ] Supprimer l'émission du token Bearer (login + register) et sa lecture côté front
-    ⛔ **D8, décision requise** — et à ne pas faire à l'aveugle : le front lit le jeton
-      depuis localStorage partout, et le basculer sur le cookie de session seul dépend de
-      SESSION_DOMAIN, des domaines stateful Sanctum et du CORS entre deux sous-domaines.
-      Une erreur casse toute l'administration, et aucun test ne rend une vue.
-[ ] Session cookie seule · SESSION_DOMAIN exact · SameSite=lax conservé — même blocage
+[~] Supprimer l'émission du token Bearer (login + register) et sa lecture côté front
+    **D8 tranchée : on garde l'authentification hybride pour l'instant, en réduisant le
+    risque plutôt qu'en le déplaçant.**
+    Le danger du jeton n'est pas son existence mais sa durée de vie dans `localStorage`.
+    Deux mitigations captent l'essentiel du gain sans toucher au parcours d'authentification :
+    durée ramenée de 30 à 7 jours, et révocation à la réinitialisation du mot de passe.
+    Le basculement en cookie de session seul dépend de `SESSION_DOMAIN`, des domaines
+    stateful Sanctum et du CORS entre deux sous-domaines ; une erreur casse toute
+    l'administration, et aucun test ne rend une vue.
+    **Condition de levée** : des tests de rendu sur la connexion et une page
+    d'administration. À reprendre avec l'enveloppe unique (2.4), même prérequis.
+[~] Session cookie seule · SESSION_DOMAIN exact · SameSite=lax conservé — même décision
 [~] Poser une Content-Security-Policy
     🔴 **la politique proposée par le plan casse le site.** `connect-src 'self'`
       bloquerait TOUS les appels d'API : le front est sur `oceanetorresphotographie.fr`,
@@ -1437,8 +1443,22 @@ sans test, → §9.6).
         a du sens sur du JSON.
 [x] Retirer X-XSS-Protection (obsolète) — aussi dans web/docker/nginx.conf
 [ ] TOTP sur le compte admin 👤 exige l'enrôlement de la photographe
-[ ] Finir « mot de passe oublié » : les 2 endpoints existent, l'interface manque
-    → travail front pur ; aujourd'hui un compte verrouillé n'a aucun recours
+[x] Finir « mot de passe oublié »
+    🔴 **le parcours était inopérant bien avant l'interface** : la notification Laravel
+      construisait son lien vers la route web `password.reset`, absente d'une API. Le
+      rendu de l'email levait `RouteNotFoundException`. Mon propre test ne le voyait pas —
+      `Notification::fake()` n'effectue aucun rendu, il vérifiait l'envoi, pas le contenu.
+    [x] `ResetPassword::createUrlUsing()` pointe vers `/reinitialiser-mot-de-passe` du
+        front, avec un test qui vérifie que le chemin reste aligné sur le routeur
+    [x] `MotDePasseOublie.vue` + `ReinitialiserMotDePasse.vue`, routes en `noindex`
+    [x] `authApi.forgotPassword()` / `resetPassword()`
+[x] #— Révoquer les jetons à la réinitialisation
+    🔴 une réinitialisation ne révoquait **rien** : sur un compte compromis, le jeton de
+      l'attaquant restait valable jusqu'à son expiration. Réinitialiser le mot de passe ne
+      rendait donc pas l'accès.
+[x] #— Durée de vie du jeton Bearer : 30 jours → **7**, paramétrable par
+    `SANCTUM_TOKEN_MINUTES`. Le jeton vit dans `localStorage` : sa durée est la fenêtre
+    d'exploitation d'une XSS.
 [x] Journal des connexions (réussies ET échouées) + verrouillage progressif
     → table `login_attempts` : email normalisé, IP, user-agent, succès, compte.
       Rien ne tracait les connexions : un bourrage d'identifiants ne laissait aucune
