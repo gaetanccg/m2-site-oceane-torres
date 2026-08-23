@@ -61,6 +61,11 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withExceptions(function (Exceptions $exceptions): void {
         Integration::handles($exceptions);
 
+        // BusinessException est un resultat metier normal a message affichable — panier
+        // vide, commande deja payee, galerie cloturee. Le remonter noie les vraies
+        // erreurs et consomme le quota Sentry.
+        $exceptions->dontReport(BusinessException::class);
+
         // Render any uncaught exception on /api/* as a clean JSON response.
         // Business exceptions surface their message verbatim; native Laravel
         // exceptions (validation, auth, 404, HttpException) keep their default
