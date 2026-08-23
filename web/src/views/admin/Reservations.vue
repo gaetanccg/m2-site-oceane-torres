@@ -321,6 +321,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, watch, onMounted } from 'vue'
+import { useAdminList } from '@/composables/useAdminList'
 import AdminHeader from '@/components/admin/AdminHeader.vue'
 import Calendar from '@/components/admin/ui/Calendar.vue'
 import StatusBadge from '@/components/admin/ui/StatusBadge.vue'
@@ -334,15 +335,39 @@ import type { Reservation, CalendarEvent, ReservationStatus } from '@/types/admi
 const toast = useToast()
 const { confirm } = useConfirm()
 const viewMode = ref<'list' | 'calendar'>('list')
-const isLoading = ref(true)
-const reservations = ref<Reservation[]>([])
 const calendarEvents = ref<CalendarEvent[]>([])
 const statusFilter = ref('')
-const currentPage = ref(1)
-const totalPages = ref(1)
-const total = ref(0)
-const from = ref(0)
-const to = ref(0)
+
+const {
+  items: reservations,
+  isLoading,
+  currentPage,
+  totalPages,
+  total,
+  from,
+  to,
+  reload: fetchReservations,
+  reloadFromFirstPage,
+} = useAdminList<Reservation>({
+  erreur: 'Impossible de charger les réservations',
+  fetcher: async ({ page }) => {
+    const reponse = await adminApi.getReservations(
+      page,
+      20,
+      (statusFilter.value as ReservationStatus) || undefined,
+    )
+
+    return {
+      items: reponse.data,
+      lastPage: reponse.last_page,
+      total: reponse.total,
+      from: reponse.from || 0,
+      to: reponse.to || 0,
+    }
+  },
+})
+
+watch(statusFilter, reloadFromFirstPage)
 
 const showDetailModal = ref(false)
 const showEditModal = ref(false)
@@ -380,25 +405,6 @@ function formatTime(dateStr: string): string {
 function getReservationTitle(reservation: Reservation | null): string {
   if (!reservation) return 'Details'
   return reservation.client_name || 'Details'
-}
-
-async function fetchReservations() {
-  try {
-    const response = await adminApi.getReservations(
-      currentPage.value,
-      20,
-      statusFilter.value as ReservationStatus || undefined
-    )
-    reservations.value = response.data
-    totalPages.value = response.last_page
-    total.value = response.total
-    from.value = response.from || 0
-    to.value = response.to || 0
-  } catch {
-    toast.error('Erreur', 'Impossible de charger les réservations')
-  } finally {
-    isLoading.value = false
-  }
 }
 
 async function fetchCalendarEvents() {
@@ -611,10 +617,6 @@ async function deleteReservationFromModal() {
 function handleDayClick(_date: string) {
   // Day click handler - could open day detail view
 }
-
-watch([currentPage, statusFilter], () => {
-  fetchReservations()
-})
 
 watch(viewMode, (mode) => {
   if (mode === 'calendar') {

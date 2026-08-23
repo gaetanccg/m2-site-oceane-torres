@@ -292,8 +292,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted } from 'vue'
-import { useDebouncedSearch } from '@/composables/useDebouncedSearch'
-import { useTableSort } from '@/composables/useTableSort'
+import { useAdminList } from '@/composables/useAdminList'
 import AdminHeader from '@/components/admin/AdminHeader.vue'
 import DataTable from '@/components/admin/ui/DataTable.vue'
 import StatCard from '@/components/admin/ui/StatCard.vue'
@@ -309,15 +308,43 @@ import type { AdminGiftCode, GiftCodeFormData, GiftCodeOrder, GiftCodeType, Prom
 const toast = useToast()
 const { confirm } = useConfirm()
 
-const giftCodes = ref<AdminGiftCode[]>([])
-const isLoading = ref(true)
-const searchQuery = ref('')
 const statusFilter = ref('')
-const currentPage = ref(1)
-const totalPages = ref(1)
-const total = ref(0)
-const from = ref(0)
-const to = ref(0)
+
+const {
+    items: giftCodes,
+    isLoading,
+    searchQuery,
+    currentPage,
+    totalPages,
+    total,
+    from,
+    to,
+    sort,
+    applySort,
+    reload: fetchCodes,
+    reloadFromFirstPage,
+} = useAdminList<AdminGiftCode>({
+    erreur: 'Impossible de charger les codes promo',
+    searchDelay: 350,
+    fetcher: async ({ page, search, sort: tri }) => {
+        const isActive = statusFilter.value === '' ? undefined : statusFilter.value === 'active'
+        const [reponse, chiffres] = await Promise.all([
+            adminApi.getGiftCodes(page, 20, search, isActive, tri),
+            adminApi.getPromoCodeStats(),
+        ])
+        stats.value = chiffres
+
+        return {
+            items: reponse.data,
+            lastPage: reponse.last_page,
+            total: reponse.total,
+            from: reponse.from,
+            to: reponse.to,
+        }
+    },
+})
+
+watch(statusFilter, reloadFromFirstPage)
 
 const showFormModal = ref(false)
 const showDetailModal = ref(false)
@@ -517,43 +544,6 @@ async function openDetailModal(code: AdminGiftCode) {
         detailLoading.value = false
     }
 }
-
-async function fetchCodes() {
-    isLoading.value = true
-    try {
-        const isActive = statusFilter.value === '' ? undefined : statusFilter.value === 'active'
-        const [response, chiffres] = await Promise.all([
-            adminApi.getGiftCodes(currentPage.value, 20, searchQuery.value, isActive, sort.value),
-            adminApi.getPromoCodeStats(),
-        ])
-        giftCodes.value = response.data
-        totalPages.value = response.last_page
-        total.value = response.total
-        from.value = response.from
-        to.value = response.to
-        stats.value = chiffres
-    } catch {
-        toast.error('Erreur', 'Impossible de charger les codes promo')
-    } finally {
-        isLoading.value = false
-    }
-}
-
-const { sort, applySort } = useTableSort({ by: 'created_at', dir: 'desc' }, currentPage, fetchCodes)
-
-useDebouncedSearch(searchQuery, () => {
-    if (currentPage.value !== 1) {
-        currentPage.value = 1
-
-        return
-    }
-
-    fetchCodes()
-}, 350)
-
-watch([currentPage, statusFilter], () => {
-    fetchCodes()
-})
 
 onMounted(() => {
     fetchCodes()

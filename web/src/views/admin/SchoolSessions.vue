@@ -215,8 +215,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
-import { useTableSort } from '@/composables/useTableSort'
+import { ref, onMounted } from 'vue'
+import { useAdminList } from '@/composables/useAdminList'
 import { useRouter } from 'vue-router'
 import AdminHeader from '@/components/admin/AdminHeader.vue'
 import DataTable from '@/components/admin/ui/DataTable.vue'
@@ -237,11 +237,29 @@ const toast = useToast()
 const { confirm } = useConfirm()
 const uploadEta = useEta()
 
-const sessions = ref<SchoolSession[]>([])
-const isLoading = ref(true)
-const currentPage = ref(1)
-const totalPages = ref(1)
-const total = ref(0)
+const {
+    items: sessions,
+    isLoading,
+    currentPage,
+    totalPages,
+    total,
+    sort,
+    applySort,
+    reload: fetchSessions,
+} = useAdminList<SchoolSession>({
+    erreur: 'Impossible de charger les sessions',
+    fetcher: async ({ page, sort: tri }) => {
+        const reponse = await adminApi.getSchoolSessions(page, tri)
+
+        return {
+            items: reponse.data,
+            lastPage: reponse.last_page,
+            total: reponse.total,
+            from: reponse.from ?? 0,
+            to: reponse.to ?? 0,
+        }
+    },
+})
 
 const columns: TableColumn<SchoolSession>[] = [
     { key: 'title', label: 'Titre', sortable: true },
@@ -250,19 +268,6 @@ const columns: TableColumn<SchoolSession>[] = [
     { key: 'event_date', label: 'Date shooting', sortable: true },
     { key: 'created_at', label: 'Crée le', sortable: true },
 ]
-
-async function fetchSessions() {
-    try {
-        const response = await adminApi.getSchoolSessions(currentPage.value, sort.value)
-        sessions.value = response.data
-        totalPages.value = response.last_page
-        total.value = response.total
-    } catch {
-        toast.error('Erreur', 'Impossible de charger les sessions')
-    } finally {
-        isLoading.value = false
-    }
-}
 
 function goToDetail(id: string) {
     router.push({ name: 'admin-school-session-detail', params: { id } })
@@ -404,8 +409,5 @@ function formatFileSize(bytes: number): string {
     return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' Go'
 }
 
-const { sort, applySort } = useTableSort({ by: 'created_at', dir: 'desc' }, currentPage, fetchSessions)
-
-watch([currentPage], () => fetchSessions())
 onMounted(() => fetchSessions())
 </script>

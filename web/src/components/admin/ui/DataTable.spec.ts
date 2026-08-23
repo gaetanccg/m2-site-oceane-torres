@@ -3,7 +3,8 @@ import {mount} from '@vue/test-utils'
 import DataTable from './DataTable.vue'
 import type {TableColumn} from '@/types/admin'
 
-type Ligne = Record<string, unknown>
+// `mount` ne sait pas inferer le generique d'un composant generique : on le fixe.
+type Ligne = object
 
 const colonnes: TableColumn<Ligne>[] = [
     {key: 'code', label: 'Code', sortable: true},

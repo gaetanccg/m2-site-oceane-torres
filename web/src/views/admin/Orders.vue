@@ -385,8 +385,7 @@
 
 <script setup lang="ts">
 import {ref, computed, watch, onMounted} from 'vue'
-import {useDebouncedSearch} from '@/composables/useDebouncedSearch'
-import {useTableSort} from '@/composables/useTableSort'
+import {useAdminList} from '@/composables/useAdminList'
 import {useRoute} from 'vue-router'
 import AdminHeader from '@/components/admin/AdminHeader.vue'
 import DataTable from '@/components/admin/ui/DataTable.vue'
@@ -403,16 +402,45 @@ import type {AdminOrder, TableColumn} from '@/types/admin'
 const toast = useToast()
 const { confirm } = useConfirm()
 const route = useRoute()
-const orders = ref<AdminOrder[]>([])
-const isLoading = ref(true)
 // Seed depuis l'URL (?search=) ; à la déclaration pour ne pas déclencher le watcher debounce.
-const searchQuery = ref(typeof route.query.search === 'string' ? route.query.search : '')
 const statusFilter = ref('')
-const currentPage = ref(1)
-const totalPages = ref(1)
-const total = ref(0)
-const from = ref(0)
-const to = ref(0)
+
+const {
+    items: orders,
+    isLoading,
+    searchQuery,
+    currentPage,
+    totalPages,
+    total,
+    from,
+    to,
+    sort,
+    applySort,
+    reload: fetchOrders,
+    reloadFromFirstPage,
+} = useAdminList<AdminOrder>({
+    erreur: 'Impossible de charger les commandes',
+    fetcher: async ({page, search, sort: tri}) => {
+        const reponse = await adminApi.getOrders(page, 20, statusFilter.value || undefined, search || undefined, tri)
+        const {current_page: courante, per_page: parPage, last_page: derniere, total: nombre} = reponse.pagination
+        const debut = (courante - 1) * parPage + 1
+
+        return {
+            items: reponse.orders,
+            lastPage: derniere,
+            total: nombre,
+            from: debut,
+            to: Math.min(debut + parPage - 1, nombre),
+        }
+    },
+})
+
+// La recherche peut arriver par l'URL (lien depuis une autre page).
+if (typeof route.query.search === 'string') {
+    searchQuery.value = route.query.search
+}
+
+watch(statusFilter, reloadFromFirstPage)
 
 const showDetailModal = ref(false)
 const selectedOrder = ref<AdminOrder | null>(null)
@@ -570,44 +598,6 @@ async function confirmDelete(order: AdminOrder) {
         toast.error('Erreur', 'Impossible de supprimer la commande')
     }
 }
-
-async function fetchOrders() {
-    isLoading.value = true
-    try {
-        const response = await adminApi.getOrders(
-            currentPage.value,
-            20,
-            statusFilter.value || undefined,
-            searchQuery.value || undefined,
-            sort.value
-        )
-        orders.value = response.orders
-        totalPages.value = response.pagination.last_page
-        total.value = response.pagination.total
-        from.value = (response.pagination.current_page - 1) * response.pagination.per_page + 1
-        to.value = Math.min(from.value + response.pagination.per_page - 1, total.value)
-    } catch {
-        toast.error('Erreur', 'Impossible de charger les commandes')
-    } finally {
-        isLoading.value = false
-    }
-}
-
-watch([currentPage], () => {
-    fetchOrders()
-})
-
-const {sort, applySort} = useTableSort({by: 'created_at', dir: 'desc'}, currentPage, fetchOrders)
-
-useDebouncedSearch(searchQuery, () => {
-    if (currentPage.value !== 1) {
-        currentPage.value = 1
-
-        return
-    }
-
-    fetchOrders()
-})
 
 onMounted(() => {
     fetchOrders()

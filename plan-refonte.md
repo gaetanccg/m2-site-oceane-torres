@@ -1797,8 +1797,26 @@ vrais PDF : `memory_limit` passe à 512 Mo dans `phpunit.xml` (la production est
     → déjà fait en 0.5 : les six appels passent par `downloadFile()`, seul endroit du front
       qui appelle `fetch` directement. Il vérifie `response.ok` **et** détecte le XML
       d'erreur S3, qu'un 200 peut porter. Couvert par `download.spec.ts`.
-[ ] #— Réduire le boilerplate des 13 vues admin (7 072 l.) : composant « ressource
-        administrable » (état, modale de formulaire, modale de confirmation, toast)
+[~] #— Boilerplate des vues admin : `useAdminList` plutôt qu'un composant « ressource »
+    → l'état de liste (huit refs, le chargement, les observateurs) était recopié dans
+      **six** vues. Extrait dans `useAdminList`, que les six utilisent.
+    → **le gain n'est pas en lignes** : −51 dans les vues, +103 pour le composable et ses
+      tests, soit un solde négatif. Le gain est ailleurs, et il est réel : les deux règles
+      qui comptent — revenir en première page quand un critère change, libérer le minuteur
+      de recherche au démontage — n'existent plus qu'à **un** endroit. Les deux défauts
+      corrigés en #64 et #68 étaient précisément des variantes divergentes de ces règles.
+      Sept tests couvrent maintenant ce que six vues faisaient chacune à sa façon.
+    → au passage, `isLoading` ne vaut plus vrai qu'au **premier** chargement : trois vues le
+      remettaient à vrai à chaque appel, ce qui remplaçait le tableau par un sablier à
+      chaque frappe de recherche. `isRefreshing` couvre le besoin d'un indicateur discret.
+    → la contrainte générique de `DataTable` est passée de `Record<string, unknown>` à
+      `object` : une interface ne satisfait pas la première, et l'inférence retombait
+      silencieusement sur la contrainte selon le contexte d'appel.
+    [ ] **pas fait, et assumé** : la modale de formulaire, la modale de confirmation et les
+        actions restent propres à chaque vue. Un composant « ressource administrable »
+        toucherait treize écrans sans aucun test de rendu pour les couvrir — le risque
+        dépasse le bénéfice tant que ces tests n'existent pas.
+        **Condition de levée** : des tests de rendu sur au moins deux vues d'administration.
 ```
 
 ## 3.7 Divers — 0,5 j

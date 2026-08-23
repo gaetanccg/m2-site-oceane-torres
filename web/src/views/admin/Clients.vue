@@ -342,9 +342,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch, onMounted } from 'vue'
-import { useDebouncedSearch } from '@/composables/useDebouncedSearch'
-import { useTableSort } from '@/composables/useTableSort'
+import { ref, reactive, onMounted } from 'vue'
+import { useAdminList } from '@/composables/useAdminList'
 import AdminHeader from '@/components/admin/AdminHeader.vue'
 import DataTable from '@/components/admin/ui/DataTable.vue'
 import Modal from '@/components/admin/ui/Modal.vue'
@@ -355,14 +354,32 @@ import { useToast } from '@/composables/useToast'
 import type { Client, Reservation, TableColumn, ReservationStatus } from '@/types/admin'
 
 const toast = useToast()
-const isLoading = ref(true)
-const clients = ref<Client[]>([])
-const searchQuery = ref('')
-const currentPage = ref(1)
-const totalPages = ref(1)
-const total = ref(0)
-const from = ref(0)
-const to = ref(0)
+const {
+  items: clients,
+  isLoading,
+  searchQuery,
+  currentPage,
+  totalPages,
+  total,
+  from,
+  to,
+  sort,
+  applySort,
+  reload: fetchClients,
+} = useAdminList<Client>({
+  erreur: 'Impossible de charger les clients',
+  fetcher: async ({ page, search, sort: tri }) => {
+    const reponse = await adminApi.getClients(page, 20, search || undefined, undefined, tri)
+
+    return {
+      items: reponse.data,
+      lastPage: reponse.last_page,
+      total: reponse.total,
+      from: reponse.from,
+      to: reponse.to,
+    }
+  },
+})
 
 const showCreateModal = ref(false)
 const showDetailModal = ref(false)
@@ -461,27 +478,6 @@ function formatCurrency(amount: number): string {
     style: 'currency',
     currency: 'EUR',
   }).format(amount)
-}
-
-async function fetchClients() {
-  try {
-    const response = await adminApi.getClients(
-      currentPage.value,
-      20,
-      searchQuery.value || undefined,
-      undefined,
-      sort.value
-    )
-    clients.value = response.data
-    totalPages.value = response.last_page
-    total.value = response.total
-    from.value = response.from
-    to.value = response.to
-  } catch {
-    toast.error('Erreur', 'Impossible de charger les clients')
-  } finally {
-    isLoading.value = false
-  }
 }
 
 function openCreateModal() {
@@ -589,22 +585,6 @@ async function exportGdpr() {
     isExporting.value = false
   }
 }
-
-watch(currentPage, () => {
-  fetchClients()
-})
-
-const { sort, applySort } = useTableSort({ by: 'created_at', dir: 'desc' }, currentPage, fetchClients)
-
-useDebouncedSearch(searchQuery, () => {
-  if (currentPage.value !== 1) {
-    currentPage.value = 1
-
-    return
-  }
-
-  fetchClients()
-})
 
 onMounted(() => {
   fetchClients()

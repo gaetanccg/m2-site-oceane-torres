@@ -250,22 +250,47 @@ import StatusBadge from '@/components/admin/ui/StatusBadge.vue'
 import Modal from '@/components/admin/ui/Modal.vue'
 import Button from '@/components/admin/ui/Button.vue'
 import FormField from '@/components/admin/ui/FormField.vue'
-import {useDebouncedSearch} from '@/composables/useDebouncedSearch'
-import {useTableSort} from '@/composables/useTableSort'
+import {useAdminList} from '@/composables/useAdminList'
 import {adminApi} from '@/services/adminApi'
 import {useToast} from '@/composables/useToast'
 import type {AdminGiftCard, GiftCardStats, TableColumn} from '@/types/admin'
 
 const toast = useToast()
-const giftCards = ref<AdminGiftCard[]>([])
-const isLoading = ref(true)
-const searchQuery = ref('')
 const statusFilter = ref('')
-const currentPage = ref(1)
-const totalPages = ref(1)
-const total = ref(0)
-const from = ref(0)
-const to = ref(0)
+
+const {
+    items: giftCards,
+    isLoading,
+    searchQuery,
+    currentPage,
+    totalPages,
+    total,
+    from,
+    to,
+    sort,
+    applySort,
+    reload: fetchGiftCards,
+    reloadFromFirstPage,
+} = useAdminList<AdminGiftCard>({
+    erreur: 'Impossible de charger les bons cadeaux',
+    fetcher: async ({page, search, sort: tri}) => {
+        const [reponse, chiffres] = await Promise.all([
+            adminApi.getGiftCards(page, 20, search, statusFilter.value, tri),
+            adminApi.getGiftCardStats(),
+        ])
+        stats.value = chiffres
+
+        return {
+            items: reponse.data,
+            lastPage: reponse.last_page,
+            total: reponse.total,
+            from: reponse.from,
+            to: reponse.to,
+        }
+    },
+})
+
+watch(statusFilter, reloadFromFirstPage)
 
 const showDetailModal = ref(false)
 const showEditModal = ref(false)
@@ -339,25 +364,6 @@ function openEditModal(giftCard: AdminGiftCard) {
     showEditModal.value = true
 }
 
-async function fetchGiftCards() {
-    try {
-        const [response, chiffres] = await Promise.all([
-            adminApi.getGiftCards(currentPage.value, 20, searchQuery.value, statusFilter.value, sort.value),
-            adminApi.getGiftCardStats(),
-        ])
-        giftCards.value = response.data
-        totalPages.value = response.last_page
-        total.value = response.total
-        from.value = response.from
-        to.value = response.to
-        stats.value = chiffres
-    } catch {
-        toast.error('Erreur', 'Impossible de charger les bons cadeaux')
-    } finally {
-        isLoading.value = false
-    }
-}
-
 async function saveGiftCard() {
     isSaving.value = true
     try {
@@ -374,27 +380,6 @@ async function saveGiftCard() {
         isSaving.value = false
     }
 }
-
-watch(currentPage, () => {
-    fetchGiftCards()
-})
-
-// La recherche et le filtre changent l'ensemble des resultats : rester page 5 afficherait
-// une page vide. `currentPage` a 1 declenche deja le rechargement via son propre watch.
-function reloadFromFirstPage() {
-    if (currentPage.value !== 1) {
-        currentPage.value = 1
-
-        return
-    }
-
-    fetchGiftCards()
-}
-
-const {sort, applySort} = useTableSort({by: 'created_at', dir: 'desc'}, currentPage, fetchGiftCards)
-
-useDebouncedSearch(searchQuery, reloadFromFirstPage)
-watch(statusFilter, reloadFromFirstPage)
 
 onMounted(() => {
     fetchGiftCards()

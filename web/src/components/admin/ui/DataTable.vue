@@ -152,7 +152,7 @@
   </div>
 </template>
 
-<script setup lang="ts" generic="T extends Record<string, unknown>">
+<script setup lang="ts" generic="T extends object">
 import type { SortDirection, TableColumn } from '@/types/admin'
 
 const props = withDefaults(
@@ -214,7 +214,7 @@ function handleSort(column: TableColumn<T>) {
 }
 
 function getRowKey(row: T, index: number): string {
-  return (row.id as string) || String(index)
+  return (row as {id?: string}).id || String(index)
 }
 
 function getNestedValue(obj: T, path: string): unknown {
