@@ -1607,6 +1607,14 @@ vrais PDF : `memory_limit` passe à 512 Mo dans `phpunit.xml` (la production est
         ⚠️ mon premier `resendMessages` réutilisait `SendSchoolSessionMessagesRequest::createFrom()`,
           qui ne déclenche pas la validation : erreur 500. La logique d'envoi est extraite
           dans une méthode privée que les deux endpoints appellent.
+        [x] interface d'administration : section « Diffusion » dans `SchoolSessionDetail`
+            — liste des contacts avec statut et nombre de tentatives, relance groupée des
+            non-envoyés avec choix du canal, et renvoi individuel.
+            → le renvoi individuel utilise le **canal enregistré** du contact : il peut
+              porter les deux coordonnées, et le renvoyer par le mauvais canal serait pire
+              que de ne rien faire.
+            → l'historique est chargé au montage et rafraîchi après chaque diffusion. Son
+              échec ne casse pas la page : la session reste consultable sans lui.
         📋 l'import CSV n'est pas fait : le front envoie déjà une liste de contacts, et
           rien ne montre qu'un CSV soit le format attendu. À trancher avec la photographe.
 [x] #35 Rendre le filtre « commande scolaire » SYMÉTRIQUE

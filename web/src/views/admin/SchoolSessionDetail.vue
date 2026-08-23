@@ -308,6 +308,76 @@
             </div>
         </div>
 
+        <!-- Historique de diffusion : les contacts persistés permettent la relance -->
+        <div v-if="sentContacts.length > 0" class="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                <div>
+                    <h2 class="text-lg font-light text-gray-900">Diffusion</h2>
+                    <p class="text-sm text-gray-500">
+                        {{ contactsMeta.sent }} envoyé(s) · {{ contactsMeta.not_sent }} en attente ou en échec
+                    </p>
+                </div>
+                <div v-if="contactsMeta.not_sent > 0" class="flex items-center gap-2">
+                    <select
+                        v-model="channel"
+                        class="px-3 py-2 text-sm border border-gray-300 rounded-lg"
+                        aria-label="Canal de relance"
+                    >
+                        <option value="email">par email</option>
+                        <option value="sms">par SMS</option>
+                    </select>
+                    <Button :loading="isResending" @click="resendNotSent">
+                        Relancer {{ contactsMeta.not_sent }} non-envoyé(s)
+                    </Button>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-left text-gray-500 border-b border-gray-200">
+                            <th class="py-2 pr-4 font-medium">Destinataire</th>
+                            <th class="py-2 pr-4 font-medium">Coordonnée</th>
+                            <th class="py-2 pr-4 font-medium">Galerie</th>
+                            <th class="py-2 pr-4 font-medium">Statut</th>
+                            <th class="py-2 font-medium"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="contact in sentContacts" :key="contact.id" class="border-b border-gray-100">
+                            <td class="py-2 pr-4 text-gray-900">{{ contact.recipient_name }}</td>
+                            <td class="py-2 pr-4 text-gray-600">{{ contact.email || contact.phone || '—' }}</td>
+                            <td class="py-2 pr-4 text-gray-600">{{ contact.gallery?.title || '—' }}</td>
+                            <td class="py-2 pr-4">
+                                <span
+                                    :class="[
+                                        'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium',
+                                        contact.status === 'sent' ? 'bg-green-100 text-green-800' :
+                                        contact.status === 'failed' ? 'bg-red-100 text-red-800' :
+                                        'bg-gray-100 text-gray-700'
+                                    ]"
+                                >
+                                    {{ statutLisible(contact.status) }}
+                                </span>
+                                <span v-if="contact.send_attempts > 1" class="ml-2 text-xs text-gray-400">
+                                    {{ contact.send_attempts }} tentatives
+                                </span>
+                            </td>
+                            <td class="py-2 text-right">
+                                <button
+                                    :disabled="isResending"
+                                    class="text-xs text-gold hover:underline disabled:opacity-50"
+                                    @click="resendOne(contact)"
+                                >
+                                    Renvoyer
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <!-- Send Messages Modal -->
         <Modal v-model="showMessagesModal" title="Envoyer les liens d'acces" size="xl">
             <div class="space-y-4">
@@ -585,7 +655,7 @@ import {useToast} from '@/composables/useToast'
 import {useConfirm} from '@/composables/useConfirm'
 import {useEta} from '@/composables/useEta'
 import {formatPrice} from '@/utils/format'
-import type {AdminOrder, SchoolSession, SchoolSessionExport, SchoolSessionGallery} from '@/types/admin'
+import type {AdminOrder, SchoolSession, SchoolSessionContact, SchoolSessionExport, SchoolSessionGallery} from '@/types/admin'
 
 const route = useRoute()
 const router = useRouter()
@@ -989,6 +1059,60 @@ function addManualContact() {
     manualForm.value = {gallery_id: '', email: '', phone: ''}
 }
 
+const sentContacts = ref<SchoolSessionContact[]>([])
+const contactsMeta = ref({ total: 0, sent: 0, not_sent: 0 })
+const isResending = ref(false)
+
+function statutLisible(statut: SchoolSessionContact['status']): string {
+    return { sent: 'Envoyé', failed: 'Échec', pending: 'En attente' }[statut]
+}
+
+async function fetchContacts() {
+    if (!session.value) return
+
+    try {
+        const response = await adminApi.getSchoolSessionContacts(session.value.id)
+        sentContacts.value = response.data
+        contactsMeta.value = response.meta
+    } catch {
+        // Historique indisponible : la page reste utilisable sans lui.
+    }
+}
+
+async function relancer(canal: Channel, contactIds?: string[]) {
+    if (!session.value || isResending.value) return
+
+    isResending.value = true
+    try {
+        const result = await adminApi.resendSchoolSessionMessages(session.value.id, canal, contactIds)
+
+        if (result.sent > 0) {
+            toast.success('Relance', result.message)
+        } else {
+            toast.info('Relance', result.message)
+        }
+
+        if (result.errors.length > 0) {
+            toast.warning('Avertissement', `${result.errors.length} erreur(s)`)
+        }
+
+        await fetchContacts()
+    } catch {
+        toast.error('Erreur', 'La relance a échoué')
+    } finally {
+        isResending.value = false
+    }
+}
+
+const resendNotSent = () => relancer(channel.value)
+
+/**
+ * Le canal enregistre a la diffusion precedente prime : un contact peut porter les deux
+ * coordonnees, et le renvoyer par le mauvais canal serait pire que de ne rien faire.
+ */
+const resendOne = (contact: SchoolSessionContact) =>
+    relancer(contact.channel ?? (contact.email ? 'email' : 'sms'), [contact.id])
+
 async function sendMessages() {
     if (!session.value || validContacts.value.length === 0) return
     isSending.value = true
@@ -1009,6 +1133,7 @@ async function sendMessages() {
             toast.warning('Avertissement', `${result.errors.length} erreur(s)`)
         }
         showMessagesModal.value = false
+        await fetchContacts()
     } catch {
         toast.error('Erreur', 'Echec de l\'envoi')
     } finally {
@@ -1157,6 +1282,7 @@ onMounted(async () => {
         }
         if (session.value.status === 'completed') {
             fetchOrders()
+            fetchContacts()
         }
         if (isProcessing.value) {
             startPolling()

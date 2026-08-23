@@ -122,6 +122,8 @@ export const adminApi = {
     createSchoolSessionExport: schoolSessionApi.createSchoolSessionExport.bind(schoolSessionApi),
     getLatestSchoolSessionExport: schoolSessionApi.getLatestSchoolSessionExport.bind(schoolSessionApi),
     downloadSchoolSessionExport: schoolSessionApi.downloadSchoolSessionExport.bind(schoolSessionApi),
+    getSchoolSessionContacts: schoolSessionApi.getSchoolSessionContacts.bind(schoolSessionApi),
+    resendSchoolSessionMessages: schoolSessionApi.resendSchoolSessionMessages.bind(schoolSessionApi),
 
     // RGPD / Données personnelles
     searchPrivacy: privacyApi.search.bind(privacyApi),

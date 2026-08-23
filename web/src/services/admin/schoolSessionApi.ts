@@ -7,6 +7,7 @@ import type {
     SchoolSession,
     SchoolSessionExport,
     SchoolSessionFormData,
+    SchoolSessionContact,
     SchoolSessionGallery,
     SchoolSessionUpdateData,
 } from '@/types/admin'
@@ -176,6 +177,25 @@ class SchoolSessionApiService extends BaseAdminService {
         return this.adminRequest(`/admin/school-sessions/${sessionId}/send-messages`, {
             method: 'POST',
             body: JSON.stringify({ channel, contacts }),
+        })
+    }
+
+    async getSchoolSessionContacts(sessionId: string): Promise<{
+        success: boolean
+        data: SchoolSessionContact[]
+        meta: { total: number; sent: number; not_sent: number }
+    }> {
+        return this.adminRequest(`/admin/school-sessions/${sessionId}/contacts`)
+    }
+
+    async resendSchoolSessionMessages(
+        sessionId: string,
+        channel: 'email' | 'sms',
+        contactIds?: string[],
+    ): Promise<{ success: boolean; sent: number; errors: string[]; message: string }> {
+        return this.adminRequest(`/admin/school-sessions/${sessionId}/resend-messages`, {
+            method: 'POST',
+            body: JSON.stringify(contactIds ? { channel, contact_ids: contactIds } : { channel }),
         })
     }
 }

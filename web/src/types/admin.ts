@@ -679,3 +679,17 @@ export interface PrivacyAuditEntry {
     actor: { id: string; name: string; email: string } | null
     created_at: string
 }
+
+export interface SchoolSessionContact {
+    id: string
+    recipient_name: string
+    email: string | null
+    phone: string | null
+    channel: 'email' | 'sms' | null
+    status: 'pending' | 'sent' | 'failed'
+    sent_at: string | null
+    error_message: string | null
+    send_attempts: number
+    gallery: { id: string; title: string; class_name: string | null; share_code: string } | null
+}
+
