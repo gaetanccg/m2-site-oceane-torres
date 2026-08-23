@@ -28,6 +28,7 @@ class UpdateGiftCodeRequest extends FormRequest
             'type' => ['required', Rule::in(['fixed', 'percent'])],
             'value' => ['required', 'numeric', 'min:0.01', $isPercent ? 'max:100' : 'max:100000'],
             'max_discount_amount' => ['nullable', 'numeric', 'min:0.01', Rule::prohibitedIf(! $isPercent)],
+            'min_order_amount' => ['nullable', 'numeric', 'min:0.01', 'max:100000'],
             'valid_from' => ['nullable', 'date'],
             'valid_until' => ['nullable', 'date', 'after_or_equal:valid_from'],
             'max_uses' => ['nullable', 'integer', 'min:1'],

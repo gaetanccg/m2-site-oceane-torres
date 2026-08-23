@@ -182,6 +182,15 @@
                     helper="Remise maximale en euros pour un code en pourcentage."
                 />
 
+                <FormField
+                    v-model="form.min_order_amount"
+                    type="number"
+                    label="Montant minimum de commande (€) — optionnel"
+                    min="0.01"
+                    step="0.01"
+                    helper="Le code ne s'applique qu'au-delà de ce sous-total, frais de port exclus."
+                />
+
                 <div class="grid grid-cols-2 gap-4">
                     <FormField v-model="form.valid_from" type="date" label="Valide à partir du" />
                     <FormField v-model="form.valid_until" type="date" label="Valide jusqu'au" />
@@ -324,6 +333,7 @@ const form = reactive({
     type: 'fixed' as GiftCodeType,
     value: '' as string | number,
     max_discount_amount: '' as string | number,
+    min_order_amount: '' as string | number,
     valid_from: '',
     valid_until: '',
     max_uses: '' as string | number,
@@ -384,6 +394,7 @@ function resetForm() {
     form.type = 'fixed'
     form.value = ''
     form.max_discount_amount = ''
+    form.min_order_amount = ''
     form.valid_from = ''
     form.valid_until = ''
     form.max_uses = 1
@@ -403,6 +414,7 @@ function openEditModal(code: AdminGiftCode) {
     form.type = code.type
     form.value = code.value
     form.max_discount_amount = code.max_discount_amount ?? ''
+    form.min_order_amount = code.min_order_amount ?? ''
     form.valid_from = code.valid_from ? code.valid_from.split('T')[0] : ''
     form.valid_until = code.valid_until ? code.valid_until.split('T')[0] : ''
     form.max_uses = code.max_uses ?? ''
@@ -427,6 +439,7 @@ function buildPayload(): GiftCodeFormData {
         type: form.type,
         value: Number(form.value),
         max_discount_amount: form.type === 'percent' && form.max_discount_amount !== '' ? Number(form.max_discount_amount) : null,
+        min_order_amount: form.min_order_amount !== '' ? Number(form.min_order_amount) : null,
         valid_from: form.valid_from || null,
         valid_until: form.valid_until || null,
         max_uses: form.max_uses !== '' ? Number(form.max_uses) : null,

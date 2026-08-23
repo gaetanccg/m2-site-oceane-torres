@@ -23,6 +23,7 @@ class GiftCode extends Model
         'type',
         'value',
         'max_discount_amount',
+        'min_order_amount',
         'valid_from',
         'valid_until',
         'max_uses',
@@ -35,6 +36,7 @@ class GiftCode extends Model
         return [
             'value' => 'decimal:2',
             'max_discount_amount' => 'decimal:2',
+            'min_order_amount' => 'decimal:2',
             'valid_from' => 'datetime',
             'valid_until' => 'datetime',
             'max_uses' => 'integer',

@@ -1561,8 +1561,13 @@ vrais PDF : `memory_limit` passe à 512 Mo dans `phpunit.xml` (la production est
       donc l'affichage est toujours resynchronisé. Un écart au paiement signifie que le
       tarif a changé APRÈS la dernière vue du panier — refuser est donc correct, et un
       test prouve que le parcours normal (consulter puis payer) ne subit aucune friction.
-[ ] #— Codes promo : montant minimum de commande, restriction par galerie/produit ? 👤
-    décision produit : dépend de la politique commerciale, pas de la technique.
+[~] #— Codes promo : montant minimum de commande, restriction par galerie/produit ? 👤
+    [x] **montant minimum** — colonne `gift_codes.min_order_amount`, champ dans
+        l'administration, message qui annonce le montant requis à la cliente.
+        Le minimum porte sur le **sous-total** des articles, comme la remise : les frais
+        de port n'y comptent pas. Un test fige cette base de calcul.
+    [ ] restriction par galerie ou par produit — non demandée, et elle changerait la forme
+        du modèle (table de liaison). À trancher si le besoin apparaît.
 ```
 
 **Tests** *(469 lignes de service aujourd'hui non testées)* :

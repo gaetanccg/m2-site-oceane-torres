@@ -382,6 +382,7 @@ export interface AdminGiftCode {
     type: GiftCodeType
     value: number
     max_discount_amount: number | null
+    min_order_amount: number | null
     valid_from: string | null
     valid_until: string | null
     max_uses: number | null
@@ -399,6 +400,7 @@ export interface GiftCodeFormData {
     type: GiftCodeType
     value: number
     max_discount_amount?: number | null
+    min_order_amount?: number | null
     valid_from?: string | null
     valid_until?: string | null
     max_uses?: number | null

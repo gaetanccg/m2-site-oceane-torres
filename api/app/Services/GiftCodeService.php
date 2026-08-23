@@ -21,7 +21,7 @@ class GiftCodeService
     /** @return array{valid: bool, reason: ?string, discount: float} */
     public function preview(GiftCode $code, float $subtotal): array
     {
-        $reason = $this->validationError($code);
+        $reason = $this->validationError($code, $subtotal);
 
         if ($reason !== null) {
             return ['valid' => false, 'reason' => $reason, 'discount' => 0.0];
@@ -33,7 +33,7 @@ class GiftCodeService
     /** À appeler DANS la transaction de checkout, sur un modèle verrouillé (lockForUpdate). */
     public function assertUsableForCheckout(GiftCode $code, float $subtotal): float
     {
-        $reason = $this->validationError($code);
+        $reason = $this->validationError($code, $subtotal);
 
         if ($reason !== null) {
             throw new BusinessException($reason, 422);
@@ -42,7 +42,7 @@ class GiftCodeService
         return $code->effectiveDiscount($subtotal);
     }
 
-    private function validationError(GiftCode $code): ?string
+    private function validationError(GiftCode $code, float $subtotal): ?string
     {
         if (! $code->is_active) {
             return 'Ce code promo n\'est plus valide.';
@@ -60,6 +60,15 @@ class GiftCodeService
 
         if ($code->max_uses !== null && $code->paidCount() >= $code->max_uses) {
             return 'Ce code promo a atteint son nombre maximum d\'utilisations.';
+        }
+
+        // Le minimum porte sur le sous-total des articles, comme la remise elle-meme :
+        // les frais de port n'y comptent pas.
+        if ($code->min_order_amount !== null && $subtotal < (float) $code->min_order_amount) {
+            return sprintf(
+                'Ce code promo s\'applique à partir de %s d\'achat.',
+                number_format((float) $code->min_order_amount, 2, ',', ' ').' €'
+            );
         }
 
         return null;
