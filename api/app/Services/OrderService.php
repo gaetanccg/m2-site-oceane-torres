@@ -54,17 +54,22 @@ class OrderService
             throw new BusinessException('Le panier est vide.', 400);
         }
 
+        // Reconciliation AVANT la transaction : le refus qui suit annonce au client que son
+        // panier a ete mis a jour, il faut donc que ce soit vrai. Dans la transaction, le
+        // throw annulerait la resynchro et chaque nouvelle tentative rejouerait la meme
+        // erreur.
+        $changements = $this->reconcileCart($cart);
+        $this->assertNoAdverseChange($changements);
+
         return DB::transaction(function () use ($cart, $user, $guestEmail, $guestFirstName, $guestLastName, $consentIp, $shippingData) {
             $cart->load('items.photo.gallery.galleryProductTypes.packTiers');
 
             $resolvedPrices = $this->resolvePackPrices($cart);
-            [$validItems, $changements] = $this->validateCartItems($cart, $resolvedPrices);
+            [$validItems] = $this->validateCartItems($cart, $resolvedPrices);
 
             if (empty($validItems)) {
                 throw new BusinessException('Le panier ne contient aucun article valide.', 400);
             }
-
-            $this->assertNoAdverseChange($changements);
 
             // sum('price') ignorait la quantité → sous-facturation SumUp.
             $subtotal = collect($validItems)->sum(
@@ -231,6 +236,32 @@ class OrderService
     }
 
     /**
+     * Rend le panier coherent avec l'etat reel du catalogue : retire les articles dont la
+     * photo a disparu ou n'est plus achetable, et resynchronise les prix. Ce qui est
+     * annonce au client doit avoir eu lieu.
+     *
+     * @return list<array{type: string, titre: ?string}>
+     */
+    private function reconcileCart(Cart $cart): array
+    {
+        $cart->load('items.photo.gallery.galleryProductTypes.packTiers');
+
+        $resolvedPrices = $this->resolvePackPrices($cart);
+        [, $changements] = $this->validateCartItems($cart, $resolvedPrices);
+
+        foreach ($cart->items as $item) {
+            if (! $item->photo || ! $item->photo->is_purchasable) {
+                $item->delete();
+            }
+        }
+
+        $cart->unsetRelation('items');
+        $cart->load('items.photo.gallery.galleryProductTypes.packTiers');
+
+        return $changements;
+    }
+
+    /**
      * @return array{0: list<CartItem>, 1: list<array{type: string, titre: ?string}>}
      */
     private function validateCartItems(Cart $cart, array $resolvedPrices): array
@@ -299,8 +330,8 @@ class OrderService
         if ($retirees !== []) {
             throw new BusinessException(
                 count($retirees) === 1
-                    ? 'Une photo de votre panier n\'est plus disponible. Votre panier a été mis à jour, vérifiez-le avant de payer.'
-                    : count($retirees).' photos de votre panier ne sont plus disponibles. Votre panier a été mis à jour, vérifiez-le avant de payer.',
+                    ? 'Une photo de votre panier n\'est plus disponible et en a été retirée. Vérifiez votre panier avant de payer.'
+                    : count($retirees).' photos de votre panier ne sont plus disponibles et en ont été retirées. Vérifiez votre panier avant de payer.',
                 409
             );
         }
@@ -625,8 +656,7 @@ class OrderService
 
     private function isSchoolOrder(Order $order): bool
     {
-        return $order->items->isNotEmpty()
-            && $order->items->every(fn ($item) => $item->product_type === 'print_scolaire');
+        return $order->isEntirelySchool();
     }
 
     private function sendPrintOrderNotification(Order $order): void

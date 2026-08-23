@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exceptions\BusinessException;
 use App\Jobs\ProcessPhotoJob;
 use App\Models\Gallery;
 use App\Models\GalleryProductType;
@@ -15,6 +16,12 @@ use Illuminate\Support\Facades\Storage;
 class SchoolSessionService
 {
     private const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp'];
+
+    private const MAX_ZIP_ENTRIES = 5000;
+
+    private const MAX_ZIP_UNCOMPRESSED_BYTES = 20 * 1024 * 1024 * 1024;
+
+    private const MAX_ZIP_RATIO = 200;
 
     private const IGNORED_FILES = ['.DS_Store', 'Thumbs.db', 'desktop.ini'];
 
@@ -51,10 +58,107 @@ class SchoolSessionService
             mkdir($extractDir, 0755, true);
         }
 
-        $zip->extractTo($extractDir);
-        $zip->close();
+        try {
+            $this->extractSafely($zip, $extractDir);
+        } finally {
+            $zip->close();
+        }
 
         return $this->parseExtractedDirectory($extractDir);
+    }
+
+    /**
+     * `extractTo` sans controle accepte tout : un ZIP de quelques Mo peut remplir le
+     * disque du NAS, et un nom d'entree peut viser hors du dossier d'extraction. On
+     * extrait donc entree par entree, apres verification.
+     */
+    private function extractSafely(\ZipArchive $zip, string $extractDir): void
+    {
+        if ($zip->numFiles > self::MAX_ZIP_ENTRIES) {
+            throw new BusinessException(
+                sprintf('Cette archive contient %d fichiers, la limite est de %d.', $zip->numFiles, self::MAX_ZIP_ENTRIES),
+                422
+            );
+        }
+
+        $racine = realpath($extractDir);
+        $tailleCumulee = 0;
+
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $entree = $zip->statIndex($i);
+            if ($entree === false) {
+                continue;
+            }
+
+            $nom = $entree['name'];
+
+            // Les dossiers n'ont rien a valider : parseExtractedDirectory les recree.
+            if (str_ends_with($nom, '/')) {
+                continue;
+            }
+
+            if (! $this->isSafeEntryName($nom)) {
+                Log::warning('Entrée ZIP ignorée : nom hors du dossier d\'extraction', ['entry' => $nom]);
+
+                continue;
+            }
+
+            $extension = strtolower(pathinfo($nom, PATHINFO_EXTENSION));
+            if (! in_array($extension, self::ALLOWED_EXTENSIONS, true)) {
+                continue;
+            }
+
+            // Le ratio attrape la bombe de decompression : un fichier qui gonfle d'un
+            // facteur 200 n'est pas une photo.
+            if ($entree['comp_size'] > 0 && $entree['size'] / $entree['comp_size'] > self::MAX_ZIP_RATIO) {
+                throw new BusinessException('Cette archive semble corrompue ou malveillante.', 422);
+            }
+
+            $tailleCumulee += $entree['size'];
+            if ($tailleCumulee > self::MAX_ZIP_UNCOMPRESSED_BYTES) {
+                throw new BusinessException(
+                    sprintf('Cette archive dépasse %d Go décompressés.', intdiv(self::MAX_ZIP_UNCOMPRESSED_BYTES, 1024 ** 3)),
+                    422
+                );
+            }
+
+            $destination = $extractDir.'/'.$nom;
+            $dossier = dirname($destination);
+
+            if (! is_dir($dossier)) {
+                mkdir($dossier, 0755, true);
+            }
+
+            // Verification apres creation du dossier : realpath exige un chemin existant.
+            if (! str_starts_with((string) realpath($dossier), (string) $racine)) {
+                Log::warning('Entrée ZIP ignorée : destination hors racine', ['entry' => $nom]);
+
+                continue;
+            }
+
+            $flux = $zip->getStream($nom);
+            if ($flux === false) {
+                continue;
+            }
+
+            file_put_contents($destination, $flux);
+            fclose($flux);
+        }
+    }
+
+    private function isSafeEntryName(string $nom): bool
+    {
+        if ($nom === '' || str_starts_with($nom, '/') || preg_match('#^[a-zA-Z]:#', $nom)) {
+            return false;
+        }
+
+        foreach (explode('/', str_replace('\\', '/', $nom)) as $segment) {
+            if ($segment === '..') {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

@@ -6,9 +6,12 @@ use App\Exceptions\BusinessException;
 use App\Mail\OrderConfirmationMail;
 use App\Mail\PrintOrderNotificationMail;
 use App\Mail\SchoolOrderConfirmationMail;
+use App\Models\Gallery;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
+use App\Models\Photo;
+use App\Models\SchoolSession;
 use App\Services\OrderService;
 use App\Services\SumUpService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -158,8 +161,15 @@ class OrderServiceTest extends TestCase
     {
         $service = $this->serviceWithSumUp(fn ($m) => $m);
         $order = Order::factory()->pending()->create();
-        // Commande 100 % scolaire → mail dédié, pas de notif print générique.
-        OrderItem::factory()->print('print_scolaire')->create(['order_id' => $order->id]);
+        // Une commande est scolaire parce que ses photos viennent d'une galerie de session,
+        // et non par le type de produit : une galerie scolaire peut vendre du numérique.
+        $session = SchoolSession::create(['title' => 'Session']);
+        $gallery = Gallery::factory()->create(['school_session_id' => $session->id]);
+        $photo = Photo::factory()->create(['gallery_id' => $gallery->id]);
+        OrderItem::factory()->print('print_scolaire')->create([
+            'order_id' => $order->id,
+            'photo_id' => $photo->id,
+        ]);
 
         $service->completeOrder($order, 'txn_school');
 

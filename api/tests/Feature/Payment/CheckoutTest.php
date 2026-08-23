@@ -229,21 +229,72 @@ class CheckoutTest extends TestCase
         $this->checkout('normale')->assertOk();
     }
 
-    /** Une photo devenue indisponible arrete aussi le paiement. */
-    public function test_an_unavailable_photo_stops_the_payment(): void
+    /**
+     * Une photo devenue indisponible arrete le paiement — et le panier est REELLEMENT mis
+     * a jour. Sans ça, le message mentirait et chaque nouvelle tentative rejouerait la
+     * meme erreur : cul-de-sac de paiement permanent.
+     */
+    public function test_an_unavailable_photo_is_removed_and_stops_the_payment(): void
     {
         $this->fakeSumUp(createCheckout: ['id' => 'chk_indispo', 'status' => 'PENDING']);
 
         $cart = Cart::factory()->create(['session_id' => 'indispo-session']);
-        $photo = Photo::factory()->create(['is_purchasable' => false]);
+        $indisponible = Photo::factory()->create(['is_purchasable' => false]);
+        $disponible = Photo::factory()->create();
+
+        $ligneRetiree = CartItem::factory()->create([
+            'cart_id' => $cart->id, 'photo_id' => $indisponible->id,
+            'product_type' => 'digital', 'price' => 13.00,
+        ]);
         CartItem::factory()->create([
-            'cart_id' => $cart->id,
-            'photo_id' => $photo->id,
-            'product_type' => 'digital',
-            'price' => 13.00,
+            'cart_id' => $cart->id, 'photo_id' => $disponible->id,
+            'product_type' => 'digital', 'price' => 13.00,
         ]);
 
-        $this->checkout('indispo-session')->assertStatus(400);
+        $this->checkout('indispo-session')->assertStatus(409);
+
         $this->assertSame(0, Order::count());
+        $this->assertModelMissing($ligneRetiree);
+    }
+
+    /** La seconde tentative doit aboutir : sinon le paiement est definitivement bloque. */
+    public function test_a_retry_after_removal_succeeds(): void
+    {
+        $this->fakeSumUp(createCheckout: ['id' => 'chk_retry', 'status' => 'PENDING']);
+
+        $cart = Cart::factory()->create(['session_id' => 'retry-session']);
+        CartItem::factory()->create([
+            'cart_id' => $cart->id,
+            'photo_id' => Photo::factory()->create(['is_purchasable' => false])->id,
+            'product_type' => 'digital', 'price' => 13.00,
+        ]);
+        CartItem::factory()->create([
+            'cart_id' => $cart->id,
+            'photo_id' => Photo::factory()->create()->id,
+            'product_type' => 'digital', 'price' => 13.00,
+        ]);
+
+        $this->checkout('retry-session')->assertStatus(409);
+        $this->checkout('retry-session')->assertOk();
+
+        $this->assertSame(1, Order::count());
+    }
+
+    /** Un panier qui ne contient QUE des photos indisponibles finit vide. */
+    public function test_a_cart_of_only_unavailable_photos_is_rejected(): void
+    {
+        $this->fakeSumUp(createCheckout: ['id' => 'chk_vide', 'status' => 'PENDING']);
+
+        $cart = Cart::factory()->create(['session_id' => 'vide-session']);
+        CartItem::factory()->create([
+            'cart_id' => $cart->id,
+            'photo_id' => Photo::factory()->create(['is_purchasable' => false])->id,
+            'product_type' => 'digital', 'price' => 13.00,
+        ]);
+
+        $this->checkout('vide-session')->assertStatus(409);
+        $this->assertSame(0, CartItem::where('cart_id', $cart->id)->count());
+
+        $this->checkout('vide-session')->assertStatus(400);
     }
 }

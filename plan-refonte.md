@@ -1561,6 +1561,15 @@ vrais PDF : `memory_limit` passe à 512 Mo dans `phpunit.xml` (la production est
       donc l'affichage est toujours resynchronisé. Un écart au paiement signifie que le
       tarif a changé APRÈS la dernière vue du panier — refuser est donc correct, et un
       test prouve que le parcours normal (consulter puis payer) ne subit aucune friction.
+    ⚠️ **défaut de ma première version, trouvé par la cartographie déléguée** : le message
+      annonçait « votre panier a été mis à jour » alors que rien ne l'était.
+      `validateCartItems` ne supprime aucune ligne, et le `throw` étant dans la
+      transaction, même la resynchronisation de prix était annulée. Chaque nouvelle
+      tentative rejouait donc la même erreur : cul-de-sac de paiement permanent, sans que
+      la cliente puisse identifier l'article fautif.
+      → la réconciliation passe **avant** la transaction et retire réellement les articles
+      indisponibles. Deux tests ajoutés : le panier est bien modifié, et **la seconde
+      tentative aboutit**.
 [~] #— Codes promo : montant minimum de commande, restriction par galerie/produit ? 👤
     [x] **montant minimum** — colonne `gift_codes.min_order_amount`, champ dans
         l'administration, message qui annonce le montant requis à la cliente.
@@ -1586,11 +1595,26 @@ vrais PDF : `memory_limit` passe à 512 Mo dans `phpunit.xml` (la production est
         [ ] Réenvoi individuel possible · relance des non-envoyés
         [ ] ⚠️ Inscrire le traitement au registre RGPD
         [ ] Intégrer à PersonalDataLocator et PersonalDataEraser
-[ ] #35 Rendre le filtre « commande scolaire » SYMÉTRIQUE entre Admin/OrderController::index
-        (whereDoesntHave dès UN article scolaire) et OrderService::isSchoolOrder (TOUS les
-        articles print_scolaire) → aujourd'hui une commande mixte est invisible partout
-[ ] #— Durcir l'extraction ZIP (#47) : valider chaque entrée avant extractTo, plafonner
-        le nombre d'entrées, la taille décompressée cumulée et le ratio
+[x] #35 Rendre le filtre « commande scolaire » SYMÉTRIQUE
+        🔴 `index` excluait dès **un** article scolaire, tandis que la vue de session
+          n'affiche que les commandes **payées**. Une commande mixte non payée
+          n'apparaissait donc **nulle part** dans l'administration.
+        → définition unique portée par le modèle : `Order::isEntirelySchool()` et son
+          pendant SQL `scopeNotEntirelySchool()`. `isSchoolOrder` délègue au modèle.
+        ⚠️ en unifiant j'ai conflaté deux notions : le **type de produit** vendu et la
+          **galerie de session**. La seconde est le fait structurel — une galerie scolaire
+          peut vendre du numérique. Un test construisait le cas impossible (du
+          `print_scolaire` dans une galerie non scolaire) ; corrigé pour refléter la réalité.
+[x] #— Durcir l'extraction ZIP (#47)
+        🔴 `extractTo()` sans **aucun** contrôle : ni chemin, ni nombre d'entrées, ni
+          taille décompressée, ni ratio. Un ZIP de quelques Mo pouvait remplir le disque
+          du NAS, et un nom d'entrée viser hors du dossier d'extraction.
+        → extraction entrée par entrée : refus des chemins absolus et des `..`, 5000
+          entrées maximum, 20 Go décompressés, ratio plafonné à 200, et seules les
+          extensions que la chaîne sait traiter.
+        → 6 tests, dont l'évasion par `..`, le chemin absolu et la bombe de décompression.
+        ⚠️ l'upload étant réservé à l'administration, ce n'était pas une attaque anonyme —
+          mais une archive mal formée par accident produit le même effet.
 [ ] #— Borner l'offset de l'upload chunké (aujourd'hui min:0 sans maximum)
 [ ] #— Les 3 jobs longs doivent RELANCER l'exception après avoir marqué le statut,
         sinon leurs échecs restent invisibles pour la supervision (#11)

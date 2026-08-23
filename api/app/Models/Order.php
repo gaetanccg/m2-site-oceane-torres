@@ -152,6 +152,26 @@ class Order extends Model
         ]));
     }
 
+    /**
+     * Entierement scolaire : tous les articles viennent d'une galerie de session. Une
+     * commande MIXTE n'en fait pas partie — elle doit rester visible dans la liste
+     * generale, sinon elle n'apparait nulle part tant qu'elle n'est pas payee.
+     */
+    public function isEntirelySchool(): bool
+    {
+        return $this->items->isNotEmpty()
+            && $this->items->every(fn ($item) => $item->photo?->gallery?->school_session_id !== null);
+    }
+
+    /** Pendant SQL de isEntirelySchool(). */
+    public function scopeNotEntirelySchool($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereDoesntHave('items.photo.gallery', fn ($g) => $g->whereNotNull('school_session_id'))
+                ->orWhereHas('items.photo.gallery', fn ($g) => $g->whereNull('school_session_id'));
+        });
+    }
+
     public function invoice(): HasOne
     {
         return $this->hasOne(Invoice::class);

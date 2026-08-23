@@ -25,7 +25,7 @@ class OrderController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = Order::with('items.photo', 'user')
-            ->whereDoesntHave('items.photo.gallery', fn ($g) => $g->whereNotNull('school_session_id'))
+            ->notEntirelySchool()
             ->orderBy('created_at', 'desc');
 
         if ($request->has('status')) {
