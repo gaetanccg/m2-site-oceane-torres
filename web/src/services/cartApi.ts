@@ -300,6 +300,12 @@ class CartApiService extends BaseApiService {
         return this.requestBlob(`/orders/${orderId}/download-all${params}`, {}, { headers })
     }
 
+    async downloadInvoice(orderId: string, token?: string): Promise<{ success: boolean; download_url: string; filename: string }> {
+        const params = token ? `?token=${encodeURIComponent(token)}` : ''
+
+        return this.cartRequest(`/orders/${orderId}/invoice${params}`)
+    }
+
     // ============================================================================
     // SumUp Payment
     // ============================================================================

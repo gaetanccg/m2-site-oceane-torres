@@ -113,6 +113,45 @@ class Order extends Model
         return $this->hasOne(Payment::class);
     }
 
+    /**
+     * L'adresse de livraison n'est renseignee que pour les commandes avec tirages : on
+     * retombe sur celle du compte, sinon la facture d'une commande numerique n'en porte
+     * aucune.
+     *
+     * @return list<string>|null
+     */
+    public function invoiceAddress(): ?array
+    {
+        $source = $this->shipping_address_line1
+            ? [
+                'line1' => $this->shipping_address_line1,
+                'line2' => $this->shipping_address_line2,
+                'postal_code' => $this->shipping_postal_code,
+                'city' => $this->shipping_city,
+                'country' => $this->shipping_country,
+            ]
+            : ($this->user ? [
+                'line1' => $this->user->address_line1,
+                'line2' => $this->user->address_line2,
+                'postal_code' => $this->user->postal_code,
+                'city' => $this->user->city,
+                'country' => null,
+            ] : null);
+
+        if (! $source || ! $source['line1']) {
+            return null;
+        }
+
+        $ville = trim(($source['postal_code'] ?? '').' '.($source['city'] ?? ''));
+
+        return array_values(array_filter([
+            $source['line1'],
+            $source['line2'],
+            $ville !== '' ? $ville : null,
+            $source['country'],
+        ]));
+    }
+
     public function invoice(): HasOne
     {
         return $this->hasOne(Invoice::class);

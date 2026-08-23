@@ -1366,9 +1366,11 @@ sans test, → §9.6).
            force-delete la commande.
 [ ] #16 Avoirs (selon D5) : table `credit_notes`, séquence AV-YYYY-NNNNN sous advisory lock,
         statut orders.refunded écrit, gabarit PDF d'avoir
-[ ] #33 Adresse du client sur la facture (les données existent dans orders.shipping_*)
-[ ] #—  Libellés « Prix TTC » / « Total TTC » → « Montant » / « Total »
-        (impropres en franchise de TVA, juste au-dessus de la mention art. 293 B)
+[x] #33 Adresse du client sur la facture
+        → `Order::invoiceAddress()` : `shipping_*` si la commande en porte une, sinon
+          l'adresse du compte. Sans ce repli, une commande **numérique** n'aurait aucune
+          adresse : `shipping_*` n'est rempli que pour les tirages.
+[x] #—  Libellés « Prix TTC » / « Total TTC » → « Montant » / « Total »
 [x] #—  Ne plus avaler l'échec de génération de facture
         🔴 **Cause trouvée, plus grave que « avalé »** : `generateForOrder` retournait la
            facture existante SANS regénérer son PDF. Or le bouton « télécharger la
@@ -1385,17 +1387,28 @@ sans test, → §9.6).
             téléchargement du client. Le bloquer punirait la cliente d'un défaut
             technique. Le PDF est une pièce jointe conditionnelle, et son absence est
             désormais visible et réparable.
-[ ] #—  Brancher GET /orders/{id}/invoice et /admin/orders/{id}/invoice (boutons manquants)
+[x] #—  Brancher GET /orders/{id}/invoice et /admin/orders/{id}/invoice
+        → **aucun des deux n'avait de consommateur** : ni la cliente ni la photographe ne
+          pouvaient récupérer une facture. Boutons ajoutés dans OrderConfirmation,
+          account/OrderDetail et admin/Orders.
+        → les deux endpoints divergeaient : l'admin réparait un PDF manquant, la version
+          cliente renvoyait 404. Alignés.
 [ ] #48 Export comptable CSV (ventes, avoirs, encaissements) — format à valider 👤
-[ ] #50 Registre des advisory locks (42, 43, + celui des avoirs) dans docs/
+[x] #50 Registre des advisory locks → `docs/advisory-locks.md`
+        → 42 et 43 documentés, plage 50-59 réservée aux séquences comptables.
+        → consigne la raison de `xact` plutôt que `session` : la production passe par le
+          pooler en **mode transaction**, où un verrou de session survivrait à la requête
+          sur une connexion réattribuée à un tiers.
+        → vérifié que les deux appels sont bien dans une transaction : hors transaction,
+          `pg_advisory_xact_lock` se libère immédiatement et ne protège rien.
 ```
 
 **Tests à écrire** *(aucun n'existe pour ce domaine)* :
 ```
-[ ] Génération idempotente · numérotation séquentielle sans trou · quantité × prix unitaire
-[ ] Une facture survit à la suppression de la photo (dénormalisation)
-[ ] Une commande payée ne peut pas être supprimée
-[ ] Un avoir décrémente correctement et laisse la facture intacte
+[x] Génération idempotente · numérotation séquentielle sans trou · quantité × prix unitaire
+[x] Une facture survit à la suppression de la photo (dénormalisation)
+[x] Une commande payée ne peut pas être supprimée
+[ ] Un avoir décrémente correctement et laisse la facture intacte — attend D5 👤
 ```
 
 ## 3.2 Authentification — 3 j · #13, #27, #28, D8

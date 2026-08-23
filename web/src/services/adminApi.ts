@@ -100,6 +100,7 @@ export const adminApi = {
     getOrders: orderApi.getOrders.bind(orderApi),
     getOrder: orderApi.getOrder.bind(orderApi),
     deleteOrder: orderApi.deleteOrder.bind(orderApi),
+    downloadInvoice: orderApi.downloadInvoice.bind(orderApi),
     markOrderShipped: orderApi.markOrderShipped.bind(orderApi),
     getOrderDownloadLink: orderApi.getOrderDownloadLink.bind(orderApi),
     retryOrderPayment: orderApi.retryOrderPayment.bind(orderApi),

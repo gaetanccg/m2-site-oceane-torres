@@ -183,6 +183,12 @@
                         <h3>Client</h3>
                         <p><strong>{{ $order->customer_name ?: 'Client' }}</strong></p>
                         <p>{{ $order->customer_email }}</p>
+                        @php($adresse = $order->invoiceAddress())
+                        @if($adresse)
+                        @foreach($adresse as $ligne)
+                        <p>{{ $ligne }}</p>
+                        @endforeach
+                        @endif
                     </div>
                 </td>
             </tr>
@@ -213,7 +219,7 @@
             <thead>
                 <tr>
                     <th>Désignation</th>
-                    <th style="text-align: right;">Prix TTC</th>
+                    <th style="text-align: right;">Montant</th>
                 </tr>
             </thead>
             <tbody>
@@ -255,7 +261,7 @@
                 </tr>
                 @endif
                 <tr class="total-row">
-                    <td><strong>Total TTC</strong></td>
+                    <td><strong>Total</strong></td>
                     <td>{{ number_format($order->total, 2, ',', ' ') }} €</td>
                 </tr>
             </tfoot>

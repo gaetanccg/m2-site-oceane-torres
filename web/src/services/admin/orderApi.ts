@@ -34,6 +34,10 @@ class OrderApiService extends BaseAdminService {
     async retryOrderPayment(id: string): Promise<{ success: boolean; message: string; order: AdminOrder }> {
         return this.adminRequest(`/admin/orders/${id}/retry-payment`, { method: 'POST' })
     }
+
+    async downloadInvoice(id: string): Promise<{ success: boolean; download_url: string; filename: string }> {
+        return this.adminRequest(`/admin/orders/${id}/invoice`)
+    }
 }
 
 export const orderApi = new OrderApiService()

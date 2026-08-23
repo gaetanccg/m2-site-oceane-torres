@@ -155,6 +155,17 @@
                             <span>{{ isDownloadingAll ? 'Préparation du ZIP...' : 'Tout télécharger (ZIP)' }}</span>
                         </button>
 
+                        <button
+                            @click="downloadInvoice"
+                            :disabled="isDownloadingInvoice"
+                            class="w-full mb-4 flex items-center justify-center gap-2 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                        >
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <span>{{ isDownloadingInvoice ? 'Préparation...' : 'Télécharger la facture' }}</span>
+                        </button>
+
                         <!-- Individual download buttons -->
                         <div class="space-y-3">
                             <button
@@ -335,6 +346,7 @@ const isLoading = ref(true)
 const error = ref('')
 const downloadingItem = ref<string | null>(null)
 const isDownloadingAll = ref(false)
+const isDownloadingInvoice = ref(false)
 let pollInterval: number | null = null
 let pollCount = 0
 const MAX_POLLS = 60 // 5 minutes at 5s interval
@@ -511,6 +523,23 @@ async function downloadPhoto(itemId: string, photoId: string, photoTitle?: strin
         }
     } finally {
         downloadingItem.value = null
+    }
+}
+
+async function downloadInvoice() {
+    if (!order.value || isDownloadingInvoice.value) return
+
+    isDownloadingInvoice.value = true
+    try {
+        const response = await cartApi.downloadInvoice(order.value.id, route.query.token as string)
+        await downloadFile(response.download_url, response.filename)
+    } catch (e) {
+        const message = e instanceof CartApiError && e.apiError.status === 404
+            ? "La facture n'est pas encore disponible. Réessayez dans quelques instants."
+            : 'Le téléchargement de la facture a échoué'
+        toast.error('Facture', message)
+    } finally {
+        isDownloadingInvoice.value = false
     }
 }
 

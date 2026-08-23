@@ -385,6 +385,10 @@ class OrderController extends Controller
 
             $invoice = $order->invoice;
             if (! $invoice || ! $invoice->file_path) {
+                $invoice = $this->invoiceService->generateForOrder($order);
+            }
+
+            if (! $invoice->file_path) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Facture non disponible.',
