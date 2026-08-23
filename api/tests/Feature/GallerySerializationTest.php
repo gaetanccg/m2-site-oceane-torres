@@ -23,7 +23,7 @@ class GallerySerializationTest extends TestCase
 
     private const PHOTO = [
         'id', 'title', 'is_video', 'is_liked', 'is_downloadable', 'price',
-        'display_url', 'preview_url', 'thumbnail_url',
+        'preview_url', 'thumbnail_url',
     ];
 
     /** Ne doit jamais sortir sur un endpoint public. */

@@ -366,7 +366,6 @@ export interface AdminPhoto {
     gallery_id: string
     path: string
     file_path?: string
-    display_url?: string
     preview_url?: string
     thumbnail_url?: string
     thumbnail_path?: string
@@ -489,7 +488,6 @@ export interface AdminOrderItem {
     price: number
     quantity: number
     is_downloaded: boolean
-    display_url?: string
     preview_url?: string
     thumbnail_url?: string
 }

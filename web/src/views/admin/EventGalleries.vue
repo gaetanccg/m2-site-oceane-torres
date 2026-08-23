@@ -77,7 +77,7 @@
                                 >
                                     <img
                                         v-if="gallery.cover_photo"
-                                        :src="gallery.cover_photo.thumbnail_url || gallery.cover_photo.preview_url || gallery.cover_photo.display_url || gallery.cover_photo.file_path"
+                                        :src="gallery.cover_photo.thumbnail_url || gallery.cover_photo.preview_url || gallery.cover_photo.file_path"
                                         :alt="gallery.title"
                                         class="w-full h-full object-cover"
                                     />
@@ -265,7 +265,7 @@
                         >
                             <img
                                 v-if="gallery.cover_photo"
-                                :src="gallery.cover_photo.thumbnail_url || gallery.cover_photo.preview_url || gallery.cover_photo.display_url || gallery.cover_photo.file_path"
+                                :src="gallery.cover_photo.thumbnail_url || gallery.cover_photo.preview_url || gallery.cover_photo.file_path"
                                 :alt="gallery.title"
                                 class="w-full h-full object-cover"
                             />
@@ -520,7 +520,7 @@
                         @click="setParentThumbnail(photo.id)"
                     >
                         <img
-                            :src="photo.thumbnail_url || photo.preview_url || photo.display_url || photo.file_path"
+                            :src="photo.thumbnail_url || photo.preview_url || photo.file_path"
                             :alt="photo.title || 'Photo'"
                             class="w-full h-full object-cover"
                         />
@@ -534,7 +534,7 @@
                             <span class="px-3 py-1.5 bg-white/90 text-gray-800 text-xs font-medium rounded-lg">Choisir</span>
                         </div>
                         <button
-                            @click.stop="thumbnailPreviewUrl = photo.preview_url || photo.display_url || photo.file_path || null"
+                            @click.stop="thumbnailPreviewUrl = photo.preview_url || photo.file_path || null"
                             class="absolute bottom-1 right-1 p-1 bg-black/60 text-white rounded hover:bg-black/80 transition-colors opacity-0 group-hover:opacity-100"
                             title="Voir en grand"
                         >

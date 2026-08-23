@@ -99,7 +99,7 @@
                                 <div class="aspect-[4/3] bg-gray-100 relative overflow-hidden">
                                     <img
                                         v-if="child.cover_photo"
-                                        :src="child.cover_photo.thumbnail_url || child.cover_photo.preview_url || child.cover_photo.display_url || ''"
+                                        :src="child.cover_photo.thumbnail_url || child.cover_photo.preview_url || ''"
                                         :alt="child.title"
                                         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                         loading="lazy"
@@ -182,7 +182,7 @@
                                 :key="photo.id"
                             >
                                 <PhotoCard
-                                    :src="photo.thumbnail_url || photo.preview_url || photo.display_url || ''"
+                                    :src="photo.thumbnail_url || photo.preview_url || ''"
                                     :thumbnail-url="photo.thumbnail_url"
                                     :alt="photo.title || 'Photo'"
                                     @click="openLightbox(index)"
@@ -298,7 +298,7 @@ const sortedPhotos = computed<Photo[]>(() => {
 const lightboxImages = computed<LightboxImage[]>(() => {
     if (!sortedPhotos.value.length) return []
     return sortedPhotos.value.map(photo => ({
-        url: photo.preview_url || photo.display_url || '',
+        url: photo.preview_url || '',
         alt: photo.title || 'Photo',
         type: 'image' as const
     }))

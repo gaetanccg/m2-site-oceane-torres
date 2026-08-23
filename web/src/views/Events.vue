@@ -92,7 +92,7 @@
                                 <div class="aspect-[4/3] bg-gray-100 relative overflow-hidden">
                                     <img
                                         v-if="gallery.cover_photo"
-                                        :src="gallery.cover_photo.thumbnail_url || gallery.cover_photo.preview_url || gallery.cover_photo.display_url || ''"
+                                        :src="gallery.cover_photo.thumbnail_url || gallery.cover_photo.preview_url || ''"
                                         :alt="gallery.title"
                                         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                         loading="lazy"

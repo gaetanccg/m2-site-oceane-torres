@@ -16,7 +16,8 @@ class PhotoResource extends JsonResource
             'is_liked' => (bool) $this->is_liked,
             'is_downloadable' => (bool) $this->is_downloadable,
             'price' => $this->price === null ? null : (float) $this->price,
-            'display_url' => $this->display_url,
+            // Pas de `display_url` : l'accesseur renvoie `preview_url` a l'octet pres, et
+            // ces URL signees pesent 426 octets chacune — 30 % du poids de la reponse.
             'preview_url' => $this->preview_url,
             'thumbnail_url' => $this->thumbnail_url,
             // Cette URL porte le jeton de la galerie dans sa chaine de repli.

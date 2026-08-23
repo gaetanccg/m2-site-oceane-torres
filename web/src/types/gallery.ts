@@ -10,7 +10,6 @@ export interface Photo {
     is_liked: boolean
     is_downloadable: boolean
     price: number | null
-    display_url: string | null
     preview_url: string | null
     thumbnail_url: string | null
     /** Ajouté par le seul endpoint de téléchargement. */

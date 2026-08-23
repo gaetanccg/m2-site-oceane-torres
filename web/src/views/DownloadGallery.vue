@@ -155,7 +155,7 @@ const getThumbUrl = (photo: Photo): string => {
 
 // Full-size clean image (no watermark) — used by the lightbox
 const getCleanUrl = (photo: Photo): string => {
-    if (!gallery.value) return photo.preview_url || photo.display_url || ''
+    if (!gallery.value) return photo.preview_url || ''
     return `${API_CONFIG.baseUrl}/images/clean/${photo.id}?token=${gallery.value.access_token}`
 }
 

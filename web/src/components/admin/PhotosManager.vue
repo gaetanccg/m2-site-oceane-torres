@@ -297,7 +297,7 @@
         <div class="space-y-4">
             <div v-if="photoToDelete" class="flex justify-center">
                 <img
-                    :src="photoToDelete.thumbnail_url || photoToDelete.preview_url || photoToDelete.display_url || photoToDelete.file_path"
+                    :src="photoToDelete.thumbnail_url || photoToDelete.preview_url || photoToDelete.file_path"
                     :alt="photoToDelete.title || 'Photo'"
                     class="h-32 rounded-lg object-cover"
                 />
@@ -380,7 +380,7 @@
 
             <img
                 v-if="currentLightboxPhoto"
-                :src="currentLightboxPhoto.preview_url || currentLightboxPhoto.display_url || currentLightboxPhoto.file_path"
+                :src="currentLightboxPhoto.preview_url || currentLightboxPhoto.file_path"
                 :alt="currentLightboxPhoto.title || 'Photo'"
                 class="max-h-[90vh] max-w-[90vw] object-contain"
                 @click.stop

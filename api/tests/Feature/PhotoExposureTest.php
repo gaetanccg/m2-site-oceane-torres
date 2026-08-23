@@ -29,7 +29,7 @@ class PhotoExposureTest extends TestCase
 
     /** Champs dont le front dépend : les retirer casserait une vue. */
     private const REQUIS_PAR_LE_FRONT = [
-        'id', 'title', 'display_url', 'preview_url', 'thumbnail_url',
+        'id', 'title', 'preview_url', 'thumbnail_url',
     ];
 
     protected function setUp(): void

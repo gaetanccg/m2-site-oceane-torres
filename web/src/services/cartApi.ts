@@ -28,7 +28,6 @@ export interface CartItem {
     photo: {
         id: string
         title: string | null
-        display_url?: string
         preview_url?: string
         thumbnail_url?: string
         gallery_title: string | null
@@ -95,7 +94,6 @@ export interface OrderItem {
     gallery_title: string | null
     price: number
     is_downloaded: boolean
-    display_url?: string
     preview_url?: string
     thumbnail_url?: string
 }

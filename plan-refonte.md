@@ -1770,9 +1770,33 @@ vrais PDF : `memory_limit` passe à 512 Mo dans `phpunit.xml` (la production est
       plus se reproduire par oubli. Adopté par Orders, PromoCodes et GiftCards.
     → au passage, la recherche déclenchait **deux** requêtes quand on n'était pas page 1
       (remise à 1 + appel direct, tous deux observés).
-[ ] #41 Paginer les photos de galerie (aujourd'hui le JSON porte les 200 entrées)
-[ ] #— Vérifier response.ok sur les 3 fetch(download_url) avant .blob()
-        (sinon le fichier téléchargé contient le XML d'erreur S3)
+[~] #41 Poids d'une galerie — **mesuré**, et le vrai coût n'était pas le JSON
+    → mesure sur 200 photos : **287 Ko de JSON, 1470 octets par photo**, dont 1280 en URL
+      signées. `display_url` était l'exact **doublon** de `preview_url` (426 octets chacun,
+      identiques à l'octet près) : retiré des trois producteurs → **1028 o/photo, −30 %**.
+      Une borne dans les tests tombe si quelqu'un rajoute une URL signée par photo.
+    🔴 le poids réel était ailleurs : la grille de `ProtectedGallery` passait
+      `preview_url` en `src`, donc chargeait l'**aperçu 2560 px qualité 93** pour chaque
+      vignette. Mesuré : **9× le poids** de la miniature 600 px. Sur une galerie de 200
+      photos, c'est l'écart entre quelques Mo et plusieurs centaines. `EventGallery` faisait
+      déjà correctement `thumbnail_url` d'abord — seule la galerie **cliente** ne le faisait
+      pas. L'aperçu reste servi par la visionneuse, où il a un sens.
+    [ ] **pagination proprement dite : pas faite, et volontairement.** Elle exige de trancher
+        l'ordre d'affichage d'abord — voir ci-dessous. Ce qu'il reste à gagner (≈200 Ko de
+        JSON) est désormais petit devant ce qui a été corrigé.
+    🔴 **découverte bloquante pour la pagination** : l'ordre affiché n'est pas celui du
+      serveur. Le serveur trie par `sort_order, created_at` ; le front retrie par `title`
+      (`localeCompare` numérique). Et `sort_order` des photos **n'est jamais renseigné** :
+      l'endpoint `PUT /photos/sort-order` existe mais **aucun appelant** ne l'utilise, donc
+      l'ordre serveur dégénère en ordre d'upload — qui n'est pas l'ordre des noms de
+      fichiers, les envois partant par lots parallèles. Paginer sans régler cela ferait
+      apparaître les photos dans un ordre incohérent d'une page à l'autre.
+      **Condition de levée** : rendre l'ordre serveur égal à l'ordre affiché (tri naturel
+      sur `title` en SQL), puis retirer le tri côté front.
+[x] #— Vérifier response.ok sur les 3 fetch(download_url) avant .blob()
+    → déjà fait en 0.5 : les six appels passent par `downloadFile()`, seul endroit du front
+      qui appelle `fetch` directement. Il vérifie `response.ok` **et** détecte le XML
+      d'erreur S3, qu'un 200 peut porter. Couvert par `download.spec.ts`.
 [ ] #— Réduire le boilerplate des 13 vues admin (7 072 l.) : composant « ressource
         administrable » (état, modale de formulaire, modale de confirmation, toast)
 ```

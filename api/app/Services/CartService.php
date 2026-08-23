@@ -325,7 +325,7 @@ class CartService
                 'photo' => [
                     'id' => $item->photo->id,
                     'title' => $item->photo->title,
-                    'display_url' => $item->photo->display_url,
+                    'preview_url' => $item->photo->preview_url,
                     'thumbnail_url' => $item->photo->thumbnail_url,
                     'gallery_title' => $gallery?->title,
                     'gallery_id' => $gallery?->id,

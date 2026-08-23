@@ -263,8 +263,8 @@
                                 >
                                     <div class="w-12 h-12 flex-shrink-0 rounded overflow-hidden bg-gray-100">
                                         <img
-                                            v-if="item.photo.thumbnail_url || item.photo.display_url"
-                                            :src="item.photo.thumbnail_url || item.photo.display_url"
+                                            v-if="item.photo.thumbnail_url || item.photo.preview_url"
+                                            :src="item.photo.thumbnail_url || item.photo.preview_url"
                                             :alt="item.photo.title || 'Photo'"
                                             class="w-full h-full object-cover"
                                         />
