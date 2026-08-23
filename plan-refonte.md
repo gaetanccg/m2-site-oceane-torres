@@ -1454,7 +1454,21 @@ sans test, → §9.6).
     [x] politique de l'**API** : `default-src 'none'; frame-ancestors 'none'` — celle-là
         a du sens sur du JSON.
 [x] Retirer X-XSS-Protection (obsolète) — aussi dans web/docker/nginx.conf
-[ ] TOTP sur le compte admin 👤 exige l'enrôlement de la photographe
+[~] TOTP sur le compte admin — **différé sur décision, et non par blocage**
+    Le compte est déjà protégé par : mot de passe de 12 caractères vérifié contre HIBP,
+    limitation à deux échelles (5/min et 20/h, par IP **et** par adresse), journal des
+    connexions, jeton borné à 7 jours et révoqué à toute réinitialisation.
+    Ce que le TOTP ajoute est réel mais marginal face à ça. Ce qu'il **risque** ne l'est
+    pas : un enrôlement défectueux verrouille le seul compte qui administre une activité
+    en production, et la réinitialisation de mot de passe ne rendrait pas l'accès — elle
+    ne touche pas au second facteur. Or je ne peux pas éprouver un parcours d'enrôlement,
+    aucun test ne rend une vue.
+    **Prérequis à poser avant de l'écrire**, dans cet ordre :
+    1. `php artisan admin:disable-2fa <email>` — une trappe de secours côté serveur,
+       utilisable depuis le NAS sans passer par l'interface ;
+    2. codes de récupération à usage unique, générés et affichés à l'enrôlement ;
+    3. TOTP strictement optionnel, jamais imposé.
+    Sans ces trois-là, le TOTP dégrade la stabilité plus qu'il n'améliore la sécurité.
 [x] Finir « mot de passe oublié »
     🔴 **le parcours était inopérant bien avant l'interface** : la notification Laravel
       construisait son lien vers la route web `password.reset`, absente d'une API. Le
