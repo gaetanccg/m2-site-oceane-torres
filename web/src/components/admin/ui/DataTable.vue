@@ -49,24 +49,35 @@
                 'px-6 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider',
                 column.align === 'center' && 'text-center',
                 column.align === 'right' && 'text-right',
-                !column.align && 'text-left',
-                column.sortable && 'cursor-pointer hover:bg-gray-100'
+                !column.align && 'text-left'
               ]"
               :style="column.width ? { width: column.width } : undefined"
-              @click="column.sortable && handleSort(String(column.key))"
+              :aria-sort="ariaSort(column)"
+              scope="col"
             >
-              <div class="flex items-center gap-1" :class="{ 'justify-center': column.align === 'center', 'justify-end': column.align === 'right' }">
+              <component
+                :is="column.sortable ? 'button' : 'div'"
+                :type="column.sortable ? 'button' : undefined"
+                class="flex items-center gap-1 w-full uppercase tracking-wider font-semibold"
+                :class="[
+                  column.align === 'center' && 'justify-center',
+                  column.align === 'right' && 'justify-end',
+                  column.sortable && 'hover:text-gray-900'
+                ]"
+                @click="column.sortable ? handleSort(column) : undefined"
+              >
                 {{ column.label }}
                 <svg
-                  v-if="column.sortable && sortKey === column.key"
-                  :class="['w-4 h-4', sortOrder === 'desc' && 'rotate-180']"
+                  v-if="column.sortable && isSortedOn(column)"
+                  :class="['w-4 h-4', props.sortDir === 'desc' && 'rotate-180']"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
+                  aria-hidden="true"
                 >
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
                 </svg>
-              </div>
+              </component>
             </th>
             <th v-if="$slots.actions" class="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
               Actions
@@ -142,8 +153,7 @@
 </template>
 
 <script setup lang="ts" generic="T extends Record<string, unknown>">
-import { ref } from 'vue'
-import type { TableColumn } from '@/types/admin'
+import type { SortDirection, TableColumn } from '@/types/admin'
 
 const props = withDefaults(
   defineProps<{
@@ -157,6 +167,8 @@ const props = withDefaults(
     total?: number
     from?: number
     to?: number
+    sortBy?: string
+    sortDir?: SortDirection
   }>(),
   {
     currentPage: 1,
@@ -164,25 +176,41 @@ const props = withDefaults(
     total: 0,
     from: 0,
     to: 0,
+    sortDir: 'desc',
   }
 )
 
-defineEmits<{
+const emit = defineEmits<{
   'update:searchQuery': [value: string]
   'update:currentPage': [page: number]
-  sort: [key: string, order: 'asc' | 'desc']
+  sort: [key: string, dir: SortDirection]
 }>()
 
-const sortKey = ref<string | null>(null)
-const sortOrder = ref<'asc' | 'desc'>('asc')
+/**
+ * L'etat du tri appartient au parent, qui seul peut le transmettre a l'API. Le garder ici
+ * ferait tourner la fleche sans que les donnees changent — c'etait exactement le defaut :
+ * `handleSort` mettait a jour un etat local et n'emettait jamais rien.
+ */
+function serverKey(column: TableColumn<T>): string {
+  return column.sortKey ?? String(column.key)
+}
 
-function handleSort(key: string) {
-  if (sortKey.value === key) {
-    sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
-  } else {
-    sortKey.value = key
-    sortOrder.value = 'asc'
-  }
+function isSortedOn(column: TableColumn<T>): boolean {
+  return props.sortBy === serverKey(column)
+}
+
+function ariaSort(column: TableColumn<T>): 'ascending' | 'descending' | 'none' | undefined {
+  if (!column.sortable) return undefined
+  if (!isSortedOn(column)) return 'none'
+
+  return props.sortDir === 'asc' ? 'ascending' : 'descending'
+}
+
+function handleSort(column: TableColumn<T>) {
+  const key = serverKey(column)
+  const dir: SortDirection = isSortedOn(column) && props.sortDir === 'asc' ? 'desc' : 'asc'
+
+  emit('sort', key, dir)
 }
 
 function getRowKey(row: T, index: number): string {

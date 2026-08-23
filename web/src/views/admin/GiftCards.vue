@@ -73,6 +73,9 @@
                 :total="total"
                 :from="from"
                 :to="to"
+                :sort-by="sort.by"
+                :sort-dir="sort.dir"
+                @sort="applySort"
             >
                 <template #filters>
                     <select
@@ -248,6 +251,7 @@ import Modal from '@/components/admin/ui/Modal.vue'
 import Button from '@/components/admin/ui/Button.vue'
 import FormField from '@/components/admin/ui/FormField.vue'
 import {useDebouncedSearch} from '@/composables/useDebouncedSearch'
+import {useTableSort} from '@/composables/useTableSort'
 import {adminApi} from '@/services/adminApi'
 import {useToast} from '@/composables/useToast'
 import type {AdminGiftCard, GiftCardStats, TableColumn} from '@/types/admin'
@@ -284,12 +288,12 @@ const stats = ref<GiftCardStats>({
 })
 
 const columns: TableColumn<AdminGiftCard>[] = [
-    {key: 'code', label: 'Code'},
-    {key: 'amount', label: 'Valeur', align: 'right'},
+    {key: 'code', label: 'Code', sortable: true},
+    {key: 'amount', label: 'Valeur', align: 'right', sortable: true},
     {key: 'purchaser_email', label: 'Acheteur'},
-    {key: 'status', label: 'Statut'},
-    {key: 'expires_at', label: 'Expiration'},
-    {key: 'created_at', label: 'Créé le'},
+    {key: 'status', label: 'Statut', sortable: true},
+    {key: 'expires_at', label: 'Expiration', sortable: true},
+    {key: 'created_at', label: 'Créé le', sortable: true},
 ]
 
 function formatCurrency(amount: number): string {
@@ -338,7 +342,7 @@ function openEditModal(giftCard: AdminGiftCard) {
 async function fetchGiftCards() {
     try {
         const [response, chiffres] = await Promise.all([
-            adminApi.getGiftCards(currentPage.value, 20, searchQuery.value, statusFilter.value),
+            adminApi.getGiftCards(currentPage.value, 20, searchQuery.value, statusFilter.value, sort.value),
             adminApi.getGiftCardStats(),
         ])
         giftCards.value = response.data
@@ -386,6 +390,8 @@ function reloadFromFirstPage() {
 
     fetchGiftCards()
 }
+
+const {sort, applySort} = useTableSort({by: 'created_at', dir: 'desc'}, currentPage, fetchGiftCards)
 
 useDebouncedSearch(searchQuery, reloadFromFirstPage)
 watch(statusFilter, reloadFromFirstPage)

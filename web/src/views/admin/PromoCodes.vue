@@ -61,6 +61,9 @@
                 :total="total"
                 :from="from"
                 :to="to"
+                :sort-by="sort.by"
+                :sort-dir="sort.dir"
+                @sort="applySort"
             >
                 <template #filters>
                     <select
@@ -290,6 +293,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useDebouncedSearch } from '@/composables/useDebouncedSearch'
+import { useTableSort } from '@/composables/useTableSort'
 import AdminHeader from '@/components/admin/AdminHeader.vue'
 import DataTable from '@/components/admin/ui/DataTable.vue'
 import StatCard from '@/components/admin/ui/StatCard.vue'
@@ -343,12 +347,14 @@ const form = reactive({
 })
 
 const columns: TableColumn<AdminGiftCode>[] = [
-    { key: 'code', label: 'Code' },
+    { key: 'code', label: 'Code', sortable: true },
     { key: 'reduction', label: 'Réduction' },
-    { key: 'validity', label: 'Validité' },
+    // La colonne affiche une periode, le serveur trie sur sa borne de fin.
+    { key: 'validity', label: 'Validité', sortable: true, sortKey: 'valid_until' },
     { key: 'uses', label: 'Utilisations' },
+    // `status` est calcule a partir des dates et du quota : rien a trier en base.
     { key: 'status', label: 'Statut' },
-    { key: 'created_at', label: 'Créé le' },
+    { key: 'created_at', label: 'Créé le', sortable: true },
 ]
 
 /** Agrege en base : ces chiffres etaient ceux de la page affichee, donc faux des la 21e ligne. */
@@ -517,7 +523,7 @@ async function fetchCodes() {
     try {
         const isActive = statusFilter.value === '' ? undefined : statusFilter.value === 'active'
         const [response, chiffres] = await Promise.all([
-            adminApi.getGiftCodes(currentPage.value, 20, searchQuery.value, isActive),
+            adminApi.getGiftCodes(currentPage.value, 20, searchQuery.value, isActive, sort.value),
             adminApi.getPromoCodeStats(),
         ])
         giftCodes.value = response.data
@@ -532,6 +538,8 @@ async function fetchCodes() {
         isLoading.value = false
     }
 }
+
+const { sort, applySort } = useTableSort({ by: 'created_at', dir: 'desc' }, currentPage, fetchCodes)
 
 useDebouncedSearch(searchQuery, () => {
     if (currentPage.value !== 1) {

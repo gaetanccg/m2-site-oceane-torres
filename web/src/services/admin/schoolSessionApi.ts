@@ -10,12 +10,19 @@ import type {
     SchoolSessionContact,
     SchoolSessionGallery,
     SchoolSessionUpdateData,
+    SortState,
 } from '@/types/admin'
 
 class SchoolSessionApiService extends BaseAdminService {
-    async getSchoolSessions(page = 1): Promise<AdminPaginatedResponse<SchoolSession>> {
+    async getSchoolSessions(page = 1, sort?: SortState): Promise<AdminPaginatedResponse<SchoolSession>> {
+        const params = new URLSearchParams({ page: String(page) })
+        if (sort) {
+            params.set('sort_by', sort.by)
+            params.set('sort_dir', sort.dir)
+        }
+
         return this.adminRequest<AdminPaginatedResponse<SchoolSession>>(
-            `/admin/school-sessions?page=${page}`,
+            `/admin/school-sessions?${params.toString()}`,
         )
     }
 

@@ -1734,7 +1734,19 @@ vrais PDF : `memory_limit` passe à 512 Mo dans `phpunit.xml` (la production est
       promo affichait un minimum vide, et l'enregistrer l'effaçait. Silencieusement.
     🔴 l'allowlist de tri des codes promo nommait `expires_at`, colonne absente de
       `gift_codes` — un clic sur cet en-tête aurait produit une 500. C'est `valid_until`.
-[ ] #65 Tri : brancher sort_by/sort_dir (fait en 2.4) ou retirer sortable: true
+[x] #65 Tri : branché pour de vrai
+    🔴 `handleSort` mettait à jour un état **local** et n'émettait jamais l'événement
+      `sort` qu'il déclarait — personne ne l'écoutait non plus. La flèche tournait, les
+      données ne bougeaient pas. L'état du tri appartient désormais au parent, seul capable
+      de le transmettre à l'API.
+    → `sortable` n'est posé que sur des colonnes que le serveur sait trier ; celles qui sont
+      calculées (`status` d'un code promo, agrégats de clients, accesseur `customer_email`)
+      restent volontairement non cliquables. `sortKey` couvre le cas où la colonne affichée
+      diffère du nom en base (`validity` → `valid_until`).
+    → `aria-sort` et un vrai `<button>` dans l'en-tête : le tri devient utilisable au
+      clavier, ce qu'un `@click` sur `<th>` ne permettait pas.
+    → un test parcourt **chaque** colonne déclarée triable sur les 8 listes : c'est ce qui
+      manquait pour attraper le `expires_at` fantôme.
 [ ] #66 Associer les libellés (for/id) sur les 5 formulaires publics — AuthModal (9 labels,
         0 for), Checkout (4/0), BookingRequestModal (7/0), GalleryAccess (0 label)
         + role/tabindex sur les 5 <div @click>

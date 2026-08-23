@@ -8,6 +8,7 @@ import type {
     EventCategory,
     EventCategoryFormData,
     AdminGiftCard,
+    SortState,
 } from '@/types/admin'
 
 class GalleryApiService extends BaseAdminService {
@@ -142,10 +143,15 @@ class GalleryApiService extends BaseAdminService {
         perPage = 20,
         search?: string,
         status?: string,
+        sort?: SortState,
     ): Promise<AdminPaginatedResponse<AdminGiftCard>> {
         const params = new URLSearchParams({page: String(page), per_page: String(perPage)})
         if (search) params.set('search', search)
         if (status) params.set('status', status)
+        if (sort) {
+            params.set('sort_by', sort.by)
+            params.set('sort_dir', sort.dir)
+        }
 
         return this.adminRequest<AdminPaginatedResponse<AdminGiftCard>>(`/admin/gift-cards?${params}`)
     }

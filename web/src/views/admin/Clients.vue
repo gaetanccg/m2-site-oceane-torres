@@ -31,6 +31,9 @@
         v-model:current-page="currentPage"
         :total-pages="totalPages"
         :total="total"
+        :sort-by="sort.by"
+        :sort-dir="sort.dir"
+        @sort="applySort"
         :from="from"
         :to="to"
       >
@@ -339,7 +342,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, watch, onMounted } from 'vue'
+import { useDebouncedSearch } from '@/composables/useDebouncedSearch'
+import { useTableSort } from '@/composables/useTableSort'
 import AdminHeader from '@/components/admin/AdminHeader.vue'
 import DataTable from '@/components/admin/ui/DataTable.vue'
 import Modal from '@/components/admin/ui/Modal.vue'
@@ -388,12 +393,13 @@ const editForm = reactive({
 })
 
 const columns: TableColumn<Client>[] = [
-  { key: 'name', label: 'Client' },
-  { key: 'source', label: 'Source' },
+  { key: 'name', label: 'Client', sortable: true },
+  { key: 'source', label: 'Source', sortable: true },
   { key: 'phone', label: 'Telephone' },
+  // Deux agregats calcules a la volee : le serveur ne les trie pas.
   { key: 'reservations_count', label: 'Reservations', align: 'center' },
   { key: 'total_paid', label: 'Total verse', align: 'right' },
-  { key: 'created_at', label: 'Crée le' },
+  { key: 'created_at', label: 'Crée le', sortable: true },
 ]
 
 function getInitials(name: string): string {
@@ -462,7 +468,9 @@ async function fetchClients() {
     const response = await adminApi.getClients(
       currentPage.value,
       20,
-      searchQuery.value || undefined
+      searchQuery.value || undefined,
+      undefined,
+      sort.value
     )
     clients.value = response.data
     totalPages.value = response.last_page
@@ -582,32 +590,23 @@ async function exportGdpr() {
   }
 }
 
-// Debounce timer for search
-let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null
-
-// Watch currentPage changes (immediate fetch)
 watch(currentPage, () => {
   fetchClients()
 })
 
-// Watch searchQuery with debounce (300ms delay)
-watch(searchQuery, () => {
-  if (searchDebounceTimer) {
-    clearTimeout(searchDebounceTimer)
+const { sort, applySort } = useTableSort({ by: 'created_at', dir: 'desc' }, currentPage, fetchClients)
+
+useDebouncedSearch(searchQuery, () => {
+  if (currentPage.value !== 1) {
+    currentPage.value = 1
+
+    return
   }
-  searchDebounceTimer = setTimeout(() => {
-    currentPage.value = 1 // Reset to first page on search
-    fetchClients()
-  }, 300)
+
+  fetchClients()
 })
 
 onMounted(() => {
   fetchClients()
-})
-
-onUnmounted(() => {
-  if (searchDebounceTimer) {
-    clearTimeout(searchDebounceTimer)
-  }
 })
 </script>

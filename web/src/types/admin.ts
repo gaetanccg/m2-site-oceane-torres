@@ -665,10 +665,24 @@ export interface SchoolSessionExport {
 export interface TableColumn<T = unknown> {
     key: keyof T | string
     label: string
+    /**
+     * N'activer que sur une colonne que le serveur sait trier : le tri est envoye a l'API,
+     * pas applique a la page recue. Trier localement vingt lignes sur mille est un tri
+     * mensonger.
+     */
     sortable?: boolean
+    /** Nom de colonne cote serveur, quand la cle d'affichage en differe. */
+    sortKey?: string
     width?: string
     align?: 'left' | 'center' | 'right'
     render?: (value: unknown, row: T) => string
+}
+
+export type SortDirection = 'asc' | 'desc'
+
+export interface SortState {
+    by: string
+    dir: SortDirection
 }
 
 export interface SelectOption {

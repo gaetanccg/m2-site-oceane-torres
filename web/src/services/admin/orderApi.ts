@@ -1,8 +1,8 @@
 import { BaseAdminService } from './baseAdmin'
-import type { AdminOrder } from '@/types/admin'
+import type { AdminOrder, SortState } from '@/types/admin'
 
 class OrderApiService extends BaseAdminService {
-    async getOrders(page = 1, perPage = 20, status?: string, search?: string): Promise<{
+    async getOrders(page = 1, perPage = 20, status?: string, search?: string, sort?: SortState): Promise<{
         success: boolean
         orders: AdminOrder[]
         pagination: { current_page: number; last_page: number; per_page: number; total: number }
@@ -12,6 +12,10 @@ class OrderApiService extends BaseAdminService {
         params.append('per_page', perPage.toString())
         if (status) params.append('status', status)
         if (search) params.append('search', search)
+        if (sort) {
+            params.append('sort_by', sort.by)
+            params.append('sort_dir', sort.dir)
+        }
         return this.adminRequest(`/admin/orders?${params.toString()}`)
     }
 

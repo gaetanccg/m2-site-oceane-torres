@@ -1,11 +1,21 @@
 import { BaseAdminService } from './baseAdmin'
-import type { AdminGiftCode, AdminPaginatedResponse, GiftCodeFormData } from '@/types/admin'
+import type { AdminGiftCode, AdminPaginatedResponse, GiftCodeFormData, SortState } from '@/types/admin'
 
 class GiftCodeApiService extends BaseAdminService {
-    async getGiftCodes(page = 1, perPage = 20, search = '', isActive?: boolean): Promise<AdminPaginatedResponse<AdminGiftCode>> {
+    async getGiftCodes(
+        page = 1,
+        perPage = 20,
+        search = '',
+        isActive?: boolean,
+        sort?: SortState,
+    ): Promise<AdminPaginatedResponse<AdminGiftCode>> {
         const params = new URLSearchParams({ page: String(page), per_page: String(perPage) })
         if (search) params.set('search', search)
         if (isActive !== undefined) params.set('is_active', isActive ? '1' : '0')
+        if (sort) {
+            params.set('sort_by', sort.by)
+            params.set('sort_dir', sort.dir)
+        }
         return this.adminRequest<AdminPaginatedResponse<AdminGiftCode>>(`/admin/gift-codes?${params.toString()}`)
     }
 

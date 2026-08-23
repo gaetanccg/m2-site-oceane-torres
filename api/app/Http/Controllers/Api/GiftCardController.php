@@ -27,7 +27,7 @@ class GiftCardController extends Controller
         $this->filterByStatus($query, (string) $request->input('status', ''));
 
         $giftCards = $this->paginated(
-            $this->sorted($query, $request, ['created_at', 'status', 'expires_at', 'amount']),
+            $this->sorted($query, $request, ['created_at', 'status', 'expires_at', 'amount', 'code']),
             $request
         );
 

@@ -1,11 +1,18 @@
 import { BaseAdminService } from './baseAdmin'
-import type { AdminPaginatedResponse, Reservation, Client, ClientFormData, ClientGdprExport } from '@/types/admin'
+import type { AdminPaginatedResponse, Reservation, Client, ClientFormData, ClientGdprExport, SortState } from '@/types/admin'
 
 class ClientApiService extends BaseAdminService {
-    async getClients(page = 1, perPage = 20, search?: string, source?: string): Promise<AdminPaginatedResponse<Client>> {
+    async getClients(
+        page = 1,
+        perPage = 20,
+        search?: string,
+        source?: string,
+        sort?: SortState,
+    ): Promise<AdminPaginatedResponse<Client>> {
         let query = `?page=${page}&per_page=${perPage}`
         if (search) query += `&search=${encodeURIComponent(search)}`
         if (source) query += `&source=${encodeURIComponent(source)}`
+        if (sort) query += `&sort_by=${sort.by}&sort_dir=${sort.dir}`
         return this.adminRequest<AdminPaginatedResponse<Client>>(`/admin/clients${query}`)
     }
 

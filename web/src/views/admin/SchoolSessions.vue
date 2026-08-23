@@ -32,6 +32,9 @@
                 v-model:current-page="currentPage"
                 :total-pages="totalPages"
                 :total="total"
+                :sort-by="sort.by"
+                :sort-dir="sort.dir"
+                @sort="applySort"
             >
                 <template #cell-title="{ row }">
                     <button
@@ -213,6 +216,7 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
+import { useTableSort } from '@/composables/useTableSort'
 import { useRouter } from 'vue-router'
 import AdminHeader from '@/components/admin/AdminHeader.vue'
 import DataTable from '@/components/admin/ui/DataTable.vue'
@@ -240,16 +244,16 @@ const totalPages = ref(1)
 const total = ref(0)
 
 const columns: TableColumn<SchoolSession>[] = [
-    { key: 'title', label: 'Titre' },
-    { key: 'status', label: 'Statut' },
+    { key: 'title', label: 'Titre', sortable: true },
+    { key: 'status', label: 'Statut', sortable: true },
     { key: 'galleries_count', label: 'Galeries', align: 'center' },
-    { key: 'event_date', label: 'Date shooting' },
-    { key: 'created_at', label: 'Crée le' },
+    { key: 'event_date', label: 'Date shooting', sortable: true },
+    { key: 'created_at', label: 'Crée le', sortable: true },
 ]
 
 async function fetchSessions() {
     try {
-        const response = await adminApi.getSchoolSessions(currentPage.value)
+        const response = await adminApi.getSchoolSessions(currentPage.value, sort.value)
         sessions.value = response.data
         totalPages.value = response.last_page
         total.value = response.total
@@ -399,6 +403,8 @@ function formatFileSize(bytes: number): string {
     if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' Mo'
     return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' Go'
 }
+
+const { sort, applySort } = useTableSort({ by: 'created_at', dir: 'desc' }, currentPage, fetchSessions)
 
 watch([currentPage], () => fetchSessions())
 onMounted(() => fetchSessions())

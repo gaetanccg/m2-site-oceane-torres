@@ -73,6 +73,9 @@
                 :total="total"
                 :from="from"
                 :to="to"
+                :sort-by="sort.by"
+                :sort-dir="sort.dir"
+                @sort="applySort"
             >
                 <template #filters>
                     <select
@@ -383,6 +386,7 @@
 <script setup lang="ts">
 import {ref, computed, watch, onMounted} from 'vue'
 import {useDebouncedSearch} from '@/composables/useDebouncedSearch'
+import {useTableSort} from '@/composables/useTableSort'
 import {useRoute} from 'vue-router'
 import AdminHeader from '@/components/admin/AdminHeader.vue'
 import DataTable from '@/components/admin/ui/DataTable.vue'
@@ -426,12 +430,14 @@ const stats = computed(() => {
 })
 
 const columns: TableColumn<AdminOrder>[] = [
-    {key: 'order_number', label: 'Commande'},
+    {key: 'order_number', label: 'Commande', sortable: true},
+    // `customer_email` est un accesseur (compte ou invite) : le serveur ne sait pas le
+    // trier, donc l'en-tete n'est pas cliquable.
     {key: 'customer_email', label: 'Client'},
     {key: 'items', label: 'Articles'},
-    {key: 'total', label: 'Total', align: 'right'},
-    {key: 'status', label: 'Statut'},
-    {key: 'created_at', label: 'Date'},
+    {key: 'total', label: 'Total', align: 'right', sortable: true},
+    {key: 'status', label: 'Statut', sortable: true},
+    {key: 'created_at', label: 'Date', sortable: true},
 ]
 
 function formatCurrency(amount: number): string {
@@ -572,7 +578,8 @@ async function fetchOrders() {
             currentPage.value,
             20,
             statusFilter.value || undefined,
-            searchQuery.value || undefined
+            searchQuery.value || undefined,
+            sort.value
         )
         orders.value = response.orders
         totalPages.value = response.pagination.last_page
@@ -589,6 +596,8 @@ async function fetchOrders() {
 watch([currentPage], () => {
     fetchOrders()
 })
+
+const {sort, applySort} = useTableSort({by: 'created_at', dir: 'desc'}, currentPage, fetchOrders)
 
 useDebouncedSearch(searchQuery, () => {
     if (currentPage.value !== 1) {
