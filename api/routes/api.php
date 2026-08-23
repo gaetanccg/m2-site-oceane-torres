@@ -253,10 +253,12 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::get('/upload-status', [PhotoController::class, 'uploadStatus']);
 
     // Gift cards
+    Route::get('/gift-cards/stats', [GiftCardController::class, 'stats']);
     Route::get('/gift-cards', [GiftCardController::class, 'index']);
     Route::put('/gift-cards/{giftCard}', [GiftCardController::class, 'update']);
 
     // Codes promo (Gift Codes) — distinct des Bons Cadeaux ci-dessus
+    Route::get('/gift-codes/stats', [GiftCodeController::class, 'stats']);
     Route::get('/gift-codes/generate-code', [GiftCodeController::class, 'generateCode']);
     Route::put('/gift-codes/{giftCode}/toggle', [GiftCodeController::class, 'toggle']);
     Route::apiResource('gift-codes', GiftCodeController::class);

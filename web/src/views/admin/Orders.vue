@@ -382,6 +382,7 @@
 
 <script setup lang="ts">
 import {ref, computed, watch, onMounted} from 'vue'
+import {useDebouncedSearch} from '@/composables/useDebouncedSearch'
 import {useRoute} from 'vue-router'
 import AdminHeader from '@/components/admin/AdminHeader.vue'
 import DataTable from '@/components/admin/ui/DataTable.vue'
@@ -589,14 +590,14 @@ watch([currentPage], () => {
     fetchOrders()
 })
 
-// Debounced search
-let searchTimeout: ReturnType<typeof setTimeout>
-watch(searchQuery, () => {
-    clearTimeout(searchTimeout)
-    searchTimeout = setTimeout(() => {
+useDebouncedSearch(searchQuery, () => {
+    if (currentPage.value !== 1) {
         currentPage.value = 1
-        fetchOrders()
-    }, 300)
+
+        return
+    }
+
+    fetchOrders()
 })
 
 onMounted(() => {

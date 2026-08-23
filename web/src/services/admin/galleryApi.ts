@@ -137,8 +137,17 @@ class GalleryApiService extends BaseAdminService {
     }
 
     // Gift cards
-    async getGiftCards(page = 1, perPage = 20): Promise<AdminPaginatedResponse<AdminGiftCard>> {
-        return this.adminRequest<AdminPaginatedResponse<AdminGiftCard>>(`/admin/gift-cards?page=${page}&per_page=${perPage}`)
+    async getGiftCards(
+        page = 1,
+        perPage = 20,
+        search?: string,
+        status?: string,
+    ): Promise<AdminPaginatedResponse<AdminGiftCard>> {
+        const params = new URLSearchParams({page: String(page), per_page: String(perPage)})
+        if (search) params.set('search', search)
+        if (status) params.set('status', status)
+
+        return this.adminRequest<AdminPaginatedResponse<AdminGiftCard>>(`/admin/gift-cards?${params}`)
     }
 
     async updateGiftCard(id: string, data: Partial<AdminGiftCard>): Promise<AdminApiResponse<AdminGiftCard>> {

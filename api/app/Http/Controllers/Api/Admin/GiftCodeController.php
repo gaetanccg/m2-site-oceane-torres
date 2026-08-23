@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreGiftCodeRequest;
 use App\Http\Requests\Admin\UpdateGiftCodeRequest;
 use App\Models\GiftCode;
+use App\Services\AdminStatsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -28,13 +29,18 @@ class GiftCodeController extends Controller
         }
 
         $codes = $this->paginated(
-            $this->sorted($query, $request, ['created_at', 'code', 'expires_at']),
+            $this->sorted($query, $request, ['created_at', 'code', 'valid_until', 'is_active']),
             $request
         );
 
         $codes->getCollection()->transform(fn (GiftCode $code) => $this->formatGiftCode($code));
 
         return response()->json($codes);
+    }
+
+    public function stats(AdminStatsService $stats): JsonResponse
+    {
+        return response()->json($stats->promoCodes());
     }
 
     public function show(GiftCode $giftCode): JsonResponse
@@ -127,6 +133,7 @@ class GiftCodeController extends Controller
             'type' => $code->type,
             'value' => (float) $code->value,
             'max_discount_amount' => $code->max_discount_amount !== null ? (float) $code->max_discount_amount : null,
+            'min_order_amount' => $code->min_order_amount !== null ? (float) $code->min_order_amount : null,
             'valid_from' => $code->valid_from?->toIso8601String(),
             'valid_until' => $code->valid_until?->toIso8601String(),
             'max_uses' => $code->max_uses,

@@ -1,5 +1,5 @@
 import { BaseAdminService } from './baseAdmin'
-import type { AdminApiResponse, AuthResponse, User, DashboardStats, RecentActivity, Notification } from '@/types/admin'
+import type { AdminApiResponse, AuthResponse, User, DashboardStats, DashboardRecent, GiftCardStats, PromoCodeStats, Notification } from '@/types/admin'
 
 class DashboardApiService extends BaseAdminService {
     // Auth
@@ -19,13 +19,22 @@ class DashboardApiService extends BaseAdminService {
         return this.adminRequest<AdminApiResponse<User>>('/auth/user')
     }
 
-    // Dashboard
-    async getDashboardStats(): Promise<AdminApiResponse<DashboardStats>> {
-        return this.adminRequest<AdminApiResponse<DashboardStats>>('/admin/dashboard/stats')
+    // Dashboard — les deux seuls appels dont il a besoin : les chiffres sont agreges en
+    // base, les encarts recents deja limites a cinq lignes cote serveur.
+    async getDashboardStats(): Promise<DashboardStats> {
+        return this.adminRequest<DashboardStats>('/admin/dashboard/stats')
     }
 
-    async getRecentActivity(): Promise<AdminApiResponse<RecentActivity[]>> {
-        return this.adminRequest<AdminApiResponse<RecentActivity[]>>('/admin/dashboard')
+    async getDashboardRecent(): Promise<DashboardRecent> {
+        return this.adminRequest<DashboardRecent>('/admin/dashboard')
+    }
+
+    async getGiftCardStats(): Promise<GiftCardStats> {
+        return this.adminRequest<GiftCardStats>('/admin/gift-cards/stats')
+    }
+
+    async getPromoCodeStats(): Promise<PromoCodeStats> {
+        return this.adminRequest<PromoCodeStats>('/admin/gift-codes/stats')
     }
 
     // Notifications

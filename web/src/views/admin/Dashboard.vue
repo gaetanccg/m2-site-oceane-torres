@@ -18,8 +18,8 @@
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard
                     label="Réservations ce mois"
-                    :value="stats.reservations.thisMonth"
-                    :change="calculateChange(stats.reservations.thisMonth, stats.reservations.lastMonth)"
+                    :value="stats.reservations.this_month"
+                    :change="calculateChange(stats.reservations.this_month, stats.reservations.last_month)"
                 >
                     <template #icon>
                         <svg class="w-6 h-6 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -42,9 +42,9 @@
 
                 <StatCard
                     label="Revenus ce mois"
-                    :value="stats.revenue.thisMonth"
+                    :value="stats.revenue.this_month"
                     format="currency"
-                    :change="calculateChange(stats.revenue.thisMonth, stats.revenue.lastMonth)"
+                    :change="calculateChange(stats.revenue.this_month, stats.revenue.last_month)"
                     icon-bg-class="bg-green-100"
                 >
                     <template #icon>
@@ -107,7 +107,7 @@
 
                 <StatCard
                     label="Bons cadeaux actifs"
-                    :value="stats.giftCards.active"
+                    :value="stats.gift_cards.active"
                     icon-bg-class="bg-amber-100"
                 >
                     <template #icon>
@@ -242,7 +242,7 @@
                             <div class="flex items-center justify-between">
                                 <div>
                                     <p class="font-medium text-gray-900">{{ order.customer_name || order.customer_email }}</p>
-                                    <p class="text-sm text-gray-500">{{ order.order_number }} - {{ order.items?.length || 0 }} article(s)</p>
+                                    <p class="text-sm text-gray-500">{{ order.order_number }} - {{ order.items_count }} article(s)</p>
                                 </div>
                                 <div class="text-right">
                                     <span :class="getOrderStatusClass(order.status)">
@@ -300,52 +300,40 @@
 </template>
 
 <script setup lang="ts">
-import {ref, reactive, onMounted} from 'vue'
+import {ref, onMounted} from 'vue'
 import AdminHeader from '@/components/admin/AdminHeader.vue'
 import StatCard from '@/components/admin/ui/StatCard.vue'
 import StatusBadge from '@/components/admin/ui/StatusBadge.vue'
 import {adminApi} from '@/services/adminApi'
 import {useToast} from '@/composables/useToast'
-import type {Reservation, Client, AdminGallery, AdminGiftCard, AdminOrder} from '@/types/admin'
+import type {
+    DashboardStats,
+    DashboardRecentReservation,
+    DashboardRecentOrder,
+    DashboardRecentGallery,
+} from '@/types/admin'
 
 const toast = useToast()
 const isLoading = ref(true)
 
-// Stats calculées à partir des vraies données
-const stats = reactive({
-    reservations: {
-        total: 0,
-        pending: 0,
-        confirmed: 0,
-        thisMonth: 0,
-        lastMonth: 0,
-    },
-    clients: {
-        total: 0,
-    },
-    revenue: {
-        total: 0,
-        thisMonth: 0,
-        lastMonth: 0,
-    },
-    galleries: {
-        clients: 0,
-        events: 0,
-    },
-    orders: {
-        total: 0,
-        paid: 0,
-        pending: 0,
-    },
-    giftCards: {
-        active: 0,
-        total: 0,
-    },
+/**
+ * Les chiffres sont agreges en base. Ils etaient auparavant deduits des cent premieres
+ * lignes de six listes : sept compteurs faux des la cent-unieme ligne, et autant d'URL
+ * MinIO signees pour des images que cet ecran n'affiche pas.
+ */
+const stats = ref<DashboardStats>({
+    reservations: {total: 0, pending: 0, confirmed: 0, this_month: 0, last_month: 0},
+    clients: {total: 0, new_this_month: 0},
+    revenue: {total: 0, this_month: 0, last_month: 0},
+    orders: {total: 0, paid: 0, pending: 0},
+    galleries: {clients: 0, events: 0},
+    gift_cards: {total: 0, active: 0, used: 0, cancelled: 0, expired: 0, outstanding: 0},
+    promo_codes: {total: 0, active: 0, inactive: 0, scheduled: 0, expired: 0, used_up: 0, paid_uses: 0},
 })
 
-const recentReservations = ref<Reservation[]>([])
-const recentOrders = ref<AdminOrder[]>([])
-const recentGalleries = ref<AdminGallery[]>([])
+const recentReservations = ref<DashboardRecentReservation[]>([])
+const recentOrders = ref<DashboardRecentOrder[]>([])
+const recentGalleries = ref<DashboardRecentGallery[]>([])
 
 function calculateChange(current: number, previous: number): number {
     if (previous === 0) return current > 0 ? 100 : 0
@@ -405,84 +393,19 @@ function getOrderStatusLabel(status: string): string {
     return labels[status] || status
 }
 
-function isThisMonth(dateStr: string): boolean {
-    const date = new Date(dateStr)
-    const now = new Date()
-    return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear()
-}
-
-function isLastMonth(dateStr: string): boolean {
-    const date = new Date(dateStr)
-    const now = new Date()
-    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-    return date.getMonth() === lastMonth.getMonth() && date.getFullYear() === lastMonth.getFullYear()
-}
-
 async function fetchDashboardData() {
     isLoading.value = true
 
     try {
-        // Fetch all data in parallel for better performance
-        const [
-            reservationsResponse,
-            clientsResponse,
-            galleriesResponse,
-            eventsResponse,
-            ordersResponse,
-            giftCardsResponse,
-        ] = await Promise.all([
-            adminApi.getReservations(1, 100).catch(() => ({ data: [] as Reservation[], current_page: 1, last_page: 1, per_page: 100, total: 0 })),
-            adminApi.getClients(1, 100).catch(() => ({ data: [] as Client[], current_page: 1, last_page: 1, per_page: 100, total: 0 })),
-            adminApi.getGalleries(1, 100).catch(() => ({ data: [] as AdminGallery[], current_page: 1, last_page: 1, per_page: 100, total: 0 })),
-            adminApi.getEventGalleries(1, 100).catch(() => ({ data: [] as AdminGallery[], current_page: 1, last_page: 1, per_page: 100, total: 0 })),
-            adminApi.getOrders(1, 100).catch(() => ({ orders: [], pagination: { total: 0 } })),
-            adminApi.getGiftCards(1, 100).catch(() => ({ data: [] as AdminGiftCard[], current_page: 1, last_page: 1, per_page: 100, total: 0 })),
+        const [chiffres, recents] = await Promise.all([
+            adminApi.getDashboardStats(),
+            adminApi.getDashboardRecent(),
         ])
 
-        // Process reservations
-        const reservations = reservationsResponse.data || []
-        stats.reservations.total = reservationsResponse.total || reservations.length
-        stats.reservations.pending = reservations.filter(r => r.status === 'pending').length
-        stats.reservations.confirmed = reservations.filter(r => r.status === 'confirmed').length
-        stats.reservations.thisMonth = reservations.filter(r => isThisMonth(r.created_at)).length
-        stats.reservations.lastMonth = reservations.filter(r => isLastMonth(r.created_at)).length
-        recentReservations.value = reservations.slice(0, 5)
-
-        // Process clients
-        const clients = clientsResponse.data || []
-        stats.clients.total = clientsResponse.total || clients.length
-
-        // Process galleries
-        const galleries = galleriesResponse.data || []
-        stats.galleries.clients = galleriesResponse.total || galleries.length
-        recentGalleries.value = galleries.slice(0, 5)
-
-        // Process event galleries
-        const events = eventsResponse.data || []
-        stats.galleries.events = eventsResponse.total || events.length
-
-        // Process orders
-        const orders = ordersResponse.orders || []
-        stats.orders.total = ordersResponse.pagination?.total || orders.length
-        stats.orders.paid = orders.filter((o: AdminOrder) => o.status === 'paid').length
-        stats.orders.pending = orders.filter((o: AdminOrder) => o.status === 'pending').length
-        recentOrders.value = orders.slice(0, 5)
-
-        // Calculate revenue from paid orders
-        const paidOrders = orders.filter((o: AdminOrder) => o.status === 'paid')
-        stats.revenue.total = paidOrders.reduce((sum: number, o: AdminOrder) => sum + (o.total || 0), 0)
-        stats.revenue.thisMonth = paidOrders
-            .filter((o: AdminOrder) => o.paid_at && isThisMonth(o.paid_at))
-            .reduce((sum: number, o: AdminOrder) => sum + (o.total || 0), 0)
-        stats.revenue.lastMonth = paidOrders
-            .filter((o: AdminOrder) => o.paid_at && isLastMonth(o.paid_at))
-            .reduce((sum: number, o: AdminOrder) => sum + (o.total || 0), 0)
-
-        // Process gift cards
-        const giftCards = giftCardsResponse.data || []
-        stats.giftCards.total = giftCardsResponse.total || giftCards.length
-        stats.giftCards.active = giftCards.filter((g: { status: string }) => g.status === 'active').length
-
+        stats.value = chiffres
+        recentReservations.value = recents.reservations
+        recentOrders.value = recents.orders
+        recentGalleries.value = recents.galleries
     } catch {
         toast.error('Erreur', 'Impossible de charger le tableau de bord')
     } finally {

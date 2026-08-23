@@ -27,7 +27,7 @@
                         </svg>
                     </template>
                 </StatCard>
-                <StatCard label="Utilisations payées" :value="stats.paidUses" icon-bg-class="bg-blue-100">
+                <StatCard label="Utilisations payées" :value="stats.paid_uses" icon-bg-class="bg-blue-100">
                     <template #icon>
                         <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -41,7 +41,7 @@
                         </svg>
                     </template>
                 </StatCard>
-                <StatCard label="Expirés / épuisés" :value="stats.spent" icon-bg-class="bg-red-100">
+                <StatCard label="Expirés / épuisés" :value="spent" icon-bg-class="bg-red-100">
                     <template #icon>
                         <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -289,6 +289,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted } from 'vue'
+import { useDebouncedSearch } from '@/composables/useDebouncedSearch'
 import AdminHeader from '@/components/admin/AdminHeader.vue'
 import DataTable from '@/components/admin/ui/DataTable.vue'
 import StatCard from '@/components/admin/ui/StatCard.vue'
@@ -299,7 +300,7 @@ import FormField from '@/components/admin/ui/FormField.vue'
 import { adminApi } from '@/services/adminApi'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
-import type { AdminGiftCode, GiftCodeFormData, GiftCodeOrder, GiftCodeType, SelectOption, TableColumn } from '@/types/admin'
+import type { AdminGiftCode, GiftCodeFormData, GiftCodeOrder, GiftCodeType, PromoCodeStats, SelectOption, TableColumn } from '@/types/admin'
 
 const toast = useToast()
 const { confirm } = useConfirm()
@@ -350,12 +351,12 @@ const columns: TableColumn<AdminGiftCode>[] = [
     { key: 'created_at', label: 'Créé le' },
 ]
 
-const stats = computed(() => ({
-    active: giftCodes.value.filter(c => c.status === 'active').length,
-    paidUses: giftCodes.value.reduce((sum, c) => sum + c.paid_count, 0),
-    inactive: giftCodes.value.filter(c => !c.is_active).length,
-    spent: giftCodes.value.filter(c => c.status === 'expired' || c.status === 'used_up').length,
-}))
+/** Agrege en base : ces chiffres etaient ceux de la page affichee, donc faux des la 21e ligne. */
+const stats = ref<PromoCodeStats>({
+    total: 0, active: 0, inactive: 0, scheduled: 0, expired: 0, used_up: 0, paid_uses: 0,
+})
+
+const spent = computed(() => stats.value.expired + stats.value.used_up)
 
 function formatCurrency(amount: number): string {
     return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(amount)
@@ -515,12 +516,16 @@ async function fetchCodes() {
     isLoading.value = true
     try {
         const isActive = statusFilter.value === '' ? undefined : statusFilter.value === 'active'
-        const response = await adminApi.getGiftCodes(currentPage.value, 20, searchQuery.value, isActive)
+        const [response, chiffres] = await Promise.all([
+            adminApi.getGiftCodes(currentPage.value, 20, searchQuery.value, isActive),
+            adminApi.getPromoCodeStats(),
+        ])
         giftCodes.value = response.data
         totalPages.value = response.last_page
         total.value = response.total
         from.value = response.from
         to.value = response.to
+        stats.value = chiffres
     } catch {
         toast.error('Erreur', 'Impossible de charger les codes promo')
     } finally {
@@ -528,14 +533,15 @@ async function fetchCodes() {
     }
 }
 
-let searchDebounce: ReturnType<typeof setTimeout> | null = null
-watch(searchQuery, () => {
-    if (searchDebounce) clearTimeout(searchDebounce)
-    searchDebounce = setTimeout(() => {
+useDebouncedSearch(searchQuery, () => {
+    if (currentPage.value !== 1) {
         currentPage.value = 1
-        fetchCodes()
-    }, 350)
-})
+
+        return
+    }
+
+    fetchCodes()
+}, 350)
 
 watch([currentPage, statusFilter], () => {
     fetchCodes()

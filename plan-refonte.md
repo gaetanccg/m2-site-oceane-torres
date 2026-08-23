@@ -1708,17 +1708,43 @@ vrais PDF : `memory_limit` passe à 512 Mo dans `phpunit.xml` (la production est
 ## 3.6 Front — véracité de l'affichage — 1 j · #63, #64, #65, #66, #67, #68
 
 ```
-[ ] #63 Dashboard : appeler getDashboardStats() et getRecentActivity() au lieu de charger
-        6 listes de 100 lignes. Supprime ~600 signatures MinIO et corrige 7 compteurs faux
-[ ] #64 GiftCards + PromoCodes : les statistiques doivent venir du serveur, pas de la page
-        courante (l'« encours de bons cadeaux » est un engagement financier affiché faux)
+[x] #63 Dashboard : deux appels au lieu de six listes de 100 lignes
+    → `AdminStatsService` agrège tout en base. Les périmètres sont repris à l'identique de
+      chaque liste : un compteur qui contredit la page qu'il ouvre est pire qu'aucun
+      compteur, et un test l'affirme endpoint par endpoint.
+    🔴 le chiffre d'affaires se comptait sur la date de **création** du paiement, pas sur
+      `paid_at` : une commande engagée le 31 et encaissée le 1er tombait dans le mauvais
+      mois. Corrigé, et figé par un test.
+    → « Total clients » compte la table `clients` (le CRM) et non `users`, parce que c'est
+      ce que liste /admin/clients. `UserObserver` y crée une fiche par inscription : ces
+      comptes sont donc bien comptés.
+    → les compteurs de commandes reprennent le `notEntirelySchool()` de la liste ; le
+      chiffre d'affaires, lui, inclut les ventes scolaires — ce sont des encaissements
+      réels. Écart assumé et écrit dans le code.
+[x] #64 GiftCards + PromoCodes : statistiques serveur
+    → `/admin/gift-cards/stats` et `/admin/gift-codes/stats`, même service que le tableau
+      de bord : un test vérifie que les deux écrans donnent le même chiffre.
+    🔴 « Bons expirés » valait **structurellement zéro** : le code n'écrit jamais
+      `status = 'expired'`, l'expiration se lit sur `expires_at`. Le filtre de la liste
+      suit désormais la même définition que le compteur.
+    🔴 la recherche et le filtre par statut des bons cadeaux n'étaient **jamais transmis
+      au serveur** : on tapait dans le vide et le filtre rechargeait la même page.
+      Filtrage ajouté côté API.
+    🔴 `min_order_amount` (ajouté en 3.3) n'était pas renvoyé par l'API : rouvrir un code
+      promo affichait un minimum vide, et l'enregistrer l'effaçait. Silencieusement.
+    🔴 l'allowlist de tri des codes promo nommait `expires_at`, colonne absente de
+      `gift_codes` — un clic sur cet en-tête aurait produit une 500. C'est `valid_until`.
 [ ] #65 Tri : brancher sort_by/sort_dir (fait en 2.4) ou retirer sortable: true
 [ ] #66 Associer les libellés (for/id) sur les 5 formulaires publics — AuthModal (9 labels,
         0 for), Checkout (4/0), BookingRequestModal (7/0), GalleryAccess (0 label)
         + role/tabindex sur les 5 <div @click>
 [ ] #67 Ajouter les autocomplete : email, current-password, new-password, name, tel,
         street-address, postal-code, address-level2 → friction directe dans le tunnel
-[ ] #68 onUnmounted + clearTimeout dans Orders.vue et PromoCodes.vue
+[x] #68 onUnmounted + clearTimeout
+    → `useDebouncedSearch` porte le minuteur et le libère au démontage : le défaut ne peut
+      plus se reproduire par oubli. Adopté par Orders, PromoCodes et GiftCards.
+    → au passage, la recherche déclenchait **deux** requêtes quand on n'était pas page 1
+      (remise à 1 + appel direct, tous deux observés).
 [ ] #41 Paginer les photos de galerie (aujourd'hui le JSON porte les 200 entrées)
 [ ] #— Vérifier response.ok sur les 3 fetch(download_url) avant .blob()
         (sinon le fichier téléchargé contient le XML d'erreur S3)

@@ -28,7 +28,7 @@
                 </StatCard>
                 <StatCard
                     label="Valeur totale active"
-                    :value="stats.totalValue"
+                    :value="stats.outstanding"
                     format="currency"
                     icon-bg-class="bg-green-100"
                 >
@@ -239,7 +239,7 @@
 </template>
 
 <script setup lang="ts">
-import {ref, reactive, computed, watch, onMounted} from 'vue'
+import {ref, reactive, watch, onMounted} from 'vue'
 import AdminHeader from '@/components/admin/AdminHeader.vue'
 import DataTable from '@/components/admin/ui/DataTable.vue'
 import StatCard from '@/components/admin/ui/StatCard.vue'
@@ -247,9 +247,10 @@ import StatusBadge from '@/components/admin/ui/StatusBadge.vue'
 import Modal from '@/components/admin/ui/Modal.vue'
 import Button from '@/components/admin/ui/Button.vue'
 import FormField from '@/components/admin/ui/FormField.vue'
+import {useDebouncedSearch} from '@/composables/useDebouncedSearch'
 import {adminApi} from '@/services/adminApi'
 import {useToast} from '@/composables/useToast'
-import type {AdminGiftCard, TableColumn} from '@/types/admin'
+import type {AdminGiftCard, GiftCardStats, TableColumn} from '@/types/admin'
 
 const toast = useToast()
 const giftCards = ref<AdminGiftCard[]>([])
@@ -273,14 +274,13 @@ const editForm = reactive({
     expires_at: '',
 })
 
-const stats = computed(() => {
-    const active = giftCards.value.filter(g => g.status === 'active')
-    return {
-        active: active.length,
-        totalValue: active.reduce((sum, g) => sum + g.remaining_amount, 0),
-        used: giftCards.value.filter(g => g.status === 'used').length,
-        expired: giftCards.value.filter(g => g.status === 'expired').length,
-    }
+/**
+ * Chiffres agreges en base. Ils etaient deduits de la page affichee : « valeur totale
+ * active » est un engagement financier, et il etait annonce a hauteur de vingt lignes.
+ * « Expire » n'est jamais ecrit dans `status` : ce compteur valait structurellement zero.
+ */
+const stats = ref<GiftCardStats>({
+    total: 0, active: 0, used: 0, cancelled: 0, expired: 0, outstanding: 0,
 })
 
 const columns: TableColumn<AdminGiftCard>[] = [
@@ -337,12 +337,16 @@ function openEditModal(giftCard: AdminGiftCard) {
 
 async function fetchGiftCards() {
     try {
-        const response = await adminApi.getGiftCards(currentPage.value, 20)
+        const [response, chiffres] = await Promise.all([
+            adminApi.getGiftCards(currentPage.value, 20, searchQuery.value, statusFilter.value),
+            adminApi.getGiftCardStats(),
+        ])
         giftCards.value = response.data
         totalPages.value = response.last_page
         total.value = response.total
         from.value = response.from
         to.value = response.to
+        stats.value = chiffres
     } catch {
         toast.error('Erreur', 'Impossible de charger les bons cadeaux')
     } finally {
@@ -367,9 +371,24 @@ async function saveGiftCard() {
     }
 }
 
-watch([currentPage, statusFilter], () => {
+watch(currentPage, () => {
     fetchGiftCards()
 })
+
+// La recherche et le filtre changent l'ensemble des resultats : rester page 5 afficherait
+// une page vide. `currentPage` a 1 declenche deja le rechargement via son propre watch.
+function reloadFromFirstPage() {
+    if (currentPage.value !== 1) {
+        currentPage.value = 1
+
+        return
+    }
+
+    fetchGiftCards()
+}
+
+useDebouncedSearch(searchQuery, reloadFromFirstPage)
+watch(statusFilter, reloadFromFirstPage)
 
 onMounted(() => {
     fetchGiftCards()

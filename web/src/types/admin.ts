@@ -35,34 +35,88 @@ export interface AuthResponse {
 // Dashboard
 // ============================================================================
 
+export interface GiftCardStats {
+    total: number
+    active: number
+    used: number
+    cancelled: number
+    expired: number
+    /** Somme des soldes encore utilisables : un engagement financier, pas un compteur. */
+    outstanding: number
+}
+
+export interface PromoCodeStats {
+    total: number
+    active: number
+    inactive: number
+    scheduled: number
+    expired: number
+    used_up: number
+    paid_uses: number
+}
+
 export interface DashboardStats {
     reservations: {
         total: number
         pending: number
         confirmed: number
-        thisMonth: number
+        this_month: number
+        last_month: number
     }
     clients: {
         total: number
-        newThisMonth: number
+        new_this_month: number
     }
     revenue: {
         total: number
-        thisMonth: number
-        lastMonth: number
+        this_month: number
+        last_month: number
+    }
+    orders: {
+        total: number
+        paid: number
+        pending: number
     }
     galleries: {
-        total: number
-        public: number
-        private: number
+        clients: number
+        events: number
     }
+    gift_cards: GiftCardStats
+    promo_codes: PromoCodeStats
 }
 
-export interface RecentActivity {
+export interface DashboardRecentReservation {
     id: string
-    type: 'reservation' | 'payment' | 'gallery' | 'contact'
-    message: string
-    date: string
+    client_name: string | null
+    prestation: { title: string } | null
+    status: ReservationStatus
+    date: string | null
+    created_at: string
+}
+
+export interface DashboardRecentOrder {
+    id: string
+    order_number: string
+    customer_name: string
+    customer_email: string
+    status: OrderStatus
+    total: number
+    items_count: number
+    created_at: string
+}
+
+export interface DashboardRecentGallery {
+    id: string
+    title: string
+    photos_count: number
+    views_count: number
+    created_at: string
+}
+
+export interface DashboardRecent {
+    reservations: DashboardRecentReservation[]
+    orders: DashboardRecentOrder[]
+    galleries: DashboardRecentGallery[]
 }
 
 // ============================================================================
