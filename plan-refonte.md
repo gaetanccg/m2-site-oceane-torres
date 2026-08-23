@@ -1615,11 +1615,29 @@ vrais PDF : `memory_limit` passe à 512 Mo dans `phpunit.xml` (la production est
         → 6 tests, dont l'évasion par `..`, le chemin absolu et la bombe de décompression.
         ⚠️ l'upload étant réservé à l'administration, ce n'était pas une attaque anonyme —
           mais une archive mal formée par accident produit le même effet.
-[ ] #— Borner l'offset de l'upload chunké (aujourd'hui min:0 sans maximum)
-[ ] #— Les 3 jobs longs doivent RELANCER l'exception après avoir marqué le statut,
-        sinon leurs échecs restent invisibles pour la supervision (#11)
-[ ] #— SendSchoolSessionSmsJob → renommer SendSmsJob (utilisé hors scolaire) et distinguer
-        les échecs permanents (numéro invalide) des transitoires
+[x] #— Borner l'offset de l'upload chunké
+        → `offset` avait `min:0` sans maximum, et `total_chunks` n'était pas borné non
+          plus. `fseek()` à une position arbitraire crée un fichier creux de taille
+          quelconque. Plafonds : 10 Go d'archive, 10 000 fragments, et une vérification
+          que `offset + taille du fragment` reste sous la limite.
+[x] #— Les 3 jobs longs doivent RELANCER l'exception après avoir marqué le statut
+        🔴 ils marquaient `failed` puis avalaient l'exception : la file croyait avoir
+          réussi, `failed_jobs` restait vide, et la supervision ne voyait rien. Un export
+          ou un traitement pouvait échouer sans que personne ne l'apprenne.
+        → point qui rend la relance sans danger : les trois ont `$tries = 1`. Le job part
+          donc directement en `failed_jobs` **sans réexécuter** un traitement qui n'est pas
+          idempotent. 9 tests figent les trois propriétés : relance, une seule tentative,
+          et présence du hook `failed()`.
+[x] #— SendSchoolSessionSmsJob → SendSmsJob, et distinction des échecs
+        → le nom était faux : `GalleryController::sendAccessSms` l'emploie pour un lien de
+          galerie, hors contexte scolaire.
+        → `BrevoSmsService::send()` rendait un booléen, donc le job réessayait **tout**.
+          Un SMS se paie : trois tentatives pour un numéro invalide sont du gaspillage.
+          Deux types d'échec désormais — permanent (numéro invalide, expéditeur refusé,
+          clé absente, 4xx) et transitoire (429, 5xx, réseau). Le job échoue net sur le
+          premier, réessaie sur le second.
+        → l'ancien nom survit en sous-classe dépréciée : un job déjà en file au moment du
+          déploiement doit rester désérialisable.
 [ ] #— Suivre le nombre de photos omises dans un export (fait en 0.14)
 ```
 

@@ -9,7 +9,7 @@ use App\Http\Requests\Admin\StoreGalleryRequest;
 use App\Http\Requests\Admin\UpdateGalleryRequest;
 use App\Http\Resources\DownloadableGalleryResource;
 use App\Http\Resources\GalleryResource;
-use App\Jobs\SendSchoolSessionSmsJob;
+use App\Jobs\SendSmsJob;
 use App\Mail\GalleryAccessMail;
 use App\Models\Client;
 use App\Models\Gallery;
@@ -189,7 +189,7 @@ class GalleryController extends Controller
             $gallery->share_code,
         );
 
-        SendSchoolSessionSmsJob::dispatch($validated['phone'], $content);
+        SendSmsJob::dispatch($validated['phone'], $content);
 
         return response()->json([
             'success' => true,

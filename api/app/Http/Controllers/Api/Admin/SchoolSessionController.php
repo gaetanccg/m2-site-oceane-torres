@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Admin;
 
+use App\Exceptions\BusinessException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\SendSchoolSessionMessagesRequest;
 use App\Http\Requests\Admin\StoreSchoolSessionRequest;
@@ -28,6 +29,10 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class SchoolSessionController extends Controller
 {
+    private const MAX_ARCHIVE_BYTES = 10 * 1024 * 1024 * 1024;
+
+    private const MAX_UPLOAD_CHUNKS = 10000;
+
     public function index(): JsonResponse
     {
         $sessions = $this->paginated(
@@ -140,16 +145,25 @@ class SchoolSessionController extends Controller
 
         $request->validate([
             'chunk' => ['required', 'file', 'max:61440'],
-            'chunk_index' => ['required', 'integer', 'min:0'],
-            'total_chunks' => ['required', 'integer', 'min:1'],
-            'offset' => ['required', 'integer', 'min:0'],
-            'filename' => ['required', 'string'],
+            'chunk_index' => ['required', 'integer', 'min:0', 'max:'.self::MAX_UPLOAD_CHUNKS],
+            'total_chunks' => ['required', 'integer', 'min:1', 'max:'.self::MAX_UPLOAD_CHUNKS],
+            // Sans maximum, fseek() ecrit a une position arbitraire et cree un fichier
+            // creux de taille quelconque.
+            'offset' => ['required', 'integer', 'min:0', 'max:'.self::MAX_ARCHIVE_BYTES],
+            'filename' => ['required', 'string', 'max:255'],
         ]);
 
         $chunk = $request->file('chunk');
         $chunkIndex = (int) $request->input('chunk_index');
         $totalChunks = (int) $request->input('total_chunks');
         $offset = (int) $request->input('offset');
+
+        if ($offset + $chunk->getSize() > self::MAX_ARCHIVE_BYTES) {
+            throw new BusinessException(
+                sprintf('L\'archive dépasse la taille maximale de %d Go.', intdiv(self::MAX_ARCHIVE_BYTES, 1024 ** 3)),
+                422
+            );
+        }
 
         $zipDir = 'temp/school-sessions/'.$schoolSession->id;
         $zipPath = $zipDir.'/upload.zip';

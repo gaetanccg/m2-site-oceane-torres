@@ -102,6 +102,11 @@ class ProcessSchoolSessionJob implements ShouldQueue
 
             $session->markAs('failed', 'Le traitement a échoué. Veuillez consulter les logs serveur pour plus de détails.');
             $service->cleanupExtractedFiles($session);
+
+            // Relance apres avoir marque le statut : sans elle la file croit avoir reussi,
+            // failed_jobs reste vide et la supervision ne voit rien. $tries = 1, donc
+            // aucune reprise — le traitement n'est pas idempotent.
+            throw $e;
         }
     }
 

@@ -2,8 +2,10 @@
 
 namespace Tests\Feature\Cart;
 
+use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Gallery;
+use App\Models\Order;
 use App\Models\Photo;
 use App\Services\PricingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -94,5 +96,47 @@ class ShippingFeeTest extends TestCase
 
         $this->assertFalse($this->service()->requiresShipping($items));
         $this->assertSame(0.0, $this->service()->shippingFeeFor($items));
+    }
+
+    /**
+     * Le defaut que #45 visait : un ecart entre le port AFFICHE et le port DEBITE. Aucun
+     * test ne les comparait pour le meme panier, ce que la factorisation seule ne garantit
+     * pas — les deux appelants ne passaient pas le meme ensemble d'articles.
+     */
+    public function test_le_port_affiche_est_celui_debite(): void
+    {
+        $galerieChere = Gallery::factory()->create(['shipping_fee' => 9.0]);
+        $galerieBonMarche = Gallery::factory()->create(['shipping_fee' => 3.0]);
+
+        $cart = Cart::factory()->create(['session_id' => 'compare']);
+        foreach ([$galerieChere, $galerieBonMarche] as $galerie) {
+            CartItem::factory()->create([
+                'cart_id' => $cart->id,
+                'photo_id' => Photo::factory()->create(['gallery_id' => $galerie->id])->id,
+                'product_type' => 'print_10x15',
+                'price' => 10,
+            ]);
+        }
+
+        $affiche = $this->withHeader('X-Cart-Session', 'compare')
+            ->getJson('/api/cart')->assertOk()->json('cart.shipping_fee');
+
+        $this->fakeSumUp(createCheckout: ['id' => 'chk_cmp', 'status' => 'PENDING']);
+        $this->withHeader('X-Cart-Session', 'compare')->postJson('/api/checkout', [
+            'guest_email' => 'cliente@exemple.fr',
+            'guest_first_name' => 'Alice',
+            'guest_last_name' => 'Martin',
+            'cgv_accepted' => true,
+            'shipping_phone' => '0612345678',
+            'shipping_address_line1' => '1 rue des Lilas',
+            'shipping_postal_code' => '31000',
+            'shipping_city' => 'Toulouse',
+            'shipping_country' => 'FR',
+        ])->assertOk();
+
+        $debite = (float) Order::sole()->shipping_fee;
+
+        $this->assertSame(9.0, (float) $affiche, 'Le maximum des deux galeries doit être affiché.');
+        $this->assertSame((float) $affiche, $debite, 'Le port débité doit égaler le port affiché.');
     }
 }

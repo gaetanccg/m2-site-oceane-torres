@@ -2,43 +2,9 @@
 
 namespace App\Jobs;
 
-use App\Services\BrevoSmsService;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Support\Facades\Log;
-
-class SendSchoolSessionSmsJob implements ShouldQueue
-{
-    use Queueable;
-
-    public int $tries = 3;
-
-    public array $backoff = [10, 30, 60];
-
-    public int $timeout = 30;
-
-    public function __construct(
-        public string $recipient,
-        public string $content,
-    ) {
-        $this->onQueue('realtime');
-    }
-
-    public function handle(BrevoSmsService $sms): void
-    {
-        $sent = $sms->send($this->recipient, $this->content);
-
-        if (! $sent) {
-            // Trigger retry
-            throw new \RuntimeException('Brevo SMS send failed for '.$this->recipient);
-        }
-    }
-
-    public function failed(\Throwable $exception): void
-    {
-        Log::error('SendSchoolSessionSmsJob: permanently failed', [
-            'recipient' => $this->recipient,
-            'error' => $exception->getMessage(),
-        ]);
-    }
-}
+/**
+ * @deprecated Renomme en SendSmsJob : ce job sert aussi aux liens de galerie
+ *             (GalleryController::sendAccessSms). Conserve une version pour que les jobs
+ *             deja en file au moment du deploiement puissent encore etre deserialises.
+ */
+class SendSchoolSessionSmsJob extends SendSmsJob {}

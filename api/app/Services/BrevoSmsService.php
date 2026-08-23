@@ -2,6 +2,9 @@
 
 namespace App\Services;
 
+use App\Exceptions\Sms\SmsPermanentFailure;
+use App\Exceptions\Sms\SmsTransientFailure;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -9,32 +12,27 @@ class BrevoSmsService
 {
     private const ENDPOINT = 'https://api.brevo.com/v3/transactionalSMS/sms';
 
-    public function send(string $recipient, string $content): bool
+    /**
+     * @throws SmsPermanentFailure reessayer ne changerait rien
+     * @throws SmsTransientFailure une reprise a du sens
+     */
+    public function send(string $recipient, string $content): void
     {
         $apiKey = config('services.brevo.api_key');
         $sender = trim((string) config('services.brevo.sms_sender', 'OceanePhoto'));
 
         if (! $apiKey) {
-            Log::error('BrevoSmsService: BREVO_API_KEY not configured');
-
-            return false;
+            throw new SmsPermanentFailure('BREVO_API_KEY absente.');
         }
 
         // Brevo requires alphanumeric sender ≤ 11 chars. Fail-fast to avoid wasted API calls and retries.
         if (strlen($sender) > 11 || ! preg_match('/^[A-Za-z0-9]+$/', $sender)) {
-            Log::error('BrevoSmsService: invalid sender name', [
-                'sender' => $sender,
-                'length' => strlen($sender),
-            ]);
-
-            return false;
+            throw new SmsPermanentFailure("Nom d'expéditeur invalide : « {$sender} » (alphanumérique, 11 caractères max).");
         }
 
         $normalized = $this->normalizePhone($recipient);
         if (! $normalized) {
-            Log::warning('BrevoSmsService: invalid phone number', ['phone' => $recipient]);
-
-            return false;
+            throw new SmsPermanentFailure("Numéro invalide : « {$recipient} ».");
         }
 
         try {
@@ -50,25 +48,27 @@ class BrevoSmsService
                 'content' => $content,
             ]);
 
-            if (! $response->successful()) {
-                Log::error('BrevoSmsService: send failed', [
-                    'recipient' => $normalized,
-                    'sender' => $sender,
-                    'status' => $response->status(),
-                    'body' => $response->body(),
-                ]);
-
-                return false;
+            if ($response->successful()) {
+                return;
             }
 
-            return true;
-        } catch (\Exception $e) {
-            Log::error('BrevoSmsService: HTTP exception', [
+            Log::error('BrevoSmsService: send failed', [
                 'recipient' => $normalized,
-                'error' => $e->getMessage(),
+                'sender' => $sender,
+                'status' => $response->status(),
+                'body' => $response->body(),
             ]);
 
-            return false;
+            // 429 et 5xx passent ; les autres 4xx sont des refus definitifs (numero
+            // blackliste, credit epuise, charge utile invalide).
+            $status = $response->status();
+            if ($status === 429 || $status >= 500) {
+                throw new SmsTransientFailure("Brevo a répondu {$status}.");
+            }
+
+            throw new SmsPermanentFailure("Brevo a refusé l'envoi ({$status}).");
+        } catch (ConnectionException $e) {
+            throw new SmsTransientFailure('Brevo injoignable : '.$e->getMessage());
         }
     }
 

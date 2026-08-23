@@ -42,6 +42,11 @@ class GeneratePrivacyExportJob implements ShouldQueue
                 'error' => $e->getMessage(),
             ]);
             $export->markAs('failed', "La génération de l'export a échoué. Consultez les logs serveur.");
+
+            // Relance apres avoir marque le statut : sans elle la file croit avoir reussi,
+            // failed_jobs reste vide et la supervision ne voit rien. $tries = 1, donc
+            // aucune reprise — le traitement n'est pas idempotent.
+            throw $e;
         }
     }
 

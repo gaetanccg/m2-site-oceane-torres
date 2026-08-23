@@ -37,7 +37,7 @@ class DispatchSmsBatchJob implements ShouldQueue
         foreach ($this->messages as $i => $message) {
             $delaySeconds = intdiv($i, $perSecond);
 
-            SendSchoolSessionSmsJob::dispatch($message['phone'], $message['content'])
+            SendSmsJob::dispatch($message['phone'], $message['content'])
                 ->delay(now()->addSeconds($delaySeconds));
         }
 
