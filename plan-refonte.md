@@ -1536,15 +1536,33 @@ vrais PDF : `memory_limit` passe à 512 Mo dans `phpunit.xml` (la production est
 ## 3.3 Panier et tarification — 3 j · #45
 
 ```
-[ ] Factoriser le calcul des frais de port dans PricingService — aujourd'hui DUPLIQUÉ 3 fois
-    (CreateCheckoutRequest:91, OrderService:75, CartService:342). Les 3 copies sont identiques ;
-    une divergence produirait l'écart prix affiché / prix débité (#45)
-[ ] #— Écrêter le CUMUL de quantité, pas seulement l'incrément (CartService::addItem
-    permet 500 exemplaires en 10 appels)
-[ ] #— Contrainte unique partielle : un seul panier actif par utilisateur
-    CREATE UNIQUE INDEX ON carts (user_id) WHERE status = 'active' AND user_id IS NOT NULL;
-[ ] #— Notifier le client quand validateCartItems() réécrit un prix (aujourd'hui silencieux)
+[x] Factoriser le calcul des frais de port dans PricingService
+    → vérifié mot pour mot : OrderService et CartService portaient la MÊME logique à
+      l'identique, CreateCheckoutRequest en dupliquait la moitié (le booléen seul).
+    → `PricingService::shippingFeeFor()` / `requiresShipping()`. La règle a été figée par
+      7 tests AVANT la factorisation : maximum et non somme sur panier mixte, le numérique
+      ne pèse pas dans le maximum, repli sur la configuration, exemption `print_scolaire`.
+[x] #— Écrêter le CUMUL de quantité, pas seulement l'incrément
+    🔴 `increment('quantity', 50)` appelé dix fois donnait **500 exemplaires**. Sur un
+      tirage à 8 €, une commande de 4000 € et 500 tirages à produire.
+    🔴 la fusion invité → compte additionnait sans plafond non plus : 50 + 50 = 100.
+    → les deux chemins passent par un `cappedQuantity()` unique.
+[x] #— Contrainte unique partielle : un seul panier actif par utilisateur
+    → l'invariant n'était garanti qu'au niveau applicatif : deux requêtes concurrentes
+      pouvaient créer deux paniers, et l'utilisateur payer un montant différent de
+      l'affiché. Index unique partiel, précédé d'un collapse. Zéro doublon en preprod.
+[x] #— Notifier le client quand validateCartItems() réécrit un prix
+    🔴 elle faisait **trois** choses en silence : retirer les photos disparues, retirer
+      celles devenues indisponibles, et réécrire les prix. Une cliente pouvait être
+      débitée d'un montant qu'elle n'avait jamais vu.
+    → décision : une photo retirée ou un prix **en hausse** arrête le paiement en 409 et
+      renvoie au panier. Une **baisse** passe — elle paie moins que l'affiché.
+    → point qui a décidé du choix : `getCartSummary()` appelle `recalculatePackPrices()`,
+      donc l'affichage est toujours resynchronisé. Un écart au paiement signifie que le
+      tarif a changé APRÈS la dernière vue du panier — refuser est donc correct, et un
+      test prouve que le parcours normal (consulter puis payer) ne subit aucune friction.
 [ ] #— Codes promo : montant minimum de commande, restriction par galerie/produit ? 👤
+    décision produit : dépend de la politique commerciale, pas de la technique.
 ```
 
 **Tests** *(469 lignes de service aujourd'hui non testées)* :

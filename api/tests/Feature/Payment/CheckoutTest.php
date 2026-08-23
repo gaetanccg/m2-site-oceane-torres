@@ -165,25 +165,85 @@ class CheckoutTest extends TestCase
         $response->assertJsonPath('order.shipping_fee', 7);
     }
 
-    public function test_stale_cart_item_price_is_resynced_at_checkout(): void
+    /**
+     * Un prix en HAUSSE au moment du paiement arrete le checkout : la cliente serait
+     * debitee d'un montant qu'elle n'a pas vu. getCartSummary resynchronise les prix a
+     * chaque consultation du panier, donc un ecart ici signifie que le tarif a change
+     * APRES sa derniere vue.
+     */
+    public function test_a_price_increase_at_checkout_stops_the_payment(): void
     {
         $this->fakeSumUp(createCheckout: ['id' => 'chk_price', 'status' => 'PENDING']);
 
-        // Prix figé à 5 € dans le panier alors que le prix résolu du digital est 13 €.
         $cart = Cart::factory()->create(['session_id' => 'stale-session']);
         $photo = Photo::factory()->create();
-        $item = CartItem::factory()->create([
+        CartItem::factory()->create([
             'cart_id' => $cart->id,
             'photo_id' => $photo->id,
             'product_type' => 'digital',
             'price' => 5.00,
         ]);
 
-        $response = $this->checkout('stale-session');
+        $this->checkout('stale-session')
+            ->assertStatus(409)
+            ->assertJsonPath('message', 'Le tarif de votre panier a changé. Vérifiez le nouveau total avant de payer.');
 
-        $response->assertOk()->assertJsonPath('order.total', 13);
-        $this->assertSame('13.00', Order::first()->subtotal);
-        // Le prix du panier a été resynchronisé.
+        $this->assertSame(0, Order::count());
+    }
+
+    /** Une baisse passe : la cliente paie moins que ce qu'elle a vu. */
+    public function test_a_price_decrease_at_checkout_proceeds(): void
+    {
+        $this->fakeSumUp(createCheckout: ['id' => 'chk_baisse', 'status' => 'PENDING']);
+
+        $cart = Cart::factory()->create(['session_id' => 'baisse-session']);
+        $photo = Photo::factory()->create();
+        $item = CartItem::factory()->create([
+            'cart_id' => $cart->id,
+            'photo_id' => $photo->id,
+            'product_type' => 'digital',
+            'price' => 99.00,
+        ]);
+
+        $this->checkout('baisse-session')->assertOk()->assertJsonPath('order.total', 13);
         $this->assertSame('13.00', $item->fresh()->price);
+    }
+
+    /** Le parcours normal ne doit subir aucune friction : consulter puis payer. */
+    public function test_the_normal_flow_is_not_disturbed(): void
+    {
+        $this->fakeSumUp(createCheckout: ['id' => 'chk_normal', 'status' => 'PENDING']);
+
+        $cart = Cart::factory()->create(['session_id' => 'normale']);
+        $photo = Photo::factory()->create();
+        CartItem::factory()->create([
+            'cart_id' => $cart->id,
+            'photo_id' => $photo->id,
+            'product_type' => 'digital',
+            'price' => 5.00,
+        ]);
+
+        // Consultation du panier : les prix sont resynchronises, comme pour une visiteuse.
+        $this->withHeader('X-Cart-Session', 'normale')->getJson('/api/cart')->assertOk();
+
+        $this->checkout('normale')->assertOk();
+    }
+
+    /** Une photo devenue indisponible arrete aussi le paiement. */
+    public function test_an_unavailable_photo_stops_the_payment(): void
+    {
+        $this->fakeSumUp(createCheckout: ['id' => 'chk_indispo', 'status' => 'PENDING']);
+
+        $cart = Cart::factory()->create(['session_id' => 'indispo-session']);
+        $photo = Photo::factory()->create(['is_purchasable' => false]);
+        CartItem::factory()->create([
+            'cart_id' => $cart->id,
+            'photo_id' => $photo->id,
+            'product_type' => 'digital',
+            'price' => 13.00,
+        ]);
+
+        $this->checkout('indispo-session')->assertStatus(400);
+        $this->assertSame(0, Order::count());
     }
 }

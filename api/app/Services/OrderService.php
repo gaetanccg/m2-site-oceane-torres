@@ -58,11 +58,13 @@ class OrderService
             $cart->load('items.photo.gallery.galleryProductTypes.packTiers');
 
             $resolvedPrices = $this->resolvePackPrices($cart);
-            $validItems = $this->validateCartItems($cart, $resolvedPrices);
+            [$validItems, $changements] = $this->validateCartItems($cart, $resolvedPrices);
 
             if (empty($validItems)) {
                 throw new BusinessException('Le panier ne contient aucun article valide.', 400);
             }
+
+            $this->assertNoAdverseChange($changements);
 
             // sum('price') ignorait la quantité → sous-facturation SumUp.
             $subtotal = collect($validItems)->sum(
@@ -228,13 +230,18 @@ class OrderService
         return $resolvedPrices;
     }
 
+    /**
+     * @return array{0: list<CartItem>, 1: list<array{type: string, titre: ?string}>}
+     */
     private function validateCartItems(Cart $cart, array $resolvedPrices): array
     {
         $validItems = [];
+        $changements = [];
 
         foreach ($cart->items as $item) {
             if (! $item->photo) {
                 Log::warning('Cart item photo no longer exists, skipping', ['cart_item_id' => $item->id]);
+                $changements[] = ['type' => 'retiree', 'titre' => null];
 
                 continue;
             }
@@ -244,6 +251,7 @@ class OrderService
                     'cart_item_id' => $item->id,
                     'photo_id' => $item->photo_id,
                 ]);
+                $changements[] = ['type' => 'retiree', 'titre' => $item->photo->title];
 
                 continue;
             }
@@ -258,6 +266,10 @@ class OrderService
                 ?? CartItem::getPriceForType($productType);
 
             if ((float) $item->price !== $currentPrice) {
+                $changements[] = [
+                    'type' => $currentPrice > (float) $item->price ? 'hausse' : 'baisse',
+                    'titre' => $item->photo->title,
+                ];
                 $item->update(['price' => $currentPrice]);
                 $item->price = $currentPrice;
             }
@@ -265,7 +277,38 @@ class OrderService
             $validItems[] = $item;
         }
 
-        return $validItems;
+        return [$validItems, $changements];
+    }
+
+    /**
+     * Une photo retiree ou un prix en hausse fait payer autre chose que ce qui etait a
+     * l'ecran : on renvoie la cliente a son panier plutot que de debiter sans son accord.
+     * Une baisse passe — elle paie moins que ce qu'elle a vu.
+     *
+     * @param  list<array{type: string, titre: ?string}>  $changements
+     */
+    private function assertNoAdverseChange(array $changements): void
+    {
+        $retirees = array_filter($changements, fn ($c) => $c['type'] === 'retiree');
+        $hausses = array_filter($changements, fn ($c) => $c['type'] === 'hausse');
+
+        if ($retirees === [] && $hausses === []) {
+            return;
+        }
+
+        if ($retirees !== []) {
+            throw new BusinessException(
+                count($retirees) === 1
+                    ? 'Une photo de votre panier n\'est plus disponible. Votre panier a été mis à jour, vérifiez-le avant de payer.'
+                    : count($retirees).' photos de votre panier ne sont plus disponibles. Votre panier a été mis à jour, vérifiez-le avant de payer.',
+                409
+            );
+        }
+
+        throw new BusinessException(
+            'Le tarif de votre panier a changé. Vérifiez le nouveau total avant de payer.',
+            409
+        );
     }
 
     public function initiatePayment(Order $order): array
