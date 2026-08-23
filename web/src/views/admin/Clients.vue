@@ -406,9 +406,9 @@ function getInitials(name: string): string {
 
 function getSourceLabel(source: string): string {
   const labels: Record<string, string> = {
-    reservation: 'Reservation',
+    reservation: 'Réservation',
     manual: 'Manuel',
-    contact: 'Contact',
+    registration: 'Inscription',
   }
   return labels[source] || source
 }
@@ -417,7 +417,7 @@ function getSourceBadgeClass(source: string): string {
   const classes: Record<string, string> = {
     reservation: 'bg-blue-100 text-blue-800',
     manual: 'bg-purple-100 text-purple-800',
-    contact: 'bg-green-100 text-green-800',
+    registration: 'bg-green-100 text-green-800',
   }
   return classes[source] || 'bg-gray-100 text-gray-800'
 }

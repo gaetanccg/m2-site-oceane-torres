@@ -1673,17 +1673,36 @@ vrais PDF : `memory_limit` passe à 512 Mo dans `phpunit.xml` (la production est
 ## 3.5 Réservations et clients — 1 j · #31, #—
 
 ```
-[ ] Réparer ou supprimer les 3 routes qui lèvent une 500 (#37, décidé en phase 2)
-[ ] #31 clients.source : recalculer (reservation si réservation, contact si seul message,
-        sinon manual) ou abandonner la colonne — DÉCIDÉ en phase 1
-[ ] #— UserObserver : ne plus forcer source='reservation' à l'inscription
-[ ] #— BookingRequestController : ne plus écraser gdpr_consent_at d'un client existant
-        (perte de la date de consentement d'origine)
-[ ] #— prestation_id en CASCADE → RESTRICT ou SET NULL (supprimer une prestation efface
-        aujourd'hui tout l'historique des réservations, §3bis.4)
-[ ] #— Accesseurs client_name/client_email/client_phone : ne plus dépendre de
-        relationLoaded() (résultat différent selon l'appelant, §2.8)
+[x] Réparer ou supprimer les 3 routes qui lèvent une 500 (#37)
+    → faites en 0.18 et 2.1 ; `route:list` ne signale plus aucune méthode manquante.
+[x] #31 clients.source
+    → **conservée**, et rendue vraie. Elle sert au filtre de la liste des clients, donc
+      l'abandonner enlèverait une fonction ; la laisser fausse rendait le filtre menteur.
+      `'contact'` retirée (aucune écriture), `'registration'` ajoutée.
+[x] #— UserObserver : ne plus forcer source='reservation' à l'inscription
+    🔴 **toute** inscription était étiquetée « venue d'une réservation », donc le filtre
+      par source mentait sur tous les comptes créés directement. Une inscription est une
+      troisième origine : `'registration'`, avec son libellé côté administration.
+[~] #— BookingRequestController : ne plus écraser gdpr_consent_at d'un client existant
+    → **le plan se trompe** : la garde `if (! $client->gdpr_consent)` est déjà là, la date
+      d'origine n'est pas écrasée. Vérifié, et figé par un test — l'invariant compte trop
+      pour rester non couvert.
+    → en revanche `Client::recordGdprConsent()` écrasait la date sans condition. Aucun
+      appelant : supprimée.
+[x] #— prestation_id en CASCADE → RESTRICT
+    🔴 supprimer une prestation effaçait **tout l'historique de réservations** qui la
+      référençait. RESTRICT plutôt que SET NULL : `is_active` existe déjà pour retirer une
+      prestation du catalogue sans perdre son historique, et le message le dit.
+    → `user_id` est aussi en CASCADE mais inatteignable : aucun endpoint ne supprime un
+      compte, l'effacement RGPD l'anonymise. Noté, pas touché.
+[x] #— Accesseurs client_name/client_email/client_phone
+    🔴 ils dépendaient de `relationLoaded()` : la même réservation rendait le nom du
+      **compte** dans une liste (où `user` est chargé) et le nom **invité** après un
+      changement de statut (où il ne l'est pas). Priorité désormais identique quel que
+      soit l'appelant ; deux tests comparent les deux états de chargement.
 [ ] #— Absorber client_forms dans reservations.guest_* puis abandonner la table
+    → la table est **vide** en production (mesure de phase 1) et la branche
+      correspondante des accesseurs est donc morte. Migration de schéma sans urgence.
 ```
 
 ## 3.6 Front — véracité de l'affichage — 1 j · #63, #64, #65, #66, #67, #68

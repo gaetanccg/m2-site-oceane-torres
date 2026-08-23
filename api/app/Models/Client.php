@@ -124,17 +124,6 @@ class Client extends Model
     // ========================================================================
 
     /**
-     * Enregistre le consentement RGPD
-     */
-    public function recordGdprConsent(): void
-    {
-        $this->update([
-            'gdpr_consent' => true,
-            'gdpr_consent_at' => now(),
-        ]);
-    }
-
-    /**
      * Export des données RGPD (Article 15 — droit d'accès)
      */
     public function gdprExport(): array

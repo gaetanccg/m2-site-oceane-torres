@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exceptions\BusinessException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StorePrestationRequest;
 use App\Http\Requests\Admin\UpdatePrestationRequest;
@@ -75,6 +76,18 @@ class PrestationController extends Controller
 
     public function destroy(Prestation $prestation): JsonResponse
     {
+        $reservations = $prestation->reservations()->count();
+
+        if ($reservations > 0) {
+            throw new BusinessException(
+                sprintf(
+                    '%d réservation(s) référencent cette prestation. Désactivez-la plutôt que de la supprimer, pour ne pas perdre leur historique.',
+                    $reservations
+                ),
+                409
+            );
+        }
+
         $prestation->delete();
 
         Cache::forget('prestations_public');

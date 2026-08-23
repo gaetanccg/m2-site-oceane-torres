@@ -69,64 +69,49 @@ class Reservation extends Model
 
     // Accesseurs pour obtenir les infos client (user ou guest)
 
+    /**
+     * Ces trois accesseurs dependaient de relationLoaded() : la meme reservation rendait
+     * le nom du compte dans une liste (ou `user` est charge) et le nom invite apres un
+     * changement de statut (ou il ne l'est pas). La priorite est desormais la meme quel
+     * que soit l'appelant — Eloquent charge la relation si besoin, et les endpoints de
+     * liste la chargent deja.
+     */
     public function getClientNameAttribute(): ?string
     {
-        // 1. Si user_id existe et que user est charge, utiliser les infos user
-        if ($this->user_id && $this->relationLoaded('user') && $this->user) {
-            $firstName = $this->user->first_name ?? '';
-            $lastName = $this->user->last_name ?? '';
-            $fullName = trim("{$firstName} {$lastName}");
-            if (! empty($fullName)) {
-                return $fullName;
+        if ($this->user_id) {
+            $nom = trim(($this->user->first_name ?? '').' '.($this->user->last_name ?? ''));
+            if ($nom !== '') {
+                return $nom;
             }
         }
 
-        // 2. Si clientForm est charge et a un fullname, l'utiliser
-        if ($this->relationLoaded('clientForm') && $this->clientForm && ! empty($this->clientForm->fullname)) {
+        if (! empty($this->clientForm?->fullname)) {
             return $this->clientForm->fullname;
         }
 
-        // 3. Sinon, utiliser guest_name (pour les demandes sans compte)
-        if (! empty($this->guest_name)) {
-            return $this->guest_name;
-        }
-
-        return null;
+        return $this->guest_name ?: null;
     }
 
     public function getClientEmailAttribute(): ?string
     {
-        // 1. Si user_id existe et que user est charge, utiliser l'email user
-        if ($this->user_id && $this->relationLoaded('user') && $this->user && ! empty($this->user->email)) {
+        if ($this->user_id && ! empty($this->user?->email)) {
             return $this->user->email;
         }
 
-        // 2. Sinon, utiliser guest_email
-        if (! empty($this->guest_email)) {
-            return $this->guest_email;
-        }
-
-        return null;
+        return $this->guest_email ?: null;
     }
 
     public function getClientPhoneAttribute(): ?string
     {
-        // 1. Si user_id existe et que user est charge, utiliser le phone user
-        if ($this->user_id && $this->relationLoaded('user') && $this->user && ! empty($this->user->phone)) {
+        if ($this->user_id && ! empty($this->user?->phone)) {
             return $this->user->phone;
         }
 
-        // 2. Si clientForm est charge et a un phone, l'utiliser
-        if ($this->relationLoaded('clientForm') && $this->clientForm && ! empty($this->clientForm->phone)) {
+        if (! empty($this->clientForm?->phone)) {
             return $this->clientForm->phone;
         }
 
-        // 3. Sinon, utiliser guest_phone
-        if (! empty($this->guest_phone)) {
-            return $this->guest_phone;
-        }
-
-        return null;
+        return $this->guest_phone ?: null;
     }
 
     public function getIsGuestAttribute(): bool
