@@ -149,14 +149,18 @@ class StoreAsyncPhotoTest extends TestCase
         $this->assertSame(1, Photo::count());
     }
 
+    /**
+     * Ce test verifiait l'ancien nom de cle, `event_galleries_page_1`. L'invariant qui
+     * compte n'est pas le nom mais l'effet : apres un upload, la liste publique ne doit
+     * plus servir sa version precedente. La version de cache doit donc changer.
+     */
     public function test_event_gallery_upload_via_events_route_clears_cache(): void
     {
         $this->actingAsAdmin();
         $this->mockImageSuccess();
         $gallery = Gallery::factory()->event()->create();
 
-        // Le cache des galeries événement doit être invalidé après un upload réussi.
-        Cache::put('event_galleries_page_1', ['stale'], 60);
+        $versionAvant = (int) Cache::get('event_galleries:version', 1);
 
         $response = $this->postJson("/api/admin/events/{$gallery->id}/photos/async", [
             'batch_id' => 'batch-event',
@@ -165,6 +169,6 @@ class StoreAsyncPhotoTest extends TestCase
 
         $response->assertOk()->assertJsonPath('uploads.0.status', 'completed');
         $this->assertSame(1, Photo::count());
-        $this->assertFalse(Cache::has('event_galleries_page_1'));
+        $this->assertGreaterThan($versionAvant, (int) Cache::get('event_galleries:version', 1));
     }
 }

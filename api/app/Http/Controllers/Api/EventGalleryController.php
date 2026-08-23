@@ -13,7 +13,6 @@ use App\Services\MinioStorageService;
 use App\Traits\ClearsEventGalleriesCache;
 use App\Traits\SyncsProductTypes;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Cache;
 
 class EventGalleryController extends Controller
 {
@@ -26,9 +25,12 @@ class EventGalleryController extends Controller
 
     public function index(): JsonResponse
     {
-        $page = request()->get('page', 1);
+        // Normalises AVANT d'entrer dans la cle de cache : sans cela « ?page=01 » et
+        // « ?page=1 » creaient deux entrees pour la meme reponse.
+        $page = max(1, request()->integer('page', 1));
+        $perPage = min(max(1, request()->integer('per_page', 12) ?: 12), 100);
 
-        $galleries = Cache::remember("event_galleries_page_{$page}", 300, function () {
+        $galleries = $this->rememberEventGalleries($page, $perPage, function () use ($perPage) {
             $result = Gallery::where('type', 'event')
                 ->published()
                 ->topLevel()
@@ -42,7 +44,7 @@ class EventGalleryController extends Controller
                 ->withCount(['photos', 'children'])
                 ->orderBy('sort_order')
                 ->latest()
-                ->paginate(min((int) request()->integer('per_page', 12) ?: 12, 100));
+                ->paginate($perPage);
 
             $result->getCollection()->transform(function ($gallery) {
                 $gallery->cover_photo = $gallery->thumbnailPhoto ?? $gallery->photos->first();

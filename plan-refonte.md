@@ -1866,7 +1866,24 @@ vrais PDF : `memory_limit` passe à 512 Mo dans `phpunit.xml` (la production est
 [ ] #38 Typer les 8 colonnes JSON ou les documenter dans docs/json-schemas.md
 [ ] #44 Superviser l'espace disque du NAS (aggravé par le cache d'images et les exports)
 [ ] #49 Uniformiser les précisions décimales (10,2 partout)
-[ ] #51 ClearsEventGalleriesCache : purger par tag/préfixe, pas par boucle bornée à 10
+[x] #51 Purge du cache des galeries d'événement
+    🔴 **le correctif proposé par le plan aurait levé une exception.** Les étiquettes de
+      cache exigent Redis ou Memcached ; ce projet utilise `database` en local, `file` en
+      préproduction et `redis` en production — `tags()` lève `BadMethodCallException` sur
+      les deux premiers. Mesuré sur les quatre drivers, pas supposé.
+    → **compteur de version** à la place : une incrémentation invalide toutes les variantes
+      d'un coup, sur n'importe quel driver. Un test le vérifie driver par driver.
+    → la boucle bornée à 10 est bien réelle : au-delà, la page restait périmée jusqu'au TTL.
+    🔴 **deux défauts que le plan ne voyait pas**, trouvés en lisant la clé :
+      - elle ignorait `per_page`. Une demande en `per_page=100` recevait la réponse mise en
+        cache pour 12 éléments — donc la **mauvaise page**, pas seulement une page périmée.
+      - `page` n'était pas normalisé avant d'entrer dans la clé : `?page=01`, `?page=1.0`,
+        `?page=abc`, `?page[]=1` créaient autant d'entrées. De quoi remplir le magasin de
+        cache depuis l'extérieur, sans authentification.
+    → hors du périmètre cachable (taille de page inhabituelle, page au-delà de 20), la
+      réponse est calculée sans être stockée : une réponse juste et non mise en cache vaut
+      mieux qu'une clé de plus.
+    → un test existant vérifiait l'ancien **nom de clé** ; réécrit contre l'effet réel.
 [ ] #52 Centraliser adresse de contact et SIRET (3 sources de vérité aujourd'hui)
 [x] #— Générer un registre des traitements RGPD (art. 30) + procédure de notification (art. 33)
     → `docs/rgpd-registre.md`, écrit à l'occasion de D7. Signale une limite connue :
