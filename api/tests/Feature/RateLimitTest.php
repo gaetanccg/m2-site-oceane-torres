@@ -104,4 +104,21 @@ class RateLimitTest extends TestCase
 
         $this->postJson('/api/booking-request', [])->assertStatus(429);
     }
+
+    /** La limite par minute arrete une rafale ; celle par heure un bourrage lent. */
+    public function test_login_is_throttled_per_hour_beyond_the_per_minute_window(): void
+    {
+        for ($tour = 0; $tour < 4; $tour++) {
+            for ($i = 0; $i < 5; $i++) {
+                $this->postJson('/api/auth/login', [
+                    'email' => 'lent@example.com',
+                    'password' => 'faux',
+                ]);
+            }
+            $this->travel(61)->seconds();
+        }
+
+        $this->postJson('/api/auth/login', ['email' => 'lent@example.com', 'password' => 'faux'])
+            ->assertStatus(429);
+    }
 }

@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Invoice;
+use App\Models\LoginAttempt;
 use App\Models\Order;
 use App\Models\Payment;
 use Illuminate\Console\Command;
@@ -16,7 +17,7 @@ use Illuminate\Support\Facades\Storage;
  */
 class PurgeExpiredPrivacyData extends Command
 {
-    protected $signature = 'privacy:purge-expired {--years=10 : Durée de conservation en années} {--dry-run : Affiche sans supprimer}';
+    protected $signature = 'privacy:purge-expired {--years=10 : Durée de conservation en années} {--login-days=90 : Conservation du journal de connexions} {--dry-run : Affiche sans supprimer}';
 
     protected $description = 'Supprime les commandes/factures/paiements au-delà de la durée légale de conservation.';
 
@@ -31,8 +32,19 @@ class PurgeExpiredPrivacyData extends Command
         $this->info("Seuil : commandes créées avant {$cutoff->toDateString()} ({$years} ans).");
         $this->info("À purger : {$orderIds->count()} commande(s), {$invoices->count()} facture(s).");
 
+        // Horizon distinct et independant : le journal de connexions porte email + IP, il
+        // ne suit pas la conservation comptable de dix ans. Purge avant tout retour
+        // anticipe, sinon l'absence de commande expiree l'empeche de tourner.
+        $seuilJournal = now()->subDays((int) $this->option('login-days'));
+        $tentatives = LoginAttempt::where('created_at', '<', $seuilJournal)->count();
+        $this->info("Journal de connexions : {$tentatives} entrée(s) au-delà de {$seuilJournal->toDateString()}.");
+
+        if ($tentatives > 0 && ! $this->option('dry-run')) {
+            LoginAttempt::where('created_at', '<', $seuilJournal)->delete();
+        }
+
         if ($orderIds->isEmpty()) {
-            $this->comment('Rien à purger.');
+            $this->comment('Aucune commande à purger.');
 
             return self::SUCCESS;
         }

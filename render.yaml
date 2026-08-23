@@ -29,6 +29,34 @@ services:
       - path: /*
         name: Referrer-Policy
         value: strict-origin-when-cross-origin
+      # EN OBSERVATION. Politique derivee de ce que le front charge reellement, mais
+      # jamais eprouvee dans un navigateur : une directive trop stricte casse le site
+      # sans erreur visible cote serveur. Report-Only ne bloque rien et signale les
+      # violations dans la console.
+      #
+      # Pour la faire appliquer : ouvrir le site (accueil, galerie par code, tunnel de
+      # paiement, lightbox video, administration), verifier qu'aucune violation
+      # n'apparait dans la console, puis renommer l'en-tete en Content-Security-Policy.
+      #
+      # connect-src porte l'API : elle est sur un SOUS-DOMAINE distinct, donc 'self' seul
+      # bloquerait tous les appels.
+      - path: /*
+        name: Content-Security-Policy-Report-Only
+        value: >-
+          default-src 'self';
+          script-src 'self' https://gateway.sumup.com https://www.googletagmanager.com;
+          style-src 'self' 'unsafe-inline';
+          img-src 'self' data: https://s3.oceanetorresphotographie.fr
+            https://img.youtube.com https://www.googletagmanager.com;
+          font-src 'self';
+          connect-src 'self' https://api.oceanetorresphotographie.fr
+            https://s3.oceanetorresphotographie.fr https://www.google-analytics.com
+            https://*.google-analytics.com https://*.ingest.de.sentry.io;
+          frame-src https://www.youtube.com https://gateway.sumup.com;
+          object-src 'none';
+          base-uri 'self';
+          form-action 'self';
+          frame-ancestors 'none'
     envVars:
       - key: VITE_API_URL
         value: https://api.oceanetorresphotographie.fr/api

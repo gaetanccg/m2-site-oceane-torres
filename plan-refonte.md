@@ -1415,22 +1415,57 @@ sans test, → §9.6).
 
 ```
 [ ] Supprimer l'émission du token Bearer (login + register) et sa lecture côté front
-[ ] Session cookie seule · SESSION_DOMAIN exact · SameSite=lax conservé (retour SumUp en GET)
-[ ] Poser une Content-Security-Policy dans le middleware SecurityHeaders :
-    default-src 'self' ; script-src 'self' https://gateway.sumup.com
-      https://www.googletagmanager.com ; img-src 'self' data:
-      https://s3.oceanetorresphotographie.fr https://img.youtube.com ;
-    connect-src 'self' https://www.google-analytics.com ;
-    frame-src https://www.youtube-nocookie.com https://gateway.sumup.com
-[ ] Retirer X-XSS-Protection (obsolète)
-[ ] TOTP sur le compte admin (laravel/fortify ou pragmarx/google2fa)
+    ⛔ **D8, décision requise** — et à ne pas faire à l'aveugle : le front lit le jeton
+      depuis localStorage partout, et le basculer sur le cookie de session seul dépend de
+      SESSION_DOMAIN, des domaines stateful Sanctum et du CORS entre deux sous-domaines.
+      Une erreur casse toute l'administration, et aucun test ne rend une vue.
+[ ] Session cookie seule · SESSION_DOMAIN exact · SameSite=lax conservé — même blocage
+[~] Poser une Content-Security-Policy
+    🔴 **la politique proposée par le plan casse le site.** `connect-src 'self'`
+      bloquerait TOUS les appels d'API : le front est sur `oceanetorresphotographie.fr`,
+      l'API sur `api.oceanetorresphotographie.fr`. Et le code encadre
+      `www.youtube.com`, pas `youtube-nocookie`.
+    🔴 **et l'emplacement était faux.** `SecurityHeaders` s'applique aux réponses de
+      l'API : un `script-src` sur du JSON ne protège rien. Le HTML est servi par Render.
+    [x] politique du **site** dans `render.yaml`, dérivée de ce que le front charge
+        réellement — SumUp (script + iframe), GTM, Google Analytics, MinIO, miniatures
+        YouTube, l'API, l'ingest Sentry.
+        Posée en **`Content-Security-Policy-Report-Only`** : jamais éprouvée dans un
+        navigateur, et une directive trop stricte casse sans erreur serveur. La marche à
+        suivre pour la faire appliquer est écrite dans le fichier.
+    [x] politique de l'**API** : `default-src 'none'; frame-ancestors 'none'` — celle-là
+        a du sens sur du JSON.
+[x] Retirer X-XSS-Protection (obsolète) — aussi dans web/docker/nginx.conf
+[ ] TOTP sur le compte admin 👤 exige l'enrôlement de la photographe
 [ ] Finir « mot de passe oublié » : les 2 endpoints existent, l'interface manque
-[ ] Journal des connexions (réussies ET échouées) + verrouillage progressif
-[ ] Uniformiser les messages de forgot-password (anti-énumération, #—)
-[ ] #— UpdateProfileRequest : exiger le mot de passe actuel pour changer l'email,
-       et revérifier la nouvelle adresse
-[ ] #— UpdateUserRequest : interdire de rétrograder le dernier administrateur
-[ ] #— Renseigner email_verified_at (colonne existante, jamais alimentée)
+    → travail front pur ; aujourd'hui un compte verrouillé n'a aucun recours
+[x] Journal des connexions (réussies ET échouées) + verrouillage progressif
+    → table `login_attempts` : email normalisé, IP, user-agent, succès, compte.
+      Rien ne tracait les connexions : un bourrage d'identifiants ne laissait aucune
+      trace exploitable.
+    → verrouillage à deux échelles : 5/minute arrête une rafale, **20/heure** arrête un
+      bourrage lent qui restait sous le seuil de la première.
+    → le journal porte email + IP : purge à **90 jours**, horizon distinct de la
+      conservation comptable de dix ans.
+    ⚠️ le test a attrapé que ma purge était placée après le retour anticipé de
+      `privacy:purge-expired` : sans commande expirée, elle ne tournait jamais.
+[x] Uniformiser les messages de forgot-password (anti-énumération, #—)
+    → 200 pour une adresse connue, 422 « aucun compte » sinon : une requête par adresse
+      suffisait à savoir qui est inscrit. Réponse identique désormais.
+    → `resetPassword` fuitait pareil : un jeton au hasard distinguait « aucun compte » de
+      « jeton invalide ». Message unique.
+[~] #— UpdateProfileRequest : exiger le mot de passe actuel pour changer l'email
+    → **sans objet** : `PUT /auth/profile` a été supprimé en 2.1 comme mort. Il n'existe
+      aucun moyen de changer une adresse. À reprendre si l'endpoint revient.
+[~] #— UpdateUserRequest : interdire de rétrograder le dernier administrateur
+    → **sans objet** : `apiResource /admin/users` a été supprimé en 2.1. Aucun endpoint
+      ne modifie un rôle.
+[~] #— Renseigner email_verified_at (colonne existante, jamais alimentée)
+    → renseignée à la **réinitialisation de mot de passe** : un lien reçu par email prouve
+      le contrôle de l'adresse. C'est le seul endroit du code où cette preuve existe.
+      L'inscription ne vérifie rien, donc y laisser `null` est exact.
+    → aucun code ne lit encore la colonne : une vraie vérification d'email est une
+      fonctionnalité, pas un remplissage de colonne.
 ```
 
 **Tests** : login/logout révoquent réellement · rate limit · mot de passe faible refusé ·

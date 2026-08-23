@@ -9,6 +9,7 @@ use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Requests\Auth\ResetPasswordRequest;
 use App\Http\Resources\UserResource;
 use App\Models\Gallery;
+use App\Models\LoginAttempt;
 use App\Models\Order;
 use App\Models\Reservation;
 use App\Models\User;
@@ -16,7 +17,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -65,12 +68,15 @@ class AuthController extends Controller
     {
 
         if (! Auth::attempt($request->only('email', 'password'))) {
+            $this->journaliserTentative($request, false);
+
             throw ValidationException::withMessages([
                 'email' => ['Les identifiants fournis sont incorrects.'],
             ]);
         }
 
         $user = User::where('email', $request->email)->firstOrFail();
+        $this->journaliserTentative($request, true, $user);
         $token = $user->createToken('auth-token')->plainTextToken;
 
         return response()->json([
@@ -112,30 +118,32 @@ class AuthController extends Controller
 
     public function forgotPassword(ForgotPasswordRequest $request): JsonResponse
     {
-        $validated = $request->validated();
+        $request->validated();
 
         $status = Password::sendResetLink($request->only('email'));
 
-        if ($status === Password::RESET_LINK_SENT) {
-            return response()->json([
-                'message' => 'Lien de réinitialisation envoyé par email.',
-            ]);
+        // Reponse identique quel que soit le statut : un 422 « aucun compte » permettait
+        // d'enumerer les adresses inscrites, et un statut « throttled » revelait tout
+        // autant que l'adresse existe.
+        if ($status !== Password::RESET_LINK_SENT) {
+            Log::warning('Demande de réinitialisation non aboutie', ['status' => $status]);
         }
 
-        throw ValidationException::withMessages([
-            'email' => [__($status)],
+        return response()->json([
+            'message' => 'Si un compte existe pour cette adresse, un lien de réinitialisation vient d\'être envoyé.',
         ]);
     }
 
     public function resetPassword(ResetPasswordRequest $request): JsonResponse
     {
-        $validated = $request->validated();
+        $request->validated();
 
         $status = Password::reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),
             function (User $user, string $password) {
                 $user->forceFill([
                     'password' => Hash::make($password),
+                    'email_verified_at' => $user->email_verified_at ?? now(),
                 ])->save();
             }
         );
@@ -146,8 +154,23 @@ class AuthController extends Controller
             ]);
         }
 
+        // Message unique : distinguer « aucun compte » de « jeton invalide » permettait
+        // d'enumerer les adresses inscrites avec un jeton au hasard.
+        Log::warning('Réinitialisation de mot de passe refusée', ['status' => $status]);
+
         throw ValidationException::withMessages([
-            'email' => [__($status)],
+            'email' => ['Ce lien de réinitialisation est invalide ou a expiré.'],
+        ]);
+    }
+
+    private function journaliserTentative(Request $request, bool $reussie, ?User $user = null): void
+    {
+        LoginAttempt::create([
+            'email' => Str::lower((string) $request->input('email')),
+            'ip' => $request->ip(),
+            'user_agent' => Str::limit((string) $request->userAgent(), 500, ''),
+            'successful' => $reussie,
+            'user_id' => $user?->id,
         ]);
     }
 }

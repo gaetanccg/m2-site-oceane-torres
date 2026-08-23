@@ -104,10 +104,16 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(60)->by($request->ip());
         });
 
+        // Deux echelles : la limite par minute arrete une rafale, celle par heure arrete
+        // un bourrage lent qui reste sous le seuil de la premiere.
         RateLimiter::for('auth', function (Request $request) {
+            $email = Str::lower((string) $request->input('email'));
+
             return [
                 Limit::perMinute(5)->by($request->ip()),
-                Limit::perMinute(5)->by(Str::lower((string) $request->input('email'))),
+                Limit::perMinute(5)->by($email),
+                Limit::perHour(20)->by('h:'.$request->ip()),
+                Limit::perHour(20)->by('h:'.$email),
             ];
         });
 
