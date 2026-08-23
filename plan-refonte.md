@@ -1436,9 +1436,21 @@ sans test, → §9.6).
     [x] politique du **site** dans `render.yaml`, dérivée de ce que le front charge
         réellement — SumUp (script + iframe), GTM, Google Analytics, MinIO, miniatures
         YouTube, l'API, l'ingest Sentry.
-        Posée en **`Content-Security-Policy-Report-Only`** : jamais éprouvée dans un
-        navigateur, et une directive trop stricte casse sans erreur serveur. La marche à
-        suivre pour la faire appliquer est écrite dans le fichier.
+    [x] **éprouvée** par `npm run check:csp` : un script Puppeteer sert `dist/` avec la
+        politique réellement appliquée et parcourt 10 routes en collectant les violations.
+        Branché en CI, donc une régression est détectée au build.
+        🔴 il a immédiatement trouvé ce qu'un grep avait manqué : `src/style.css` faisait
+        un `@import` vers **Google Fonts**. La politique aurait bloqué la feuille de style
+        des polices sur toutes les pages. Police auto-hébergée via `@fontsource/inter` —
+        meilleur sur les trois critères : plus de requête tierce, plus d'IP visiteur
+        transmise à Google (point RGPD), et une dépendance externe de moins.
+    [x] **promotion en deux moitiés**. Appliquées : `object-src`, `base-uri`,
+        `form-action`, `frame-ancestors` — validées, et incapables de casser SumUp, GA ou
+        Sentry puisqu'elles ne portent sur aucun chargement de script. Elles couvrent le
+        détournement de formulaire, l'injection de `<base>` et l'inclusion en iframe.
+        En observation : `script-src`, `connect-src`, `frame-src`, qui touchent des tiers
+        qu'un build local ne sollicite pas. Les activer à l'aveugle risquerait le tunnel
+        de paiement. Procédure de promotion écrite dans `render.yaml`.
     [x] politique de l'**API** : `default-src 'none'; frame-ancestors 'none'` — celle-là
         a du sens sur du JSON.
 [x] Retirer X-XSS-Protection (obsolète) — aussi dans web/docker/nginx.conf

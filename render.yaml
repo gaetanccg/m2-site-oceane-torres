@@ -29,14 +29,26 @@ services:
       - path: /*
         name: Referrer-Policy
         value: strict-origin-when-cross-origin
-      # EN OBSERVATION. Politique derivee de ce que le front charge reellement, mais
-      # jamais eprouvee dans un navigateur : une directive trop stricte casse le site
-      # sans erreur visible cote serveur. Report-Only ne bloque rien et signale les
-      # violations dans la console.
+      # APPLIQUEE. Ces directives sont validees par `npm run check:csp` (Puppeteer sur
+      # le site construit, 10 routes) et ne peuvent pas casser SumUp, Google Analytics ni
+      # Sentry : elles ne portent sur aucun chargement de script ou de connexion.
+      # Elles couvrent le detournement de formulaire, l'injection de <base>, l'inclusion
+      # en iframe et les greffons.
+      - path: /*
+        name: Content-Security-Policy
+        value: >-
+          object-src 'none';
+          base-uri 'self';
+          form-action 'self';
+          frame-ancestors 'none'
+      # EN OBSERVATION. Le reste de la politique : script-src, connect-src et frame-src
+      # touchent SumUp, Google Analytics et Sentry, qu'un build local ne sollicite pas
+      # (pas de cles, pas de paiement reel). Les activer a l'aveugle risquerait le tunnel
+      # de paiement.
       #
-      # Pour la faire appliquer : ouvrir le site (accueil, galerie par code, tunnel de
-      # paiement, lightbox video, administration), verifier qu'aucune violation
-      # n'apparait dans la console, puis renommer l'en-tete en Content-Security-Policy.
+      # Pour les faire appliquer : ouvrir la preproduction, passer une commande de bout en
+      # bout, ouvrir une video de la lightbox, verifier qu'aucune violation n'apparait
+      # dans la console, puis fusionner ces directives dans l'en-tete applique ci-dessus.
       #
       # connect-src porte l'API : elle est sur un SOUS-DOMAINE distinct, donc 'self' seul
       # bloquerait tous les appels.

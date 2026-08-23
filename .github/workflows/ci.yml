@@ -82,6 +82,9 @@ jobs:
         env:
           PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: false
 
+      - name: Éprouver la Content-Security-Policy
+        run: npm run check:csp
+
       - name: Verify prerendered pages
         run: |
           echo "Checking prerendered pages..."
