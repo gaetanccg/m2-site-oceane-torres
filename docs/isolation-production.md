@@ -34,6 +34,25 @@ Deux natures de règles, et la distinction compte :
 
 - **Détections** — cette configuration *est* la production : projet Supabase, hôte du
   pooler, bucket MinIO. Déclarés dans `App\Support\ProductionTargets`.
+
+  🔴 **Deux contournements ont été trouvés après coup, dans le garde-fou lui-même**, et
+  c'est le genre de trou qu'on ne voit qu'en cherchant à le percer :
+
+  - **`DB_URL`.** `config/database.php` déclare `'url' => env('DB_URL')`. Quand elle est
+    définie, Laravel l'utilise et `host` / `username` deviennent **inertes sans être
+    effacés** : le garde lisait la préproduction pendant que l'application se connectait à
+    la production. Mesuré — l'application démarrait, et la suite de tests s'exécutait. La
+    détection porte désormais sur la connexion **résolue**, via le
+    `ConfigurationUrlParser` de Laravel : le seul moyen de voir ce à quoi le framework va
+    réellement se connecter.
+  - **L'hôte direct Supabase.** `db.<ref>.supabase.co` (port 5432) utilise l'utilisateur
+    `postgres`, **sans** le ref du projet — que seul le pooler exige. Comparer l'hôte au
+    pooler ne détectait donc rien, et l'utilisateur non plus. Le marqueur fiable est le
+    **ref de projet cherché partout** dans la connexion : il apparaît soit dans
+    l'utilisateur (pooler), soit dans le nom d'hôte (connexion directe).
+
+  Leçon retenue : une liste d'hôtes est une liste noire, et une liste noire est fausse dès
+  qu'un fournisseur ajoute un point d'entrée.
 - **Règles qui échouent par défaut** — un environnement de développement doit *déclarer*
   son innocuité. `SUMUP_ENV` doit valoir `sandbox` : chercher une valeur interdite
   laisserait passer une configuration muette, puisque `config('sumup.environment')` vaut
@@ -88,6 +107,23 @@ comportement attendu, puisque le déploiement se fait **depuis le NAS**, où le 
 existe.
 
 ### 2.4 Les scripts destructeurs visent la préproduction par défaut
+
+Trois pièges corrigés dans ces scripts, tous du même genre — le script faisait autre chose
+que ce qu'il annonçait :
+
+- `backup.sh` : une variable **restée exportée** dans le shell l'emportait *en silence* sur
+  le fichier d'environnement, pendant que la bannière annonçait la cible du fichier. Pour
+  les variables qui **désignent la cible**, le fichier gagne maintenant, et tout écrasement
+  est annoncé.
+- `backup.sh` : `MINIO_BUCKET` retombait sur `galleries` — le bucket de **production**. Un
+  fichier d'environnement incomplet copiait donc les photos réelles. Plus de repli : la
+  variable est exigée.
+- `restore.sh` : le message de confirmation livrait la commande **prête à coller**,
+  `CONFIRM=<ref>` incluse. Une confirmation qui donne sa propre réponse ne confirme rien.
+  Le message dit désormais ce qui est requis, sans le fournir : l'opérateur doit lire le
+  bloc « Cible » et recopier lui-même.
+- `deploy/README.md` documentait un `mc mirror` écrivant dans `galleries` sans avertir que
+  le serveur est partagé. Bucket paramétré, avertissement ajouté.
 
 `backup.sh` et `restore.sh` prenaient `deploy/.env.prod` par défaut. C'est désormais
 `.env.preprod` : atteindre la production exige de la **nommer**.
@@ -148,5 +184,11 @@ Ces points ne peuvent pas être fermés par du code :
 - 🔑 **Rotation.** Les identifiants de production ont séjourné dans l'arborescence du
   projet. Les faire tourner (Supabase, MinIO, SumUp) est la seule façon d'annuler cette
   exposition.
+- ✅ **`APP_KEY` de la préproduction : faite.** Elle était **identique à celle de la
+  production** — une signature, un cookie ou une URL signée fabriqués en préproduction
+  étaient donc valides en production (`OrderAccessSignature` en dépend directement). Une
+  clé distincte a été générée ; rien n'est chiffré au repos dans ce schéma (aucun cast
+  `encrypted`, aucun appel à `Crypt`), la rotation ne coûte donc que les sessions de
+  préproduction. **Prend effet au prochain déploiement de la préproduction.**
 - 💾 **Supabase plan Free = aucune sauvegarde.** Ni PITR, ni sauvegarde quotidienne :
   `deploy/backup.sh` est le seul filet. Voir `docs/…` et le plan.

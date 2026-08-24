@@ -2,6 +2,7 @@
 
 namespace Tests;
 
+use App\Support\EffectiveDatabaseTarget;
 use RuntimeException;
 
 /**
@@ -55,8 +56,20 @@ trait RefusesNonLocalDatabase
     private function assertTestDatabaseIsLocal(): void
     {
         $connection = (string) config('database.default');
-        $host = (string) config("database.connections.{$connection}.host");
-        $database = (string) config("database.connections.{$connection}.database");
+
+        // Sur la connexion RESOLUE : `config('...host')` reste renseigne quand DB_URL est
+        // definie, alors que Laravel se connecte a l'URL. Mesure : avec DB_URL vers la
+        // production, la suite entiere s'executait sans que ce garde-fou ne dise rien.
+        $cible = EffectiveDatabaseTarget::resolve([
+            'url' => config("database.connections.{$connection}.url"),
+            'host' => config("database.connections.{$connection}.host"),
+            'username' => config("database.connections.{$connection}.username"),
+            'database' => config("database.connections.{$connection}.database"),
+            'port' => config("database.connections.{$connection}.port"),
+        ]);
+
+        $host = $cible['host'];
+        $database = $cible['database'];
 
         if (LocalDatabaseHosts::allows($host)) {
             return;

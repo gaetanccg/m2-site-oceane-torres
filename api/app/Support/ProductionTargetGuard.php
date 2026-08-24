@@ -32,12 +32,23 @@ final class ProductionTargetGuard
         }
 
         $valeurs = [];
-        foreach (['database.default', 'filesystems.disks.minio.bucket', 'sumup.environment', 'sentry.environment', 'sentry.dsn'] as $cle) {
+        $cles = [
+            'database.default',
+            'filesystems.disks.minio.bucket',
+            'sumup.environment',
+            'sentry.environment',
+            'sentry.dsn',
+            'supervision.healthchecks.rgpd_cleanup_url',
+            'supervision.healthchecks.reconcile_orders_url',
+        ];
+
+        foreach ($cles as $cle) {
             $valeurs[$cle] = $config($cle);
         }
 
         $connexion = (string) ($valeurs['database.default'] ?? 'pgsql');
-        foreach (['host', 'username'] as $champ) {
+        // `url` en fait partie : sans elle, DB_URL rend le garde-fou aveugle.
+        foreach (['url', 'host', 'username', 'database', 'port'] as $champ) {
             $valeurs["database.connections.{$connexion}.{$champ}"] = $config("database.connections.{$connexion}.{$champ}");
         }
 

@@ -49,12 +49,39 @@ désactive cet alignement.
 EOF
 }
 
+# Variables qui DESIGNENT la cible. Pour celles-la, le fichier d'environnement l'emporte
+# sur l'environnement du shell : une variable restee exportee redirigeait sinon la
+# sauvegarde vers un autre environnement, en silence, pendant que la banniere annonçait la
+# cible du fichier. Un script qui ment sur ce qu'il fait est plus dangereux qu'un script
+# qui echoue.
+TARGET_VARS=(DB_HOST DB_PORT DB_DATABASE DB_USERNAME DB_PASSWORD
+             MINIO_ENDPOINT MINIO_PUBLIC_URL MINIO_ACCESS_KEY MINIO_SECRET_KEY MINIO_BUCKET)
+
+is_target_var() {
+    local candidat="$1"
+    for v in "${TARGET_VARS[@]}"; do
+        [[ "${v}" == "${candidat}" ]] && return 0
+    done
+
+    return 1
+}
+
 load_env() {
     if [[ -f "${ENV_FILE}" ]]; then
         while IFS='=' read -r key value; do
             [[ "${key}" =~ ^[A-Z_][A-Z0-9_]*$ ]] || continue
-            if [[ -n "${!key:-}" ]]; then continue; fi
             value="${value%\"}"; value="${value#\"}"
+
+            if [[ -n "${!key:-}" ]]; then
+                # Deja dans l'environnement : on n'ecrase que les variables de cible, et on
+                # le dit — le silence etait precisement le probleme.
+                if is_target_var "${key}" && [[ "${!key}" != "${value}" ]]; then
+                    ylw "  ${key} : la valeur de $(basename "${ENV_FILE}") remplace celle du shell"
+                    export "${key}=${value}"
+                fi
+                continue
+            fi
+
             export "${key}=${value}"
         done < <(grep -E '^[A-Z_]+=' "${ENV_FILE}" || true)
     fi
@@ -224,14 +251,19 @@ cmd_storage() {
     step "Miroir du stockage objet"
     command -v mc >/dev/null 2>&1 || die "mc absent : brew install minio/stable/mc"
 
-    for var in MINIO_PUBLIC_URL MINIO_ACCESS_KEY MINIO_SECRET_KEY; do
+    for var in MINIO_PUBLIC_URL MINIO_ACCESS_KEY MINIO_SECRET_KEY MINIO_BUCKET; do
         [[ -n "${!var:-}" ]] || die "${var} manquant"
         if [[ "${!var}" == *"<SECRET"* ]]; then
             die "${var} contient encore un placeholder."
         fi
     done
 
-    local bucket="${MINIO_BUCKET:-galleries}"
+    # Aucun repli : « galleries » est le bucket de PRODUCTION, sur un serveur partage avec
+    # la preproduction. Un fichier d'environnement incomplet copiait donc les photos reelles.
+    [[ -n "${MINIO_BUCKET:-}" ]] || die "MINIO_BUCKET manquant : refus de deviner le bucket.
+    « galleries » est celui de la PRODUCTION — le deviner reviendrait a sauvegarder
+    l'environnement que l'on ne visait pas."
+    local bucket="${MINIO_BUCKET}"
     local dest="${BACKUP_DIR}/minio/${bucket}"
     mkdir -p "${dest}"
 

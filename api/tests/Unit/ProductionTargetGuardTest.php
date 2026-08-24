@@ -21,12 +21,15 @@ class ProductionTargetGuardTest extends TestCase
     {
         $valeurs = [
             'database.default' => 'pgsql',
+            'database.connections.pgsql.url' => null,
             'database.connections.pgsql.host' => 'aws-0-eu-central-1.pooler.supabase.com',
             'database.connections.pgsql.username' => 'postgres.koimluuhjlhslwlxiesb',
             'filesystems.disks.minio.bucket' => 'galleries-preprod',
             'sumup.environment' => 'sandbox',
             'sentry.environment' => 'local',
             'sentry.dsn' => '',
+            'supervision.healthchecks.rgpd_cleanup_url' => '',
+            'supervision.healthchecks.reconcile_orders_url' => '',
             ...$ecarts,
         ];
 
@@ -96,6 +99,50 @@ class ProductionTargetGuardTest extends TestCase
     }
 
     /**
+     * `config/database.php` declare `'url' => env('DB_URL')`. Quand DB_URL est definie,
+     * Laravel l'utilise et `host` / `username` deviennent inertes SANS etre effaces : le
+     * garde voyait la preproduction pendant que l'application visait la production. Mesure
+     * avant correctif : l'application demarrait, et la suite de tests s'executait.
+     */
+    public function test_db_url_ne_contourne_pas_le_garde_fou(): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessageMatches('/'.ProductionTargets::SUPABASE_PROJECT.'/');
+
+        ProductionTargetGuard::assert('local', $this->saine([
+            'database.connections.pgsql.url' => 'postgresql://postgres.'
+                .ProductionTargets::SUPABASE_PROJECT.':secret@'
+                .ProductionTargets::DATABASE_HOST.':5432/postgres',
+        ]));
+    }
+
+    /**
+     * Supabase expose aussi une connexion DIRECTE, `db.<ref>.supabase.co`, dont
+     * l'utilisateur est simplement « postgres » — sans le ref. Comparer l'hote au pooler
+     * ne detectait donc rien : le marqueur doit etre cherche dans toute la connexion.
+     */
+    public function test_l_hote_direct_supabase_est_reconnu(): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessageMatches('/'.ProductionTargets::SUPABASE_PROJECT.'/');
+
+        ProductionTargetGuard::assert('local', $this->saine([
+            'database.connections.pgsql.host' => 'db.'.ProductionTargets::SUPABASE_PROJECT.'.supabase.co',
+            'database.connections.pgsql.username' => 'postgres',
+        ]));
+    }
+
+    /** Une DB_URL vers la preproduction reste acceptable. */
+    public function test_une_db_url_de_preproduction_passe(): void
+    {
+        ProductionTargetGuard::assert('local', $this->saine([
+            'database.connections.pgsql.url' => 'postgresql://postgres.koimluuhjlhslwlxiesb:secret@aws-0-eu-central-1.pooler.supabase.com:6543/postgres',
+        ]));
+
+        $this->expectNotToPerformAssertions();
+    }
+
+    /**
      * Le poste portait l'etiquette « local » ET le DSN d'un projet Sentry deploye : les
      * exceptions de developpement partaient donc dans la supervision d'un environnement
      * reel. L'etiquette seule ne protegeait rien — c'est pourquoi on exige un DSN VIDE.
@@ -133,6 +180,26 @@ class ProductionTargetGuardTest extends TestCase
         $this->expectNotToPerformAssertions();
     }
 
+    /**
+     * Un ping emis depuis un poste de developpement maintient le moniteur de production au
+     * VERT : une panne reelle ne declencherait plus aucune alerte. Pire que l'absence de
+     * supervision, puisqu'on croit etre couvert.
+     */
+    public function test_une_url_de_ping_de_supervision_est_refusee_hors_production(): void
+    {
+        foreach ([
+            'supervision.healthchecks.rgpd_cleanup_url',
+            'supervision.healthchecks.reconcile_orders_url',
+        ] as $cle) {
+            try {
+                ProductionTargetGuard::assert('local', $this->saine([$cle => 'https://hc-ping.com/'.md5($cle)]));
+                $this->fail("Une URL de ping sur « {$cle} » aurait du etre refusee.");
+            } catch (RuntimeException $e) {
+                $this->assertStringContainsString('doit etre vide hors production', $e->getMessage());
+            }
+        }
+    }
+
     /** La production, elle, doit pouvoir viser la production. */
     public function test_le_garde_fou_se_retire_en_production(): void
     {
@@ -143,6 +210,7 @@ class ProductionTargetGuardTest extends TestCase
             'sumup.environment' => 'live',
             'sentry.environment' => 'production',
             'sentry.dsn' => 'https://cle@o1.ingest.de.sentry.io/999',
+            'supervision.healthchecks.rgpd_cleanup_url' => 'https://hc-ping.com/reel',
         ]));
 
         $this->expectNotToPerformAssertions();

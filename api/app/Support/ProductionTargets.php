@@ -17,11 +17,24 @@ final class ProductionTargets
     /** Identifiant du projet Supabase de production, present dans l'utilisateur de connexion. */
     public const SUPABASE_PROJECT = 'ekhlybdoblhjigpnpbff';
 
-    /** Pooler de production. La preproduction est sur une autre region. */
+    /**
+     * Pooler de production. Conserve comme second signal, mais ce n'est PAS le marqueur
+     * principal : Supabase expose aussi une connexion directe, `db.<ref>.supabase.co`, dont
+     * l'utilisateur est simplement « postgres » — sans le ref. Comparer cet hote-la ne
+     * detectait donc rien. Le marqueur fiable est le ref de projet, cherche PARTOUT dans la
+     * connexion resolue : il apparait soit dans l'utilisateur (pooler), soit dans le nom
+     * d'hote (connexion directe).
+     */
     public const DATABASE_HOST = 'aws-1-eu-west-1.pooler.supabase.com';
 
     /** Bucket MinIO de production. Le serveur est PARTAGE : seul le bucket differe. */
     public const STORAGE_BUCKET = 'galleries';
+
+    /** URLs de ping de supervision : aucune ne doit etre emise hors production. */
+    private const HEALTHCHECK_KEYS = [
+        'purge RGPD' => 'supervision.healthchecks.rgpd_cleanup_url',
+        'reconciliation' => 'supervision.healthchecks.reconcile_orders_url',
+    ];
 
     /**
      * Cibles de production reconnues dans la configuration fournie.
@@ -31,18 +44,29 @@ final class ProductionTargets
      */
     public static function detectedIn(array $config): array
     {
-        $connexion = (string) ($config['database.default'] ?? 'pgsql');
-        $hote = (string) ($config["database.connections.{$connexion}.host"] ?? '');
-        $utilisateur = (string) ($config["database.connections.{$connexion}.username"] ?? '');
+        $nom = (string) ($config['database.default'] ?? 'pgsql');
+
+        // L'empreinte est construite sur la connexion RESOLUE, DB_URL comprise. Lire
+        // `host` et `username` directement laissait passer DB_URL, qui les rend inertes
+        // sans les effacer : le garde voyait la preproduction, l'application se connectait
+        // a la production.
+        $empreinte = EffectiveDatabaseTarget::fingerprint([
+            'url' => $config["database.connections.{$nom}.url"] ?? null,
+            'host' => $config["database.connections.{$nom}.host"] ?? null,
+            'username' => $config["database.connections.{$nom}.username"] ?? null,
+            'database' => $config["database.connections.{$nom}.database"] ?? null,
+            'port' => $config["database.connections.{$nom}.port"] ?? null,
+        ]);
+
         $bucket = (string) ($config['filesystems.disks.minio.bucket'] ?? '');
 
         $detectees = [];
 
-        if ($utilisateur !== '' && str_contains($utilisateur, self::SUPABASE_PROJECT)) {
+        if (str_contains($empreinte, strtolower(self::SUPABASE_PROJECT))) {
             $detectees['base de donnees'] = 'projet Supabase '.self::SUPABASE_PROJECT;
         }
 
-        if ($hote !== '' && str_contains($hote, self::DATABASE_HOST)) {
+        if (str_contains($empreinte, strtolower(self::DATABASE_HOST))) {
             $detectees['hote de base'] = self::DATABASE_HOST;
         }
 
@@ -79,6 +103,15 @@ final class ProductionTargets
         $dsn = trim((string) ($config['sentry.dsn'] ?? ''));
 
         $violations = [];
+
+        // Un ping emis par un poste de developpement maintient le moniteur de production
+        // au VERT : une panne reelle ne declencherait plus aucune alerte. C'est pire que
+        // l'absence de supervision, puisqu'on croit etre couvert.
+        foreach (self::HEALTHCHECK_KEYS as $intitule => $cle) {
+            if (trim((string) ($config[$cle] ?? '')) !== '') {
+                $violations['supervision ('.$intitule.')'] = $cle.' doit etre vide hors production';
+            }
+        }
 
         // Exiger un DSN VIDE, plutot que d'interdire celui de la production : je n'aurais
         // pas su reconnaitre le bon projet. Le poste avait l'etiquette « local » et

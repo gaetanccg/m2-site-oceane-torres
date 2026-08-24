@@ -139,7 +139,11 @@ docker exec -e PGPASSWORD=postgres ot-restore \
   "SELECT count(*) FROM orders WHERE status='paid';"
 
 # 4. Fichiers : le miroir MinIO se remonte avec mc
-mc mirror --preserve backups/minio/galleries <alias>/galleries
+#    ⚠️ Le serveur MinIO est PARTAGE entre production et preproduction : seul le bucket
+#    distingue les deux. Nommer explicitement le bucket, ne jamais recopier cette ligne
+#    telle quelle — « galleries » est celui de la PRODUCTION.
+BUCKET=galleries-preprod   # ou « galleries » pour la production, en le voulant
+mc mirror --preserve "backups/minio/${BUCKET}" "<alias>/${BUCKET}"
 ```
 
 > Restaurer la base **sans** restaurer MinIO (ou l'inverse) produit un etat

@@ -53,6 +53,9 @@
 
         <!-- Sans cela la suite de tests remonte a Sentry : les exceptions volontaires
              des tests atterrissaient dans le projet reel. -->
+        <!-- Un ping emis par la suite de tests maintiendrait un moniteur au vert. -->
+        <env name="HEALTHCHECKS_RGPD_URL" value=""/>
+        <env name="HEALTHCHECKS_RECONCILE_URL" value=""/>
         <env name="SENTRY_LARAVEL_DSN" value=""/>
         <env name="SENTRY_DSN" value=""/>
 

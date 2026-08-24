@@ -157,7 +157,11 @@ ylw "  projet   : ${PROJECT_REF}"
 ylw "  dump     : $(basename "${DUMP}")"
 
 if [[ "${CONFIRM:-}" != "${PROJECT_REF}" ]]; then
-    die "Confirmation requise. Relancer avec :\n    CONFIRM=${PROJECT_REF} $0 --dump ${DUMP}"
+    # Le message ne repete PAS la valeur attendue, et ne livre pas de commande prete a
+    # coller : une confirmation qui donne sa propre reponse ne confirme rien. L'operateur
+    # doit lire le bloc « Cible » ci-dessus et recopier le projet lui-meme — c'est
+    # exactement le regard qu'on cherche a lui imposer avant d'ecraser une base.
+    die "Confirmation requise : relancer en passant CONFIRM=<le projet affiche ci-dessus>."
 fi
 
 psql_target() {
