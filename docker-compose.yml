@@ -98,6 +98,10 @@ services:
       - SUPERVISION_ALERTS_ENABLED=${SUPERVISION_ALERTS_ENABLED:-true}
       - SUPERVISION_ALERT_EMAIL=${SUPERVISION_ALERT_EMAIL:-}
       - SENTRY_DSN=${SENTRY_DSN:-}
+      # C'est SENTRY_LARAVEL_DSN que config/sentry.php lit en premier. Ne pas la passer
+      # revenait a l'heriter en silence de api/.env monte dans le conteneur.
+      - SENTRY_LARAVEL_DSN=${SENTRY_LARAVEL_DSN:-}
+      - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-local}
     healthcheck:
       test: [ "CMD-SHELL", "(SCRIPT_NAME=/ping SCRIPT_FILENAME=/ping REQUEST_METHOD=GET cgi-fcgi -bind -connect 127.0.0.1:9000 2>/dev/null | grep -q pong) || php -r 'exit(@fsockopen(\"127.0.0.1\", 9000) ? 0 : 1);'" ]
       interval: 30s
@@ -175,6 +179,10 @@ services:
       - SUPERVISION_ALERTS_ENABLED=${SUPERVISION_ALERTS_ENABLED:-true}
       - SUPERVISION_ALERT_EMAIL=${SUPERVISION_ALERT_EMAIL:-}
       - SENTRY_DSN=${SENTRY_DSN:-}
+      # C'est SENTRY_LARAVEL_DSN que config/sentry.php lit en premier. Ne pas la passer
+      # revenait a l'heriter en silence de api/.env monte dans le conteneur.
+      - SENTRY_LARAVEL_DSN=${SENTRY_LARAVEL_DSN:-}
+      - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-local}
     # max-time=300 forces the worker to exit every 5min so Docker restarts it
     # (restart: unless-stopped). This auto-reloads job class code after any edit,
     # which a long-running `queue:work` would otherwise keep cached in memory.
@@ -259,6 +267,10 @@ services:
       - SUPERVISION_ALERTS_ENABLED=${SUPERVISION_ALERTS_ENABLED:-true}
       - SUPERVISION_ALERT_EMAIL=${SUPERVISION_ALERT_EMAIL:-}
       - SENTRY_DSN=${SENTRY_DSN:-}
+      # C'est SENTRY_LARAVEL_DSN que config/sentry.php lit en premier. Ne pas la passer
+      # revenait a l'heriter en silence de api/.env monte dans le conteneur.
+      - SENTRY_LARAVEL_DSN=${SENTRY_LARAVEL_DSN:-}
+      - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-local}
     command: >
       sh -c "
         php artisan supervision:heartbeat scheduler &&

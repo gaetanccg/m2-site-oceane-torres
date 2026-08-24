@@ -60,6 +60,15 @@
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="FILESYSTEM_DISK" value="minio"/>
+        <!-- Le disque doit designer un stockage inexistant : la suite ne doit toucher aucun
+             fichier reel. Tests\RefusesNonLocalDatabase le verifie sur la config RESOLUE,
+             car dans un conteneur la variable d'environnement reelle l'emporte sur ces
+             <env> — les tests resolvaient jusqu'ici le vrai bucket de preproduction. -->
+        <env name="MINIO_ENDPOINT" value="http://127.0.0.1:9000"/>
+        <env name="MINIO_PUBLIC_URL" value="http://127.0.0.1:9000"/>
+        <env name="MINIO_BUCKET" value="tests-jamais-reel"/>
+        <env name="MINIO_ACCESS_KEY" value="tests"/>
+        <env name="MINIO_SECRET_KEY" value="tests"/>
 
         <!--
             SumUp : on reste en SANDBOX pour les tests de paiement (comportement

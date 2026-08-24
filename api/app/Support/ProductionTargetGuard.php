@@ -32,7 +32,7 @@ final class ProductionTargetGuard
         }
 
         $valeurs = [];
-        foreach (['database.default', 'filesystems.disks.minio.bucket', 'sumup.environment', 'sentry.environment'] as $cle) {
+        foreach (['database.default', 'filesystems.disks.minio.bucket', 'sumup.environment', 'sentry.environment', 'sentry.dsn'] as $cle) {
             $valeurs[$cle] = $config($cle);
         }
 

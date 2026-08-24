@@ -26,6 +26,7 @@ class ProductionTargetGuardTest extends TestCase
             'filesystems.disks.minio.bucket' => 'galleries-preprod',
             'sumup.environment' => 'sandbox',
             'sentry.environment' => 'local',
+            'sentry.dsn' => '',
             ...$ecarts,
         ];
 
@@ -94,6 +95,44 @@ class ProductionTargetGuardTest extends TestCase
         ProductionTargetGuard::assert('local', $this->saine(['sentry.environment' => 'production']));
     }
 
+    /**
+     * Le poste portait l'etiquette « local » ET le DSN d'un projet Sentry deploye : les
+     * exceptions de developpement partaient donc dans la supervision d'un environnement
+     * reel. L'etiquette seule ne protegeait rien — c'est pourquoi on exige un DSN VIDE.
+     */
+    public function test_un_dsn_sentry_est_refuse_hors_production(): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessageMatches('/SENTRY_LARAVEL_DSN doit etre vide/');
+
+        ProductionTargetGuard::assert('local', $this->saine([
+            'sentry.dsn' => 'https://cle@o4511874201223168.ingest.de.sentry.io/4511942022856784',
+        ]));
+    }
+
+    /** Le message doit nommer le projet vise, sans divulguer la cle du DSN. */
+    public function test_le_message_nomme_le_projet_sans_divulguer_la_cle(): void
+    {
+        try {
+            ProductionTargetGuard::assert('local', $this->saine([
+                'sentry.dsn' => 'https://cle_secrete@o1.ingest.de.sentry.io/4511942022856784',
+            ]));
+            $this->fail('Le garde-fou aurait du refuser.');
+        } catch (RuntimeException $e) {
+            $this->assertStringContainsString('4511942022856784', $e->getMessage());
+            $this->assertStringNotContainsString('cle_secrete', $e->getMessage());
+        }
+    }
+
+    public function test_un_dsn_vide_ou_blanc_passe(): void
+    {
+        foreach (['', '   '] as $vide) {
+            ProductionTargetGuard::assert('local', $this->saine(['sentry.dsn' => $vide]));
+        }
+
+        $this->expectNotToPerformAssertions();
+    }
+
     /** La production, elle, doit pouvoir viser la production. */
     public function test_le_garde_fou_se_retire_en_production(): void
     {
@@ -103,6 +142,7 @@ class ProductionTargetGuardTest extends TestCase
             'filesystems.disks.minio.bucket' => ProductionTargets::STORAGE_BUCKET,
             'sumup.environment' => 'live',
             'sentry.environment' => 'production',
+            'sentry.dsn' => 'https://cle@o1.ingest.de.sentry.io/999',
         ]));
 
         $this->expectNotToPerformAssertions();

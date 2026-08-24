@@ -64,12 +64,29 @@ final class ProductionTargets
      * @param  array<string, mixed>  $config
      * @return array<string, string> intitule => ce qui est attendu
      */
+    /** Identifiant de projet lisible dans un DSN, sans en divulguer la cle. */
+    private static function sentryProject(string $dsn): string
+    {
+        $chemin = trim((string) parse_url($dsn, PHP_URL_PATH), '/');
+
+        return $chemin === '' ? 'inconnu' : $chemin;
+    }
+
     public static function violatedPoliciesIn(array $config): array
     {
         $sumup = strtolower((string) ($config['sumup.environment'] ?? ''));
         $sentry = strtolower((string) ($config['sentry.environment'] ?? ''));
+        $dsn = trim((string) ($config['sentry.dsn'] ?? ''));
 
         $violations = [];
+
+        // Exiger un DSN VIDE, plutot que d'interdire celui de la production : je n'aurais
+        // pas su reconnaitre le bon projet. Le poste avait l'etiquette « local » et
+        // pourtant le DSN d'un projet deploye — l'etiquette seule ne protegeait rien.
+        if ($dsn !== '') {
+            $violations['supervision (DSN)'] = 'SENTRY_LARAVEL_DSN doit etre vide hors production'
+                .' (projet actuellement vise : '.self::sentryProject($dsn).')';
+        }
 
         if ($sumup !== 'sandbox') {
             $violations['paiements'] = sprintf(

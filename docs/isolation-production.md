@@ -38,6 +38,14 @@ Deux natures de règles, et la distinction compte :
   son innocuité. `SUMUP_ENV` doit valoir `sandbox` : chercher une valeur interdite
   laisserait passer une configuration muette, puisque `config('sumup.environment')` vaut
   `production` quand la variable n'est pas définie. On exige l'inverse.
+  `SENTRY_LARAVEL_DSN` doit être **vide** : 🔴 le poste portait l'étiquette `local` **et**
+  le DSN d'un projet Sentry déployé (`4511942022856784`, distinct de celui de la
+  préproduction). Les exceptions de développement partaient donc dans la supervision d'un
+  environnement réel, où elles consomment le quota du plan gratuit et noient les vraies
+  alertes. Corriger l'étiquette ne suffisait pas — c'est le DSN qui décide de la
+  destination. `config/sentry.php` lit `SENTRY_LARAVEL_DSN` **avant** `SENTRY_DSN`, et
+  `docker-compose.yml` ne passait que la seconde : la première était héritée en silence de
+  `api/.env` monté dans le conteneur. Les trois blocs la passent maintenant explicitement.
 
 **Aucune variable d'environnement ne le désactive**, et c'est délibéré : une échappatoire
 serait empruntée par la première personne pressée. Pour agir sur la production, il faut
@@ -51,6 +59,16 @@ La préproduction est donc refusée elle aussi — `RefreshDatabase` la viderait
 
 Il s'accroche à `refreshApplication()`, car `setUpTraits()` (et donc `RefreshDatabase`)
 s'exécute juste après.
+
+🔴 **Le volet stockage a été ajouté après coup.** La base était protégée, le disque non :
+la suite résolvait le vrai bucket `galleries-preprod` sur le vrai serveur MinIO. Un seul
+test oubliant `Storage::fake()` y écrivait — ou y supprimait — des photos de clientes.
+Même classe de défaut que l'incident, une couche au-dessus. Le garde exige désormais un
+point d'accès local (`Tests\LocalStorageEndpoints`).
+
+`Storage::fake()` remplace le disque **après** le garde : impossible de savoir à ce moment
+si un test le fera. On exige donc que la *configuration* ne désigne rien de réel, ce qui
+protège aussi les tests qui oublient de simuler.
 
 > **`phpunit.xml` ne protège rien.** Ses `<env>` n'écrivent que `getenv()` et `$_ENV`,
 > alors que le `env()` de Laravel lit `$_SERVER` **en premier**. Une variable
@@ -107,6 +125,14 @@ docker compose exec laravel php artisan tinker --execute="
 ```
 
 Attendu : `local | postgres.koimluuhjlhslwlxiesb | galleries-preprod`.
+
+Et pour la supervision :
+
+```bash
+docker compose exec laravel php artisan tinker --execute="var_dump(config('sentry.dsn'));"
+```
+
+Attendu : une valeur vide. Sinon l'application ne démarrerait pas.
 
 Si la configuration touchait la production, l'application ne démarrerait pas — la commande
 afficherait le message du garde-fou.
