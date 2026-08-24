@@ -93,6 +93,12 @@ Deux natures de règles, et la distinction compte :
   `docker-compose.yml` ne passait que la seconde : la première était héritée en silence de
   `api/.env` monté dans le conteneur. Les trois blocs la passent maintenant explicitement.
 
+🔴 **Dernier contournement fermé : `APP_ENV=production`.** Le garde-fou se retirait pour
+la production — y compris sur le poste de Gaëtan. Mesuré : Laravel tentait bien la connexion
+à la production. Il détecte désormais un **poste de développement** (macOS, ou le fichier
+`.poste-de-developpement`, gitignoré) et refuse alors toute cible de production, quel que
+soit `APP_ENV`. Sur le NAS, Linux et sans marqueur, la production démarre normalement.
+
 **Aucune variable d'environnement ne le désactive**, et c'est délibéré : une échappatoire
 serait empruntée par la première personne pressée. Pour agir sur la production, il faut
 `APP_ENV=production` — donc le dire. Un test vérifie que le fichier ne lit ni `env()`, ni
@@ -145,6 +151,10 @@ que ce qu'il annonçait :
 - `backup.sh` : `MINIO_BUCKET` retombait sur `galleries` — le bucket de **production**. Un
   fichier d'environnement incomplet copiait donc les photos réelles. Plus de repli : la
   variable est exigée.
+- `restore.sh` : viser la **production** depuis un poste de développement exige désormais
+  **trois** actes délibérés — `RESTORE_ENV_FILE`, `CONFIRM=<ref>` et
+  `JE_RESTAURE_LA_PRODUCTION=oui`. Ce script supprime le schéma avant de recharger ; la
+  restauration normale se fait depuis le NAS.
 - `restore.sh` : le message de confirmation livrait la commande **prête à coller**,
   `CONFIRM=<ref>` incluse. Une confirmation qui donne sa propre réponse ne confirme rien.
   Le message dit désormais ce qui est requis, sans le fournir : l'opérateur doit lire le

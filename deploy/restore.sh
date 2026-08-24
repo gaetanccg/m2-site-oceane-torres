@@ -156,6 +156,30 @@ ylw "  base     : ${DB_DATABASE}"
 ylw "  projet   : ${PROJECT_REF}"
 ylw "  dump     : $(basename "${DUMP}")"
 
+# Ce script DETRUIT le schema de la cible. Depuis un poste de developpement, viser la
+# PRODUCTION exige un troisieme acte deliberé, en plus de CONFIRM et du fichier
+# d'environnement explicite. La restauration normale se fait depuis le NAS.
+poste_de_developpement() {
+    [[ "$(uname -s)" == "Darwin" ]] && return 0
+    [[ -f "${REPO_ROOT:-${SCRIPT_DIR}/..}/.poste-de-developpement" ]] && return 0
+
+    return 1
+}
+
+if [[ "${PROJECT_REF}" == "ekhlybdoblhjigpnpbff" ]] && poste_de_developpement; then
+    if [[ "${JE_RESTAURE_LA_PRODUCTION:-}" != "oui" ]]; then
+        die "Cible = PRODUCTION, et cette machine est un poste de developpement.
+
+    Ce script supprime le schema avant de recharger. Depuis un poste de dev, viser la
+    production demande un acte explicite supplementaire :
+
+        JE_RESTAURE_LA_PRODUCTION=oui
+
+    a ajouter aux variables. La restauration normale se fait depuis le NAS."
+    fi
+    ylw "  ⚠ restauration de la PRODUCTION depuis un poste de developpement, explicitement demandee"
+fi
+
 if [[ "${CONFIRM:-}" != "${PROJECT_REF}" ]]; then
     # Le message ne repete PAS la valeur attendue, et ne livre pas de commande prete a
     # coller : une confirmation qui donne sa propre reponse ne confirme rien. L'operateur

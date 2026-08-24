@@ -27,7 +27,10 @@ final class ProductionTargetGuard
      */
     public static function assert(string $environment, callable $config): void
     {
-        if ($environment === 'production') {
+        // `production` se retire du garde-fou — MAIS pas sur un poste de developpement.
+        // C'etait le dernier contournement : `APP_ENV=production` suffisait a viser la
+        // production depuis la machine de Gaetan.
+        if ($environment === 'production' && ! ProductionTargets::isDevelopmentMachine()) {
             return;
         }
 
@@ -53,7 +56,13 @@ final class ProductionTargetGuard
         }
 
         $detectees = ProductionTargets::detectedIn($valeurs);
-        $violations = ProductionTargets::violatedPoliciesIn($valeurs);
+
+        // En `production` sur un poste de dev, on ne juge que les CIBLES : exiger un DSN
+        // vide ou SumUp en sandbox n'aurait aucun sens pour une configuration de production
+        // qu'on inspecte localement.
+        $violations = $environment === 'production'
+            ? []
+            : ProductionTargets::violatedPoliciesIn($valeurs);
 
         // En « local », la base doit etre LOCALE — pas seulement « pas la production ».
         // Interdire la seule production laissait le poste ecrire dans la preproduction, et
@@ -92,10 +101,14 @@ final class ProductionTargetGuard
     {
         // Le titre doit dire la verite : « touche la production » est faux quand le seul
         // grief est une base distante de preproduction.
+        $poste = ProductionTargets::isDevelopmentMachine();
+
         $lignes = [
-            $detectees !== []
-                ? sprintf('Arret : APP_ENV vaut « %s » mais la configuration touche la PRODUCTION.', $environment)
-                : sprintf('Arret : la configuration de l\'environnement « %s » sort de son perimetre.', $environment),
+            match (true) {
+                $detectees !== [] && $environment === 'production' && $poste => 'Arret : cette machine est un POSTE DE DEVELOPPEMENT et la configuration vise la PRODUCTION.',
+                $detectees !== [] => sprintf('Arret : APP_ENV vaut « %s » mais la configuration touche la PRODUCTION.', $environment),
+                default => sprintf('Arret : la configuration de l\'environnement « %s » sort de son perimetre.', $environment),
+            },
         ];
 
         if ($detectees !== []) {

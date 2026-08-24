@@ -242,9 +242,64 @@ class ProductionTargetGuardTest extends TestCase
         ]));
     }
 
+    /**
+     * Le dernier contournement : `APP_ENV=production` faisait se retirer le garde-fou, y
+     * compris sur le poste de Gaetan. Mesure faite avant correctif — Laravel tentait bien
+     * la connexion a la production.
+     */
+    public function test_un_poste_de_developpement_refuse_la_production_meme_en_app_env_production(): void
+    {
+        if (! ProductionTargets::isDevelopmentMachine()) {
+            $this->markTestSkipped('Ce test ne vaut que sur un poste de developpement.');
+        }
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessageMatches('/POSTE DE DEVELOPPEMENT/');
+
+        ProductionTargetGuard::assert('production', $this->saine([
+            'database.connections.pgsql.host' => ProductionTargets::DATABASE_HOST,
+            'database.connections.pgsql.username' => 'postgres.'.ProductionTargets::SUPABASE_PROJECT,
+        ]));
+    }
+
+    /** Sur un poste de dev, une configuration de production SANS cible de prod reste permise. */
+    public function test_un_poste_de_developpement_accepte_app_env_production_sur_une_cible_locale(): void
+    {
+        ProductionTargetGuard::assert('production', $this->saine([
+            'database.connections.pgsql.host' => 'postgres-dev',
+            // En production ces regles de developpement ne s'appliquent pas.
+            'sumup.environment' => 'live',
+            'sentry.dsn' => 'https://cle@o1.ingest.de.sentry.io/999',
+        ]));
+
+        $this->expectNotToPerformAssertions();
+    }
+
+    /** Le marqueur ne doit jamais etre versionne : il empecherait la production de demarrer. */
+    public function test_le_marqueur_de_poste_est_ignore_par_git(): void
+    {
+        $gitignore = file_get_contents(__DIR__.'/../../../.gitignore');
+
+        $this->assertStringContainsString('.poste-de-developpement', $gitignore);
+    }
+
+    /** Le garde-fou doit etre appele depuis register(), donc avant tout acces base/stockage. */
+    public function test_le_garde_fou_est_appele_depuis_register(): void
+    {
+        $source = file_get_contents(__DIR__.'/../../app/Providers/AppServiceProvider.php');
+        $register = substr($source, strpos($source, 'public function register'));
+        $register = substr($register, 0, strpos($register, 'public function boot'));
+
+        $this->assertStringContainsString('ProductionTargetGuard::assert', $register);
+    }
+
     /** La production, elle, doit pouvoir viser la production. */
     public function test_le_garde_fou_se_retire_en_production(): void
     {
+        if (ProductionTargets::isDevelopmentMachine()) {
+            $this->markTestSkipped('Sur un poste de dev, la production est refusee — cf. le test dedie.');
+        }
+
         ProductionTargetGuard::assert('production', $this->saine([
             'database.connections.pgsql.host' => ProductionTargets::DATABASE_HOST,
             'database.connections.pgsql.username' => 'postgres.'.ProductionTargets::SUPABASE_PROJECT,

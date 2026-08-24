@@ -37,6 +37,27 @@ final class ProductionTargets
     ];
 
     /**
+     * Ce poste est-il une machine de developpement ?
+     *
+     * La production tourne sur un NAS Linux. Un macOS est donc forcement un poste de
+     * developpement — signal automatique, impossible a deployer par erreur, et qui ne
+     * demande aucune configuration. Le fichier marqueur couvre les autres cas (une machine
+     * Linux de developpement) ; il est ignore par git, donc absent d'un deploiement.
+     *
+     * Sert a fermer le dernier contournement : `APP_ENV=production` faisait se retirer le
+     * garde-fou, y compris sur cette machine. Mesure faite — Laravel tentait alors bien la
+     * connexion a la production.
+     */
+    public static function isDevelopmentMachine(): bool
+    {
+        if (PHP_OS_FAMILY === 'Darwin') {
+            return true;
+        }
+
+        return is_file(dirname(__DIR__, 2).'/.poste-de-developpement');
+    }
+
+    /**
      * Cibles de production reconnues dans la configuration fournie.
      *
      * @param  array<string, mixed>  $config

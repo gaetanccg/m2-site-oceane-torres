@@ -130,3 +130,8 @@ PROJECT_REFERENCE_MVP.md
 /database/
 /resources/
 /storage/
+
+# Marqueur de poste de developpement : lu par App\Support\ProductionTargets pour refuser
+# toute cible de production, meme sous APP_ENV=production. NE JAMAIS le versionner — il
+# empecherait la production de demarrer.
+.poste-de-developpement
