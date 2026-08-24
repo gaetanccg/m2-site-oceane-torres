@@ -21,6 +21,7 @@ Messages de contact | `contact_messages` | nom, email, téléphone, IP de consen
 Paniers | `carts` | email invité | expiration du panier | suppression |
 Accès aux galeries | `galleries.assigned_email` | email du destinataire | vie de la galerie | suppression avec la galerie |
 **Contacts de sessions scolaires** | `school_session_contacts` | nom du destinataire, email, téléphone, historique d'envoi | **clôture + 3 mois** | `privacy:purge-expired` · `PersonalDataEraser` |
+**Notifications d'administration** | `notifications` | nom du client dans `message` et dans `data.client_name` | vie de la notification | `PersonalDataEraser` (par `data.reservation_id`)
 Journal de connexions | `login_attempts` | email saisi, IP, user-agent | **90 jours** | `privacy:purge-expired` |
 Journal des téléchargements | `download_logs` | adresse IP | 📋 | suppression avec la galerie |
 Journal d'audit RGPD | `privacy_audit_logs` | IP de l'administrateur, sujet visé | 📋 — c'est la **preuve** des demandes traitées | conservé volontairement |
@@ -52,6 +53,16 @@ briser les commandes qui le référencent.
 Toute catégorie ajoutée doit l'être **dans les deux** : `PersonalDataLocator` (sinon une
 recherche ne la voit pas) et `PersonalDataEraser` (sinon un effacement la laisse en place).
 C'est exactement ce qui manquait pour les contacts scolaires avant D7.
+
+🔴 **Et le piège suivant, trouvé en phase 3.7 : le propriétaire de la ligne n'est pas
+toujours le sujet.** Les notifications d'administration ont `user_id` = l'identifiant de
+l'**administratrice**, mais portent le nom du client dans `message` et dans
+`data.client_name`. L'effacement filtrait sur le sujet : il ne les voyait donc jamais, et
+le nom survivait indéfiniment à une demande d'effacement. Elles sont désormais retrouvées
+par `data->>'reservation_id'`.
+
+La leçon vaut pour toute table à venir : chercher les données personnelles **par contenu**,
+pas seulement par propriétaire.
 
 ## 4. Sous-traitants
 

@@ -6,11 +6,15 @@ use App\Models\Cart;
 use App\Models\Client;
 use App\Models\ContactMessage;
 use App\Models\Invoice;
+use App\Models\Notification;
 use App\Models\Order;
+use App\Models\Prestation;
 use App\Models\PrivacyAuditLog;
+use App\Models\Reservation;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /**
@@ -33,6 +37,78 @@ class PrivacyErasureTest extends TestCase
         ]);
 
         return $user;
+    }
+
+    /**
+     * Les notifications d'administration appartiennent a l'ADMINISTRATRICE (`user_id` = son
+     * identifiant) mais portent le nom du client dans `message` et dans
+     * `data.client_name`. L'effacement filtrait sur le sujet : il ne les voyait jamais, et
+     * le nom survivait indefiniment a une demande d'effacement.
+     */
+    public function test_erase_supprime_les_notifications_portant_le_nom_du_sujet(): void
+    {
+        $this->actingAsAdmin();
+        $sujet = $this->makeSubject('marie@example.com');
+
+        $prestation = Prestation::create([
+            'title' => 'Portrait', 'description' => 'x', 'price' => 100,
+            'duration' => 60, 'category' => 'Portrait', 'is_active' => true, 'sort_order' => 1,
+        ]);
+        $reservation = Reservation::create([
+            'user_id' => $sujet->id,
+            'prestation_id' => $prestation->id,
+            'date' => now()->addWeek(),
+            'status' => 'pending',
+        ]);
+
+        $notification = Notification::create([
+            'user_id' => User::where('role', 'admin')->first()->id,
+            'type' => 'new_reservation',
+            'title' => 'Nouvelle demande de réservation',
+            'message' => 'Marie Dupont souhaite réserver une séance Portrait',
+            'data' => [
+                'reservation_id' => $reservation->id,
+                'client_name' => 'Marie Dupont',
+                'prestation' => 'Portrait',
+            ],
+        ]);
+
+        // Sans le correctif, l'aperçu annonce zéro et la notification survit.
+        $this->getJson('/api/admin/privacy/erasure/preview?type=email&value=marie@example.com')
+            ->assertOk()
+            ->assertJsonPath('to_delete.notifications_du_sujet', 1);
+
+        $this->postJson('/api/admin/privacy/erasure', [
+            'type' => 'email',
+            'value' => 'marie@example.com',
+            'confirm' => 'marie@example.com',
+        ])->assertOk();
+
+        $this->assertDatabaseMissing('notifications', ['id' => $notification->id]);
+    }
+
+    /** Une notification concernant quelqu'un d'autre ne doit pas partir avec. */
+    public function test_erase_ne_touche_pas_les_notifications_d_un_autre_client(): void
+    {
+        $this->actingAsAdmin();
+        $this->makeSubject('marie@example.com');
+        $admin = User::where('role', 'admin')->first();
+
+        $autre = Notification::create([
+            'user_id' => $admin->id,
+            'type' => 'new_reservation',
+            'title' => 'Nouvelle demande',
+            'message' => 'Paul Martin souhaite réserver',
+            'data' => ['reservation_id' => (string) Str::uuid(), 'client_name' => 'Paul Martin'],
+        ]);
+
+        $this->postJson('/api/admin/privacy/erasure', [
+            'type' => 'email',
+            'value' => 'marie@example.com',
+            'confirm' => 'marie@example.com',
+        ])->assertOk();
+
+        $this->assertDatabaseHas('notifications', ['id' => $autre->id]);
     }
 
     public function test_preview_requires_admin(): void

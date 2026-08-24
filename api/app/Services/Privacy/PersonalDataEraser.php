@@ -47,6 +47,7 @@ class PersonalDataEraser
         $keys = $r['keys'];
         $galleryIds = $keys['gallery_ids'];
         $userIds = $keys['user_ids'];
+        $reservationIds = $keys['reservation_ids'];
 
         return [
             'query' => $r['query'],
@@ -64,6 +65,9 @@ class PersonalDataEraser
                 'download_logs' => $galleryIds ? DownloadLog::whereIn('gallery_id', $galleryIds)->count() : 0,
                 'photo_uploads' => $galleryIds ? PhotoUpload::whereIn('gallery_id', $galleryIds)->count() : 0,
                 'notifications' => $userIds ? Notification::whereIn('user_id', $userIds)->count() : 0,
+                'notifications_du_sujet' => $reservationIds
+                    ? Notification::whereIn(DB::raw("data->>'reservation_id'"), $reservationIds)->count()
+                    : 0,
             ],
             'retained_legal' => [
                 'orders' => $r['summary']['orders'],
@@ -161,6 +165,15 @@ class PersonalDataEraser
 
             $out['notifications'] = $userIds
                 ? Notification::whereIn('user_id', $userIds)->delete()
+                : 0;
+
+            // Les notifications d'administration APPARTIENNENT a l'administratrice
+            // (`user_id` = son identifiant) mais portent le nom du client dans `message` et
+            // dans `data.client_name`. La ligne ci-dessus, qui filtre sur le sujet, ne les
+            // voyait donc jamais : le nom survivait indefiniment a une demande d'effacement.
+            // Meme famille de defaut que les contacts scolaires (D7).
+            $out['notifications_du_sujet'] = $reservationIds
+                ? Notification::whereIn(DB::raw("data->>'reservation_id'"), $reservationIds)->delete()
                 : 0;
 
             $out['clients'] = $clientIds

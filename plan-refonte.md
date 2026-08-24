@@ -1861,11 +1861,35 @@ vrais PDF : `memory_limit` passe à 512 Mo dans `phpunit.xml` (la production est
     → les trois tests ont été éprouvés en retirant le correctif : ils tombent.
 [ ] #23 Séparer les buckets MinIO : photos / invoices, rétentions distinctes
 [ ] #25 Webhooks de délivrabilité Brevo (email et SMS) + table de suivi des envois
-[ ] #30 Sortir le traitement photo de la requête HTTP (storeAsync est synchrone malgré son
-        nom) — ou l'assumer et le documenter, avec les 3 lots parallèles comme limite
-[ ] #38 Typer les 8 colonnes JSON ou les documenter dans docs/json-schemas.md
+[~] #30 Traitement photo synchrone — **mesuré, et l'asynchrone n'est pas justifié**
+    → `storeAsync` est bien synchrone, et le code le dit déjà lui-même : « le nom "Async"
+      est historique ». Mesure : **1 à 1,5 s de CPU par photo**, 10 photos au maximum par
+      requête, contre 120 s côté PHP et 600 s côté nginx en production. La marge est large.
+    → repasser en file d'attente ajouterait un état intermédiaire à suivre côté front, pour
+      un problème qui ne se manifeste pas. **Décision : l'assumer et le documenter**, ce que
+      le code fait déjà. Reste à écrire la limite dans la documentation d'exploitation.
+[~] #38 Colonnes JSON — un défaut RGPD extrait de l'item, le reste documenté plus tard
+    🔴 **trouvé en creusant cet item : l'effacement RGPD manquait une table entière.** Les
+      notifications d'administration ont `user_id` = l'identifiant de l'**administratrice**
+      mais portent le nom du client dans `message` et `data.client_name`. L'effacement
+      filtrait sur le sujet : il ne les voyait jamais. Le nom d'une personne ayant demandé
+      son effacement survivait donc indéfiniment. Corrigé (recherche par
+      `data->>'reservation_id'`), deux tests, registre RGPD mis à jour.
+      **La leçon générale y est consignée** : chercher les données personnelles *par
+      contenu*, pas seulement par propriétaire — le propriétaire de la ligne n'est pas
+      toujours le sujet.
+    [ ] la documentation elle-même (`docs/json-schemas.md`) reste à écrire. Le décompte du
+        plan est faux : **7** colonnes `json` vivantes, dont 6 utilisées — pas 8. Et aucune
+        n'est en `jsonb` dans tout le dépôt.
 [ ] #44 Superviser l'espace disque du NAS (aggravé par le cache d'images et les exports)
-[ ] #49 Uniformiser les précisions décimales (10,2 partout)
+[~] #49 Précisions décimales — **vérifié : aucun risque, rien à migrer**
+    → recensement exhaustif : **18** colonnes décimales, aucun `float`/`double`, aucun
+      `->change()` de précision. **L'échelle vaut 2 partout** : ni perte de données ni
+      arrondi possible. L'hétérogénéité porte sur la *précision* (le nombre total de
+      chiffres), pas sur l'échelle — donc sur le montant maximal représentable, pas sur les
+      centimes.
+    → une migration `ALTER` sur 18 colonnes de tables comptables pour un gain nul serait un
+      risque gratuit. **Item clos par la vérification, pas par le travail.**
 [x] #51 Purge du cache des galeries d'événement
     🔴 **le correctif proposé par le plan aurait levé une exception.** Les étiquettes de
       cache exigent Redis ou Memcached ; ce projet utilise `database` en local, `file` en
