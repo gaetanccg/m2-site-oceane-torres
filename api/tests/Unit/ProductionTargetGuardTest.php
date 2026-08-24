@@ -22,8 +22,8 @@ class ProductionTargetGuardTest extends TestCase
         $valeurs = [
             'database.default' => 'pgsql',
             'database.connections.pgsql.url' => null,
-            'database.connections.pgsql.host' => 'aws-0-eu-central-1.pooler.supabase.com',
-            'database.connections.pgsql.username' => 'postgres.koimluuhjlhslwlxiesb',
+            'database.connections.pgsql.host' => 'postgres-dev',
+            'database.connections.pgsql.username' => 'postgres',
             'filesystems.disks.minio.bucket' => 'galleries-preprod',
             'sumup.environment' => 'sandbox',
             'sentry.environment' => 'local',
@@ -36,7 +36,7 @@ class ProductionTargetGuardTest extends TestCase
         return fn (string $cle) => $valeurs[$cle] ?? null;
     }
 
-    public function test_une_configuration_de_preproduction_passe(): void
+    public function test_une_configuration_locale_saine_passe(): void
     {
         ProductionTargetGuard::assert('local', $this->saine());
 
@@ -132,10 +132,14 @@ class ProductionTargetGuardTest extends TestCase
         ]));
     }
 
-    /** Une DB_URL vers la preproduction reste acceptable. */
-    public function test_une_db_url_de_preproduction_passe(): void
+    /**
+     * La preproduction tourne avec APP_ENV=production : sa propre DB_URL doit donc passer,
+     * alors que la meme URL en « local » est refusee (voir le test precedent). C'est
+     * l'ENVIRONNEMENT declare qui decide du perimetre autorise, pas la cible seule.
+     */
+    public function test_la_db_url_de_preproduction_passe_sous_son_propre_environnement(): void
     {
-        ProductionTargetGuard::assert('local', $this->saine([
+        ProductionTargetGuard::assert('production', $this->saine([
             'database.connections.pgsql.url' => 'postgresql://postgres.koimluuhjlhslwlxiesb:secret@aws-0-eu-central-1.pooler.supabase.com:6543/postgres',
         ]));
 
@@ -198,6 +202,44 @@ class ProductionTargetGuardTest extends TestCase
                 $this->assertStringContainsString('doit etre vide hors production', $e->getMessage());
             }
         }
+    }
+
+    /**
+     * Interdire la seule production laissait le poste ecrire dans la PREPRODUCTION, qu'un
+     * migrate:fresh aurait videe de la meme façon. En « local », la base doit etre locale.
+     */
+    public function test_en_local_une_base_distante_est_refusee_meme_hors_production(): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessageMatches('/la base doit etre locale/');
+
+        // Hote de PREPRODUCTION : aucune cible de production n'est detectee.
+        ProductionTargetGuard::assert('local', $this->saine([
+            'database.connections.pgsql.host' => 'aws-0-eu-central-1.pooler.supabase.com',
+        ]));
+    }
+
+    public function test_en_local_les_hotes_locaux_passent(): void
+    {
+        foreach (['127.0.0.1', 'localhost', 'postgres-dev', 'host.docker.internal'] as $hote) {
+            ProductionTargetGuard::assert('local', $this->saine([
+                'database.connections.pgsql.host' => $hote,
+                'database.connections.pgsql.username' => 'postgres',
+            ]));
+        }
+
+        $this->expectNotToPerformAssertions();
+    }
+
+    /** Et DB_URL ne doit pas permettre de sortir du perimetre local non plus. */
+    public function test_en_local_une_db_url_distante_est_refusee(): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessageMatches('/la base doit etre locale/');
+
+        ProductionTargetGuard::assert('local', $this->saine([
+            'database.connections.pgsql.url' => 'postgresql://postgres:x@aws-0-eu-central-1.pooler.supabase.com:6543/postgres',
+        ]));
     }
 
     /** La production, elle, doit pouvoir viser la production. */

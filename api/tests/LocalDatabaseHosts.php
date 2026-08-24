@@ -2,17 +2,20 @@
 
 namespace Tests;
 
+use App\Support\LocalDatabaseHosts as Source;
+
+/**
+ * Alias historique. La liste vit dans App\Support\LocalDatabaseHosts, pour que
+ * l'application et la suite de tests partagent la meme — deux listes finiraient par
+ * diverger, et c'est exactement ce genre d'ecart qui laisse passer un accident.
+ */
 final class LocalDatabaseHosts
 {
-    public const ALLOWED = [
-        '127.0.0.1', 'localhost', '::1',
-        'postgres', 'postgres-dev', 'postgres-test',
-        'ot-postgres-dev', 'ot-postgres-test',
-        'host.docker.internal',
-    ];
+    /** @var list<string> */
+    public const ALLOWED = Source::ALLOWED;
 
     public static function allows(string $host): bool
     {
-        return in_array($host, self::ALLOWED, true);
+        return Source::allows($host);
     }
 }

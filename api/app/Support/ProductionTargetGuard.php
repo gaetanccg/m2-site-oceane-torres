@@ -55,6 +55,28 @@ final class ProductionTargetGuard
         $detectees = ProductionTargets::detectedIn($valeurs);
         $violations = ProductionTargets::violatedPoliciesIn($valeurs);
 
+        // En « local », la base doit etre LOCALE — pas seulement « pas la production ».
+        // Interdire la seule production laissait le poste ecrire dans la preproduction, et
+        // un migrate:fresh l'aurait videe de la meme facon. Le poste travaille sur
+        // postgres-dev, avec un jeu de donnees anonymise.
+        if ($environment === 'local') {
+            $cible = EffectiveDatabaseTarget::resolve([
+                'url' => $valeurs["database.connections.{$connexion}.url"] ?? null,
+                'host' => $valeurs["database.connections.{$connexion}.host"] ?? null,
+                'username' => $valeurs["database.connections.{$connexion}.username"] ?? null,
+                'database' => $valeurs["database.connections.{$connexion}.database"] ?? null,
+                'port' => $valeurs["database.connections.{$connexion}.port"] ?? null,
+            ]);
+
+            if (! LocalDatabaseHosts::allows($cible['host'])) {
+                $violations['base de donnees distante'] = sprintf(
+                    'en local la base doit etre locale — « %s » ne l\'est pas (acceptes : %s)',
+                    $cible['host'] === '' ? 'non definie' : $cible['host'],
+                    implode(', ', LocalDatabaseHosts::ALLOWED),
+                );
+            }
+        }
+
         if ($detectees === [] && $violations === []) {
             return;
         }
@@ -68,8 +90,12 @@ final class ProductionTargetGuard
      */
     private static function message(string $environment, array $detectees, array $violations): string
     {
+        // Le titre doit dire la verite : « touche la production » est faux quand le seul
+        // grief est une base distante de preproduction.
         $lignes = [
-            sprintf('Arret : APP_ENV vaut « %s » mais la configuration touche la PRODUCTION.', $environment),
+            $detectees !== []
+                ? sprintf('Arret : APP_ENV vaut « %s » mais la configuration touche la PRODUCTION.', $environment)
+                : sprintf('Arret : la configuration de l\'environnement « %s » sort de son perimetre.', $environment),
         ];
 
         if ($detectees !== []) {

@@ -21,7 +21,29 @@ API | `api.oceanetorres…` | `preprod-api.oceanetorres…` |
 le **bucket** distingue la production. Une erreur de bucket suffit donc à toucher les
 photos réelles — c'est pourquoi le bucket fait partie des cibles surveillées.
 
-## 2. Les quatre protections
+## 1bis. Le poste de développement tourne sur une base LOCALE
+
+Depuis le 24/08, `.env` et `api/.env` pointent sur le conteneur **`postgres-dev`**
+(`127.0.0.1:55433` depuis l'hôte, `postgres-dev:5432` depuis un conteneur), base
+`oceane_dev`, chargée avec le **dump anonymisé** (`backups/oceane-anon-2026-08-22.dump` —
+196 galeries, 5 350 photos, emails en `@example.test`).
+
+Aucune base **distante** n'est plus jointe depuis le poste. Ce n'est pas qu'une bonne
+pratique : c'est ce qui rend l'accident impossible plutôt qu'improbable. Un `migrate:fresh`
+lancé par mégarde vide désormais une base jetable, rechargeable en une commande :
+
+```bash
+docker run --rm --network oceanephotographie_app-network \
+  -v "$PWD/backups:/b" -e PGPASSWORD=postgres postgres:17-alpine \
+  pg_restore -h postgres-dev -p 5432 -U postgres -d oceane_dev \
+    --clean --if-exists --no-owner --no-privileges /b/oceane-anon-2026-08-22.dump
+```
+
+⚠️ **Reste distant** : le stockage objet. Le poste utilise le serveur MinIO partagé avec le
+bucket `galleries-preprod`. Le garde-fou interdit le bucket de production, mais les clés
+actuelles ouvrent tout le serveur — d'où la clé restreinte demandée au §5.
+
+## 2. Les protections
 
 ### 2.1 Le garde-fou applicatif — `ProductionTargetGuard`
 
@@ -57,6 +79,11 @@ Deux natures de règles, et la distinction compte :
   son innocuité. `SUMUP_ENV` doit valoir `sandbox` : chercher une valeur interdite
   laisserait passer une configuration muette, puisque `config('sumup.environment')` vaut
   `production` quand la variable n'est pas définie. On exige l'inverse.
+  **En `local`, la base doit être LOCALE** — pas seulement « pas la production ».
+  N'interdire que la production laissait le poste écrire dans la **préproduction**, qu'un
+  `migrate:fresh` aurait vidée exactement de la même façon. C'est l'environnement déclaré
+  qui décide du périmètre : la préproduction tourne sous `APP_ENV=production`, sa propre
+  base lui reste donc permise.
   `SENTRY_LARAVEL_DSN` doit être **vide** : 🔴 le poste portait l'étiquette `local` **et**
   le DSN d'un projet Sentry déployé (`4511942022856784`, distinct de celui de la
   préproduction). Les exceptions de développement partaient donc dans la supervision d'un
