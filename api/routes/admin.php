@@ -30,13 +30,13 @@ use App\Http\Controllers\Api\Admin\GiftCodeController;
 use App\Http\Controllers\Api\Admin\LogController;
 use App\Http\Controllers\Api\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Api\Admin\PrivacyController;
+use App\Http\Controllers\Api\Admin\ReservationController;
 use App\Http\Controllers\Api\Admin\SchoolSessionController;
 use App\Http\Controllers\Api\EventGalleryController;
 use App\Http\Controllers\Api\GalleryController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\PhotoController;
 use App\Http\Controllers\Api\PrestationController;
-use App\Http\Controllers\Api\ReservationController;
 use Illuminate\Support\Facades\Route;
 
 // Dashboard
@@ -71,12 +71,12 @@ Route::apiResource('prestations', PrestationController::class)->except(['index',
 Route::put('/prestations/{prestation}/toggle', [PrestationController::class, 'toggle']);
 
 // Reservations management
-Route::get('/reservations', [ReservationController::class, 'adminIndex']);
+Route::get('/reservations', [ReservationController::class, 'index']);
 Route::get('/reservations/calendar', [ReservationController::class, 'calendar']);
-Route::get('/reservations/{reservation}', [ReservationController::class, 'adminShow']);
-Route::put('/reservations/{reservation}', [ReservationController::class, 'adminUpdate']);
+Route::get('/reservations/{reservation}', [ReservationController::class, 'show']);
+Route::put('/reservations/{reservation}', [ReservationController::class, 'update']);
 Route::put('/reservations/{reservation}/status', [ReservationController::class, 'updateStatus']);
-Route::delete('/reservations/{reservation}', [ReservationController::class, 'adminDestroy']);
+Route::delete('/reservations/{reservation}', [ReservationController::class, 'destroy']);
 
 // Galleries management
 Route::get('/galleries', [GalleryController::class, 'adminIndex']);

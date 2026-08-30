@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\AdminUpdateReservationRequest;
@@ -10,9 +10,17 @@ use App\Models\Reservation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
+/**
+ * Les reservations, cote administration — les six methodes le sont.
+ *
+ * Le controleur vivait dans l'espace public `Api\` tout en important deja des FormRequest
+ * `Admin\` : un controleur public qui depend de requetes d'administration est un signe que
+ * le rangement suit l'usage avec du retard. Le prefixe « admin » des methodes disparait avec
+ * le deplacement : il ne distinguait plus rien.
+ */
 class ReservationController extends Controller
 {
-    public function adminIndex(Request $request): JsonResponse
+    public function index(Request $request): JsonResponse
     {
         // Charger les relations necessaires pour les accesseurs
         $query = Reservation::with(['user', 'prestation', 'clientForm']);
@@ -42,7 +50,7 @@ class ReservationController extends Controller
     /**
      * Afficher une reservation pour l'admin avec tous les details
      */
-    public function adminShow(Reservation $reservation): JsonResponse
+    public function show(Reservation $reservation): JsonResponse
     {
         // Charger les relations necessaires pour les accesseurs
         $reservation->load(['user', 'prestation', 'clientForm']);
@@ -58,7 +66,7 @@ class ReservationController extends Controller
     /**
      * Mise a jour admin d'une reservation (date, heure, statut, notes)
      */
-    public function adminUpdate(AdminUpdateReservationRequest $request, Reservation $reservation): JsonResponse
+    public function update(AdminUpdateReservationRequest $request, Reservation $reservation): JsonResponse
     {
         $validated = $request->validated();
 
@@ -96,7 +104,7 @@ class ReservationController extends Controller
     /**
      * Suppression admin d'une reservation (peut supprimer n'importe quel statut)
      */
-    public function adminDestroy(Reservation $reservation): JsonResponse
+    public function destroy(Reservation $reservation): JsonResponse
     {
         // Supprimer le clientForm associe si existant
         if ($reservation->clientForm) {
