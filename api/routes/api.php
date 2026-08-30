@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\Admin\ClientController;
 use App\Http\Controllers\Api\Admin\DashboardController;
 use App\Http\Controllers\Api\Admin\EventCategoryController;
+use App\Http\Controllers\Api\Admin\GiftCardController;
 use App\Http\Controllers\Api\Admin\GiftCodeController;
 use App\Http\Controllers\Api\Admin\LogController;
 use App\Http\Controllers\Api\Admin\NotificationController;
@@ -16,7 +17,6 @@ use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\EventGalleryController;
 use App\Http\Controllers\Api\GalleryController;
-use App\Http\Controllers\Api\GiftCardController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\ImageProxyController;
 use App\Http\Controllers\Api\OrderController;
@@ -150,9 +150,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Reservations
 
-    // Gift cards
-    Route::post('/gift-cards', [GiftCardController::class, 'store']);
-
     // User galleries (private)
 
     // Notifications
@@ -253,6 +250,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::get('/upload-status', [PhotoController::class, 'uploadStatus']);
 
     // Gift cards
+    Route::post('/gift-cards', [GiftCardController::class, 'store']);
     Route::get('/gift-cards/stats', [GiftCardController::class, 'stats']);
     Route::get('/gift-cards', [GiftCardController::class, 'index']);
     Route::put('/gift-cards/{giftCard}', [GiftCardController::class, 'update']);
