@@ -1,6 +1,6 @@
 # Plan de refonte — Océane Torres Photographie
 
-## ▶ Avancement — 5 étapes sur 15
+## ▶ Avancement — 6 étapes sur 15
 
 **L'avancement se lit dans un seul tableau : [§3.3 Ordre d'exécution](#33-ordre-dexécution).**
 Une ligne par étape, ✅ quand elle est faite. C'est le seul endroit à tenir à jour.
@@ -12,8 +12,9 @@ Une ligne par étape, ✅ quand elle est faite. C'est le seul endroit à tenir �
 ✅ 4  routes/admin.php monté + throttle:admin
 ⏸️ 5  État réel des environnements (Redis)             ← accès NAS requis
 ✅ 6  Phase 4 dissoute — 13-16 j retirés du plan
-🔜 7  Filet de tests de rendu (3 parcours)             ← en cours
-   8…15                                                point de bascule à l'étape 9
+✅ 7  Filet de rendu — 3 parcours (make check-render)
+🔜 8  Règle ESLint + contrôle dans build:prerender     ← en cours
+   9…15                                                point de bascule à l'étape 9
 ```
 
 Décisions produit : **8/8 tranchées** (§12) · Recette : **4 / 30** (§11, relevée le 30/08)
@@ -110,13 +111,13 @@ comprendre *pourquoi* une chose a été faite ainsi, jamais pour savoir quoi fai
 le temps, mais ces décisions, qui bloquaient D2, D4, D5, D6 et par ricochet #48 et la moitié
 de la phase 3.
 
-**Ce qui reste tient dans une seule liste : §3.3, quinze étapes ordonnées.** Cinq sont faites. Le point de bascule est à la neuvième, à environ neuf jours — après quoi on peut
+**Ce qui reste tient dans une seule liste : §3.3, quinze étapes ordonnées.** Six sont faites. Le point de bascule est à la neuvième, à environ neuf jours — après quoi on peut
 s'arrêter sans dette.
 
 | | |
 |---|---|
 | Décisions produit tranchées | **8 / 8** |
-| Étapes de la liste vivante | **5 / 15** |
+| Étapes de la liste vivante | **6 / 15** |
 | Jusqu'au point de bascule | **~9 j** |
 | Tests | **612** API (1 590 assertions) · **80** front |
 | En attente de Gaëtan | **6 actions**, dont une urgente (§3bis) |
@@ -160,6 +161,13 @@ Brevo), #38 (`docs/json-schemas.md` à écrire), #44 (supervision du disque du N
 (centraliser les mentions légales) · #28 TOTP, différé, ses trois prérequis non écrits ·
 PHPStan absent (aucun `phpstan.neon`, aucune dépendance) · `declare(strict_types=1)` : 0 sur
 189 fichiers.
+
+> ✅ **Trois blocages levés le 30/08 par le filet de rendu** (`make check-render`, étape 7).
+> Chacun attendait explicitement des tests de rendu, et les parcours ont été choisis pour eux :
+> **§2.4** l'enveloppe `{data, meta, message}` — galerie par code, tunnel d'achat, listes
+> d'administration · **#13** sortir le jeton de `localStorage` — la connexion et une page
+> d'administration · **3.6** factoriser un composant « ressource administrable » — deux vues
+> d'administration. Les trois peuvent démarrer.
 
 **Tests manquants sur les domaines à risque** — cumul cross-galerie des packs
 (`recalculatePackPrices`, `offer_signature`) · clôture, réouverture et reprise après échec des
@@ -271,8 +279,8 @@ redéploie tout le code de la branche de production. En face, `dist/` passe de 3
 | 4 | 🔜 `routes/admin.php` via `withRouting` + test de garde + `throttle:admin` + abilities | Rend modifiables **en une ligne sur le groupe** toutes les mesures ultérieures, au lieu de 85 éditions. Aucun limiteur `admin` n'existe : les 95 routes sont sans plafond | 1,5 j |
 | 5 | ⏸️ Établir l'état réel des environnements (`CACHE_STORE`, `SESSION_DRIVER`, `QUEUE_CONNECTION`) | §2.3 est cochée sur une supposition contredite par les deux `.env` | 0,25 j |
 | 6 | ✅ **Phase 4 dissoute** | Sa prémisse était fausse : les migrations reproduisent la production **colonne pour colonne et contrainte pour contrainte** (399=399, 99=99, 0 écart de valeur). L'aléa n°1 est nul : 0 photo sur 5 350 à chemin non résolu. 13-16 j retirés du plan ; il reste `jsonb` (#38, 0,5 j), la réconciliation MinIO et 5 PDF manquants — tous hors migration. **Fait le 30/08** | 0,5 j |
-| 7 | 🔜 Filet de tests de rendu (3 parcours) | Trois items du plan en sont prisonniers ; D2 et D6 en ajouteraient deux | 1 j |
-| 8 | Règle ESLint + contrôle d'isolation **dans `build:prerender`** | ⚠️ Pas dans `ci.yml` : il n'existe **aucun workflow de déploiement**, Render construit seul. Un contrôle en CI ne bloquerait rien | 0,75 j |
+| 7 | ✅ **Filet de rendu — 3 parcours** | `make check-render` : galerie par code, tunnel d'achat, deux listes d'administration, joués dans un vrai navigateur contre l'API locale. Chaque parcours compte des éléments **réellement rendus** — une coquille vide répond 200. Éprouvé par deux mutations : l'enveloppe `{data}` sur un seul endpoint fait tomber deux parcours, une clef de liste renommée fait tomber le troisième. **Fait le 30/08** | 1 j |
+| 8 | 🔜 Règle ESLint + contrôle d'isolation **dans `build:prerender`** | ⚠️ Pas dans `ci.yml` : il n'existe **aucun workflow de déploiement**, Render construit seul. Un contrôle en CI ne bloquerait rien | 0,75 j |
 | 9 | **D2 étapes 2-6** | Après 3 et 4. **Bloque D6** et la tranche admin des Resources | 3,5 j |
 | 10 | **D4** | Après 1 et 9. Supprime du travail manuel récurrent, zéro risque sur le site vitrine. Rend plus tôt que D6 — le plan le plaçait derrière, à tort | 4,5 j |
 | 11 | **D5** | **Dans** la phase 3.1, pendant que le domaine facturation est chaud. **Bloque #48** | 4,5 j |
