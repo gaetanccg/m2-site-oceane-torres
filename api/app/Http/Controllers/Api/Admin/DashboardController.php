@@ -53,9 +53,18 @@ class DashboardController extends Controller
 
     private function recentOrders(): array
     {
+        // `customer_name` et `customer_email` sont des ACCESSEURS, pas des colonnes : les
+        // demander a PostgreSQL faisait echouer la requete entiere, et l'encart « commandes
+        // recentes » du tableau de bord repondait 500. On selectionne donc ce dont les
+        // accesseurs ont besoin — dont `user_id`, sans quoi la relation ne se charge pas.
         return Order::query()
             ->withCount('items')
-            ->select(['id', 'order_number', 'customer_name', 'customer_email', 'status', 'total', 'created_at'])
+            ->with('user:id,first_name,last_name,email')
+            ->select([
+                'id', 'order_number', 'user_id',
+                'guest_first_name', 'guest_last_name', 'guest_email',
+                'status', 'total', 'created_at',
+            ])
             ->latest()
             ->take(5)
             ->get()
