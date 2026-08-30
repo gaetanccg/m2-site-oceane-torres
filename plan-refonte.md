@@ -14,8 +14,8 @@ Une ligne par étape, ✅ quand elle est faite. C'est le seul endroit à tenir �
    6…15                                                point de bascule à l'étape 9
 ```
 
-Décisions produit : **8/8 tranchées** (§12) · Recette : **1 / 30** (§11, relevée le 30/08)
-Tests : **599** API, **73** front
+Décisions produit : **8/8 tranchées** (§12) · Recette : **4 / 30** (§11, relevée le 30/08)
+Tests : **612** API, **80** front
 Dernière mise à jour : **2026-08-30**
 
 ---
@@ -117,7 +117,7 @@ s'arrêter sans dette.
 | Décisions produit tranchées | **8 / 8** |
 | Étapes de la liste vivante | **4 / 15** |
 | Jusqu'au point de bascule | **~9 j** |
-| Tests | **599** API (1 558 assertions) · **73** front |
+| Tests | **612** API (1 590 assertions) · **80** front |
 | En attente de Gaëtan | **6 actions**, dont une urgente (§3bis) |
 
 ### Par où entrer dans ce document
@@ -697,10 +697,10 @@ c'est celui-ci. → §11.7 de l'audit
 | 83 | `/admin/dashboard` répondait 500 : `customer_name` est un accesseur, pas une colonne | 🔴 | **3.6 (régression)** | ✅ 30/08 |
 | 84 | Le tableau de bord émet ses deux appels **en double** à chaque montage | 🟡 | **3.6** | ⏳ à traiter |
 | 85 | `{export}` désigne **deux modèles** selon la route : `SchoolSessionExport` et `PrivacyExport` | 🟡 | **§3.2 D2** | ⏳ à traiter |
-| 86 | Dependabot et le job d'audit n'existent que sur `refacto` : **ils ne tournent pas** | 🟠 | **0.16** | ⏳ à traiter |
-| 87 | `Orders.vue:450` calcule « Payées », « À expédier » et « Revenus » sur la page courante | 🟠 | **3.6** | ⏳ à traiter |
-| 88 | Le tri « Statut » des commandes porte sur `status` brut, l'affichage sur `detailed_status` | 🟡 | **3.6** | ⏳ à traiter |
-| 89 | Téléphone : `autocomplete="tel-national"` mais la validation refuse les espaces | 🟠 | **3.3** | ⏳ à traiter |
+| 86 | Dependabot ne tourne pas : `dependabot.yml` n'est lu que sur la branche par défaut | 🟠 | **0.16** | ⏳ se ferme à la fusion |
+| 87 | `Orders.vue:450` calcule « Payées », « À expédier » et « Revenus » sur la page courante | 🟠 | **3.6** | ✅ 30/08 |
+| 88 | Le tri « Statut » des commandes porte sur `status` brut, l'affichage sur `detailed_status` | 🟡 | **3.6** | ✅ 30/08 |
+| 89 | Téléphone : `autocomplete="tel-national"` mais la validation refuse les espaces | 🟠 | **3.3** | ✅ 30/08 |
 
 ### Items mineurs supplémentaires (§12.6 et §13.7)
 
@@ -740,7 +740,7 @@ Le projet est considéré comme refondu quand **tout** ce qui suit est vrai.
 > **Un critère qui dit « toutes », « aucun » ou « les formulaires publics » est faux dès qu'une
 > exception existe** — c'est ce qui explique le nombre de `[~]`.
 
-**1 satisfait · 19 partiels · 10 non satisfaits.**
+**4 satisfaits · 16 partiels · 10 non satisfaits.** (1 / 19 / 10 au relevé du matin.)
 
 ## Sécurité
 ```
@@ -763,10 +763,11 @@ Le projet est considéré comme refondu quand **tout** ce qui suit est vrai.
     9 limiteurs + celui de l'admin. Mais l'IP réelle n'a jamais été mesurée en
     production — la recette 0.19 porte encore « consent_ip contient des IP variées ».
 [~] `composer audit` et `npm audit` passent en CI
-    🔴 Les deux passent, mais PAS en CI : le job `security-audit` et
-    `.github/dependabot.yml` n'existent QUE sur `refacto`, 113 commits en avance et non
-    fusionnée. GitHub ne lit dependabot.yml que sur la branche par défaut : **Dependabot
-    ne tourne pas.** Item #86.
+    Les deux passent. Le job `security-audit` s'exécutera bien : `ci.yml` se déclenche sur
+    les *pull requests* vers `main`, et pour cet événement GitHub prend le workflow de la
+    branche source. En revanche **Dependabot ne tourne pas** : GitHub ne lit
+    `.github/dependabot.yml` que sur la branche par défaut, et le fichier n'existe que sur
+    `refacto`. Se ferme à la fusion — rien à coder. Item #86.
 ```
 ## Données et conformité
 ```
@@ -812,21 +813,18 @@ Le projet est considéré comme refondu quand **tout** ce qui suit est vrai.
     régénération n'existe. C'est #6, en attente de décision. Et une ligne à l'unité
     n'affiche ni quantité ni prix unitaire.
 [x] L'email de tirages indique le bon nombre d'exemplaires
-[~] Les compteurs du tableau de bord sont exacts au-delà de 100 lignes
-    Vrai sur le tableau de bord. FAUX sur `Orders.vue:450` : « Payées », « À expédier »
-    et « Revenus » sont calculés sur les 20 lignes de la page courante — le défaut
-    #63/#64 laissé intact sur un quatrième écran. Item #87.
-[~] Le tri des tableaux fonctionne, ou n'est pas proposé
-    La chaîne est câblée. Mais « Statut » sur les commandes trie sur `status` brut alors
-    que la cellule affiche `detailed_status` : six badges rangés dans trois seaux.
-    Item #88.
+[x] Les compteurs du tableau de bord sont exacts au-delà de 100 lignes
+    `GET /admin/orders/stats` agrège en base, sur le périmètre exact de la liste. Un test
+    compare l'agrégat SQL au calcul ligne à ligne du modèle : mêmes chiffres. #87 fermé.
+[x] Le tri des tableaux fonctionne, ou n'est pas proposé
+    « Statut » n'est plus cliquable : `detailed_status` est un accesseur que le serveur ne
+    sait pas trier, et le filtre au-dessus de la liste répond au besoin. Même convention
+    que `customer_email`, déjà non triable pour la même raison. #88 fermé.
 [~] Les formulaires publics sont utilisables au clavier et avec un lecteur d'écran
-[~] L'autoremplissage du navigateur fonctionne dans le tunnel de paiement
-    Les jetons `autocomplete` sont tous posés. Mais le téléphone demande
-    `tel-national` et la validation refuse les espaces (`/^0[1-9]\d{8}$/`, sans
-    normalisation, des deux côtés) — alors que le placeholder de l'inscription affiche
-    lui-même « 06 XX XX XX XX ». L'autoremplissage mène donc à un formulaire refusé.
-    Item #89.
+[x] L'autoremplissage du navigateur fonctionne dans le tunnel de paiement
+    Le numéro est normalisé avant validation, des deux côtés : espaces (insécables
+    compris), points, tirets, et les formes `+33` / `0033`. La forme canonique est celle
+    qui part à l'API. #89 fermé.
 [~] Un client retrouve son mot de passe sans intervention
 ```
 
