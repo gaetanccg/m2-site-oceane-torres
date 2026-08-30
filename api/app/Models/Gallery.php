@@ -24,6 +24,7 @@ class Gallery extends Model
         'event_link',
         'thumbnail_photo_id',
         'type',
+        'kind',
         'access_token',
         'share_code',
         'sms_template',
@@ -83,7 +84,40 @@ class Gallery extends Model
             if (empty($gallery->type)) {
                 $gallery->type = 'private';
             }
+            if (empty($gallery->kind)) {
+                $gallery->kind = self::natureDeduite($gallery);
+            }
         });
+    }
+
+    /** Les trois natures de galerie. Une quatrieme exigerait une decision, pas un ajout. */
+    public const KIND_CLIENT = 'client';
+
+    public const KIND_EVENT = 'event';
+
+    public const KIND_SCHOOL = 'school';
+
+    public const KINDS = [self::KIND_CLIENT, self::KIND_EVENT, self::KIND_SCHOOL];
+
+    /**
+     * La nature d'une galerie qui n'en declare pas, deduite de son contexte.
+     *
+     * C'est la MEME regle que le backfill de `2026_08_31_100000`, et l'ordre y compte autant :
+     * une galerie scolaire porte `type = 'private'`, donc le scolaire se teste avant le type.
+     * Ce repli existe pour que le code ancien continue de creer des galeries correctes ; le
+     * code neuf devrait poser `kind` explicitement.
+     */
+    private static function natureDeduite(self $gallery): string
+    {
+        if (! empty($gallery->school_session_id)) {
+            return self::KIND_SCHOOL;
+        }
+
+        if ($gallery->type === 'event') {
+            return self::KIND_EVENT;
+        }
+
+        return self::KIND_CLIENT;
     }
 
     protected static function booted(): void
@@ -181,10 +215,6 @@ class Gallery extends Model
 
     public function isAccessible(?string $token = null): bool
     {
-        if ($this->type === 'public') {
-            return true;
-        }
-
         return $this->holdsAccessToken($token);
     }
 
@@ -206,7 +236,7 @@ class Gallery extends Model
      */
     public function grantsWatermarkedPreview(?string $credential = null): bool
     {
-        if ($this->type === 'public' || ($this->type === 'event' && $this->is_published)) {
+        if ($this->kind === self::KIND_EVENT && $this->is_published) {
             return true;
         }
 
@@ -221,11 +251,6 @@ class Gallery extends Model
     private function holdsShareCode(?string $candidate): bool
     {
         return $candidate !== null && $candidate !== '' && hash_equals((string) $this->share_code, $candidate);
-    }
-
-    public function scopePublic($query)
-    {
-        return $query->where('type', 'public');
     }
 
     public function scopePrivate($query)
