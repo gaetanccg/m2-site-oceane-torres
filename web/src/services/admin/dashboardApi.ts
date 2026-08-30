@@ -1,24 +1,12 @@
 import { BaseAdminService } from './baseAdmin'
-import type { AdminApiResponse, AuthResponse, User, DashboardStats, DashboardRecent, GiftCardStats, PromoCodeStats, Notification } from '@/types/admin'
+import type { AdminApiResponse, DashboardStats, DashboardRecent, GiftCardStats, PromoCodeStats, Notification } from '@/types/admin'
 
+/**
+ * L'authentification ne passe PAS par ici : `authApi` porte `login`, `logout` et `getUser`,
+ * sur les memes endpoints. Ce service en gardait des copies, sans appelant — elles suffisaient
+ * a tirer les dix sous-services d'administration dans le bundle de chaque visiteur public.
+ */
 class DashboardApiService extends BaseAdminService {
-    // Auth
-    async login(email: string, password: string): Promise<AdminApiResponse<AuthResponse>> {
-        await this.getCsrfCookie()
-        return this.adminRequest<AdminApiResponse<AuthResponse>>('/auth/login', {
-            method: 'POST',
-            body: JSON.stringify({ email, password }),
-        })
-    }
-
-    async logout(): Promise<AdminApiResponse<null>> {
-        return this.adminRequest<AdminApiResponse<null>>('/auth/logout', { method: 'POST' })
-    }
-
-    async getUser(): Promise<AdminApiResponse<User>> {
-        return this.adminRequest<AdminApiResponse<User>>('/auth/user')
-    }
-
     // Dashboard — les deux seuls appels dont il a besoin : les chiffres sont agreges en
     // base, les encarts recents deja limites a cinq lignes cote serveur.
     async getDashboardStats(): Promise<DashboardStats> {

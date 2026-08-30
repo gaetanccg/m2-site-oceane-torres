@@ -7,7 +7,6 @@ import {defineStore} from 'pinia'
 import {ref, computed} from 'vue'
 import type {User} from '@/types/admin'
 import type {RegisterData} from '@/types/account'
-import {adminApi, AdminApiError} from '@/services/adminApi'
 import {authApi, AuthApiError} from '@/services/authApi'
 import {ERROR_MESSAGES} from '@/utils/errorHandler'
 
@@ -24,7 +23,7 @@ export const useAuthStore = defineStore('auth', () => {
      * Extrait le message d'erreur approprié
      */
     function extractErrorMessage(e: unknown, defaultMessage: string): string {
-        if (e instanceof AdminApiError || e instanceof AuthApiError) {
+        if (e instanceof AuthApiError) {
             return e.apiError.message
         }
         if (e instanceof Error) {
@@ -37,7 +36,7 @@ export const useAuthStore = defineStore('auth', () => {
      * Extrait les erreurs par champ pour les formulaires
      */
     function extractFieldErrors(e: unknown): Record<string, string> {
-        if (e instanceof AdminApiError || e instanceof AuthApiError) {
+        if (e instanceof AuthApiError) {
             const apiError = e.apiError
             if (apiError.errors) {
                 const result: Record<string, string> = {}
@@ -68,36 +67,12 @@ export const useAuthStore = defineStore('auth', () => {
     // Actions
 
     /**
-     * Login pour admin (utilise adminApi pour redirection vers /admin/login)
-     */
-    async function login(email: string, password: string): Promise<boolean> {
-        isLoading.value = true
-        error.value = null
-        fieldErrors.value = {}
-
-        try {
-            const response = await adminApi.login(email, password)
-
-            if (response.success && response.data) {
-                token.value = response.data.token
-                user.value = response.data.user
-                localStorage.setItem('auth_token', response.data.token)
-                return true
-            }
-
-            error.value = response.message || ERROR_MESSAGES.auth.invalidCredentials
-            return false
-        } catch (e) {
-            error.value = extractErrorMessage(e, ERROR_MESSAGES.auth.invalidCredentials)
-            fieldErrors.value = extractFieldErrors(e)
-            return false
-        } finally {
-            isLoading.value = false
-        }
-    }
-
-    /**
-     * Login pour client (utilise authApi)
+     * La seule connexion du site. L'administratrice passe par la meme, `/auth/login` :
+     * c'est le garde du routeur qui distingue ensuite les roles.
+     *
+     * Un second `login()` visait `adminApi`, donc le meme endpoint. Il n'avait aucun
+     * appelant et il n'existe aucune vue de connexion admin — mais il suffisait a tirer les
+     * dix sous-services d'administration dans le bundle telecharge par chaque visiteur.
      */
     async function loginClient(email: string, password: string): Promise<boolean> {
         isLoading.value = true
@@ -267,7 +242,6 @@ export const useAuthStore = defineStore('auth', () => {
         userFullName,
         userInitials,
         // Actions
-        login,
         loginClient,
         register,
         logout,

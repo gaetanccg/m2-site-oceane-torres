@@ -20,10 +20,7 @@ import { logApi } from './admin/logApi'
 export { AdminApiError } from './admin/baseAdmin'
 
 export const adminApi = {
-    // Auth & Dashboard
-    login: dashboardApi.login.bind(dashboardApi),
-    logout: dashboardApi.logout.bind(dashboardApi),
-    getUser: dashboardApi.getUser.bind(dashboardApi),
+    // Dashboard — l'authentification est chez `authApi`, pas ici.
     getDashboardStats: dashboardApi.getDashboardStats.bind(dashboardApi),
     getDashboardRecent: dashboardApi.getDashboardRecent.bind(dashboardApi),
     getGiftCardStats: dashboardApi.getGiftCardStats.bind(dashboardApi),
