@@ -84,16 +84,16 @@ comprendre *pourquoi* une chose a été faite ainsi, jamais pour savoir quoi fai
 le temps, mais ces décisions, qui bloquaient D2, D4, D5, D6 et par ricochet #48 et la moitié
 de la phase 3.
 
-**Ce qui reste tient dans une seule liste : §3.3, quinze étapes ordonnées.** La première est
-faite. Le point de bascule est à la neuvième, à environ neuf jours — après quoi on peut
+**Ce qui reste tient dans une seule liste : §3.3, quinze étapes ordonnées.** Les trois
+premières sont faites. Le point de bascule est à la neuvième, à environ neuf jours — après quoi on peut
 s'arrêter sans dette.
 
 | | |
 |---|---|
 | Décisions produit tranchées | **8 / 8** |
-| Étapes de la liste vivante | **1 / 15** |
+| Étapes de la liste vivante | **3 / 15** |
 | Jusqu'au point de bascule | **~9 j** |
-| Tests | **580** API (1 513 assertions) · **73** front |
+| Tests | **591** API (1 537 assertions) · **73** front |
 | En attente de Gaëtan | **6 actions**, dont une urgente (§3bis) |
 
 ### Par où entrer dans ce document
@@ -239,9 +239,9 @@ redéploie tout le code de la branche de production. En face, `dist/` passe de 3
 | # | Quoi | Pourquoi ICI | Charge |
 |---|---|---|---|
 | 1 | ✅ **`POST /gift-cards` sous garde admin** | N'importe lequel des 18 comptes clients pouvait créer un bon de 500 €. **Fait le 30/08** | 15 min |
-| 2 | Supprimer l'import mort de `stores/auth.ts:10` | Vide 15 chemins admin et 39 Ko du bundle d'entrée. Hygiène, pas sécurité — mais gratuite | 0,5 j |
-| 3 | `AdminSurfaceAccessTest` (95 routes × 3 acteurs) | **Bloque D2.** Déplacer 34 déclarations sans filet reproduirait la manœuvre qui a produit deux escalades en 2.4/2.5 | 1 j |
-| 4 | `routes/admin.php` via `withRouting` + test de garde + `throttle:admin` + abilities | Rend modifiables **en une ligne sur le groupe** toutes les mesures ultérieures, au lieu de 85 éditions. Aucun limiteur `admin` n'existe : les 95 routes sont sans plafond | 1,5 j |
+| 2 | ✅ **L'administration ne part plus dans le bundle public** | Chunk d'entrée 137 969 → 121 162 octets, chemins `/admin` 15 → 0. Le second `login()` du store visait le **même** endpoint que `authApi`, sans appelant ; `AdminApiError` était redondant avec `AuthApiError`. Côté services, `login/logout/getUser` de `dashboardApi` étaient des copies : **supprimées, pas déplacées** — le plan disait de les déplacer, cela aurait créé des doublons. Vérifié au navigateur. **Fait le 30/08** | 0,5 j |
+| 3 | ✅ **`AdminSurfaceAccessTest` — 96 routes × 3 acteurs** | Le filet avant D2. Périmètre défini par l'**URL et le contrôleur**, jamais par la présence du middleware : sinon une route qui s'échappe sort aussi de l'énumération, et le test passe. Identifiants **réels** — le route-model-binding s'exécute avant la garde, donc un id absent rend 404 et ne prouve rien. Éprouvé par deux mutations. **Fait le 30/08** | 1 j |
+| 4 | 🔜 `routes/admin.php` via `withRouting` + test de garde + `throttle:admin` + abilities | Rend modifiables **en une ligne sur le groupe** toutes les mesures ultérieures, au lieu de 85 éditions. Aucun limiteur `admin` n'existe : les 95 routes sont sans plafond | 1,5 j |
 | 5 | Établir l'état réel des environnements (`CACHE_STORE`, `SESSION_DRIVER`, `QUEUE_CONNECTION`) | §2.3 est cochée sur une supposition contredite par les deux `.env` | 0,25 j |
 | 6 | Trancher le sort de la phase 4 | D2, D4 et D5 changent chacune le schéma, et le plan offre **deux véhicules contradictoires** | 0,5 j |
 | 7 | Filet de tests de rendu (3 parcours) | Trois items du plan en sont prisonniers ; D2 et D6 en ajouteraient deux | 1 j |
@@ -663,6 +663,9 @@ c'est celui-ci. → §11.7 de l'audit
 | 80 | Aucun limiteur de débit sur les 95 routes admin | 🟠 | **§3.3 étape 4** | ⏳ à traiter |
 | 81 | Les originaux pleine résolution publiés en clair (286 Mo dans `dist/`) | 🟠 | **§3.2 D6** | ⏳ détachable |
 | 82 | `invoices` ne stocke aucun montant : modifier une commande réécrit une facture émise | 🔴 | **§3.2 D5 / #48** | ⏳ à trancher |
+| 83 | `/admin/dashboard` répondait 500 : `customer_name` est un accesseur, pas une colonne | 🔴 | **3.6 (régression)** | ✅ 30/08 |
+| 84 | Le tableau de bord émet ses deux appels **en double** à chaque montage | 🟡 | **3.6** | ⏳ à traiter |
+| 85 | `{export}` désigne **deux modèles** selon la route : `SchoolSessionExport` et `PrivacyExport` | 🟡 | **§3.2 D2** | ⏳ à traiter |
 
 ### Items mineurs supplémentaires (§12.6 et §13.7)
 
@@ -783,7 +786,7 @@ Par honnêteté, et parce que ces limites doivent être levées en phase 1.
 ---
 
 *Plan de refonte — dérivé de `AUDIT_PROJET.md` (13 sections, 8 594 lignes).*
-*82 items tracés · 789 lignes · le déroulé des phases 0 à 3 est dans `docs/journal-refonte.md`.*
+*85 items tracés · 789 lignes · le déroulé des phases 0 à 3 est dans `docs/journal-refonte.md`.*
 *Dernière mise à jour : 2026-08-30.*
 
 
