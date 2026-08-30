@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\Admin\ClientController;
 use App\Http\Controllers\Api\Admin\DashboardController;
 use App\Http\Controllers\Api\Admin\EventCategoryController;
 use App\Http\Controllers\Api\Admin\EventGalleryController as AdminEventGalleryController;
+use App\Http\Controllers\Api\Admin\GalleryController as AdminGalleryController;
 use App\Http\Controllers\Api\Admin\GiftCardController;
 use App\Http\Controllers\Api\Admin\GiftCodeController;
 use App\Http\Controllers\Api\Admin\LogController;
@@ -35,7 +36,6 @@ use App\Http\Controllers\Api\Admin\PrestationController as AdminPrestationContro
 use App\Http\Controllers\Api\Admin\PrivacyController;
 use App\Http\Controllers\Api\Admin\ReservationController;
 use App\Http\Controllers\Api\Admin\SchoolSessionController;
-use App\Http\Controllers\Api\GalleryController;
 use App\Http\Controllers\Api\HealthController;
 use Illuminate\Support\Facades\Route;
 
@@ -79,15 +79,15 @@ Route::put('/reservations/{reservation}/status', [ReservationController::class, 
 Route::delete('/reservations/{reservation}', [ReservationController::class, 'destroy']);
 
 // Galleries management
-Route::get('/galleries', [GalleryController::class, 'adminIndex']);
-Route::get('/galleries/{gallery}', [GalleryController::class, 'adminShow']);
-Route::apiResource('galleries', GalleryController::class)->except(['index', 'show']);
+Route::get('/galleries', [AdminGalleryController::class, 'index']);
+Route::get('/galleries/{gallery}', [AdminGalleryController::class, 'show']);
+Route::apiResource('galleries', AdminGalleryController::class)->except(['index', 'show']);
 Route::post('/galleries/{gallery}/photos/async', [AdminPhotoController::class, 'storeAsync']);
 Route::delete('/photos/{photo}', [AdminPhotoController::class, 'destroy']);
-Route::put('/galleries/{gallery}/regenerate-token', [GalleryController::class, 'regenerateToken']);
-Route::post('/galleries/{gallery}/regenerate-code', [GalleryController::class, 'regenerateShareCode']);
-Route::post('/galleries/{gallery}/send-email', [GalleryController::class, 'sendAccessEmail']);
-Route::post('/galleries/{gallery}/send-sms', [GalleryController::class, 'sendAccessSms']);
+Route::put('/galleries/{gallery}/regenerate-token', [AdminGalleryController::class, 'regenerateToken']);
+Route::post('/galleries/{gallery}/regenerate-code', [AdminGalleryController::class, 'regenerateShareCode']);
+Route::post('/galleries/{gallery}/send-email', [AdminGalleryController::class, 'sendAccessEmail']);
+Route::post('/galleries/{gallery}/send-sms', [AdminGalleryController::class, 'sendAccessSms']);
 
 // Photos management
 Route::put('/photos/{photo}/toggle-downloadable', [AdminPhotoController::class, 'toggleDownloadable']);
