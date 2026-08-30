@@ -152,9 +152,18 @@ mc mirror --preserve "backups/minio/${BUCKET}" "<alias>/${BUCKET}"
 
 ### Recurrence
 
+> ⚠️ **`BACKUP_ENV_FILE` n'est pas optionnel ici.** Sans lui, `backup.sh` vise
+> `deploy/.env.preprod` — sa cible par defaut, choisie pour qu'une commande tapee sans
+> reflechir n'atteigne jamais la production. Une crontab qui l'omet sauvegarde donc la
+> **preproduction** toutes les nuits, sans erreur ni avertissement, pendant qu'on croit la
+> production protegee. C'est precisement le genre de fausse assurance qui a coute deux jours
+> d'activite le 22/08/2026.
+
 A planifier (cron sur le NAS) une fois la premiere execution validee :
 
 ```cron
+BACKUP_ENV_FILE=/chemin/du/repo/deploy/.env.prod
+
 # Dump quotidien a 02h00, retention 30 jours
 0 2 * * *  cd /chemin/du/repo && ./deploy/backup.sh db  >> /var/log/ot-backup.log 2>&1
 # Miroir MinIO hebdomadaire, dimanche 02h30
@@ -162,6 +171,19 @@ A planifier (cron sur le NAS) une fois la premiere execution validee :
 # Restauration de controle mensuelle, le 1er a 03h00
 0 3 1 * *  cd /chemin/du/repo && ./deploy/backup.sh verify >> /var/log/ot-backup.log 2>&1
 ```
+
+**Verifier que ca tourne vraiment**, le lendemain de la pose :
+
+```bash
+ls -lh backups/                     # un dump date d'aujourd'hui
+grep -i 'projet\|cible' /var/log/ot-backup.log | tail -3   # le script annonce sa cible
+```
+
+Le script imprime la cible qu'il a resolue a chaque execution. Si le journal nomme le projet
+de preproduction, la crontab est fausse.
+
+> La production est en Supabase **plan Free** : ni PITR, ni sauvegarde quotidienne cote
+> hebergeur. Ces trois lignes sont le seul filet qui existe.
 
 ## Voir la doc complete
 

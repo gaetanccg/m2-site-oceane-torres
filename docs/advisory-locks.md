@@ -11,6 +11,20 @@
 `42` | `Order::generateOrderNumber()` | la séquence `OT-YYYY-NNNNN` | transaction |
 `43` | `Invoice::generateInvoiceNumber()` | la séquence `F-YYYY-NNNNN` | transaction |
 
+> ⚠️ **Un verrou de séquence ne garantit pas l'unicité de la ligne.** `43` protège
+> l'attribution du numéro de facture ; il ne protégeait pas l'existence d'une seule facture
+> par commande. `InvoiceService::generateForOrder` vérifiait par un `where(...)->first()` hors
+> transaction avant de créer, et trois appelants peuvent se déclencher ensemble : le webhook
+> SumUp, le polling du front et l'action admin. Deux factures numérotées pour une seule vente
+> étaient donc possibles. Aucun verrou applicatif n'y pouvait rien : on ne verrouille pas une
+> ligne qui n'existe pas encore. La garantie est une **contrainte d'unicité** sur
+> `invoices.order_id` (migration `2026_08_30_120000`), et le perdant de la course récupère la
+> facture du gagnant au lieu de remonter l'erreur SQL.
+>
+> La règle générale : le verrou sérialise l'**attribution d'un numéro**, la contrainte
+> d'unicité garantit l'**unicité de la ligne**. Les deux sont nécessaires, aucune ne remplace
+> l'autre.
+
 **`50` à `59` sont réservés** aux séquences comptables à venir (avoirs `AV-YYYY-NNNNN`,
 selon D5). Ne pas réutiliser 42 ni 43 : deux séquences différentes derrière le même verrou
 se sérialiseraient inutilement l'une sur l'autre.

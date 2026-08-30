@@ -126,6 +126,35 @@ protège aussi les tests qui oublient de simuler.
 > alors que le `env()` de Laravel lit `$_SERVER` **en premier**. Une variable
 > d'environnement réelle l'emporte, `force="true"` compris. C'est mesuré, pas supposé.
 
+### 2.2bis Le garde-fou du seeder — `DatabaseSeeder::assertTargetIsLocal()`
+
+Le seeder écrase des données. Sur le NAS, `APP_ENV` vaut `production` et
+`ProductionTargetGuard` **se retire volontairement** : ce garde-ci y est alors le seul filet.
+
+🔴 **Il a été aveugle à `DB_URL` jusqu'au 30/08/2026.** Il lisait
+`config("database.connections.{$connection}.host")`. Quand `DB_URL` est définie, cette entrée
+garde son ancienne valeur pendant que Laravel se connecte ailleurs : sur une configuration par
+défaut il lisait donc `127.0.0.1` — **accepté** — alors que le seeder écrivait en production.
+Exactement le mécanisme de l'incident du 22/08.
+
+Il passe désormais par `EffectiveDatabaseTarget` comme les deux autres, et par la liste unique
+`LocalDatabaseHosts` — sa copie privée avait déjà divergé (`host.docker.internal` manquant).
+Un test interdit de réintroduire une seconde liste.
+
+> **La leçon, plus générale que le correctif** : le piège `DB_URL` doit être cherché dans
+> *tous* les gardes, pas seulement dans celui qu'on vient d'écrire. Deux gardes ont été
+> corrigés le 23/08 ; le troisième a gardé le trou une semaine de plus parce que personne
+> n'est allé le relire.
+
+### 2.2ter Les fichiers d'exemple n'amorcent aucune cible de production
+
+`.env.example` et `api/.env.example` posaient `MINIO_BUCKET=galleries` — le bucket de la
+**production**. Un poste monté depuis l'exemple était donc refusé au démarrage par le
+garde-fou, et le réflexe naturel devant ce refus est d'affaiblir le garde plutôt que de
+corriger l'exemple. Ils amorcent désormais `galleries-dev`, et un test verrouille les trois
+exemples locaux : ni le bucket, ni la référence du projet Supabase, ni l'hôte du pooler, ni le
+domaine de production.
+
 ### 2.3 Les identifiants de production hors de l'arborescence
 
 Sur le poste de développement, `deploy/.env.prod` **n'existe pas**. Il a été déplacé vers :
@@ -229,3 +258,10 @@ Ces points ne peuvent pas être fermés par du code :
   préproduction. **Prend effet au prochain déploiement de la préproduction.**
 - 💾 **Supabase plan Free = aucune sauvegarde.** Ni PITR, ni sauvegarde quotidienne :
   `deploy/backup.sh` est le seul filet. Voir `docs/…` et le plan.
+- ⏰ **La récurrence des sauvegardes n'est pas posée.** Les trois lignes de crontab sont
+  écrites dans `deploy/README.md`, rien ne tourne. **Et elles omettaient `BACKUP_ENV_FILE`** :
+  telles quelles, elles auraient sauvegardé la *préproduction* toutes les nuits, sans erreur
+  ni avertissement, pendant qu'on croyait la production protégée. Corrigé le 30/08/2026 —
+  c'est la même classe de défaut que l'incident : une cible par défaut sûre devient
+  dangereuse quand on oublie qu'elle existe. Vérifier le lendemain de la pose que le journal
+  nomme bien le projet de production.

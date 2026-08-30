@@ -59,7 +59,7 @@ handler global n'a rien à réécrire.
 401 | non authentifié |
 403 | authentifié mais non autorisé |
 404 | ressource inexistante — **jamais** le nom de la classe du modèle |
-409 | conflit d'état (commande déjà payée, code promo épuisé) |
+409 | conflit d'état (commande déjà payée, code promo épuisé, galerie contenant des photos vendues) |
 422 | échec de validation |
 429 | limite de débit atteinte |
 503 | indisponibilité **transitoire** — c'est ce que lit SumUp pour retenter |
