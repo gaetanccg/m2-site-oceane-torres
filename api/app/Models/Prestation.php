@@ -6,9 +6,26 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Cache;
 
 class Prestation extends Model
 {
+    /** La cle du catalogue public. Une seule declaration, lecteur comme ecrivains. */
+    public const CACHE_PUBLIC = 'prestations_public';
+
+    /**
+     * Ce qui change une prestation rafraichit le catalogue public.
+     *
+     * L'invalidation etait recopiee dans les quatre methodes d'administration qui ecrivent.
+     * Recopier une invalidation, c'est se donner rendez-vous avec celle qu'on oubliera — trois
+     * chemins de photos l'avaient deja prouve sur la liste des evenements.
+     */
+    protected static function booted(): void
+    {
+        static::saved(fn () => Cache::forget(self::CACHE_PUBLIC));
+        static::deleted(fn () => Cache::forget(self::CACHE_PUBLIC));
+    }
+
     use HasFactory, HasUuids;
 
     protected $fillable = [

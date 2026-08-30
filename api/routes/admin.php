@@ -29,6 +29,7 @@ use App\Http\Controllers\Api\Admin\GiftCardController;
 use App\Http\Controllers\Api\Admin\GiftCodeController;
 use App\Http\Controllers\Api\Admin\LogController;
 use App\Http\Controllers\Api\Admin\OrderController as AdminOrderController;
+use App\Http\Controllers\Api\Admin\PrestationController as AdminPrestationController;
 use App\Http\Controllers\Api\Admin\PrivacyController;
 use App\Http\Controllers\Api\Admin\ReservationController;
 use App\Http\Controllers\Api\Admin\SchoolSessionController;
@@ -36,7 +37,6 @@ use App\Http\Controllers\Api\EventGalleryController;
 use App\Http\Controllers\Api\GalleryController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\PhotoController;
-use App\Http\Controllers\Api\PrestationController;
 use Illuminate\Support\Facades\Route;
 
 // Dashboard
@@ -66,9 +66,9 @@ Route::get('/logs/download', [LogController::class, 'download']);
 Route::delete('/logs', [LogController::class, 'clear']);
 
 // Prestations management
-Route::get('/prestations', [PrestationController::class, 'adminIndex']);
-Route::apiResource('prestations', PrestationController::class)->except(['index', 'show']);
-Route::put('/prestations/{prestation}/toggle', [PrestationController::class, 'toggle']);
+Route::get('/prestations', [AdminPrestationController::class, 'index']);
+Route::apiResource('prestations', AdminPrestationController::class)->except(['index', 'show']);
+Route::put('/prestations/{prestation}/toggle', [AdminPrestationController::class, 'toggle']);
 
 // Reservations management
 Route::get('/reservations', [ReservationController::class, 'index']);
