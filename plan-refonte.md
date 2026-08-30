@@ -1,6 +1,6 @@
 # Plan de refonte — Océane Torres Photographie
 
-## ▶ Avancement — 7 étapes sur 15
+## ▶ Avancement — 8 étapes sur 15  ·  ★ plus de dette structurelle
 
 **L'avancement se lit dans un seul tableau : [§3.3 Ordre d'exécution](#33-ordre-dexécution).**
 Une ligne par étape, ✅ quand elle est faite. C'est le seul endroit à tenir à jour.
@@ -14,12 +14,14 @@ Une ligne par étape, ✅ quand elle est faite. C'est le seul endroit à tenir �
 ✅ 6  Phase 4 dissoute — 13-16 j retirés du plan
 ✅ 7  Filet de rendu — 3 parcours (make check-render)
 ✅ 8  ESLint + contrôle d'isolation dans le build
-🔜 9  D2 étapes 2-6 — galeries par audience            ← POINT DE BASCULE
-   10…15                                               additif : on peut s'arrêter après 9
+✅ 9  D2 — galeries par audience    ★ POINT DE BASCULE ATTEINT
+🔜 10 D4 — émission des bons cadeaux                   ← en cours
+   11…15                                               additif : rien ne se dégrade sans
+
 ```
 
 Décisions produit : **8/8 tranchées** (§12) · Recette : **4 / 30** (§11, relevée le 30/08)
-Tests : **612** API, **80** front
+Tests : **634** API, **80** front
 Dernière mise à jour : **2026-08-30**
 
 ---
@@ -112,15 +114,15 @@ comprendre *pourquoi* une chose a été faite ainsi, jamais pour savoir quoi fai
 le temps, mais ces décisions, qui bloquaient D2, D4, D5, D6 et par ricochet #48 et la moitié
 de la phase 3.
 
-**Ce qui reste tient dans une seule liste : §3.3, quinze étapes ordonnées.** Sept sont faites. Le point de bascule est à la neuvième, à environ neuf jours — après quoi on peut
+**Ce qui reste tient dans une seule liste : §3.3, quinze étapes ordonnées.** Huit sont faites — **le point de bascule est franchi**. Le point de bascule est à la neuvième, à environ neuf jours — après quoi on peut
 s'arrêter sans dette.
 
 | | |
 |---|---|
 | Décisions produit tranchées | **8 / 8** |
-| Étapes de la liste vivante | **7 / 15** |
+| Étapes de la liste vivante | **8 / 15** ★ |
 | Jusqu'au point de bascule | **~9 j** |
-| Tests | **612** API (1 590 assertions) · **80** front |
+| Tests | **634** API (1 627 assertions) · **80** front |
 | En attente de Gaëtan | **6 actions**, dont une urgente (§3bis) |
 
 ### Par où entrer dans ce document
@@ -156,6 +158,12 @@ admin** existe (`AdminOrderResource`) : le reste de la surface sert des modèles
 la seule surface où la protection `$hidden` est délibérément désactivée (c'est l'étape 7 de D2)
 · 4 contrôles d'accès restent hors du Gate, dont `POST /photos/{photo}/like`, public et sans
 throttle · §2.6 n'a jamais été validée par un déploiement réel.
+
+**Ce que D2 laisse ouvert** — l'étape 7 de D2, les **Resources admin** (`AdminGalleryResource`,
+`AdminEventGalleryResource`, `AdminSchoolGalleryResource`, `AdminPhotoResource`), n'est pas
+faite : la surface admin sert encore des modèles Eloquent nus via `withPrivateFields()`, la
+seule surface où la protection `$hidden` est délibérément désactivée. 1,5 j, différable sans
+rien rouvrir — mais c'est aussi la tranche admin de la migration d'enveloppe (§2.4).
 
 **Phase 3** — 3.7 : #23 (séparer les buckets photos/factures), #25 (webhooks de délivrabilité
 Brevo), #38 (`docs/json-schemas.md` à écrire), #44 (supervision du disque du NAS), #52
@@ -282,8 +290,8 @@ redéploie tout le code de la branche de production. En face, `dist/` passe de 3
 | 6 | ✅ **Phase 4 dissoute** | Sa prémisse était fausse : les migrations reproduisent la production **colonne pour colonne et contrainte pour contrainte** (399=399, 99=99, 0 écart de valeur). L'aléa n°1 est nul : 0 photo sur 5 350 à chemin non résolu. 13-16 j retirés du plan ; il reste `jsonb` (#38, 0,5 j), la réconciliation MinIO et 5 PDF manquants — tous hors migration. **Fait le 30/08** | 0,5 j |
 | 7 | ✅ **Filet de rendu — 3 parcours** | `make check-render` : galerie par code, tunnel d'achat, deux listes d'administration, joués dans un vrai navigateur contre l'API locale. Chaque parcours compte des éléments **réellement rendus** — une coquille vide répond 200. Éprouvé par deux mutations : l'enveloppe `{data}` sur un seul endpoint fait tomber deux parcours, une clef de liste renommée fait tomber le troisième. **Fait le 30/08** | 1 j |
 | 8 | ✅ **Règle ESLint + contrôle d'isolation dans `build:prerender`** | Deux barrières : la règle `no-restricted-imports` désigne le fichier fautif dans l'éditeur ; `check-admin-isolation.js` inspecte ce que `dist/index.html` charge d'emblée — ce que télécharge **chaque visiteur**. Placé dans `build:prerender` et non en CI, **parce que Render construit seul depuis le dépôt** : là, un échec arrête le déploiement (code de sortie 1, vérifié). Éprouvé par mutation : le baril réimporté dans le store fait ressortir 90 occurrences et 15 chemins. **Fait le 30/08** | 0,75 j |
-| 9 | 🔜 **D2 étapes 2-6** | Après 3 et 4. **Bloque D6** et la tranche admin des Resources | 3,5 j |
-| 10 | **D4** | Après 1 et 9. Supprime du travail manuel récurrent, zéro risque sur le site vitrine. Rend plus tôt que D6 — le plan le plaçait derrière, à tort | 4,5 j |
+| 9 | ✅ **D2 étapes 2-6 — POINT DE BASCULE ATTEINT** | `ReservationController` déplacé · discriminant `kind` (149 school / 45 event / 2 client, **0 désaccord** avec l'ancien) · branche dormante `type='public'` retirée de trois chemins d'autorisation · sous-classes à *global scope* : **7 gardes manuelles supprimées**, le binding rend 404 sur la mauvaise nature · 4 contrôleurs séparés par audience, **35 → 1** déclaration admin servie par un contrôleur public. **Fait le 31/08** | 3,5 j |
+| 10 | 🔜 **D4** | Après 1 et 9. Supprime du travail manuel récurrent, zéro risque sur le site vitrine. Rend plus tôt que D6 — le plan le plaçait derrière, à tort | 4,5 j |
 | 11 | **D5** | **Dans** la phase 3.1, pendant que le domaine facturation est chaud. **Bloque #48** | 4,5 j |
 | 12 | Isolation, partie infrastructure (entrée Vite, DNS, nginx, Access, trappe LAN) | Après 4, 8 et 9 : faire l'hôte séparé avant, c'est déménager du désordre | 3 j + 1 semaine d'usage |
 | 13 | **D6** | Après 9 et 12. Les 3 correctifs détachés (fuite des originaux, AVIF, préchargements morts) partent **n'importe quand** | 7 j (+1 j) |
@@ -597,6 +605,10 @@ c'est celui-ci. → §11.7 de l'audit
 | 87 | `Orders.vue:450` calcule « Payées », « À expédier » et « Revenus » sur la page courante | 🟠 | **3.6** | ✅ 30/08 |
 | 88 | Le tri « Statut » des commandes porte sur `status` brut, l'affichage sur `detailed_status` | 🟡 | **3.6** | ✅ 30/08 |
 | 89 | Téléphone : `autocomplete="tel-national"` mais la validation refuse les espaces | 🟠 | **3.3** | ✅ 30/08 |
+| 90 | Héritage à table unique : les relations dérivent la clé étrangère du **nom de classe** — `EventGallery::photos()` cherchait `photos.event_gallery_id`, 500 sur l'endpoint public | 🔴 | **§3.2 D2** | ✅ 31/08 |
+| 91 | `EventGalleryController::store()` créait un `Gallery` de base : le hook de la sous-classe ne se déclenchait pas, la liste publique n'était pas invalidée | 🟠 | **§3.2 D2** | ✅ 31/08 |
+| 92 | `GET /admin/galleries/{id}` est **transverse aux natures** : `PhotosManager` l'appelle aussi pour les galeries scolaires. Le restreindre rendrait 404 sur tous les élèves | 🟡 | **§3.2 D2** | 📌 constat, à ne pas « corriger » |
+| 93 | `bulkToggleDownloadable` et `updateSortOrder` passent par le **query builder** : aucun événement de modèle ne s'y déclenche | 🟠 | **3.6** | ✅ 31/08 |
 
 ### Items mineurs supplémentaires (§12.6 et §13.7)
 
@@ -636,7 +648,11 @@ Le projet est considéré comme refondu quand **tout** ce qui suit est vrai.
 > **Un critère qui dit « toutes », « aucun » ou « les formulaires publics » est faux dès qu'une
 > exception existe** — c'est ce qui explique le nombre de `[~]`.
 
-**4 satisfaits · 16 partiels · 10 non satisfaits.** (1 / 19 / 10 au relevé du matin.)
+**4 satisfaits · 16 partiels · 10 non satisfaits.** (1 / 19 / 10 au relevé du 30/08 au matin.)
+
+> 📌 **Relu après D2 (règle de conduite n°5) : aucun critère n'a bougé.** C'est un résultat,
+> pas un oubli — D2 est un investissement structurel, pas un gain de recette. Un seul chiffre
+> change : les fichiers de plus de 400 lignes côté API passent de 10 à 9.
 
 ## Sécurité
 ```
@@ -698,7 +714,8 @@ Le projet est considéré comme refondu quand **tout** ce qui suit est vrai.
 [~] Couverture mesurée, et non nulle sur : facturation, panier, auth, sessions scolaires
 [~] Vitest en place, tests sur les stores et les utilitaires
 [ ] Aucun fichier > 400 lignes sans justification écrite
-    10 côté API, 19 côté front, aucune justification écrite.
+    9 côté API (10 avant D2 : la séparation par audience en a ramené un sous le seuil),
+    19 côté front, aucune justification écrite.
 [ ] Toutes les réponses API suivent la même convention
     154 `'success' =>` subsistent ; la convention écrite contredit le code.
 ```
@@ -768,7 +785,7 @@ Par honnêteté, et parce que ces limites doivent être levées en phase 1.
 ---
 
 *Plan de refonte — dérivé de `AUDIT_PROJET.md` (13 sections, 8 594 lignes).*
-*89 items tracés · 789 lignes · le déroulé des phases 0 à 3 est dans `docs/journal-refonte.md`.*
+*93 items tracés · 789 lignes · le déroulé des phases 0 à 3 est dans `docs/journal-refonte.md`.*
 *Dernière mise à jour : 2026-08-30.*
 
 
