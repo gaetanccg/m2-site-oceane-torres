@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\AdminOrderResource;
 use App\Http\Resources\OrderResource;
 use App\Models\Order;
+use App\Services\AdminStatsService;
 use App\Services\InvoiceService;
 use App\Services\OrderService;
 use App\Services\SumUpService;
@@ -21,6 +22,17 @@ class OrderController extends Controller
         private SumUpService $sumUpService,
         private OrderService $orderService,
     ) {}
+
+    /**
+     * Les chiffres de l'ecran Commandes. Ils etaient calcules cote front sur la PAGE
+     * COURANTE — vingt lignes — donc « Payees », « A expedier » et « Revenus » changeaient
+     * quand on tournait la page. C'est le defaut #63/#64, corrige sur le tableau de bord en
+     * 3.6 et reste intact ici.
+     */
+    public function stats(AdminStatsService $stats): JsonResponse
+    {
+        return response()->json($stats->orders());
+    }
 
     public function index(Request $request): JsonResponse
     {

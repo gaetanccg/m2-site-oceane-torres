@@ -1,7 +1,15 @@
 import { BaseAdminService } from './baseAdmin'
-import type { AdminOrder, SortState } from '@/types/admin'
+import type { AdminOrder, OrderStats, SortState } from '@/types/admin'
 
 class OrderApiService extends BaseAdminService {
+    /**
+     * Les chiffres de l'écran, agrégés côté serveur. Ils étaient calculés dans la vue sur
+     * `orders.value`, c'est-à-dire les vingt lignes de la page courante.
+     */
+    async getOrderStats(): Promise<OrderStats> {
+        return this.adminRequest<OrderStats>('/admin/orders/stats')
+    }
+
     async getOrders(page = 1, perPage = 20, status?: string, search?: string, sort?: SortState): Promise<{
         success: boolean
         orders: AdminOrder[]

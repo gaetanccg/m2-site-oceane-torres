@@ -39,7 +39,7 @@
                 </StatCard>
                 <StatCard
                     label="À expédier"
-                    :value="stats.toShip"
+                    :value="stats.to_ship"
                     icon-bg-class="bg-amber-100"
                 >
                     <template #icon>
@@ -384,7 +384,7 @@
 </template>
 
 <script setup lang="ts">
-import {ref, computed, watch, onMounted} from 'vue'
+import {ref, watch, onMounted} from 'vue'
 import {useAdminList} from '@/composables/useAdminList'
 import {useRoute} from 'vue-router'
 import AdminHeader from '@/components/admin/AdminHeader.vue'
@@ -397,7 +397,7 @@ import {adminApi} from '@/services/adminApi'
 import {downloadFile} from '@/utils/download'
 import {useToast} from '@/composables/useToast'
 import {useConfirm} from '@/composables/useConfirm'
-import type {AdminOrder, TableColumn} from '@/types/admin'
+import type {AdminOrder, OrderStats, TableColumn} from '@/types/admin'
 
 const toast = useToast()
 const { confirm } = useConfirm()
@@ -447,15 +447,23 @@ const selectedOrder = ref<AdminOrder | null>(null)
 const isMarkingShipped = ref(false)
 const isRetryingPayment = ref(false)
 
-const stats = computed(() => {
-    const paid = orders.value.filter(o => o.status === 'paid')
-    return {
-        total: total.value,
-        paid: paid.length,
-        toShip: orders.value.filter(o => o.detailed_status === 'to_ship').length,
-        revenue: paid.reduce((sum, o) => sum + o.total, 0),
+/**
+ * Les chiffres viennent du serveur, agrégés sur toute la table.
+ *
+ * Ils étaient calculés ici sur `orders.value` — les vingt lignes de la page courante :
+ * « Payées », « À expédier » et « Revenus » changeaient donc quand on tournait la page, et
+ * « À expédier » est un chiffre opérationnel. C'est le défaut #63/#64, corrigé sur le tableau
+ * de bord en 3.6 et resté sur cet écran.
+ */
+const stats = ref<OrderStats>({total: 0, paid: 0, pending: 0, to_ship: 0, revenue: 0})
+
+async function chargerStats() {
+    try {
+        stats.value = await adminApi.getOrderStats()
+    } catch {
+        // Un compteur indisponible ne doit pas empêcher la liste de s'afficher.
     }
-})
+}
 
 const columns: TableColumn<AdminOrder>[] = [
     {key: 'order_number', label: 'Commande', sortable: true},
@@ -464,7 +472,11 @@ const columns: TableColumn<AdminOrder>[] = [
     {key: 'customer_email', label: 'Client'},
     {key: 'items', label: 'Articles'},
     {key: 'total', label: 'Total', align: 'right', sortable: true},
-    {key: 'status', label: 'Statut', sortable: true},
+    // `detailed_status` est un accesseur : le serveur ne sait trier que la colonne brute
+    // `status`, qui range six badges affichés dans trois seaux — « À expédier » et
+    // « Expédiée » s'entremêlent. L'en-tête n'est donc pas cliquable ; le filtre par statut
+    // au-dessus de la liste répond au besoin.
+    {key: 'status', label: 'Statut'},
     {key: 'created_at', label: 'Date', sortable: true},
 ]
 
@@ -510,6 +522,7 @@ async function markAsShipped() {
             orders.value[index] = response.order
         }
         selectedOrder.value = response.order
+        chargerStats()
         toast.success('Commande marquée comme expédiée')
     } catch {
         toast.error('Erreur', 'Impossible de marquer comme expédié')
@@ -594,6 +607,7 @@ async function confirmDelete(order: AdminOrder) {
         await adminApi.deleteOrder(order.id)
         toast.success('Commande supprimée')
         fetchOrders()
+        chargerStats()
     } catch {
         toast.error('Erreur', 'Impossible de supprimer la commande')
     }
@@ -601,5 +615,6 @@ async function confirmDelete(order: AdminOrder) {
 
 onMounted(() => {
     fetchOrders()
+    chargerStats()
 })
 </script>

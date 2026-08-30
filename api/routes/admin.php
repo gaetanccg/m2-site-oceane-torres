@@ -149,6 +149,7 @@ Route::get('/school-session-exports/{export}/download', [SchoolSessionController
 Route::delete('/school-sessions/{schoolSession}', [SchoolSessionController::class, 'destroy']);
 
 // Orders management
+Route::get('/orders/stats', [AdminOrderController::class, 'stats']);
 Route::get('/orders', [AdminOrderController::class, 'index']);
 Route::get('/orders/{order}', [AdminOrderController::class, 'show']);
 Route::get('/orders/{order}/invoice', [AdminOrderController::class, 'downloadInvoice']);

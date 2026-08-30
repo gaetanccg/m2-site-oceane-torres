@@ -55,6 +55,15 @@ export interface PromoCodeStats {
     paid_uses: number
 }
 
+/** Chiffres de l'écran Commandes, agrégés en base — jamais calculés sur la page courante. */
+export interface OrderStats {
+    total: number
+    paid: number
+    pending: number
+    to_ship: number
+    revenue: number
+}
+
 export interface DashboardStats {
     reservations: {
         total: number

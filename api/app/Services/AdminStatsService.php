@@ -2,11 +2,13 @@
 
 namespace App\Services;
 
+use App\Models\CartItem;
 use App\Models\Client;
 use App\Models\Gallery;
 use App\Models\GiftCard;
 use App\Models\GiftCode;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Reservation;
 use Illuminate\Support\Carbon;
 
@@ -102,19 +104,48 @@ class AdminStatsService
      * elles se gèrent depuis les écrans de session. Un total qui les inclurait dépasserait
      * de façon inexplicable la liste que la carte ouvre.
      */
+    /**
+     * Les chiffres de l'ecran Commandes, agreges en base.
+     *
+     * `notEntirelySchool()` reprend EXACTEMENT le perimetre de la liste
+     * (`Admin\OrderController::index`) : un compteur qui ne compte pas ce que la liste
+     * montre est un compteur faux, et c'est tout l'objet de #63/#64.
+     *
+     * `to_ship` reproduit en SQL la branche `to_ship` de `Order::getDetailedStatusAttribute()`
+     * — payee, au moins un tirage, pas encore expediee. La liste des types imprimes vient du
+     * modele et n'est pas recopiee : la dupliquer ici la ferait diverger au premier ajout.
+     */
     public function orders(): array
     {
+        $typesImprimes = collect(CartItem::PRODUCT_TYPES)
+            ->filter(fn (array $type) => $type['is_print'] ?? false)
+            ->keys()
+            ->all();
+
+        $aUnTirage = OrderItem::query()
+            ->whereColumn('order_items.order_id', 'orders.id')
+            ->whereIn('product_type', $typesImprimes);
+
         $row = Order::query()
             ->notEntirelySchool()
             ->selectRaw('COUNT(*) as total')
             ->selectRaw("COUNT(*) FILTER (WHERE status = 'paid') as paid")
             ->selectRaw("COUNT(*) FILTER (WHERE status = 'pending') as pending")
+            ->selectRaw("COALESCE(SUM(total) FILTER (WHERE status = 'paid'), 0) as revenue")
+            ->selectRaw(
+                "COUNT(*) FILTER (WHERE status = 'paid'"
+                ." AND (print_status IS DISTINCT FROM 'shipped')"
+                .' AND EXISTS ('.$aUnTirage->toBase()->selectRaw('1')->toSql().')) as to_ship',
+                $aUnTirage->getBindings()
+            )
             ->first();
 
         return [
             'total' => (int) $row->total,
             'paid' => (int) $row->paid,
             'pending' => (int) $row->pending,
+            'to_ship' => (int) $row->to_ship,
+            'revenue' => (float) $row->revenue,
         ];
     }
 
