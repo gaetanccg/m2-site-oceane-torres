@@ -29,6 +29,7 @@ use App\Http\Controllers\Api\Admin\GiftCardController;
 use App\Http\Controllers\Api\Admin\GiftCodeController;
 use App\Http\Controllers\Api\Admin\LogController;
 use App\Http\Controllers\Api\Admin\OrderController as AdminOrderController;
+use App\Http\Controllers\Api\Admin\PhotoController as AdminPhotoController;
 use App\Http\Controllers\Api\Admin\PrestationController as AdminPrestationController;
 use App\Http\Controllers\Api\Admin\PrivacyController;
 use App\Http\Controllers\Api\Admin\ReservationController;
@@ -36,7 +37,6 @@ use App\Http\Controllers\Api\Admin\SchoolSessionController;
 use App\Http\Controllers\Api\EventGalleryController;
 use App\Http\Controllers\Api\GalleryController;
 use App\Http\Controllers\Api\HealthController;
-use App\Http\Controllers\Api\PhotoController;
 use Illuminate\Support\Facades\Route;
 
 // Dashboard
@@ -82,17 +82,17 @@ Route::delete('/reservations/{reservation}', [ReservationController::class, 'des
 Route::get('/galleries', [GalleryController::class, 'adminIndex']);
 Route::get('/galleries/{gallery}', [GalleryController::class, 'adminShow']);
 Route::apiResource('galleries', GalleryController::class)->except(['index', 'show']);
-Route::post('/galleries/{gallery}/photos/async', [PhotoController::class, 'storeAsync']);
-Route::delete('/photos/{photo}', [PhotoController::class, 'destroy']);
+Route::post('/galleries/{gallery}/photos/async', [AdminPhotoController::class, 'storeAsync']);
+Route::delete('/photos/{photo}', [AdminPhotoController::class, 'destroy']);
 Route::put('/galleries/{gallery}/regenerate-token', [GalleryController::class, 'regenerateToken']);
 Route::post('/galleries/{gallery}/regenerate-code', [GalleryController::class, 'regenerateShareCode']);
 Route::post('/galleries/{gallery}/send-email', [GalleryController::class, 'sendAccessEmail']);
 Route::post('/galleries/{gallery}/send-sms', [GalleryController::class, 'sendAccessSms']);
 
 // Photos management
-Route::put('/photos/{photo}/toggle-downloadable', [PhotoController::class, 'toggleDownloadable']);
-Route::put('/photos/bulk-downloadable', [PhotoController::class, 'bulkToggleDownloadable']);
-Route::put('/photos/sort-order', [PhotoController::class, 'updateSortOrder']);
+Route::put('/photos/{photo}/toggle-downloadable', [AdminPhotoController::class, 'toggleDownloadable']);
+Route::put('/photos/bulk-downloadable', [AdminPhotoController::class, 'bulkToggleDownloadable']);
+Route::put('/photos/sort-order', [AdminPhotoController::class, 'updateSortOrder']);
 
 // Event Categories management
 Route::get('/event-categories', [EventCategoryController::class, 'index']);
@@ -109,10 +109,10 @@ Route::put('/events/{gallery}', [EventGalleryController::class, 'update']);
 Route::delete('/events/{gallery}', [EventGalleryController::class, 'destroy']);
 Route::put('/events/{gallery}/thumbnail', [EventGalleryController::class, 'setThumbnail']);
 Route::get('/events/{gallery}/children', [EventGalleryController::class, 'children']);
-Route::post('/events/{gallery}/photos/async', [PhotoController::class, 'storeAsync']);
+Route::post('/events/{gallery}/photos/async', [AdminPhotoController::class, 'storeAsync']);
 
 // Upload status (for polling)
-Route::get('/upload-status', [PhotoController::class, 'uploadStatus']);
+Route::get('/upload-status', [AdminPhotoController::class, 'uploadStatus']);
 
 // Gift cards
 Route::post('/gift-cards', [GiftCardController::class, 'store']);

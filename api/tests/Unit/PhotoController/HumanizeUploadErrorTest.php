@@ -2,13 +2,17 @@
 
 namespace Tests\Unit\PhotoController;
 
-use App\Http\Controllers\Api\PhotoController;
+use App\Http\Controllers\Api\Admin\PhotoController;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
 /**
  * Test pur (sans DB) du mapping message technique → message actionnable UI.
  * La méthode est privée : on l'invoque par réflexion.
+ *
+ * Elle vit dans le contrôleur d'ADMINISTRATION depuis la séparation par audience (D2) :
+ * le téléversement est une opération d'administration, le contrôleur public ne fait
+ * que « j'aime » et le téléchargement.
  */
 class HumanizeUploadErrorTest extends TestCase
 {
