@@ -14,7 +14,8 @@ Une ligne par étape, ✅ quand elle est faite. C'est le seul endroit à tenir �
    6…15                                                point de bascule à l'étape 9
 ```
 
-Décisions produit : **8/8 tranchées** (§12) · Tests : **599** API, **73** front
+Décisions produit : **8/8 tranchées** (§12) · Recette : **1 / 30** (§11, relevée le 30/08)
+Tests : **599** API, **73** front
 Dernière mise à jour : **2026-08-30**
 
 ---
@@ -65,6 +66,10 @@ Dernière mise à jour : **2026-08-30**
 4. **Une affirmation de ce plan n'est pas une preuve.** Cinq d'entre elles se sont révélées
    fausses le 30/08 — dont §2.3 « Redis fait », alors qu'aucun environnement ne l'utilise.
    Vérifier avant de cocher, et dater ce qu'on écrit.
+5. **§11 se relit à CHAQUE étape terminée, pas quand on y pense.** Les sections qu'on ne
+   touche pas sont celles qui mentent : §11 est restée à zéro case cochée du 22 au 30 août
+   alors que le travail avançait, et c'est ce qui a donné l'impression, justifiée, que le
+   plan ne suivait plus.
 
 ### 0.3. Choix d'approche retenu
 
@@ -133,7 +138,7 @@ s'arrêter sans dette.
 
 Le détail est au journal ; voici les seuls points encore ouverts.
 
-**Phase 0** — la récurrence des sauvegardes n'est pas posée (§13bis, urgent) · UptimeRobot et
+**Phase 0** — la récurrence des sauvegardes n'est pas posée (§3bis, urgent) · UptimeRobot et
 healthchecks.io à créer · les 6 lignes de recette qui exigent la production · #6, réémettre ou
 non les factures dont le total de lignes était faux.
 
@@ -141,8 +146,9 @@ non les factures dont le total de lignes était faux.
 réel (local et api sur `database`, préproduction **et production** sur `file`, zéro variable
 `REDIS_*`), alors qu'un conteneur Redis tourne en production. C'est l'étape 5 · l'enveloppe
 `{data, meta, message}` de §2.4 n'est appliquée nulle part — 154 `'success' =>` subsistent dans
-les contrôleurs, et la convention écrite contredit frontalement le code · **aucune Resource
-admin** n'existe : la surface admin sert des modèles Eloquent nus via `withPrivateFields()`,
+les contrôleurs, et la convention écrite contredit frontalement le code · **une seule Resource
+admin** existe (`AdminOrderResource`) : le reste de la surface sert des modèles Eloquent nus via
+`withPrivateFields()`,
 la seule surface où la protection `$hidden` est délibérément désactivée (c'est l'étape 7 de D2)
 · 4 contrôles d'accès restent hors du Gate, dont `POST /photos/{photo}/like`, public et sans
 throttle · §2.6 n'a jamais été validée par un déploiement réel.
@@ -336,6 +342,12 @@ SMS, et réduit la réconciliation à des `COUNT`. **Y renoncer imposerait de r�
 d'arborescence MinIO.**
 
 ## 4.2 Classification des 38 tables — §10.4
+
+> 📌 **37 tables au 30/08/2026.** Les quatre orphelines (`availability_patterns`,
+> `availability_slots`, `subscriptions`, `subscription_items`) ont été supprimées par les
+> migrations du 22/08 (`1a9b50b`, `5d4a7a9`), en même temps que leur code. Un relevé du 30/08
+> les a crues encore présentes : la base de développement n'avait pas rejoué les migrations.
+> **Leçon : compter les tables dans une base locale ne dit rien tant qu'elle n'est pas à jour.**
 
 ```
 [ ] 13 tables du cœur métier                → MIGRER (users, clients, galleries, photos,
@@ -685,6 +697,10 @@ c'est celui-ci. → §11.7 de l'audit
 | 83 | `/admin/dashboard` répondait 500 : `customer_name` est un accesseur, pas une colonne | 🔴 | **3.6 (régression)** | ✅ 30/08 |
 | 84 | Le tableau de bord émet ses deux appels **en double** à chaque montage | 🟡 | **3.6** | ⏳ à traiter |
 | 85 | `{export}` désigne **deux modèles** selon la route : `SchoolSessionExport` et `PrivacyExport` | 🟡 | **§3.2 D2** | ⏳ à traiter |
+| 86 | Dependabot et le job d'audit n'existent que sur `refacto` : **ils ne tournent pas** | 🟠 | **0.16** | ⏳ à traiter |
+| 87 | `Orders.vue:450` calcule « Payées », « À expédier » et « Revenus » sur la page courante | 🟠 | **3.6** | ⏳ à traiter |
+| 88 | Le tri « Statut » des commandes porte sur `status` brut, l'affichage sur `detailed_status` | 🟡 | **3.6** | ⏳ à traiter |
+| 89 | Téléphone : `autocomplete="tel-national"` mais la validation refuse les espaces | 🟠 | **3.3** | ⏳ à traiter |
 
 ### Items mineurs supplémentaires (§12.6 et §13.7)
 
@@ -715,53 +731,104 @@ Aucun « réessayer » sur 5 vues publiques | **3.6**
 
 Le projet est considéré comme refondu quand **tout** ce qui suit est vrai.
 
+> **Relevé le 2026-08-30, chaque critère confronté au code**, puis les « satisfait » soumis à
+> deux sceptiques chargés de les réfuter. **Cinq des six l'ont été** — ils sont retombés à
+> partiel. Aucune case n'avait jamais été cochée depuis le 22/08 : c'est ce relevé qui l'a
+> montré, pas une relecture.
+>
+> `[x]` vrai · `[~]` vrai sur le chemin principal, faux sur au moins un cas nommé · `[ ]` faux.
+> **Un critère qui dit « toutes », « aucun » ou « les formulaires publics » est faux dès qu'une
+> exception existe** — c'est ce qui explique le nombre de `[~]`.
+
+**1 satisfait · 19 partiels · 10 non satisfaits.**
+
 ## Sécurité
 ```
-[ ] Aucun des 16 constats critiques n'est ouvert
-[ ] Une CSP est posée et aucune violation n'apparaît en console
+[~] Aucun des 16 constats critiques n'est ouvert
+    13 fermés. Restent #7 (sauvegardes récurrentes non posées) et #12 (supervision
+    externe : comptes à créer). #4 est écrit mais jamais mesuré — et 0.9 note que sans
+    lui les limites de débit sont inopérantes.
+[~] Une CSP est posée et aucune violation n'apparaît en console
+    La moitié appliquée est la moitié inoffensive : object-src, base-uri, form-action,
+    frame-ancestors. script-src reste en Report-Only, donc rien contre le vol de jeton.
+    Et `check:csp` éprouve l'en-tête Report-Only, pas celui qui est appliqué.
 [ ] Aucun token d'authentification n'est accessible à JavaScript
-[ ] Le compte admin est protégé par un TOTP
-[ ] La déconnexion révoque session ET token, vérifié par test automatisé
-[ ] Les rate limits sont effectifs (IP réelle) et ne se déclenchent pas entre clients
-[ ] `composer audit` et `npm audit` passent en CI
+    localStorage, même origine que le site public. Décision assumée (D8), durée ramenée
+    à 7 jours. Items #13 et #77.
+[ ] Le compte admin est protégé par un TOTP           → étape 15
+[~] La déconnexion révoque session ET token, vérifié par test automatisé
+    Le CODE fait les deux. Le TEST n'assert que la révocation du jeton : aucun
+    assertGuest, aucune vérification de la session (LogoutTest.php).
+[~] Les rate limits sont effectifs (IP réelle) et ne se déclenchent pas entre clients
+    9 limiteurs + celui de l'admin. Mais l'IP réelle n'a jamais été mesurée en
+    production — la recette 0.19 porte encore « consent_ip contient des IP variées ».
+[~] `composer audit` et `npm audit` passent en CI
+    🔴 Les deux passent, mais PAS en CI : le job `security-audit` et
+    `.github/dependabot.yml` n'existent QUE sur `refacto`, 113 commits en avance et non
+    fusionnée. GitHub ne lit dependabot.yml que sur la branche par défaut : **Dependabot
+    ne tourne pas.** Item #86.
 ```
 ## Données et conformité
 ```
 [ ] Un dump restauré quotidiennement, restauration testée mensuellement
-[ ] Aucune facture ne peut être détruite depuis l'interface
-[ ] Un remboursement laisse une trace en base et un avoir numéroté
-[ ] Un effacement RGPD passe par un seul chemin, tracé, avec confirmation
+    Les scripts existent, une restauration a été vérifiée une fois, la crontab est
+    écrite — rien ne tourne. §3bis, urgent.
+[~] Aucune facture ne peut être détruite depuis l'interface
+    RESTRICT + SoftDeletes + 409. Reste les chemins hors interface.
+[ ] Un remboursement laisse une trace en base et un avoir numéroté   → D5
+[~] Un effacement RGPD passe par un seul chemin, tracé, avec confirmation
 [ ] `consent_ip` contient l'IP réelle du client
-[ ] Le registre des traitements existe et couvre les contacts scolaires
+    Configuré (nginx + trustProxies), jamais mesuré depuis. Item #4.
+[~] Le registre des traitements existe et couvre les contacts scolaires
+    docs/rgpd-registre.md, à jour — les colonnes 📋 restent à confirmer par Océane.
 ```
 ## Exploitation
 ```
 [ ] Les 4 sondes sont vertes, les 3 filets externes reçoivent des signaux
-[ ] Un export de 3600 s ne retarde aucun email transactionnel
-[ ] L'espace disque du NAS est supervisé
-[ ] Un rollback se fait par tag d'image en moins de 5 minutes
-[ ] `storage:clean-orphans` tourne en dry-run hebdomadaire, avec rapport
+    Les URL healthchecks ne sont renseignées qu'en préproduction.
+[~] Un export de 3600 s ne retarde aucun email transactionnel
+    Le routage realtime/default/heavy est fait, mais UN SEUL worker le sert : un job à
+    3 600 s bloque une heure toutes les confirmations. #10 n'est pas résolu.
+[ ] L'espace disque du NAS est supervisé              → #44
+[~] Un rollback se fait par tag d'image en moins de 5 minutes
+    Le tag existe ; nginx monte encore `./api` en volume, donc les statiques viennent du
+    checkout et non de l'image. Jamais chronométré.
+[~] `storage:clean-orphans` tourne en dry-run hebdomadaire, avec rapport
 ```
 ## Qualité
 ```
-[ ] PHPStan niveau 5+ bloquant, 0 erreur
-[ ] Couverture mesurée, et non nulle sur : facturation, panier, auth, sessions scolaires
-[ ] Vitest en place, tests sur les stores et les utilitaires
+[ ] PHPStan niveau 5+ bloquant, 0 erreur              → absent
+[~] Couverture mesurée, et non nulle sur : facturation, panier, auth, sessions scolaires
+[~] Vitest en place, tests sur les stores et les utilitaires
 [ ] Aucun fichier > 400 lignes sans justification écrite
+    10 côté API, 19 côté front, aucune justification écrite.
 [ ] Toutes les réponses API suivent la même convention
+    154 `'success' =>` subsistent ; la convention écrite contredit le code.
 ```
 ## Fonctionnel
 ```
-[ ] Une facture est juste : quantité, prix unitaire, total, adresse du client
-[ ] L'email de tirages indique le bon nombre d'exemplaires
-[ ] Les compteurs du tableau de bord sont exacts au-delà de 100 lignes
-[ ] Le tri des tableaux fonctionne, ou n'est pas proposé
-[ ] Les formulaires publics sont utilisables au clavier et avec un lecteur d'écran
-[ ] L'autoremplissage du navigateur fonctionne dans le tunnel de paiement
-[ ] Un client retrouve son mot de passe sans intervention
+[~] Une facture est juste : quantité, prix unitaire, total, adresse du client
+    Le gabarit est corrigé, mais les PDF DÉJÀ ÉMIS restent les faux : aucun chemin de
+    régénération n'existe. C'est #6, en attente de décision. Et une ligne à l'unité
+    n'affiche ni quantité ni prix unitaire.
+[x] L'email de tirages indique le bon nombre d'exemplaires
+[~] Les compteurs du tableau de bord sont exacts au-delà de 100 lignes
+    Vrai sur le tableau de bord. FAUX sur `Orders.vue:450` : « Payées », « À expédier »
+    et « Revenus » sont calculés sur les 20 lignes de la page courante — le défaut
+    #63/#64 laissé intact sur un quatrième écran. Item #87.
+[~] Le tri des tableaux fonctionne, ou n'est pas proposé
+    La chaîne est câblée. Mais « Statut » sur les commandes trie sur `status` brut alors
+    que la cellule affiche `detailed_status` : six badges rangés dans trois seaux.
+    Item #88.
+[~] Les formulaires publics sont utilisables au clavier et avec un lecteur d'écran
+[~] L'autoremplissage du navigateur fonctionne dans le tunnel de paiement
+    Les jetons `autocomplete` sont tous posés. Mais le téléphone demande
+    `tel-national` et la validation refuse les espaces (`/^0[1-9]\d{8}$/`, sans
+    normalisation, des deux côtés) — alors que le placeholder de l'inscription affiche
+    lui-même « 06 XX XX XX XX ». L'autoremplissage mène donc à un formulaire refusé.
+    Item #89.
+[~] Un client retrouve son mot de passe sans intervention
 ```
-
----
 
 # 12. Journal de décisions
 
@@ -806,7 +873,7 @@ Par honnêteté, et parce que ces limites doivent être levées en phase 1.
 ---
 
 *Plan de refonte — dérivé de `AUDIT_PROJET.md` (13 sections, 8 594 lignes).*
-*85 items tracés · 789 lignes · le déroulé des phases 0 à 3 est dans `docs/journal-refonte.md`.*
+*89 items tracés · 789 lignes · le déroulé des phases 0 à 3 est dans `docs/journal-refonte.md`.*
 *Dernière mise à jour : 2026-08-30.*
 
 
