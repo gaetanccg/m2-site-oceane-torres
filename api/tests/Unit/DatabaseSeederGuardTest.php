@@ -4,9 +4,9 @@ namespace Tests\Unit;
 
 use App\Support\ProductionTargets;
 use Database\Seeders\DatabaseSeeder;
-use Tests\TestCase;
 use ReflectionMethod;
 use RuntimeException;
+use Tests\TestCase;
 
 /**
  * Le seeder ecrase des donnees. Sur le NAS, ou APP_ENV vaut « production », le garde-fou

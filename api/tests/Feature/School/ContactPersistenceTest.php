@@ -8,6 +8,7 @@ use App\Models\SchoolSessionContact;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Testing\TestResponse;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -37,7 +38,7 @@ class ContactPersistenceTest extends TestCase
         ]);
     }
 
-    private function diffuser(array $contacts, string $canal = 'email'): \Illuminate\Testing\TestResponse
+    private function diffuser(array $contacts, string $canal = 'email'): TestResponse
     {
         return $this->postJson("/api/admin/school-sessions/{$this->session->id}/send-messages", [
             'channel' => $canal,
