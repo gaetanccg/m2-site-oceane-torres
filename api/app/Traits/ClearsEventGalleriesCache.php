@@ -2,6 +2,7 @@
 
 namespace App\Traits;
 
+use App\Support\EventGalleriesCache;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -25,8 +26,6 @@ use Illuminate\Support\Facades\Cache;
  */
 trait ClearsEventGalleriesCache
 {
-    private const VERSION_KEY = 'event_galleries:version';
-
     private const TTL = 300;
 
     /** Nombre d'elements par page mis en cache. Toute autre valeur contourne le cache. */
@@ -37,14 +36,12 @@ trait ClearsEventGalleriesCache
 
     protected function clearEventGalleriesCache(): void
     {
-        // Une course perdue entre deux purges concurrentes est sans consequence : ce qui
-        // compte est que la version CHANGE, pas qu'elle s'incremente exactement une fois.
-        Cache::forever(self::VERSION_KEY, $this->eventGalleriesCacheVersion() + 1);
+        EventGalleriesCache::invalider();
     }
 
     protected function eventGalleriesCacheVersion(): int
     {
-        return (int) Cache::get(self::VERSION_KEY, 1);
+        return EventGalleriesCache::version();
     }
 
     /**

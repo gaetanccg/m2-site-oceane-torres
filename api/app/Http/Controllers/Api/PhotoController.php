@@ -124,6 +124,26 @@ class PhotoController extends Controller
         ]);
     }
 
+    /**
+     * Invalide la liste publique si le lot touche au moins une photo d'evenement.
+     *
+     * Les modeles invalident d'eux-memes, mais UN `update()` du query builder ne declenche
+     * aucun evenement : les deux methodes de masse doivent le faire a la main. Une requete
+     * d'existence suffit, et l'invalidation est un simple compteur.
+     *
+     * @param  list<string>  $photoIds
+     */
+    private function clearEventGalleriesCacheSiEvenement(array $photoIds): void
+    {
+        $touchéUnEvenement = Photo::whereIn('photos.id', $photoIds)
+            ->whereHas('gallery', fn ($q) => $q->where('kind', Gallery::KIND_EVENT))
+            ->exists();
+
+        if ($touchéUnEvenement) {
+            $this->clearEventGalleriesCache();
+        }
+    }
+
     public function toggleDownloadable(Photo $photo): JsonResponse
     {
         $isDownloadable = $photo->toggleDownloadable();
@@ -151,6 +171,11 @@ class PhotoController extends Controller
 
         Photo::whereIn('id', $validated['photo_ids'])
             ->update(['is_downloadable' => $validated['is_downloadable']]);
+
+        // ⚠️ Un `update()` du QUERY BUILDER ne declenche AUCUN evenement de modele :
+        // l'invalidation posee dans `Photo::booted()` ne couvre pas ce chemin. Elle est donc
+        // appelee ici, une fois pour le lot — ce qui vaut mieux que N fois de toute facon.
+        $this->clearEventGalleriesCacheSiEvenement($validated['photo_ids']);
 
         // Pre-generate clean thumbnails for the newly-downloadable photos.
         if ($validated['is_downloadable']) {
@@ -183,6 +208,9 @@ class PhotoController extends Controller
                     ->update(['sort_order' => (int) $photoData['sort_order']]);
             }
         });
+
+        // Meme raison qu'en masse : le query builder ne declenche pas les evenements.
+        $this->clearEventGalleriesCacheSiEvenement(array_column($validated['photos'], 'id'));
 
         return response()->json([
             'message' => 'Ordre mis à jour.',

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Services\MinioStorageService;
+use App\Support\EventGalleriesCache;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -44,6 +45,10 @@ class Photo extends Model
         // (upload processing flips is_processed, admin edits title/price, etc.).
         static::saved(fn (self $photo) => $photo->forgetCachedUrls());
         static::deleted(fn (self $photo) => $photo->forgetCachedUrls());
+
+        // Et la liste publique des evenements, si la photo en fait partie.
+        static::saved(fn (self $photo) => $photo->invaliderListePubliqueSiEvenement());
+        static::deleted(fn (self $photo) => $photo->invaliderListePubliqueSiEvenement());
     }
 
     protected $fillable = [
@@ -333,6 +338,24 @@ class Photo extends Model
         }
 
         return array_values(array_diff($chemins, $partages));
+    }
+
+    /**
+     * Une photo d'evenement qui change invalide la liste publique.
+     *
+     * L'invalidation etait a la charge des controleurs, et TROIS l'oubliaient :
+     * `toggleDownloadable`, `bulkToggleDownloadable` et `updateSortOrder` — precisement ceux
+     * qui modifient ce que la liste affiche, quelles photos sont telechargeables et dans quel
+     * ordre. Le listing restait perime jusqu'a cinq minutes.
+     *
+     * Le cout est celui d'un `Cache::forever`, et la verification de nature est la meme que
+     * celle que les controleurs faisaient deja.
+     */
+    private function invaliderListePubliqueSiEvenement(): void
+    {
+        if ($this->gallery?->kind === Gallery::KIND_EVENT) {
+            EventGalleriesCache::invalider();
+        }
     }
 
     public function gallery(): BelongsTo

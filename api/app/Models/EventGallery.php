@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\EventGalleriesCache;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -36,5 +37,10 @@ class EventGallery extends Gallery
                 $gallery->type = 'event';
             }
         });
+
+        // Ce qui change la donnee invalide le cache. L'invalidation vivait chez les
+        // appelants, et quatre controleurs sur sept y pensaient.
+        static::saved(fn () => EventGalleriesCache::invalider());
+        static::deleted(fn () => EventGalleriesCache::invalider());
     }
 }
