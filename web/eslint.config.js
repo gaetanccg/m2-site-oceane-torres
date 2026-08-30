@@ -88,5 +88,40 @@ export default tseslint.config(
             'no-console': 'warn',
             'no-debugger': 'error'
         }
+    },
+
+    /**
+     * L'administration ne remonte pas dans le bundle public.
+     *
+     * `stores/auth.ts` importait le baril `@/services/adminApi`, qui charge ses dix
+     * sous-services de manière eager. Le store étant importé par `main.ts` et par le routeur,
+     * tout atterrissait dans le chunk d'entrée : 15 chemins d'API d'administration en clair,
+     * téléchargés par chaque visiteur du site public.
+     *
+     * Une seule arête d'import suffit à tout ramener. Cette règle la refuse dans l'éditeur,
+     * en deux secondes ; `scripts/check-admin-isolation.js` fait le même contrôle sur
+     * l'artefact construit, au cas où l'import passerait par un chemin que le linter ne suit
+     * pas. Les deux sont nécessaires : le linter voit l'intention, l'artefact voit le résultat.
+     */
+    {
+        files: ['src/**/*.{ts,vue}'],
+        ignores: ['src/views/admin/**', 'src/components/admin/**', 'src/services/admin/**', 'src/services/adminApi.ts'],
+        rules: {
+            'no-restricted-imports': ['error', {
+                paths: [{
+                    name: '@/services/adminApi',
+                    message: "Le baril d'administration charge ses dix sous-services d'un coup : l'importer hors de l'admin les fait entrer dans le bundle public. Importer le sous-service précis depuis une vue d'administration."
+                }],
+                patterns: [{
+                    // `baseAdmin` est exempté : c'est la classe de BASE, elle ne porte aucun
+                    // chemin d'API. Ce que la règle vise, ce sont les dix sous-services et le
+                    // baril qui les charge d'un coup. `uploadService` en dépend légitimement —
+                    // il est admin-only mais vit hors du sous-arbre, ce que D2 corrigera.
+                    group: ['@/services/admin/*', './admin/*', '../services/admin/*'],
+                    importNamePattern: '^(?!.*BaseAdminService).*$',
+                    message: "Service d'administration importé hors du sous-arbre admin : il partirait dans le bundle de chaque visiteur public."
+                }]
+            }]
+        }
     }
 )

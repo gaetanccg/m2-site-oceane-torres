@@ -11,7 +11,7 @@
  */
 
 /** Ce qu'un humain ou un carnet d'adresses glisse entre les chiffres. */
-const SEPARATEURS = /[\s  .\-–()/]/g
+const SEPARATEURS = /[\s\u00A0\u202F.\-–()/]/g
 
 export function normalizePhone(numero: string | null | undefined): string {
     if (!numero) return ''

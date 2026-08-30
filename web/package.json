@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
-    "build:prerender": "vue-tsc -b && vite build && node scripts/prerender.js",
+    "build:prerender": "vue-tsc -b && vite build && node scripts/check-admin-isolation.js && node scripts/prerender.js",
     "prerender": "node scripts/prerender.js",
     "generate-thumbs": "node scripts/generate-thumbs.js",
     "preview": "vite preview",
@@ -18,7 +18,8 @@
     "test:coverage": "vitest run --coverage",
     "check:csp": "node scripts/check-csp.js",
     "check:privacy": "node scripts/check-privacy.js",
-    "check:render": "node scripts/check-render.js"
+    "check:render": "node scripts/check-render.js",
+    "check:admin-isolation": "node scripts/check-admin-isolation.js"
   },
   "dependencies": {
     "@fontsource/inter": "^5.3.0",
