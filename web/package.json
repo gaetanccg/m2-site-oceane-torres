@@ -17,7 +17,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "check:csp": "node scripts/check-csp.js",
-    "check:privacy": "node scripts/check-privacy.js"
+    "check:privacy": "node scripts/check-privacy.js",
+    "check:render": "node scripts/check-render.js"
   },
   "dependencies": {
     "@fontsource/inter": "^5.3.0",

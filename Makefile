@@ -1,4 +1,4 @@
-.PHONY: help init up down restart logs shell test migrate clean
+.PHONY: help init up down restart logs shell test check-render migrate clean
 
 # Colors
 GREEN  := $(shell tput -Txterm setaf 2)
@@ -139,3 +139,15 @@ clean: ## Clean temporary files
 prune: ## Remove all Docker data
 	docker-compose down -v --rmi all
 	@echo "✅ Docker data removed"
+
+check-render: ## Filet de rendu : 3 parcours dans un vrai navigateur (API locale requise)
+	@echo "→ Données du filet"
+	@docker compose exec -T laravel php artisan render:fixtures > .render-fixtures.json
+	@echo "→ Construction du front"
+	@cd web && npm run build >/dev/null
+	@echo "→ Parcours"
+	@cd web && node scripts/check-render.js; \
+		code=$$?; \
+		cd .. && docker compose exec -T laravel php artisan render:fixtures --drop >/dev/null; \
+		rm -f .render-fixtures.json; \
+		exit $$code

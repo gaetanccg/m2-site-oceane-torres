@@ -135,3 +135,6 @@ PROJECT_REFERENCE_MVP.md
 # toute cible de production, meme sous APP_ENV=production. NE JAMAIS le versionner — il
 # empecherait la production de demarrer.
 .poste-de-developpement
+
+# Donnees ephemeres du filet de rendu (make check-render)
+.render-fixtures.json
