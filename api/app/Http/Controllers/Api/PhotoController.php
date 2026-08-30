@@ -32,7 +32,11 @@ class PhotoController extends Controller
 
         // La liste vient du modele : elle etait enumeree ici et oubliait la miniature
         // SANS FILIGRANE, qui survivait donc a la suppression.
-        foreach ($photo->storagePaths() as $path) {
+        //
+        // `exclusive` et non `storagePaths` : une photo de session scolaire est partagee par
+        // les galeries de tous les eleves. Supprimer ses chemins sans compter les references
+        // detruisait le fichier des autres, achats compris.
+        foreach ($photo->exclusiveStoragePaths() as $path) {
             $storageService->deletePhoto($path);
         }
 

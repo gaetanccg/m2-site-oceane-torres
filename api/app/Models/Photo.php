@@ -9,10 +9,23 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class Photo extends Model
 {
     private const SIGNED_URL_CACHE_TTL = 43200;
+
+    /** Les colonnes qui portent un chemin de stockage. */
+    private const COLONNES_DE_CHEMIN = [
+        'file_path',
+        'file_path_hd',
+        'file_path_preview',
+        'file_path_thumbnail',
+        'file_path_thumbnail_clean',
+    ];
+
+    /** Les clefs de `metadata` qui en portent un aussi, pour les photos d'avant la migration. */
+    private const CLES_DE_CHEMIN_DANS_METADATA = ['storage_path', 'supabase_path'];
 
     use HasFactory, HasUuids;
 
@@ -279,6 +292,47 @@ class Photo extends Model
         );
 
         return array_values(array_unique($chemins));
+    }
+
+    /**
+     * Les fichiers que cette photo est SEULE a posseder.
+     *
+     * Une session scolaire cree une ligne photo par galerie d'eleve, et toutes pointent sur
+     * le meme fichier partage (`school-sessions/<session>/shared/...`). Mesure du 30/08/2026 :
+     * 804 lignes sur 5 350 partagent leur fichier, dont 214 ont ete vendues. Supprimer les
+     * chemins de `storagePaths()` sans compter les references detruit donc le fichier des
+     * autres eleves — y compris de ceux qui l'ont paye, sans autre recours qu'une sauvegarde.
+     *
+     * @return list<string>
+     */
+    public function exclusiveStoragePaths(): array
+    {
+        $chemins = $this->storagePaths();
+
+        if ($chemins === []) {
+            return [];
+        }
+
+        $voisines = static::query()
+            ->whereKeyNot($this->getKey())
+            ->where(function ($requete) use ($chemins) {
+                foreach (self::COLONNES_DE_CHEMIN as $colonne) {
+                    $requete->orWhereIn($colonne, $chemins);
+                }
+
+                foreach (self::CLES_DE_CHEMIN_DANS_METADATA as $cle) {
+                    $requete->orWhereIn(DB::raw("metadata->>'{$cle}'"), $chemins);
+                }
+            })
+            ->get();
+
+        $partages = [];
+
+        foreach ($voisines as $voisine) {
+            $partages = array_merge($partages, $voisine->storagePaths());
+        }
+
+        return array_values(array_diff($chemins, $partages));
     }
 
     public function gallery(): BelongsTo

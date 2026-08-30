@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exceptions\BusinessException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\SendAccessEmailRequest;
 use App\Http\Requests\Admin\SendAccessSmsRequest;
@@ -13,6 +14,7 @@ use App\Jobs\SendSmsJob;
 use App\Mail\GalleryAccessMail;
 use App\Models\Client;
 use App\Models\Gallery;
+use App\Models\OrderItem;
 use App\Services\MinioStorageService;
 use App\Services\SmsTemplateService;
 use App\Traits\SyncsProductTypes;
@@ -100,6 +102,16 @@ class GalleryController extends Controller
 
     public function destroy(Gallery $gallery): JsonResponse
     {
+        $vendues = OrderItem::whereIn('photo_id', $gallery->photos()->select('id'))->count();
+
+        if ($vendues > 0) {
+            throw new BusinessException(
+                "Cette galerie contient {$vendues} photo(s) achetee(s) : la supprimer priverait "
+                .'les clients de leur telechargement. Supprimer les photos non vendues une a une.',
+                409
+            );
+        }
+
         $galleryId = $gallery->id;
 
         // Suppression DB d'abord (rapide, < 100 ms). Le cleanup MinIO peut être lent
