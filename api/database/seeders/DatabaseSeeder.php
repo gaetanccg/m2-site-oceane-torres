@@ -4,6 +4,8 @@ namespace Database\Seeders;
 
 use App\Models\Prestation;
 use App\Models\User;
+use App\Support\EffectiveDatabaseTarget;
+use App\Support\LocalDatabaseHosts;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -11,12 +13,6 @@ use RuntimeException;
 
 class DatabaseSeeder extends Seeder
 {
-    private const LOCAL_DB_HOSTS = [
-        '127.0.0.1', 'localhost', '::1',
-        'postgres', 'postgres-dev', 'postgres-test',
-        'ot-postgres-dev', 'ot-postgres-test',
-    ];
-
     public function run(): void
     {
         $this->assertTargetIsLocal();
@@ -106,20 +102,25 @@ class DatabaseSeeder extends Seeder
         }
     }
 
+    /**
+     * Lire `host` ne suffit pas : quand DB_URL est definie, cette entree garde son ancienne
+     * valeur pendant que Laravel se connecte ailleurs. Un DB_URL de production sur une
+     * configuration par defaut fait donc lire « 127.0.0.1 » — accepte — alors que le seeder
+     * ecrit en production. C'est le mecanisme qui a efface la base le 22/08/2026.
+     */
     private function assertTargetIsLocal(): void
     {
-        $connection = config('database.default');
-        $host = (string) config("database.connections.{$connection}.host");
-        $database = (string) config("database.connections.{$connection}.database");
+        $connection = (string) config('database.default');
+        $cible = EffectiveDatabaseTarget::resolve(config("database.connections.{$connection}", []));
 
-        if (in_array($host, self::LOCAL_DB_HOSTS, true)) {
+        if (LocalDatabaseHosts::allows($cible['host'])) {
             return;
         }
 
         throw new RuntimeException(
-            "Seeder refusé : la connexion « {$connection} » cible l'hôte « {$host} » "
-            ."(base « {$database} »), qui n'est pas reconnu comme local.\n"
-            .'Hôtes acceptés : '.implode(', ', self::LOCAL_DB_HOSTS)
+            "Seeder refusé : la connexion « {$connection} » cible l'hôte « {$cible['host']} » "
+            ."(base « {$cible['database']} »), qui n'est pas reconnu comme local.\n"
+            .'Hôtes acceptés : '.implode(', ', LocalDatabaseHosts::ALLOWED)
         );
     }
 
