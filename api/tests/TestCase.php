@@ -15,11 +15,15 @@ abstract class TestCase extends BaseTestCase
 
     /**
      * Authentifie un utilisateur admin (middleware `admin`) et le retourne.
+     *
+     * La capacite est passee explicitement, comme `User::jetonDeSession()` le fait en
+     * production : `Sanctum::actingAs($user)` sans capacite modelise un jeton qui n'en a
+     * AUCUNE, un etat que l'emission reelle ne produit jamais.
      */
     protected function actingAsAdmin(): User
     {
         $admin = User::factory()->admin()->create();
-        Sanctum::actingAs($admin);
+        Sanctum::actingAs($admin, ['admin']);
 
         return $admin;
     }
@@ -30,7 +34,7 @@ abstract class TestCase extends BaseTestCase
     protected function actingAsClient(array $attributes = []): User
     {
         $user = User::factory()->create($attributes);
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['client']);
 
         return $user;
     }

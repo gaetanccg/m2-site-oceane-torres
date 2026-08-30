@@ -56,7 +56,7 @@ class AuthController extends Controller
             ->whereNull('user_id')
             ->update(['user_id' => $user->id]);
 
-        $token = $user->createToken('auth-token')->plainTextToken;
+        $token = $user->jetonDeSession()->plainTextToken;
 
         return response()->json([
             'user' => new UserResource($user),
@@ -77,7 +77,7 @@ class AuthController extends Controller
 
         $user = User::where('email', $request->email)->firstOrFail();
         $this->journaliserTentative($request, true, $user);
-        $token = $user->createToken('auth-token')->plainTextToken;
+        $token = $user->jetonDeSession()->plainTextToken;
 
         return response()->json([
             'success' => true,

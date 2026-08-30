@@ -13,6 +13,7 @@ use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\HandleCors;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 use Sentry\Laravel\Integration;
@@ -29,6 +30,19 @@ return Application::configure(basePath: dirname(__DIR__))
         api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
+        // La surface d'administration est montee ICI, avec sa protection, plutot que
+        // declaree dans le corps de `api.php`. Tant que le groupe y vivait, une accolade
+        // mal placee au milieu de 147 declarations publiait 96 routes sans garde, et rien
+        // ne l'aurait signale. Poser le groupe au montage rend la protection structurelle :
+        // une route ajoutee a `routes/admin.php` ne peut pas naitre sans elle.
+        //
+        // C'est aussi le seul endroit a modifier pour toute mesure d'isolation a venir —
+        // second facteur, restriction d'origine — au lieu de 96 editions.
+        then: function (): void {
+            Route::middleware(['api', 'auth:sanctum', 'admin', 'throttle:admin'])
+                ->prefix('api/admin')
+                ->group(base_path('routes/admin.php'));
+        },
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: [

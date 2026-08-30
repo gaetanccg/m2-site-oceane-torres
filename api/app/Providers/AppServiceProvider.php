@@ -124,6 +124,27 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(60)->by($request->ip());
         });
 
+        // Les 96 routes d'administration n'avaient AUCUN plafond. Le compte de la
+        // photographe est le plus interessant du site : il lit les coordonnees de toutes
+        // les clientes, exporte les donnees personnelles et supprime des galeries. Sans
+        // limite, un jeton vole se moissonne a pleine vitesse.
+        //
+        // La cle est l'utilisateur, pas l'IP : la photographe travaille depuis chez elle
+        // et en deplacement, et une IP partagee ferait payer une cliente pour une autre.
+        // Repli sur l'IP quand l'authentification n'a pas encore eu lieu.
+        //
+        // Le plafond est genereux — l'admin televerse par lots et un ecran declenche
+        // plusieurs appels — mais il borne le moissonnage : 600 lectures par minute, la ou
+        // une session humaine en fait quelques dizaines.
+        RateLimiter::for('admin', function (Request $request) {
+            $cle = $request->user()?->getAuthIdentifier() ?? $request->ip();
+
+            return [
+                Limit::perMinute(600)->by('admin:'.$cle),
+                Limit::perHour(6000)->by('admin-h:'.$cle),
+            ];
+        });
+
         // Deux echelles : la limite par minute arrete une rafale, celle par heure arrete
         // un bourrage lent qui reste sous le seuil de la premiere.
         RateLimiter::for('auth', function (Request $request) {

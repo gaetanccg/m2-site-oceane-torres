@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Laravel\Sanctum\NewAccessToken;
 
 class User extends Authenticatable
 {
@@ -42,6 +43,22 @@ class User extends Authenticatable
     public function getFullNameAttribute(): string
     {
         return "{$this->first_name} {$this->last_name}";
+    }
+
+    /**
+     * Le jeton d'une session, portant les seules capacites du role au moment de l'emission.
+     *
+     * `createToken()` sans capacites emet un jeton `*`, tout-puissant sur les 148 routes.
+     * Un jeton emis alors que le compte etait client ne peut desormais plus atteindre
+     * l'administration si le compte est promu ensuite : la capacite est figee a l'emission.
+     *
+     * Portee : le chemin **Bearer** uniquement. Sous authentification par session, Sanctum
+     * fournit un `TransientToken` dont `can()` renvoie toujours vrai — c'est voulu, et cela
+     * signifie qu'une capacite ne filtre rien pour le front qui utilise le cookie.
+     */
+    public function jetonDeSession(): NewAccessToken
+    {
+        return $this->createToken('auth-token', [$this->isAdmin() ? 'admin' : 'client']);
     }
 
     public function isAdmin(): bool
