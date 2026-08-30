@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Invoice;
 use App\Models\Order;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -34,13 +35,32 @@ class InvoiceService
             return $existing;
         }
 
-        $invoice = DB::transaction(function () use ($order) {
-            return Invoice::create([
-                'order_id' => $order->id,
-                'invoice_number' => Invoice::generateInvoiceNumber(),
-                'generated_at' => now(),
-            ]);
-        });
+        // Le `first()` ci-dessus ne suffit pas : trois appelants concurrents (webhook SumUp,
+        // polling du front, action admin) peuvent le passer ensemble sur une commande sans
+        // facture. Seule la contrainte d'unicite sur order_id tranche — un verrou applicatif
+        // ne peut pas empecher deux insertions de lignes qui n'existent pas encore. Celui qui
+        // perd la course recupere la facture du gagnant plutot que d'en creer une seconde.
+        try {
+            $invoice = DB::transaction(function () use ($order) {
+                return Invoice::create([
+                    'order_id' => $order->id,
+                    'invoice_number' => Invoice::generateInvoiceNumber(),
+                    'generated_at' => now(),
+                ]);
+            });
+        } catch (UniqueConstraintViolationException $e) {
+            $gagnante = Invoice::where('order_id', $order->id)->first();
+
+            if (! $gagnante) {
+                throw $e;
+            }
+
+            if (! $gagnante->file_path) {
+                $this->attachPdf($gagnante, $order);
+            }
+
+            return $gagnante;
+        }
 
         $this->attachPdf($invoice, $order);
 
