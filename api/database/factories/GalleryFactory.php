@@ -26,11 +26,6 @@ class GalleryFactory extends Factory
         ];
     }
 
-    public function public(): static
-    {
-        return $this->state(fn () => ['type' => 'public']);
-    }
-
     public function private(): static
     {
         return $this->state(fn () => ['type' => 'private']);

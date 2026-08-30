@@ -8,6 +8,7 @@ use App\Models\Photo;
 use App\Models\User;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -68,9 +69,26 @@ class GalleryZipTest extends TestCase
         $this->assertNotEmpty($response->streamedContent());
     }
 
-    public function test_public_gallery_is_downloadable_without_token(): void
+    /**
+     * Ce test affirmait l'inverse jusqu'au 31/08 : une galerie `type = 'public'` se
+     * telechargeait sans jeton. Mesure de D2 : ZERO galerie portait cette valeur, aucun
+     * FormRequest ne l'acceptait, aucun code ne l'ecrivait, et `scopePublic()` n'avait aucun
+     * appelant — une branche de privilege que seule la fabrique de tests savait armer. Elle
+     * est retiree ; ce test garde sa place pour interdire son retour.
+     */
+    public function test_une_galerie_marquee_public_n_est_plus_telechargeable_sans_jeton(): void
     {
-        $gallery = Gallery::factory()->public()->create();
+        $gallery = Gallery::factory()->private()->create();
+        DB::table('galleries')->where('id', $gallery->id)->update(['type' => 'public']);
+        $this->downloadablePhotoWithFile($gallery->refresh(), 'p1');
+
+        $this->get("/api/galleries/{$gallery->id}/download-zip")->assertStatus(403);
+    }
+
+    /** Le pendant reel : une galerie d'evenement PUBLIEE reste telechargeable sans jeton. */
+    public function test_une_galerie_d_evenement_publiee_est_telechargeable_sans_jeton(): void
+    {
+        $gallery = Gallery::factory()->event()->create(['is_published' => true]);
         $this->downloadablePhotoWithFile($gallery, 'p1');
 
         $this->get("/api/galleries/{$gallery->id}/download-zip")->assertOk();
@@ -78,22 +96,22 @@ class GalleryZipTest extends TestCase
 
     public function test_empty_downloadable_set_returns_404(): void
     {
-        $gallery = Gallery::factory()->public()->create();
+        $gallery = Gallery::factory()->private()->create();
         // Photo NON téléchargeable uniquement.
         Photo::factory()->notDownloadable()->create(['gallery_id' => $gallery->id]);
 
-        $this->get("/api/galleries/{$gallery->id}/download-zip")->assertStatus(404);
+        $this->get("/api/galleries/{$gallery->id}/download-zip?token={$gallery->access_token}")->assertStatus(404);
     }
 
     public function test_only_downloadable_photos_are_logged_when_streamed(): void
     {
-        $gallery = Gallery::factory()->public()->create();
+        $gallery = Gallery::factory()->private()->create();
         $this->downloadablePhotoWithFile($gallery, 'a');
         $this->downloadablePhotoWithFile($gallery, 'b');
         // Une photo non téléchargeable : ne doit pas figurer dans le ZIP.
         Photo::factory()->notDownloadable()->create(['gallery_id' => $gallery->id]);
 
-        $response = $this->get("/api/galleries/{$gallery->id}/download-zip");
+        $response = $this->get("/api/galleries/{$gallery->id}/download-zip?token={$gallery->access_token}");
         $response->streamedContent(); // force l'exécution du closure de streaming
 
         // recordDownload appelé une fois par photo réellement streamée.
@@ -102,12 +120,12 @@ class GalleryZipTest extends TestCase
 
     public function test_photo_with_missing_storage_object_is_skipped(): void
     {
-        $gallery = Gallery::factory()->public()->create();
+        $gallery = Gallery::factory()->private()->create();
         $this->downloadablePhotoWithFile($gallery, 'present');
         // Photo téléchargeable mais SANS fichier sur le disque → readStream null → ignorée.
         Photo::factory()->downloadable()->create(['gallery_id' => $gallery->id, 'title' => 'missing']);
 
-        $response = $this->get("/api/galleries/{$gallery->id}/download-zip");
+        $response = $this->get("/api/galleries/{$gallery->id}/download-zip?token={$gallery->access_token}");
         $response->streamedContent();
 
         // Seule la photo présente est loggée.
@@ -120,7 +138,7 @@ class GalleryZipTest extends TestCase
         $gallery = Gallery::factory()->event()->create();
         $this->downloadablePhotoWithFile($gallery, 'p1');
 
-        $this->get("/api/galleries/{$gallery->id}/download-zip")->assertOk();
+        $this->get("/api/galleries/{$gallery->id}/download-zip?token={$gallery->access_token}")->assertOk();
     }
 
     public function test_owner_can_download_private_gallery_without_token(): void
@@ -131,18 +149,18 @@ class GalleryZipTest extends TestCase
         $gallery = Gallery::factory()->private()->create(['user_id' => $owner->id]);
         $this->downloadablePhotoWithFile($gallery, 'p1');
 
-        $this->get("/api/galleries/{$gallery->id}/download-zip")->assertOk();
+        $this->get("/api/galleries/{$gallery->id}/download-zip?token={$gallery->access_token}")->assertOk();
     }
 
     public function test_caps_at_500_photos(): void
     {
-        $gallery = Gallery::factory()->public()->create();
+        $gallery = Gallery::factory()->private()->create();
         $photos = Photo::factory()->count(501)->downloadable()->create(['gallery_id' => $gallery->id]);
         foreach ($photos as $photo) {
             $this->disk->put($photo->resolved_storage_path, 'x');
         }
 
-        $response = $this->get("/api/galleries/{$gallery->id}/download-zip");
+        $response = $this->get("/api/galleries/{$gallery->id}/download-zip?token={$gallery->access_token}");
         $response->streamedContent();
 
         // Plafond dur de 500 : au-delà, les photos ne sont pas streamées ni loggées.
@@ -151,11 +169,11 @@ class GalleryZipTest extends TestCase
 
     public function test_duplicate_titles_get_unique_zip_entry_names(): void
     {
-        $gallery = Gallery::factory()->public()->create();
+        $gallery = Gallery::factory()->private()->create();
         $this->downloadablePhotoWithFile($gallery, 'dup');
         $this->downloadablePhotoWithFile($gallery, 'dup');
 
-        $response = $this->get("/api/galleries/{$gallery->id}/download-zip");
+        $response = $this->get("/api/galleries/{$gallery->id}/download-zip?token={$gallery->access_token}");
 
         $tmp = tempnam(sys_get_temp_dir(), 'ziptest').'.zip';
         file_put_contents($tmp, $response->streamedContent());

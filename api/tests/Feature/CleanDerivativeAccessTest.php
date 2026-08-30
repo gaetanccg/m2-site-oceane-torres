@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Gallery;
 use App\Models\Photo;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -73,12 +74,31 @@ class CleanDerivativeAccessTest extends TestCase
         $this->getJson(sprintf($gabarit, $photo->id).'?token=mauvais')->assertStatus(403);
     }
 
-    /** La consultation d'une galerie publique, elle, ne demande toujours pas de jeton. */
-    public function test_la_consultation_d_une_galerie_publique_reste_ouverte(): void
+    /**
+     * Ce test affirmait jusqu'au 31/08 que la consultation d'une galerie `type = 'public'`
+     * restait ouverte sans jeton. C'etait vrai, et c'etait le probleme : cette valeur avait
+     * ZERO producteur — aucune galerie ne la portait, aucun FormRequest ne l'acceptait, rien
+     * ne l'ecrivait — pour trois consommateurs dans des chemins d'AUTORISATION. Une branche
+     * dormante qu'un simple `update` armait. D2 l'a retiree ; le test garde sa place pour
+     * interdire son retour.
+     */
+    public function test_une_galerie_marquee_public_n_est_plus_consultable_sans_jeton(): void
     {
-        $gallery = Gallery::factory()->create(['type' => 'public', 'is_published' => true]);
+        $gallery = Gallery::factory()->create(['type' => 'private', 'is_published' => true]);
+        DB::table('galleries')->where('id', $gallery->id)->update(['type' => 'public']);
 
-        $this->assertTrue($gallery->isAccessible(null));
+        $gallery->refresh();
+
+        $this->assertFalse($gallery->isAccessible(null));
+        $this->assertFalse($gallery->grantsCleanDerivatives(null));
+    }
+
+    /** Ce qui reste ouvert sans jeton, et qui est reel : l'evenement publie. */
+    public function test_une_galerie_d_evenement_publiee_reste_consultable_sans_jeton(): void
+    {
+        $gallery = Gallery::factory()->event()->create(['is_published' => true]);
+
+        $this->assertTrue($gallery->grantsWatermarkedPreview(null));
         $this->assertFalse($gallery->grantsCleanDerivatives(null));
     }
 }

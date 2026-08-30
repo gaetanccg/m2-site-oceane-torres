@@ -8,16 +8,16 @@ use App\Models\User;
 class GalleryPolicy
 {
     /**
-     * Anyone can view a public gallery.
-     * Private galleries require a valid access token.
+     * Une galerie d'evenement PUBLIEE se consulte librement ; toute autre exige un jeton.
+     *
+     * Une troisieme branche existait ici : `type === 'public'` rendait vrai pour n'importe
+     * qui, sans jeton. Mesure du 30/08 : ZERO galerie portait cette valeur, aucun FormRequest
+     * ne l'acceptait, aucun code ne l'ecrivait — et `scopePublic()` n'avait aucun appelant.
+     * Une branche de privilege dormante, qu'il suffisait d'un `update` pour armer. Retiree.
      */
     public function view(?User $user, Gallery $gallery, ?string $token = null): bool
     {
-        if ($gallery->type === 'public') {
-            return true;
-        }
-
-        if ($gallery->type === 'event' && $gallery->is_published) {
+        if ($gallery->kind === Gallery::KIND_EVENT && $gallery->is_published) {
             return true;
         }
 
