@@ -25,6 +25,7 @@
 use App\Http\Controllers\Api\Admin\ClientController;
 use App\Http\Controllers\Api\Admin\DashboardController;
 use App\Http\Controllers\Api\Admin\EventCategoryController;
+use App\Http\Controllers\Api\Admin\EventGalleryController as AdminEventGalleryController;
 use App\Http\Controllers\Api\Admin\GiftCardController;
 use App\Http\Controllers\Api\Admin\GiftCodeController;
 use App\Http\Controllers\Api\Admin\LogController;
@@ -34,7 +35,6 @@ use App\Http\Controllers\Api\Admin\PrestationController as AdminPrestationContro
 use App\Http\Controllers\Api\Admin\PrivacyController;
 use App\Http\Controllers\Api\Admin\ReservationController;
 use App\Http\Controllers\Api\Admin\SchoolSessionController;
-use App\Http\Controllers\Api\EventGalleryController;
 use App\Http\Controllers\Api\GalleryController;
 use App\Http\Controllers\Api\HealthController;
 use Illuminate\Support\Facades\Route;
@@ -102,13 +102,13 @@ Route::put('/event-categories/{category}', [EventCategoryController::class, 'upd
 Route::delete('/event-categories/{category}', [EventCategoryController::class, 'destroy']);
 
 // Event Galleries management
-Route::get('/events', [EventGalleryController::class, 'adminIndex']);
-Route::get('/events/{gallery}', [EventGalleryController::class, 'adminShow']);
-Route::post('/events', [EventGalleryController::class, 'store']);
-Route::put('/events/{gallery}', [EventGalleryController::class, 'update']);
-Route::delete('/events/{gallery}', [EventGalleryController::class, 'destroy']);
-Route::put('/events/{gallery}/thumbnail', [EventGalleryController::class, 'setThumbnail']);
-Route::get('/events/{gallery}/children', [EventGalleryController::class, 'children']);
+Route::get('/events', [AdminEventGalleryController::class, 'index']);
+Route::get('/events/{gallery}', [AdminEventGalleryController::class, 'show']);
+Route::post('/events', [AdminEventGalleryController::class, 'store']);
+Route::put('/events/{gallery}', [AdminEventGalleryController::class, 'update']);
+Route::delete('/events/{gallery}', [AdminEventGalleryController::class, 'destroy']);
+Route::put('/events/{gallery}/thumbnail', [AdminEventGalleryController::class, 'setThumbnail']);
+Route::get('/events/{gallery}/children', [AdminEventGalleryController::class, 'children']);
 Route::post('/events/{gallery}/photos/async', [AdminPhotoController::class, 'storeAsync']);
 
 // Upload status (for polling)
