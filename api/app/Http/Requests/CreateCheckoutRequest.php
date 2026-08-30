@@ -4,11 +4,24 @@ namespace App\Http\Requests;
 
 use App\Services\CartService;
 use App\Services\PricingService;
+use App\Support\NumeroDeTelephone;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 
 class CreateCheckoutRequest extends FormRequest
 {
+    /**
+     * Le champ demande `autocomplete="tel-national"` : ce que le navigateur rend porte
+     * souvent des espaces, ou la forme internationale. On normalise AVANT de valider,
+     * sinon l'autoremplissage aboutit a un formulaire refuse.
+     */
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('shipping_phone')) {
+            $this->merge(['shipping_phone' => NumeroDeTelephone::normaliser($this->input('shipping_phone'))]);
+        }
+    }
+
     public function authorize(): bool
     {
         return true;
@@ -61,7 +74,7 @@ class CreateCheckoutRequest extends FormRequest
             'cgv_accepted.required' => 'Vous devez accepter les Conditions Générales de Vente.',
             'cgv_accepted.accepted' => 'Vous devez accepter les Conditions Générales de Vente.',
             'shipping_phone.required' => 'Le numéro de téléphone est obligatoire pour l\'envoi des tirages.',
-            'shipping_phone.regex' => 'Le numéro doit être un numéro français à 10 chiffres (ex: 0612345678).',
+            'shipping_phone.regex' => 'Le numéro doit être un numéro français à 10 chiffres (ex : 06 12 34 56 78).',
             'shipping_address_line1.required' => 'L\'adresse est obligatoire pour l\'envoi des tirages.',
             'shipping_postal_code.required' => 'Le code postal est obligatoire pour l\'envoi des tirages.',
             'shipping_postal_code.regex' => 'Le code postal doit contenir 5 chiffres.',

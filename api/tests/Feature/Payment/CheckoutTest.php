@@ -166,6 +166,53 @@ class CheckoutTest extends TestCase
     }
 
     /**
+     * Le champ demande `autocomplete="tel-national"` au navigateur, puis refusait ce qu'il
+     * rendait : la validation exigeait dix chiffres colles, sans normalisation. Un numero
+     * avec des espaces — la forme que le placeholder de l'inscription affiche lui-meme —
+     * etait rejete. L'autoremplissage menait donc a un formulaire refuse.
+     */
+    public function test_un_numero_avec_espaces_est_accepte_et_range_sous_forme_canonique(): void
+    {
+        $this->fakeSumUp(createCheckout: ['id' => 'chk_tel', 'status' => 'PENDING']);
+
+        $cart = Cart::factory()->create(['session_id' => 'tel-session']);
+        $gallery = Gallery::factory()->withShippingFee(3.00)->create();
+        $photo = Photo::factory()->create(['gallery_id' => $gallery->id]);
+        CartItem::factory()->print('print_10x15')->create([
+            'cart_id' => $cart->id,
+            'photo_id' => $photo->id,
+        ]);
+
+        $this->checkout('tel-session', [
+            'shipping_phone' => '06 12 34 56 78',
+            'shipping_address_line1' => '1 rue de la Photo',
+            'shipping_postal_code' => '75001',
+            'shipping_city' => 'Paris',
+        ])->assertOk();
+
+        $this->assertSame('0612345678', Order::first()->shipping_phone);
+    }
+
+    /** La normalisation ne doit pas faire passer un numero qui n'en est pas un. */
+    public function test_un_numero_trop_court_reste_refuse(): void
+    {
+        $cart = Cart::factory()->create(['session_id' => 'tel-court']);
+        $gallery = Gallery::factory()->withShippingFee(3.00)->create();
+        $photo = Photo::factory()->create(['gallery_id' => $gallery->id]);
+        CartItem::factory()->print('print_10x15')->create([
+            'cart_id' => $cart->id,
+            'photo_id' => $photo->id,
+        ]);
+
+        $this->checkout('tel-court', [
+            'shipping_phone' => '06 12 34 56',
+            'shipping_address_line1' => '1 rue de la Photo',
+            'shipping_postal_code' => '75001',
+            'shipping_city' => 'Paris',
+        ])->assertStatus(422)->assertJsonValidationErrors('shipping_phone');
+    }
+
+    /**
      * Un prix en HAUSSE au moment du paiement arrete le checkout : la cliente serait
      * debitee d'un montant qu'elle n'a pas vu. getCartSummary resynchronise les prix a
      * chaque consultation du panier, donc un ecart ici signifie que le tarif a change

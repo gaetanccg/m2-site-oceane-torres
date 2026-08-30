@@ -326,6 +326,7 @@ import {cartApi, CartApiError, type ShippingAddress} from '@/services/cartApi'
 import {useToast} from '@/composables/useToast'
 import {useGtag} from '@/composables/useGtag'
 import {formatPrice} from '@/utils/format'
+import {isValidFrenchPhone, normalizePhone} from '@/utils/phone'
 import ShippingAddressFields from '@/components/cart/ShippingAddressFields.vue'
 
 declare global {
@@ -416,7 +417,6 @@ const shipping = ref<ShippingAddress>({
 
 const shippingErrors = ref<Partial<Record<keyof ShippingAddress, string>>>({})
 
-const PHONE_REGEX = /^0[1-9]\d{8}$/
 const POSTAL_REGEX = /^\d{5}$/
 
 function validateShipping(): boolean {
@@ -425,8 +425,11 @@ function validateShipping(): boolean {
 
     if (!s.shipping_phone?.trim()) {
         errors.shipping_phone = 'Numéro de téléphone requis'
-    } else if (!PHONE_REGEX.test(s.shipping_phone.trim())) {
-        errors.shipping_phone = 'Numéro français à 10 chiffres (ex: 0612345678)'
+    } else if (!isValidFrenchPhone(s.shipping_phone)) {
+        errors.shipping_phone = 'Numéro français à 10 chiffres (ex : 06 12 34 56 78)'
+    } else {
+        // On range la forme canonique : c'est elle qui part à l'API, et elle seule.
+        s.shipping_phone = normalizePhone(s.shipping_phone)
     }
 
     if (!s.shipping_address_line1?.trim()) {
