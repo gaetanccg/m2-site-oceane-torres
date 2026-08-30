@@ -1,10 +1,29 @@
 # Plan de refonte — Océane Torres Photographie
 
+## ▶ Avancement — 4 étapes sur 15
+
+**L'avancement se lit dans un seul tableau : [§3.3 Ordre d'exécution](#33-ordre-dexécution).**
+Une ligne par étape, ✅ quand elle est faite. C'est le seul endroit à tenir à jour.
+
+```
+✅ 1  POST /gift-cards sous garde admin
+✅ 2  L'administration hors du bundle public
+✅ 3  AdminSurfaceAccessTest — 96 routes × 3 acteurs
+✅ 4  routes/admin.php monté + throttle:admin
+🔜 5  État réel des environnements (Redis)             ← en cours
+   6…15                                                point de bascule à l'étape 9
+```
+
+Décisions produit : **8/8 tranchées** (§12) · Tests : **599** API, **73** front
+Dernière mise à jour : **2026-08-30**
+
+---
+
 > **Document de travail exécutable.** Il traduit l'audit (`AUDIT_PROJET.md`, 13 sections) en actions
 > ordonnées, chacune traçable jusqu'au constat qui la motive.
 >
-> **Date** : 2026-08-22 · **Source** : `AUDIT_PROJET.md` · **Périmètre** : 68 items de dette
-> (16 critiques, 24 élevés) · **Charge estimée** : 50-53 jours
+> **Source** : `AUDIT_PROJET.md` · **Périmètre** : 85 items de dette · le déroulé des phases 0 à 3
+> est dans [`docs/journal-refonte.md`](docs/journal-refonte.md)
 
 ---
 
@@ -84,16 +103,16 @@ comprendre *pourquoi* une chose a été faite ainsi, jamais pour savoir quoi fai
 le temps, mais ces décisions, qui bloquaient D2, D4, D5, D6 et par ricochet #48 et la moitié
 de la phase 3.
 
-**Ce qui reste tient dans une seule liste : §3.3, quinze étapes ordonnées.** Les trois
+**Ce qui reste tient dans une seule liste : §3.3, quinze étapes ordonnées.** Les quatre
 premières sont faites. Le point de bascule est à la neuvième, à environ neuf jours — après quoi on peut
 s'arrêter sans dette.
 
 | | |
 |---|---|
 | Décisions produit tranchées | **8 / 8** |
-| Étapes de la liste vivante | **3 / 15** |
+| Étapes de la liste vivante | **4 / 15** |
 | Jusqu'au point de bascule | **~9 j** |
-| Tests | **591** API (1 537 assertions) · **73** front |
+| Tests | **599** API (1 558 assertions) · **73** front |
 | En attente de Gaëtan | **6 actions**, dont une urgente (§3bis) |
 
 ### Par où entrer dans ce document
@@ -242,7 +261,7 @@ redéploie tout le code de la branche de production. En face, `dist/` passe de 3
 | 2 | ✅ **L'administration ne part plus dans le bundle public** | Chunk d'entrée 137 969 → 121 162 octets, chemins `/admin` 15 → 0. Le second `login()` du store visait le **même** endpoint que `authApi`, sans appelant ; `AdminApiError` était redondant avec `AuthApiError`. Côté services, `login/logout/getUser` de `dashboardApi` étaient des copies : **supprimées, pas déplacées** — le plan disait de les déplacer, cela aurait créé des doublons. Vérifié au navigateur. **Fait le 30/08** | 0,5 j |
 | 3 | ✅ **`AdminSurfaceAccessTest` — 96 routes × 3 acteurs** | Le filet avant D2. Périmètre défini par l'**URL et le contrôleur**, jamais par la présence du middleware : sinon une route qui s'échappe sort aussi de l'énumération, et le test passe. Identifiants **réels** — le route-model-binding s'exécute avant la garde, donc un id absent rend 404 et ne prouve rien. Éprouvé par deux mutations. **Fait le 30/08** | 1 j |
 | 4 | 🔜 `routes/admin.php` via `withRouting` + test de garde + `throttle:admin` + abilities | Rend modifiables **en une ligne sur le groupe** toutes les mesures ultérieures, au lieu de 85 éditions. Aucun limiteur `admin` n'existe : les 95 routes sont sans plafond | 1,5 j |
-| 5 | Établir l'état réel des environnements (`CACHE_STORE`, `SESSION_DRIVER`, `QUEUE_CONNECTION`) | §2.3 est cochée sur une supposition contredite par les deux `.env` | 0,25 j |
+| 5 | 🔜 Établir l'état réel des environnements (`CACHE_STORE`, `SESSION_DRIVER`, `QUEUE_CONNECTION`) | §2.3 est cochée sur une supposition contredite par les deux `.env` | 0,25 j |
 | 6 | Trancher le sort de la phase 4 | D2, D4 et D5 changent chacune le schéma, et le plan offre **deux véhicules contradictoires** | 0,5 j |
 | 7 | Filet de tests de rendu (3 parcours) | Trois items du plan en sont prisonniers ; D2 et D6 en ajouteraient deux | 1 j |
 | 8 | Règle ESLint + contrôle d'isolation **dans `build:prerender`** | ⚠️ Pas dans `ci.yml` : il n'existe **aucun workflow de déploiement**, Render construit seul. Un contrôle en CI ne bloquerait rien | 0,75 j |
@@ -660,7 +679,7 @@ c'est celui-ci. → §11.7 de l'audit
 | 77 | Le jeton d'admin est en `localStorage`, même origine que le site public | 🟠 | **§3.3** | ⏳ à traiter |
 | 78 | Aucun journal d'audit des actions d'administration hors RGPD (87 routes sur 95) | 🟡 | **§3.3 étape 14** | ⏳ à traiter |
 | 79 | `POST /gift-cards` ouverte à tout compte authentifié — bon de 500 € émissible par une cliente | 🔴 | **§3.3 étape 1** | ✅ 30/08 |
-| 80 | Aucun limiteur de débit sur les 95 routes admin | 🟠 | **§3.3 étape 4** | ⏳ à traiter |
+| 80 | Aucun limiteur de débit sur les 96 routes admin | 🟠 | **§3.3 étape 4** | ✅ 30/08 |
 | 81 | Les originaux pleine résolution publiés en clair (286 Mo dans `dist/`) | 🟠 | **§3.2 D6** | ⏳ détachable |
 | 82 | `invoices` ne stocke aucun montant : modifier une commande réécrit une facture émise | 🔴 | **§3.2 D5 / #48** | ⏳ à trancher |
 | 83 | `/admin/dashboard` répondait 500 : `customer_name` est un accesseur, pas une colonne | 🔴 | **3.6 (régression)** | ✅ 30/08 |
@@ -762,6 +781,7 @@ Le projet est considéré comme refondu quand **tout** ce qui suit est vrai.
 | 2026-08-23 | #31 | `clients.source` **recalculée** et rendue fiable | mesure | Livré en 3.5 |
 | | #6 | Réémettre les factures fausses ? | **en attente de Gaëtan** | Décision commerciale, pas technique |
 | | #48 | Format de l'export comptable | **en attente du comptable** | `date_piece` **et** `date_encaissement` distinctes + `reference_rectifiee` : un micro-entrepreneur déclare à l'encaissement. Bloqué par D5 |
+| 2026-08-30 | — | **Capacités de jeton : émises, non contrôlées.** `User::jetonDeSession()` pose `admin` ou `client` au lieu d'un `*` tout-puissant, mais aucune garde ne les vérifie. | mesure | La garde `tokenCan('admin')` a été essayée puis retirée : elle n'empêche qu'un jeton émis avant une promotion de rôle — cas quasi inexistant sur 18 comptes et une administratrice — au prix d'une seconde condition d'échec permanente et de 25 tests modélisant un jeton que la production n'émet jamais. **Condition de levée : le jour où des jetons restreints existent** (application mobile, codes de récupération du second facteur) |
 | 2026-08-30 | — | **Isolation de l'admin** : console sur `admin.oceanetorresphotographie.fr`, servie par le nginx du NAS, derrière Cloudflare Access. Seconde entrée Vite depuis le même `web/src`. | Gaëtan → recommandation | Voir §3. Précédée du durcissement serveur, qui seul ferme quelque chose |
 
 ---
