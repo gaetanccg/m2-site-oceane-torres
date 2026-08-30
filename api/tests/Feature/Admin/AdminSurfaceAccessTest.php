@@ -4,6 +4,7 @@ namespace Tests\Feature\Admin;
 
 use App\Models\Client;
 use App\Models\EventCategory;
+use App\Models\EventGallery;
 use App\Models\Gallery;
 use App\Models\GiftCard;
 use App\Models\GiftCode;
@@ -112,6 +113,7 @@ class AdminSurfaceAccessTest extends TestCase
             'client' => Client::factory()->create()->id,
             'export' => SchoolSessionExport::create(['school_session_id' => $session->id])->id,
             'gallery' => Gallery::factory()->create()->id,
+            'eventGallery' => EventGallery::create(['title' => 'Evenement temoin'])->id,
             'giftCard' => GiftCard::factory()->create()->id,
             'giftCode' => GiftCode::factory()->create()->id,
             'gift_code' => GiftCode::factory()->create()->id,
@@ -128,9 +130,13 @@ class AdminSurfaceAccessTest extends TestCase
      * Le chemin concret d'une route. Tout parametre non resolu reste marque : le test le
      * signale plutot que de le laisser passer en 404 silencieux.
      *
-     * ⚠️ `{export}` designe DEUX modeles selon la route — `SchoolSessionExport` sous
-     * `school-session-exports`, `PrivacyExport` sous `privacy/exports`. Meme nom, deux
-     * tables : c'est le genre de collision que la separation par audience de D2 doit lever.
+     * ⚠️ Deux parametres portent le meme nom pour des natures differentes :
+     *   · `{export}` — `SchoolSessionExport` sous `school-session-exports`, `PrivacyExport`
+     *     sous `privacy/exports`. Meme nom, deux tables.
+     *   · `{gallery}` — depuis D2, les routes `events/*` lient une `EventGallery`, dont le
+     *     scope exclut les galeries clientes et scolaires. Un identifiant de mauvaise nature
+     *     y rend 404, et un 404 ne prouve RIEN sur la garde : il faut un identifiant de la
+     *     bonne nature pour que le refus mesure quelque chose.
      *
      * @param  list<string>  $nonResolus
      */
@@ -144,6 +150,10 @@ class AdminSurfaceAccessTest extends TestCase
 
             if ($nom === 'export' && str_contains($uriBrute, 'privacy/exports')) {
                 $nom = 'privacyExport';
+            }
+
+            if ($nom === 'gallery' && str_contains($uriBrute, 'admin/events')) {
+                $nom = 'eventGallery';
             }
 
             if (isset($identifiants[$nom])) {

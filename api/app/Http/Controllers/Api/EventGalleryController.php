@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\SetThumbnailRequest;
 use App\Http\Requests\Admin\StoreEventGalleryRequest;
 use App\Http\Requests\Admin\UpdateEventGalleryRequest;
 use App\Http\Resources\GalleryResource;
+use App\Models\EventGallery;
 use App\Models\Gallery;
 use App\Models\Photo;
 use App\Services\MinioStorageService;
@@ -63,9 +64,13 @@ class EventGalleryController extends Controller
         return response()->json($galleries);
     }
 
-    public function show(Gallery $gallery): JsonResponse
+    public function show(EventGallery $gallery): JsonResponse
     {
-        if ($gallery->type !== 'event' || ! $gallery->is_published) {
+        // La NATURE est garantie par le type de parametre : le route-model-binding cherche
+        // dans le perimetre d'EventGallery, donc un identifiant de galerie cliente ou
+        // scolaire rend 404 avant d'entrer ici. Reste la publication, qui n'est pas une
+        // nature mais un etat.
+        if (! $gallery->is_published) {
             return response()->json([
                 'message' => 'Galerie non trouvée.',
             ], 404);
@@ -143,14 +148,8 @@ class EventGalleryController extends Controller
         return response()->json($galleries);
     }
 
-    public function adminShow(Gallery $gallery): JsonResponse
+    public function adminShow(EventGallery $gallery): JsonResponse
     {
-        if ($gallery->type !== 'event') {
-            return response()->json([
-                'message' => 'Galerie non trouvée.',
-            ], 404);
-        }
-
         $isParent = $gallery->children()->exists();
 
         if ($isParent) {
@@ -198,9 +197,11 @@ class EventGalleryController extends Controller
 
         // Validate parent gallery constraints
         if (! empty($validated['parent_id'])) {
-            $parent = Gallery::find($validated['parent_id']);
+            // `EventGallery::find` ne trouve QUE des galeries d'evenement : la nature du
+            // parent n'a plus a etre comparee a la main.
+            $parent = EventGallery::find($validated['parent_id']);
 
-            if (! $parent || $parent->type !== 'event') {
+            if (! $parent) {
                 return response()->json([
                     'message' => 'Le parent doit être une galerie événement.',
                 ], 422);
@@ -246,14 +247,8 @@ class EventGalleryController extends Controller
         ], 201);
     }
 
-    public function update(UpdateEventGalleryRequest $request, Gallery $gallery): JsonResponse
+    public function update(UpdateEventGalleryRequest $request, EventGallery $gallery): JsonResponse
     {
-        if ($gallery->type !== 'event') {
-            return response()->json([
-                'message' => 'Galerie non trouvée.',
-            ], 404);
-        }
-
         $validated = $request->validated();
 
         $productTypes = $validated['product_types'] ?? null;
@@ -274,14 +269,8 @@ class EventGalleryController extends Controller
         ]);
     }
 
-    public function destroy(Gallery $gallery): JsonResponse
+    public function destroy(EventGallery $gallery): JsonResponse
     {
-        if ($gallery->type !== 'event') {
-            return response()->json([
-                'message' => 'Galerie non trouvée.',
-            ], 404);
-        }
-
         $galleryId = $gallery->id;
         // Capturer les IDs des sous-galeries AVANT le delete cascade.
         $childIds = $gallery->children->pluck('id')->all();
@@ -322,14 +311,8 @@ class EventGalleryController extends Controller
         ]);
     }
 
-    public function setThumbnail(SetThumbnailRequest $request, Gallery $gallery): JsonResponse
+    public function setThumbnail(SetThumbnailRequest $request, EventGallery $gallery): JsonResponse
     {
-        if ($gallery->type !== 'event') {
-            return response()->json([
-                'message' => 'Galerie non trouvée.',
-            ], 404);
-        }
-
         $validated = $request->validated();
 
         if (! empty($validated['photo_id'])) {
@@ -370,14 +353,8 @@ class EventGalleryController extends Controller
         ]);
     }
 
-    public function children(Gallery $gallery): JsonResponse
+    public function children(EventGallery $gallery): JsonResponse
     {
-        if ($gallery->type !== 'event') {
-            return response()->json([
-                'message' => 'Galerie non trouvée.',
-            ], 404);
-        }
-
         $children = $gallery->children()
             ->with([
                 'thumbnailPhoto',

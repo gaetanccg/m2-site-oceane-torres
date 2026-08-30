@@ -2,8 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Models\ClientGallery;
+use App\Models\EventGallery;
 use App\Models\Gallery;
+use App\Models\Photo;
+use App\Models\SchoolGallery;
 use App\Models\SchoolSession;
+use App\Models\User;
 use App\Policies\GalleryPolicy;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -127,5 +132,63 @@ class GalleryKindTest extends TestCase
             'scopePublic',
             file_get_contents(app_path('Models/Gallery.php'))
         );
+    }
+
+    /**
+     * La garde est desormais STRUCTURELLE : elle ne vit plus dans les controleurs.
+     *
+     * `EventGalleryController` recopiait sept fois `if ($gallery->type !== 'event') { 404 }`.
+     * Une garde recopiee est une garde qu'on oubliera : `GalleryController`, lui, n'en avait
+     * AUCUNE. Depuis D2, le type de parametre `EventGallery` fait chercher le
+     * route-model-binding dans le perimetre du scope — un identifiant de mauvaise nature rend
+     * 404 sans une ligne ecrite.
+     */
+    public function test_une_route_d_evenement_refuse_une_galerie_cliente(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $cliente = Gallery::factory()->create(['type' => 'private']);
+
+        $this->assertSame(Gallery::KIND_CLIENT, $cliente->kind);
+
+        $this->actingAs($admin)->getJson("/api/admin/events/{$cliente->id}")->assertNotFound();
+        $this->actingAs($admin)->getJson("/api/admin/events/{$cliente->id}/children")->assertNotFound();
+        $this->actingAs($admin)->deleteJson("/api/admin/events/{$cliente->id}")->assertNotFound();
+    }
+
+    public function test_une_route_d_evenement_accepte_une_galerie_d_evenement(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $evenement = Gallery::factory()->create(['type' => 'event']);
+
+        $this->actingAs($admin)->getJson("/api/admin/events/{$evenement->id}")->assertOk();
+    }
+
+    /** Les trois scopes partitionnent : aucune galerie dans deux natures, aucune dans zero. */
+    public function test_les_trois_natures_partitionnent_les_galeries(): void
+    {
+        Gallery::factory()->create(['type' => 'private']);
+        Gallery::factory()->create(['type' => 'event']);
+        Gallery::factory()->create(['school_session_id' => SchoolSession::factory()->create()->id]);
+
+        $somme = ClientGallery::count()
+            + EventGallery::count()
+            + SchoolGallery::count();
+
+        $this->assertSame(Gallery::count(), $somme);
+    }
+
+    /**
+     * Le piege de l'heritage a table unique : sans `getForeignKey()` sur la classe mere,
+     * Eloquent derive la clef du NOM DE CLASSE et `EventGallery::photos()` cherche
+     * `photos.event_gallery_id`. L'endpoint public des evenements repondait 500, et rien dans
+     * le typage ne l'annoncait.
+     */
+    public function test_les_relations_d_une_sous_classe_utilisent_gallery_id(): void
+    {
+        $evenement = EventGallery::create(['title' => 'Evenement']);
+        Photo::factory()->create(['gallery_id' => $evenement->id]);
+
+        $this->assertSame('gallery_id', $evenement->getForeignKey());
+        $this->assertCount(1, $evenement->photos()->get());
     }
 }

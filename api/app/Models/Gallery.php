@@ -90,6 +90,21 @@ class Gallery extends Model
         });
     }
 
+    /**
+     * La clef etrangere que portent les relations de ce modele, posee explicitement.
+     *
+     * Sans cela, Eloquent la derive du NOM DE CLASSE : `EventGallery::photos()` cherchait
+     * `photos.event_gallery_id`, colonne qui n'existe pas, et l'endpoint public des
+     * evenements repondait 500. C'est le piege de l'heritage a table unique, et il ne se voit
+     * qu'a l'execution — le typage ne l'attrape pas.
+     *
+     * Une seule declaration ici sert les trois sous-classes.
+     */
+    public function getForeignKey(): string
+    {
+        return 'gallery_id';
+    }
+
     /** Les trois natures de galerie. Une quatrieme exigerait une decision, pas un ajout. */
     public const KIND_CLIENT = 'client';
 
