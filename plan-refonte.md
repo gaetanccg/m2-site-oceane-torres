@@ -1,6 +1,6 @@
 # Plan de refonte — Océane Torres Photographie
 
-## ▶ Avancement — 4 étapes sur 15
+## ▶ Avancement — 5 étapes sur 15
 
 **L'avancement se lit dans un seul tableau : [§3.3 Ordre d'exécution](#33-ordre-dexécution).**
 Une ligne par étape, ✅ quand elle est faite. C'est le seul endroit à tenir à jour.
@@ -10,8 +10,10 @@ Une ligne par étape, ✅ quand elle est faite. C'est le seul endroit à tenir �
 ✅ 2  L'administration hors du bundle public
 ✅ 3  AdminSurfaceAccessTest — 96 routes × 3 acteurs
 ✅ 4  routes/admin.php monté + throttle:admin
-🔜 5  État réel des environnements (Redis)             ← en cours
-   6…15                                                point de bascule à l'étape 9
+⏸️ 5  État réel des environnements (Redis)             ← accès NAS requis
+✅ 6  Phase 4 dissoute — 13-16 j retirés du plan
+🔜 7  Filet de tests de rendu (3 parcours)             ← en cours
+   8…15                                                point de bascule à l'étape 9
 ```
 
 Décisions produit : **8/8 tranchées** (§12) · Recette : **4 / 30** (§11, relevée le 30/08)
@@ -108,14 +110,13 @@ comprendre *pourquoi* une chose a été faite ainsi, jamais pour savoir quoi fai
 le temps, mais ces décisions, qui bloquaient D2, D4, D5, D6 et par ricochet #48 et la moitié
 de la phase 3.
 
-**Ce qui reste tient dans une seule liste : §3.3, quinze étapes ordonnées.** Les quatre
-premières sont faites. Le point de bascule est à la neuvième, à environ neuf jours — après quoi on peut
+**Ce qui reste tient dans une seule liste : §3.3, quinze étapes ordonnées.** Cinq sont faites. Le point de bascule est à la neuvième, à environ neuf jours — après quoi on peut
 s'arrêter sans dette.
 
 | | |
 |---|---|
 | Décisions produit tranchées | **8 / 8** |
-| Étapes de la liste vivante | **4 / 15** |
+| Étapes de la liste vivante | **5 / 15** |
 | Jusqu'au point de bascule | **~9 j** |
 | Tests | **612** API (1 590 assertions) · **80** front |
 | En attente de Gaëtan | **6 actions**, dont une urgente (§3bis) |
@@ -129,7 +130,8 @@ s'arrêter sans dette.
 | **§12** | Les huit décisions et leur justification. Vingt secondes. |
 | **§3bis** | Ce qui n'attend que vous — comptes, clés, arbitrages. |
 | **§2** | Ce qui reste des phases 0 à 3, sans avoir à lire le journal. |
-| §4, §5 | Phases à venir. La 4 est à trancher (étape 6). |
+| §4 | Pourquoi la phase 4 a été dissoute, et où sont passés ses restes. |
+| §5 | Phase à venir : portfolio, avoirs, export comptable. |
 | §8 à §11 | Conventions, invariants, matrice, recette. Consultation. |
 
 ---
@@ -267,9 +269,9 @@ redéploie tout le code de la branche de production. En face, `dist/` passe de 3
 | 2 | ✅ **L'administration ne part plus dans le bundle public** | Chunk d'entrée 137 969 → 121 162 octets, chemins `/admin` 15 → 0. Le second `login()` du store visait le **même** endpoint que `authApi`, sans appelant ; `AdminApiError` était redondant avec `AuthApiError`. Côté services, `login/logout/getUser` de `dashboardApi` étaient des copies : **supprimées, pas déplacées** — le plan disait de les déplacer, cela aurait créé des doublons. Vérifié au navigateur. **Fait le 30/08** | 0,5 j |
 | 3 | ✅ **`AdminSurfaceAccessTest` — 96 routes × 3 acteurs** | Le filet avant D2. Périmètre défini par l'**URL et le contrôleur**, jamais par la présence du middleware : sinon une route qui s'échappe sort aussi de l'énumération, et le test passe. Identifiants **réels** — le route-model-binding s'exécute avant la garde, donc un id absent rend 404 et ne prouve rien. Éprouvé par deux mutations. **Fait le 30/08** | 1 j |
 | 4 | 🔜 `routes/admin.php` via `withRouting` + test de garde + `throttle:admin` + abilities | Rend modifiables **en une ligne sur le groupe** toutes les mesures ultérieures, au lieu de 85 éditions. Aucun limiteur `admin` n'existe : les 95 routes sont sans plafond | 1,5 j |
-| 5 | 🔜 Établir l'état réel des environnements (`CACHE_STORE`, `SESSION_DRIVER`, `QUEUE_CONNECTION`) | §2.3 est cochée sur une supposition contredite par les deux `.env` | 0,25 j |
-| 6 | Trancher le sort de la phase 4 | D2, D4 et D5 changent chacune le schéma, et le plan offre **deux véhicules contradictoires** | 0,5 j |
-| 7 | Filet de tests de rendu (3 parcours) | Trois items du plan en sont prisonniers ; D2 et D6 en ajouteraient deux | 1 j |
+| 5 | ⏸️ Établir l'état réel des environnements (`CACHE_STORE`, `SESSION_DRIVER`, `QUEUE_CONNECTION`) | §2.3 est cochée sur une supposition contredite par les deux `.env` | 0,25 j |
+| 6 | ✅ **Phase 4 dissoute** | Sa prémisse était fausse : les migrations reproduisent la production **colonne pour colonne et contrainte pour contrainte** (399=399, 99=99, 0 écart de valeur). L'aléa n°1 est nul : 0 photo sur 5 350 à chemin non résolu. 13-16 j retirés du plan ; il reste `jsonb` (#38, 0,5 j), la réconciliation MinIO et 5 PDF manquants — tous hors migration. **Fait le 30/08** | 0,5 j |
+| 7 | 🔜 Filet de tests de rendu (3 parcours) | Trois items du plan en sont prisonniers ; D2 et D6 en ajouteraient deux | 1 j |
 | 8 | Règle ESLint + contrôle d'isolation **dans `build:prerender`** | ⚠️ Pas dans `ci.yml` : il n'existe **aucun workflow de déploiement**, Render construit seul. Un contrôle en CI ne bloquerait rien | 0,75 j |
 | 9 | **D2 étapes 2-6** | Après 3 et 4. **Bloque D6** et la tranche admin des Resources | 3,5 j |
 | 10 | **D4** | Après 1 et 9. Supprime du travail manuel récurrent, zéro risque sur le site vitrine. Rend plus tôt que D6 — le plan le plaçait derrière, à tort | 4,5 j |
@@ -321,196 +323,81 @@ Les six lignes de recette de la phase 0 qui exigent la production restent égale
 
 ---
 
-# PHASE 4 — Migration des données — ⚠️ prémisse à trancher (étape 6)
+# PHASE 4 — Migration des données — ❌ **DISSOUTE le 2026-08-30**
 
-**13 à 16 jours.** Le plan détaillé est en **§10 de l'audit**. Ce qui suit est la checklist
-d'exécution ; ne pas s'en servir sans avoir lu §10.1 à §10.13.
+> **Décision (étape 6) : la phase 4 n'a plus d'objet.** Elle décrivait une migration vers une
+> base neuve, alors que les phases 2 et 3 ont tout fait **en place**, par migrations
+> incrémentales. Ses 13 à 16 jours affichés sont retirés du plan.
+>
+> Le détail de ce qu'elle prescrivait est conservé dans
+> [`docs/journal-refonte.md`](docs/journal-refonte.md) — on n'efface pas un raisonnement, on
+> le date.
 
-## 4.1 Les cinq principes
+## 4.1 Pourquoi elle tombe — les cinq principes, mesurés
 
-```
-[ ] P1 — La source de vérité est un DUMP, jamais le dossier migrations/ (§3bis.14)
-[ ] P2 — Migrer les données, pas le schéma (un pg_restore reconduirait les 5 dettes)
-[ ] P3 — L'ancienne base reste intacte et en lecture seule, indéfiniment
-[ ] P4 — Chaque ligne conserve son UUID d'origine  ← DÉCISION LA PLUS IMPORTANTE
-[ ] P5 — Le script est idempotent et produit un rapport de comptage
-```
+**P1 — « La source de vérité est un DUMP, jamais le dossier `migrations/` ». RÉFUTÉ.**
 
-**Sur P4** : conserver les UUID rend les chemins MinIO valides (**aucun fichier à déplacer**), garde
-les `share_code` et `access_token` communiqués aux clientes, préserve les liens envoyés par email et
-SMS, et réduit la réconciliation à des `COUNT`. **Y renoncer imposerait de réécrire des dizaines de Go
-d'arborescence MinIO.**
-
-## 4.2 Classification des 38 tables — §10.4
-
-> 📌 **37 tables au 30/08/2026.** Les quatre orphelines (`availability_patterns`,
-> `availability_slots`, `subscriptions`, `subscription_items`) ont été supprimées par les
-> migrations du 22/08 (`1a9b50b`, `5d4a7a9`), en même temps que leur code. Un relevé du 30/08
-> les a crues encore présentes : la base de développement n'avait pas rejoué les migrations.
-> **Leçon : compter les tables dans une base locale ne dit rien tant qu'elle n'est pas à jour.**
+C'était le seul principe structurel, et le seul qui pouvait justifier la phase à lui seul. Il
+est faux aujourd'hui. Mesuré le 30/08 en comparant deux bases : `testing`, construite **par les
+migrations** (`migrate:fresh`), et `oceane_dev`, restaurée **du dump de production** puis migrée.
 
 ```
-[ ] 13 tables du cœur métier                → MIGRER (users, clients, galleries, photos,
-      event_categories, gallery_product_types, pack_tiers, prestations, reservations,
-      orders, order_items, invoices, payments)
-[ ]  5 tables de support                    → MIGRER (gift_codes, gift_cards, school_sessions,
-      privacy_audit_logs, contact_messages < 12 mois)
-[ ]  8 tables régénérables                  → NE PAS MIGRER (cache, cache_locks, sessions,
-      jobs, job_batches, failed_jobs, password_reset_tokens, personal_access_tokens)
-[ ]  3 tables transitoires                  → NE PAS MIGRER (photo_uploads,
-      school_session_exports, privacy_exports → migrer l'historique seul)
-[ ]  4 tables à abandonner                  → subscriptions, subscription_items,
-      availability_slots, availability_patterns
-[ ]  1 table à absorber                     → client_forms → reservations.guest_*
+colonnes     399 = 399   diff : aucune
+contraintes   99 =  99   diff : 16 lignes, toutes des CHECK
 ```
 
-## 4.3 Les sept contraintes non négociables — §10.5
+Les 16 lignes sont **8 paires de la même contrainte** : PostgreSQL rend `ANY(ARRAY[...])`
+différemment selon la façon dont la contrainte a été créée. Comparées sur les **valeurs
+autorisées** plutôt que sur le texte SQL : **0 écart**.
+
+**Le dossier `migrations/` reproduit la production, colonne pour colonne et contrainte pour
+contrainte.** Il n'y a rien à reconstruire.
+
+**P2 à P5 — sans objet.** « Migrer les données, pas le schéma », « l'ancienne base reste en
+lecture seule », « conserver les UUID », « script idempotent » : tous supposent une migration
+qui n'aura pas lieu. P4 en particulier protégeait les chemins MinIO d'une réécriture de
+plusieurs dizaines de Go — ce risque n'existe pas si rien ne bouge.
+
+## 4.2 L'aléa n°1 était nul
+
+Le plan annonçait que le volume de photos à chemin non résolu « peut doubler la phase 4 ».
+Mesuré sur les 5 350 photos :
 
 ```
-[ ] C1 Rétention comptable ~10 ans : orders / order_items / invoices / payments migrés
-       INTÉGRALEMENT, aucun filtre de date, aucune anonymisation
-[ ] C2 invoice_number conservé à l'identique ; la nouvelle séquence REPREND au maximum existant
-[ ] C3 Idem pour order_number (OT-YYYY-NNNNN)
-[ ] C4 privacy_audit_logs migré intégralement (preuve de conformité)
-[ ] C5 Consentements horodatés conservés tels quels — y compris les consent_ip erronés :
-       les migrer SANS les corriger (inventer une preuve est pire que l'absence de preuve)
-[ ] C6 Fuseau : vérifier timestamp vs timestamptz au relevé, ne PAS décaler
-[ ] C7 Hashes bcrypt migrés tels quels — JAMAIS régénérés
+sans file_path_hd        0
+avec un supabase_path    0     ← vestige d'un hébergeur abandonné
 ```
 
-## 4.4 Les douze règles de nettoyage — §10.7
+Les étapes 1 et 4 de l'ancienne §4.5 — quantifier les quatre populations de chemins, puis
+normaliser les références — **n'ont aucun objet**. La chaîne de repli de
+`Photo::resolved_storage_path` ne sert plus aucune ligne.
 
-```
-[ ] R1  clients.source : recalculer ou abandonner (jamais migrer la valeur telle quelle)
-[ ] R2  guest_first_name / guest_last_name : migrer tels quels, ne pas « re-corriger »
-        (l'original scindé par explode() est perdu ; toute heuristique ajouterait des erreurs)
-[ ] R3  client_forms absorbé dans reservations.guest_*
-[ ] R4  Booléens à TROIS états : préserver le NULL (gallery_product_types.requires_shipping,
-        galleries.shipping_fee, photos.price) — normaliser en false CHANGERAIT la facturation
-[ ] R5  Booléens stockés en texte : convertir en boolean natif (seule transformation de type
-        indispensable)
-[ ] R6  prestations : price nullable + price_display (simplifier la triple représentation)
-[ ] R7  gift_codes migrés AVEC orders.gift_code_id (sinon tous les quotas se réinitialisent)
-[ ] R8  orders.metadata : extraire download_token en colonne dédiée ; ne pas migrer les expirés
-[ ] R9  Ne pas créer les colonnes mortes (stripe_*, file_path_web, file_path_watermark, pdf_path)
-[ ] R10 Ne pas reprendre les valeurs d'enum mortes — SAUF orders.status='refunded' (à CONSERVER)
-[ ] R11 photos.metadata : ne supprimer storage_path/supabase_path qu'APRÈS validation des fichiers
-[ ] R12 school_sessions : ne pas migrer zip_path/batch_id/error_message ;
-        convertir product_types_config (JSON) en lignes relationnelles
-```
+> ⚠️ Ces chiffres viennent de la copie anonymisée du 22/08. **Les revérifier sur la production
+> avant de retirer la chaîne de repli du modèle** — c'est la seule chose que ce constat autorise
+> à faire, et elle attend cette vérification.
 
-## 4.5 🔴 Les fichiers MinIO — §10.8
+## 4.3 Ce qui survit, et où c'est passé
 
-**Le risque n°1 de l'opération.** Grâce à P4, aucun fichier ne bouge — mais les **références** doivent
-être normalisées.
+Trois travaux réels restaient dans cette phase. Aucun n'exige une migration de base, et chacun
+rejoint l'endroit où il vit déjà :
 
-```
-[ ] Étape 1 — Quantifier les 4 populations (§3bis.14-C) : A file_path_hd · B storage_path ·
-    C supabase_path · D file_path seul (potentiellement une URL http absolue)
-[ ] Étape 2 — Inventorier les objets présents : mc ls --recursive > minio-inventory.txt
-[ ] Étape 3 — Réconcilier base ↔ objets via une table temporaire (requêtes §10.8)
-    [ ] Photos dont le chemin résolu N'EXISTE PAS → liste à traiter à la main
-    [ ] Objets non référencés → orphelins
-[ ] Étape 4 — Normaliser : écrire le chemin résolu dans file_path_hd
-[ ] Étape 5 — Arbitrer les irrécupérables 👤 : rejouer process-existing / marquer indisponible /
-    documenter
-[ ] ⚠️ NE JAMAIS supprimer une ligne photos référencée par un order_items
-[ ] Factures : vérifier la présence de CHAQUE PDF (obligation légale) ; écrire une commande
-    de régénération en masse si nécessaire
-[ ] Séparer les buckets photos / invoices à cette occasion (#23)
-```
+| Ce qui reste | Où | Charge |
+|---|---|---|
+| **Réconciliation MinIO ↔ base** — objets sans référence, et l'inverse | `storage:clean-orphans`, en dry-run hebdomadaire. **Jamais exécutée contre la production.** §3bis | < 1 h |
+| **Présence de chaque PDF de facture** (obligation légale) | **5 factures sur 119 sans PDF.** `invoices:repair-pdf` existe. §3bis | < 1 h |
+| **7 colonnes `json` à passer en `jsonb`** | `notifications.data`, `orders.metadata`, `payments.metadata`, `photos.metadata`, `prestations.features`, `privacy_audit_logs.affected`, `school_sessions.product_types_config`. Une migration de 15 lignes, `USING col::jsonb`, sans perte. Item **#38** | 0,5 j |
+| Séparation des buckets photos / factures | Item **#23**, inchangé | — |
+| Absorption de `client_forms` | **Abandonnée** : la table est vide mais la fonctionnalité doit servir prochainement (décision de Gaëtan, 30/08) | — |
 
-## 4.6 Ordre d'exécution — §10.9
+## 4.4 Ce que cette phase laisse comme leçon
 
-```
-[ ]  1. users                        [ ] 12. gift_codes
-[ ]  2. clients                      [ ] 13. reservations
-[ ]  3. prestations                  [ ] 14. carts + cart_items (optionnel)
-[ ]  4. event_categories             [ ] 15. orders
-[ ]  5. school_sessions              [ ] 16. order_items
-[ ]  6. galleries (sans parent_id ni thumbnail_photo_id)
-[ ]  7. galleries — 2ᵈ passe : parent_id        [ ] 17. invoices
-[ ]  8. photos                                  [ ] 18. payments
-[ ]  9. galleries — 3ᵉ passe : thumbnail_photo_id [ ] 19. gift_cards
-[ ] 10. gallery_product_types                   [ ] 20. contact_messages
-[ ] 11. pack_tiers                              [ ] 21. privacy_audit_logs
-                                                [ ] 22. privacy_exports
-```
+Elle a été écrite à partir de l'audit, avant toute mesure, et elle a survécu huit jours à des
+faits qui la contredisaient — les migrations incrémentales des phases 2 et 3 étaient déjà en
+place quand elle affichait encore 13 à 16 jours.
 
-⚠️ **`galleries` a deux références circulaires** (`parent_id` auto-référent, et
-`thumbnail_photo_id → photos` alors que `photos.gallery_id → galleries`) → **trois passes obligatoires.**
-
-## 4.7 Le script — §10.10
-
-```
-[ ] Connexion Laravel `legacy` vers la COPIE, avec 'options' => [] (PAS d'EMULATE_PREPARES)
-[ ] Commande artisan legacy:migrate --step=* --dry-run --chunk=500
-[ ] Idempotence : upsert sur l'UUID d'origine
-[ ] Traitement par lots : chunkById(500) — les tables volumineuses ne tiennent pas en mémoire
-[ ] Normalisation explicite des booléens (R5)
-[ ] Rapport de comptage source / cible / insérés par étape
-[ ] ⚠️ LIRE EN QUERY BUILDER BRUT — jamais avec les modèles Eloquent existants :
-    ils embarquent le trait booléen, les $appends (qui déclencheraient des SIGNATURES MINIO
-    à chaque photo lue) et les hooks boot() (qui RÉGÉNÉRERAIENT les share_code)
-```
-
-## 4.8 Validation en 5 niveaux — §10.11
-
-```
-[ ] Niveau 1 — Comptages : égalité STRICTE sur les 13 tables du cœur, écarts documentés ailleurs
-[ ] Niveau 2 — Cohérence référentielle : 0 orphelin (5 requêtes)
-[ ] Niveau 3 — Invariants métier :
-    [ ] SUM(total) des commandes payées identique de part et d'autre → écart 0,00 €
-    [ ] Continuité de la séquence de facturation : même min, max, compte, aucun trou nouveau
-    [ ] Codes promo : même nombre d'utilisations payées
-    [ ] 0 galerie sans share_code ni access_token
-    [ ] 0 mot de passe ne commençant pas par $2y$
-[ ] Niveau 4 — Fichiers : 0 photo au chemin absent · 0 facture sans PDF
-[ ] Niveau 5 — Manuel :
-    [ ] Une galerie s'ouvre avec son ANCIEN code de partage
-    [ ] Vignettes et previews s'affichent (galerie de 50+ photos)
-    [ ] Un ZIP de galerie téléchargeable se génère
-    [ ] Une facture existante se télécharge
-    [ ] ⚠️ Un compte client existant se connecte avec SON MOT DE PASSE ACTUEL
-    [ ] Le tableau de bord client affiche l'historique complet
-    [ ] Une commande de test aboutit de bout en bout (sandbox SumUp)
-```
-
-## 4.9 Bascule — §10.12
-
-**Bascule unique, fenêtre courte.** Pas de double écriture (le trafic est faible, une synchronisation
-bidirectionnelle sur 18 tables coûterait plus en risque qu'une heure d'interruption).
-
-```
-[ ]  1. Répétitions générales sur la copie — 3 itérations minimum, validations 1-5
-[ ]  2. Fenêtre creuse choisie (hors campagne scolaire, hors envoi de galeries)
-[ ]  3. Photographe prévenue : ne rien faire dans l'admin pendant la fenêtre
-[ ]  4. Vider la file (jobs à 0) et LIRE failed_jobs                        — 15 min
-[ ]  5. Page de maintenance front + mode maintenance API                    —  5 min
-[ ]  6. pg_dump final (post-arrêt d'écriture)                               — 10 min
-[ ]  7. Exécuter la migration                                               — 30-60 min
-[ ]  8. Validations 1-4 (automatisées)                                      — 10 min
-[ ]  9. Validation 5 (manuelle)                                             — 20 min
-[ ] 10. Basculer DNS / configuration front
-[ ] 11. Surveillance rapprochée 48 h : logs, Sentry, /health, premiers paiements
-```
-
-**Retour arrière** : jusqu'à l'étape 9 incluse, c'est un changement de configuration — l'ancienne base
-n'a pas été touchée (P3). **Point de non-retour** : la première écriture dans la nouvelle base.
-
-## 4.10 Les treize interdits — §10.13
-
-```
-[ ] ❌ pg_dump + pg_restore vers la nouvelle base        [ ] ❌ Corriger les consent_ip
-[ ] ❌ Régénérer les UUID                                [ ] ❌ « Réparer » les guest_first_name
-[ ] ❌ Régénérer les numéros de facture / commande       [ ] ❌ Filtrer orders/invoices/payments
-[ ] ❌ Re-hasher les mots de passe                       [ ] ❌ Lire avec les modèles Eloquent
-[ ] ❌ Normaliser les NULL des booléens à 3 états        [ ] ❌ Migrer depuis la production
-[ ] ❌ Créer un Client par guest_email                   [ ] ❌ Supprimer supabase_path trop tôt
-[ ] ❌ Commencer avant la phase 0
-```
-
----
+**Un plan qui n'est pas confronté aux mesures grandit tout seul.** C'est la même mécanique que
+§11 restée à zéro case cochée, et que les quatre tables réputées orphelines qui n'existaient
+plus depuis une semaine.
 
 # PHASE 5 — Valeur ajoutée
 
@@ -644,7 +531,7 @@ c'est celui-ci. → §11.7 de l'audit
 | 35 | Commandes mixtes invisibles en admin | 🟡 | **3.4** |
 | 36 | `EventCategoryController::reorder` cassé | 🟡 | **0.18** |
 | 37 | `authorize()` sans `AuthorizesRequests` → 500 | 🟡 | **0.18 / 2.5** |
-| 38 | 8 colonnes JSON sans schéma | 🟡 | **3.7 / 8** |
+| 38 | **7** colonnes JSON (et non 8) sans schéma, et en `json` plutôt que `jsonb` | 🟡 | **3.7 / §4.3** |
 | 39 | Contrôleurs mixtes public/admin | 🟡 | **1.3-D2 / 2.4** |
 | 40 | Portfolio non administrable | 🟡 | **1.3-D6 / 5** |
 | 41 | Aucune pagination des photos de galerie | 🟡 | **3.6** |
@@ -846,6 +733,7 @@ Le projet est considéré comme refondu quand **tout** ce qui suit est vrai.
 | 2026-08-23 | #31 | `clients.source` **recalculée** et rendue fiable | mesure | Livré en 3.5 |
 | | #6 | Réémettre les factures fausses ? | **en attente de Gaëtan** | Décision commerciale, pas technique |
 | | #48 | Format de l'export comptable | **en attente du comptable** | `date_piece` **et** `date_encaissement` distinctes + `reference_rectifiee` : un micro-entrepreneur déclare à l'encaissement. Bloqué par D5 |
+| 2026-08-30 | — | **Phase 4 dissoute.** Aucune migration vers une base neuve : les schémas sont déjà alignés. | mesure | Deux bases comparées — `testing` construite par les migrations, `oceane_dev` restaurée du dump de production : 399 colonnes identiques, 99 contraintes identiques (16 lignes de diff, toutes un artefact de rendu PostgreSQL de 8 `CHECK`, 0 écart de valeur autorisée). L'aléa n°1 mesuré nul. **Condition de réouverture : un changement de schéma qu'une migration incrémentale ne saurait pas porter** — à ce jour aucun de D2, D4, D5 n'est dans ce cas |
 | 2026-08-30 | — | **Capacités de jeton : émises, non contrôlées.** `User::jetonDeSession()` pose `admin` ou `client` au lieu d'un `*` tout-puissant, mais aucune garde ne les vérifie. | mesure | La garde `tokenCan('admin')` a été essayée puis retirée : elle n'empêche qu'un jeton émis avant une promotion de rôle — cas quasi inexistant sur 18 comptes et une administratrice — au prix d'une seconde condition d'échec permanente et de 25 tests modélisant un jeton que la production n'émet jamais. **Condition de levée : le jour où des jetons restreints existent** (application mobile, codes de récupération du second facteur) |
 | 2026-08-30 | — | **Isolation de l'admin** : console sur `admin.oceanetorresphotographie.fr`, servie par le nginx du NAS, derrière Cloudflare Access. Seconde entrée Vite depuis le même `web/src`. | Gaëtan → recommandation | Voir §3. Précédée du durcissement serveur, qui seul ferme quelque chose |
 

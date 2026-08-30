@@ -1977,3 +1977,204 @@ vrais PDF : `memory_limit` passe à 512 Mo dans `phpunit.xml` (la production est
 
 ---
 
+---
+
+## PHASE 4 — Migration des données, telle qu'elle était écrite
+
+> **Dissoute le 2026-08-30** (étape 6). Sa prémisse — migrer vers une base neuve — était
+> caduque : les phases 2 et 3 ont tout fait en place. Le raisonnement est conservé ici parce
+> qu'on ne supprime pas une réflexion, on la date. La décision et les mesures qui l'ont
+> tranchée sont dans `plan-refonte.md` §4.
+
+# PHASE 4 — Migration des données — ⚠️ prémisse à trancher (étape 6)
+
+**13 à 16 jours.** Le plan détaillé est en **§10 de l'audit**. Ce qui suit est la checklist
+d'exécution ; ne pas s'en servir sans avoir lu §10.1 à §10.13.
+
+## 4.1 Les cinq principes
+
+```
+[ ] P1 — La source de vérité est un DUMP, jamais le dossier migrations/ (§3bis.14)
+[ ] P2 — Migrer les données, pas le schéma (un pg_restore reconduirait les 5 dettes)
+[ ] P3 — L'ancienne base reste intacte et en lecture seule, indéfiniment
+[ ] P4 — Chaque ligne conserve son UUID d'origine  ← DÉCISION LA PLUS IMPORTANTE
+[ ] P5 — Le script est idempotent et produit un rapport de comptage
+```
+
+**Sur P4** : conserver les UUID rend les chemins MinIO valides (**aucun fichier à déplacer**), garde
+les `share_code` et `access_token` communiqués aux clientes, préserve les liens envoyés par email et
+SMS, et réduit la réconciliation à des `COUNT`. **Y renoncer imposerait de réécrire des dizaines de Go
+d'arborescence MinIO.**
+
+## 4.2 Classification des 38 tables — §10.4
+
+> 📌 **37 tables au 30/08/2026.** Les quatre orphelines (`availability_patterns`,
+> `availability_slots`, `subscriptions`, `subscription_items`) ont été supprimées par les
+> migrations du 22/08 (`1a9b50b`, `5d4a7a9`), en même temps que leur code. Un relevé du 30/08
+> les a crues encore présentes : la base de développement n'avait pas rejoué les migrations.
+> **Leçon : compter les tables dans une base locale ne dit rien tant qu'elle n'est pas à jour.**
+
+```
+[ ] 13 tables du cœur métier                → MIGRER (users, clients, galleries, photos,
+      event_categories, gallery_product_types, pack_tiers, prestations, reservations,
+      orders, order_items, invoices, payments)
+[ ]  5 tables de support                    → MIGRER (gift_codes, gift_cards, school_sessions,
+      privacy_audit_logs, contact_messages < 12 mois)
+[ ]  8 tables régénérables                  → NE PAS MIGRER (cache, cache_locks, sessions,
+      jobs, job_batches, failed_jobs, password_reset_tokens, personal_access_tokens)
+[ ]  3 tables transitoires                  → NE PAS MIGRER (photo_uploads,
+      school_session_exports, privacy_exports → migrer l'historique seul)
+[ ]  4 tables à abandonner                  → subscriptions, subscription_items,
+      availability_slots, availability_patterns
+[ ]  1 table à absorber                     → client_forms → reservations.guest_*
+```
+
+## 4.3 Les sept contraintes non négociables — §10.5
+
+```
+[ ] C1 Rétention comptable ~10 ans : orders / order_items / invoices / payments migrés
+       INTÉGRALEMENT, aucun filtre de date, aucune anonymisation
+[ ] C2 invoice_number conservé à l'identique ; la nouvelle séquence REPREND au maximum existant
+[ ] C3 Idem pour order_number (OT-YYYY-NNNNN)
+[ ] C4 privacy_audit_logs migré intégralement (preuve de conformité)
+[ ] C5 Consentements horodatés conservés tels quels — y compris les consent_ip erronés :
+       les migrer SANS les corriger (inventer une preuve est pire que l'absence de preuve)
+[ ] C6 Fuseau : vérifier timestamp vs timestamptz au relevé, ne PAS décaler
+[ ] C7 Hashes bcrypt migrés tels quels — JAMAIS régénérés
+```
+
+## 4.4 Les douze règles de nettoyage — §10.7
+
+```
+[ ] R1  clients.source : recalculer ou abandonner (jamais migrer la valeur telle quelle)
+[ ] R2  guest_first_name / guest_last_name : migrer tels quels, ne pas « re-corriger »
+        (l'original scindé par explode() est perdu ; toute heuristique ajouterait des erreurs)
+[ ] R3  client_forms absorbé dans reservations.guest_*
+[ ] R4  Booléens à TROIS états : préserver le NULL (gallery_product_types.requires_shipping,
+        galleries.shipping_fee, photos.price) — normaliser en false CHANGERAIT la facturation
+[ ] R5  Booléens stockés en texte : convertir en boolean natif (seule transformation de type
+        indispensable)
+[ ] R6  prestations : price nullable + price_display (simplifier la triple représentation)
+[ ] R7  gift_codes migrés AVEC orders.gift_code_id (sinon tous les quotas se réinitialisent)
+[ ] R8  orders.metadata : extraire download_token en colonne dédiée ; ne pas migrer les expirés
+[ ] R9  Ne pas créer les colonnes mortes (stripe_*, file_path_web, file_path_watermark, pdf_path)
+[ ] R10 Ne pas reprendre les valeurs d'enum mortes — SAUF orders.status='refunded' (à CONSERVER)
+[ ] R11 photos.metadata : ne supprimer storage_path/supabase_path qu'APRÈS validation des fichiers
+[ ] R12 school_sessions : ne pas migrer zip_path/batch_id/error_message ;
+        convertir product_types_config (JSON) en lignes relationnelles
+```
+
+## 4.5 🔴 Les fichiers MinIO — §10.8
+
+**Le risque n°1 de l'opération.** Grâce à P4, aucun fichier ne bouge — mais les **références** doivent
+être normalisées.
+
+```
+[ ] Étape 1 — Quantifier les 4 populations (§3bis.14-C) : A file_path_hd · B storage_path ·
+    C supabase_path · D file_path seul (potentiellement une URL http absolue)
+[ ] Étape 2 — Inventorier les objets présents : mc ls --recursive > minio-inventory.txt
+[ ] Étape 3 — Réconcilier base ↔ objets via une table temporaire (requêtes §10.8)
+    [ ] Photos dont le chemin résolu N'EXISTE PAS → liste à traiter à la main
+    [ ] Objets non référencés → orphelins
+[ ] Étape 4 — Normaliser : écrire le chemin résolu dans file_path_hd
+[ ] Étape 5 — Arbitrer les irrécupérables 👤 : rejouer process-existing / marquer indisponible /
+    documenter
+[ ] ⚠️ NE JAMAIS supprimer une ligne photos référencée par un order_items
+[ ] Factures : vérifier la présence de CHAQUE PDF (obligation légale) ; écrire une commande
+    de régénération en masse si nécessaire
+[ ] Séparer les buckets photos / invoices à cette occasion (#23)
+```
+
+## 4.6 Ordre d'exécution — §10.9
+
+```
+[ ]  1. users                        [ ] 12. gift_codes
+[ ]  2. clients                      [ ] 13. reservations
+[ ]  3. prestations                  [ ] 14. carts + cart_items (optionnel)
+[ ]  4. event_categories             [ ] 15. orders
+[ ]  5. school_sessions              [ ] 16. order_items
+[ ]  6. galleries (sans parent_id ni thumbnail_photo_id)
+[ ]  7. galleries — 2ᵈ passe : parent_id        [ ] 17. invoices
+[ ]  8. photos                                  [ ] 18. payments
+[ ]  9. galleries — 3ᵉ passe : thumbnail_photo_id [ ] 19. gift_cards
+[ ] 10. gallery_product_types                   [ ] 20. contact_messages
+[ ] 11. pack_tiers                              [ ] 21. privacy_audit_logs
+                                                [ ] 22. privacy_exports
+```
+
+⚠️ **`galleries` a deux références circulaires** (`parent_id` auto-référent, et
+`thumbnail_photo_id → photos` alors que `photos.gallery_id → galleries`) → **trois passes obligatoires.**
+
+## 4.7 Le script — §10.10
+
+```
+[ ] Connexion Laravel `legacy` vers la COPIE, avec 'options' => [] (PAS d'EMULATE_PREPARES)
+[ ] Commande artisan legacy:migrate --step=* --dry-run --chunk=500
+[ ] Idempotence : upsert sur l'UUID d'origine
+[ ] Traitement par lots : chunkById(500) — les tables volumineuses ne tiennent pas en mémoire
+[ ] Normalisation explicite des booléens (R5)
+[ ] Rapport de comptage source / cible / insérés par étape
+[ ] ⚠️ LIRE EN QUERY BUILDER BRUT — jamais avec les modèles Eloquent existants :
+    ils embarquent le trait booléen, les $appends (qui déclencheraient des SIGNATURES MINIO
+    à chaque photo lue) et les hooks boot() (qui RÉGÉNÉRERAIENT les share_code)
+```
+
+## 4.8 Validation en 5 niveaux — §10.11
+
+```
+[ ] Niveau 1 — Comptages : égalité STRICTE sur les 13 tables du cœur, écarts documentés ailleurs
+[ ] Niveau 2 — Cohérence référentielle : 0 orphelin (5 requêtes)
+[ ] Niveau 3 — Invariants métier :
+    [ ] SUM(total) des commandes payées identique de part et d'autre → écart 0,00 €
+    [ ] Continuité de la séquence de facturation : même min, max, compte, aucun trou nouveau
+    [ ] Codes promo : même nombre d'utilisations payées
+    [ ] 0 galerie sans share_code ni access_token
+    [ ] 0 mot de passe ne commençant pas par $2y$
+[ ] Niveau 4 — Fichiers : 0 photo au chemin absent · 0 facture sans PDF
+[ ] Niveau 5 — Manuel :
+    [ ] Une galerie s'ouvre avec son ANCIEN code de partage
+    [ ] Vignettes et previews s'affichent (galerie de 50+ photos)
+    [ ] Un ZIP de galerie téléchargeable se génère
+    [ ] Une facture existante se télécharge
+    [ ] ⚠️ Un compte client existant se connecte avec SON MOT DE PASSE ACTUEL
+    [ ] Le tableau de bord client affiche l'historique complet
+    [ ] Une commande de test aboutit de bout en bout (sandbox SumUp)
+```
+
+## 4.9 Bascule — §10.12
+
+**Bascule unique, fenêtre courte.** Pas de double écriture (le trafic est faible, une synchronisation
+bidirectionnelle sur 18 tables coûterait plus en risque qu'une heure d'interruption).
+
+```
+[ ]  1. Répétitions générales sur la copie — 3 itérations minimum, validations 1-5
+[ ]  2. Fenêtre creuse choisie (hors campagne scolaire, hors envoi de galeries)
+[ ]  3. Photographe prévenue : ne rien faire dans l'admin pendant la fenêtre
+[ ]  4. Vider la file (jobs à 0) et LIRE failed_jobs                        — 15 min
+[ ]  5. Page de maintenance front + mode maintenance API                    —  5 min
+[ ]  6. pg_dump final (post-arrêt d'écriture)                               — 10 min
+[ ]  7. Exécuter la migration                                               — 30-60 min
+[ ]  8. Validations 1-4 (automatisées)                                      — 10 min
+[ ]  9. Validation 5 (manuelle)                                             — 20 min
+[ ] 10. Basculer DNS / configuration front
+[ ] 11. Surveillance rapprochée 48 h : logs, Sentry, /health, premiers paiements
+```
+
+**Retour arrière** : jusqu'à l'étape 9 incluse, c'est un changement de configuration — l'ancienne base
+n'a pas été touchée (P3). **Point de non-retour** : la première écriture dans la nouvelle base.
+
+## 4.10 Les treize interdits — §10.13
+
+```
+[ ] ❌ pg_dump + pg_restore vers la nouvelle base        [ ] ❌ Corriger les consent_ip
+[ ] ❌ Régénérer les UUID                                [ ] ❌ « Réparer » les guest_first_name
+[ ] ❌ Régénérer les numéros de facture / commande       [ ] ❌ Filtrer orders/invoices/payments
+[ ] ❌ Re-hasher les mots de passe                       [ ] ❌ Lire avec les modèles Eloquent
+[ ] ❌ Normaliser les NULL des booléens à 3 états        [ ] ❌ Migrer depuis la production
+[ ] ❌ Créer un Client par guest_email                   [ ] ❌ Supprimer supabase_path trop tôt
+[ ] ❌ Commencer avant la phase 0
+```
+
+---
+
+
