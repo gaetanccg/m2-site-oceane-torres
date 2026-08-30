@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -53,6 +54,35 @@ class Client extends Model
     }
 
     /**
+     * Les commandes de ce client.
+     *
+     * Ce n'est pas une relation Eloquent parce qu'il n'existe aucune clef entre `clients` et
+     * `orders` : une commande porte soit `user_id` (client connecte), soit `guest_email`
+     * (achat invite). Sur les 211 commandes en base au 30/08/2026, 41 seulement ont un
+     * `user_id` — rattacher par la seule clef aurait ignore les quatre cinquiemes.
+     *
+     * Poser une vraie colonne `orders.client_id` releve de D2 ; en attendant, c'est ici le
+     * seul endroit qui sait relier les deux.
+     */
+    public function ordersQuery(): Builder
+    {
+        $criteres = array_filter([
+            'user_id' => $this->user_id,
+            'guest_email' => $this->email,
+        ]);
+
+        if ($criteres === []) {
+            return Order::query()->whereRaw('1 = 0');
+        }
+
+        return Order::query()->where(function ($requete) use ($criteres) {
+            foreach ($criteres as $colonne => $valeur) {
+                $requete->orWhere($colonne, $valeur);
+            }
+        });
+    }
+
+    /**
      * Galeries du client (via le user associé)
      */
     public function galleries(): HasManyThrough
@@ -72,16 +102,28 @@ class Client extends Model
     // ========================================================================
 
     /**
-     * Total payé par le client (somme des paiements complétés de ses réservations)
+     * Total reellement paye par le client.
+     *
+     * Ne comptait que les paiements de RESERVATIONS. Or la table `reservations` est vide et
+     * le seul `Payment::create` du depot rattache le paiement a `order_id` : la fiche client
+     * affichait donc « Total verse : 0,00 € » pour tout le monde, en permanence.
+     *
+     * Les deux sources sont comptees, les reservations gardant leur place pour le jour ou
+     * elles serviront.
      */
     public function getTotalPaidAttribute(): float
     {
-        return (float) $this->reservations()
-            ->with('payments')
-            ->get()
-            ->flatMap(fn ($reservation) => $reservation->payments)
+        $desCommandes = Payment::query()
             ->where('status', 'completed')
+            ->whereIn('order_id', $this->ordersQuery()->select('id'))
             ->sum('amount');
+
+        $desReservations = Payment::query()
+            ->where('status', 'completed')
+            ->whereIn('reservation_id', $this->reservations()->select('id'))
+            ->sum('amount');
+
+        return (float) ($desCommandes + $desReservations);
     }
 
     /**
