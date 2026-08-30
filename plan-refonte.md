@@ -1,6 +1,6 @@
 # Plan de refonte — Océane Torres Photographie
 
-## ▶ Avancement — 6 étapes sur 15
+## ▶ Avancement — 7 étapes sur 15
 
 **L'avancement se lit dans un seul tableau : [§3.3 Ordre d'exécution](#33-ordre-dexécution).**
 Une ligne par étape, ✅ quand elle est faite. C'est le seul endroit à tenir à jour.
@@ -13,8 +13,9 @@ Une ligne par étape, ✅ quand elle est faite. C'est le seul endroit à tenir �
 ⏸️ 5  État réel des environnements (Redis)             ← accès NAS requis
 ✅ 6  Phase 4 dissoute — 13-16 j retirés du plan
 ✅ 7  Filet de rendu — 3 parcours (make check-render)
-🔜 8  Règle ESLint + contrôle dans build:prerender     ← en cours
-   9…15                                                point de bascule à l'étape 9
+✅ 8  ESLint + contrôle d'isolation dans le build
+🔜 9  D2 étapes 2-6 — galeries par audience            ← POINT DE BASCULE
+   10…15                                               additif : on peut s'arrêter après 9
 ```
 
 Décisions produit : **8/8 tranchées** (§12) · Recette : **4 / 30** (§11, relevée le 30/08)
@@ -111,13 +112,13 @@ comprendre *pourquoi* une chose a été faite ainsi, jamais pour savoir quoi fai
 le temps, mais ces décisions, qui bloquaient D2, D4, D5, D6 et par ricochet #48 et la moitié
 de la phase 3.
 
-**Ce qui reste tient dans une seule liste : §3.3, quinze étapes ordonnées.** Six sont faites. Le point de bascule est à la neuvième, à environ neuf jours — après quoi on peut
+**Ce qui reste tient dans une seule liste : §3.3, quinze étapes ordonnées.** Sept sont faites. Le point de bascule est à la neuvième, à environ neuf jours — après quoi on peut
 s'arrêter sans dette.
 
 | | |
 |---|---|
 | Décisions produit tranchées | **8 / 8** |
-| Étapes de la liste vivante | **6 / 15** |
+| Étapes de la liste vivante | **7 / 15** |
 | Jusqu'au point de bascule | **~9 j** |
 | Tests | **612** API (1 590 assertions) · **80** front |
 | En attente de Gaëtan | **6 actions**, dont une urgente (§3bis) |
@@ -280,8 +281,8 @@ redéploie tout le code de la branche de production. En face, `dist/` passe de 3
 | 5 | ⏸️ Établir l'état réel des environnements (`CACHE_STORE`, `SESSION_DRIVER`, `QUEUE_CONNECTION`) | §2.3 est cochée sur une supposition contredite par les deux `.env` | 0,25 j |
 | 6 | ✅ **Phase 4 dissoute** | Sa prémisse était fausse : les migrations reproduisent la production **colonne pour colonne et contrainte pour contrainte** (399=399, 99=99, 0 écart de valeur). L'aléa n°1 est nul : 0 photo sur 5 350 à chemin non résolu. 13-16 j retirés du plan ; il reste `jsonb` (#38, 0,5 j), la réconciliation MinIO et 5 PDF manquants — tous hors migration. **Fait le 30/08** | 0,5 j |
 | 7 | ✅ **Filet de rendu — 3 parcours** | `make check-render` : galerie par code, tunnel d'achat, deux listes d'administration, joués dans un vrai navigateur contre l'API locale. Chaque parcours compte des éléments **réellement rendus** — une coquille vide répond 200. Éprouvé par deux mutations : l'enveloppe `{data}` sur un seul endpoint fait tomber deux parcours, une clef de liste renommée fait tomber le troisième. **Fait le 30/08** | 1 j |
-| 8 | 🔜 Règle ESLint + contrôle d'isolation **dans `build:prerender`** | ⚠️ Pas dans `ci.yml` : il n'existe **aucun workflow de déploiement**, Render construit seul. Un contrôle en CI ne bloquerait rien | 0,75 j |
-| 9 | **D2 étapes 2-6** | Après 3 et 4. **Bloque D6** et la tranche admin des Resources | 3,5 j |
+| 8 | ✅ **Règle ESLint + contrôle d'isolation dans `build:prerender`** | Deux barrières : la règle `no-restricted-imports` désigne le fichier fautif dans l'éditeur ; `check-admin-isolation.js` inspecte ce que `dist/index.html` charge d'emblée — ce que télécharge **chaque visiteur**. Placé dans `build:prerender` et non en CI, **parce que Render construit seul depuis le dépôt** : là, un échec arrête le déploiement (code de sortie 1, vérifié). Éprouvé par mutation : le baril réimporté dans le store fait ressortir 90 occurrences et 15 chemins. **Fait le 30/08** | 0,75 j |
+| 9 | 🔜 **D2 étapes 2-6** | Après 3 et 4. **Bloque D6** et la tranche admin des Resources | 3,5 j |
 | 10 | **D4** | Après 1 et 9. Supprime du travail manuel récurrent, zéro risque sur le site vitrine. Rend plus tôt que D6 — le plan le plaçait derrière, à tort | 4,5 j |
 | 11 | **D5** | **Dans** la phase 3.1, pendant que le domaine facturation est chaud. **Bloque #48** | 4,5 j |
 | 12 | Isolation, partie infrastructure (entrée Vite, DNS, nginx, Access, trappe LAN) | Après 4, 8 et 9 : faire l'hôte séparé avant, c'est déménager du désordre | 3 j + 1 semaine d'usage |
@@ -583,7 +584,7 @@ c'est celui-ci. → §11.7 de l'audit
 | 74 | Le garde-fou du seeder aveugle à `DB_URL` | 🔴 | **0.1** | ✅ 30/08 |
 | 75 | Les `.env.example` amorcent le bucket de production | 🟠 | **0.1** | ✅ 30/08 |
 | 76 | Crontab de sauvegarde sans `BACKUP_ENV_FILE` : sauvegarderait la préproduction | 🔴 | **0.2** | ✅ doc corrigée, pose à faire |
-| 77 | Le jeton d'admin est en `localStorage`, même origine que le site public | 🟠 | **§3.3** | ⏳ à traiter |
+| 77 | Le jeton d'admin est en `localStorage`, même origine que le site public | 🟠 | **§3.3 étape 12** | ⏳ débloqué par le filet de rendu |
 | 78 | Aucun journal d'audit des actions d'administration hors RGPD (87 routes sur 95) | 🟡 | **§3.3 étape 14** | ⏳ à traiter |
 | 79 | `POST /gift-cards` ouverte à tout compte authentifié — bon de 500 € émissible par une cliente | 🔴 | **§3.3 étape 1** | ✅ 30/08 |
 | 80 | Aucun limiteur de débit sur les 96 routes admin | 🟠 | **§3.3 étape 4** | ✅ 30/08 |
