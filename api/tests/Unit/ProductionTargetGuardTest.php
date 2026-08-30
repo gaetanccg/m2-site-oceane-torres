@@ -352,4 +352,27 @@ class ProductionTargetGuardTest extends TestCase
         $this->assertStringNotContainsString('$_SERVER', $source);
         $this->assertStringNotContainsString('env(', $source);
     }
+
+    /**
+     * Les fichiers d'exemple amorcent le poste d'un nouvel arrivant. S'ils portent une cible de
+     * production, le garde-fou l'arrete au demarrage — et le reflexe naturel devient d'affaiblir
+     * le garde-fou plutot que de corriger l'exemple.
+     */
+    public function test_les_exemples_d_environnement_locaux_n_amorcent_aucune_cible_de_production(): void
+    {
+        $racine = dirname(__DIR__, 3);
+
+        foreach (['.env.example', 'api/.env.example', 'web/.env.example'] as $chemin) {
+            $contenu = file_get_contents($racine.'/'.$chemin);
+
+            $this->assertDoesNotMatchRegularExpression(
+                '/^MINIO_BUCKET='.preg_quote(ProductionTargets::STORAGE_BUCKET, '/').'$/m',
+                $contenu,
+                $chemin.' amorce le bucket de production.'
+            );
+            $this->assertStringNotContainsString(ProductionTargets::SUPABASE_PROJECT, $contenu, $chemin);
+            $this->assertStringNotContainsString(ProductionTargets::DATABASE_HOST, $contenu, $chemin);
+            $this->assertStringNotContainsString('oceanetorresphotographie.fr', $contenu, $chemin);
+        }
+    }
 }
