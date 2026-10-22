@@ -1,7 +1,7 @@
 # ===========================================
 # BASE STAGE - Common dependencies
 # ===========================================
-FROM php:8.4-fpm-alpine AS base
+FROM php:8.4.27-fpm-alpine AS base
 
 # Install system dependencies
 # fcgi : cgi-fcgi, requis par le healthcheck php-fpm (cf. deploy/docker/www.conf)
@@ -81,7 +81,7 @@ CMD ["php-fpm"]
 # ===========================================
 # PRODUCTION STAGE - For Render (artisan serve)
 # ===========================================
-FROM php:8.4-cli-alpine AS production
+FROM php:8.4.27-cli-alpine AS production
 
 # Install system dependencies
 RUN apk add --no-cache \
