@@ -9,8 +9,8 @@
 #   facon masquees au runtime, et un changement de Dockerfile invalide deja le
 #   cache tout seul. A reserver aux cas ou une couche systeme doit repartir de
 #   zero (pecl install imagick n'est pas epingle) ou a un cache corrompu.
-#   Pour recuperer aussi une base php:8.4-fpm-alpine plus recente, il faut un
-#   docker compose ... build --pull, que --fresh ne fait pas.
+#   Le build fait toujours --pull pour rafraichir la base php en cache. La
+#   version de PHP, elle, s'epingle dans api/Dockerfile (8.4.27 : php2shell).
 #
 # Prerequis:
 #   1. Le repo est clone dans un dossier DISTINCT de la prod
@@ -65,10 +65,10 @@ if [[ "$*" != *"--no-build"* ]]; then
     echo ""
     if [[ "$*" == *"--fresh"* ]]; then
         echo "2/6 - Building containers (--fresh: sans cache Docker)..."
-        "${DC[@]}" build --no-cache
+        "${DC[@]}" build --pull --no-cache
     else
         echo "2/6 - Building containers..."
-        "${DC[@]}" build
+        "${DC[@]}" build --pull
     fi
 else
     echo ""
