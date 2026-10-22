@@ -74,6 +74,7 @@ api/database/*.sqlite
 
 web/node_modules/
 web/dist/
+web/dist-admin/
 web/.vite/
 web/.vitepress/
 web/.nuxt/
@@ -119,3 +120,6 @@ PROJECT_REFERENCE_MVP.md
 
 .claude
 *.tar.gz
+
+# Dumps de base (contiennent des donnees personnelles de prod)
+backups/
